@@ -45,7 +45,7 @@ func WSHandler(reg *Registry, token string) http.HandlerFunc {
 			MaxConcurrency: rm.MaxConcurrency,
 			InFlight:       0,
 			LastHeartbeat:  time.Now(),
-			Send:           make(chan interface{}, 16),
+			Send:           make(chan interface{}, 32),
 			Jobs:           make(map[string]chan interface{}),
 		}
 		for _, m := range rm.Models {

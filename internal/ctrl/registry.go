@@ -5,6 +5,11 @@ import (
 	"time"
 )
 
+const (
+	HeartbeatInterval = 5 * time.Second
+	HeartbeatExpiry   = 3 * HeartbeatInterval
+)
+
 type Worker struct {
 	ID             string
 	Models         map[string]bool
@@ -87,6 +92,20 @@ func (r *Registry) Models() []string {
 		models = append(models, m)
 	}
 	return models
+}
+
+func (r *Registry) PruneExpired(maxAge time.Duration) {
+	r.mu.Lock()
+	for id, w := range r.workers {
+		if time.Since(w.LastHeartbeat) > maxAge {
+			delete(r.workers, id)
+			for _, ch := range w.Jobs {
+				close(ch)
+			}
+			close(w.Send)
+		}
+	}
+	r.mu.Unlock()
 }
 
 func (w *Worker) AddJob(id string, ch chan interface{}) {

@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"encoding/json"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -32,6 +33,8 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 	defer ws.Close(websocket.StatusInternalError, "closing")
 
 	sendCh := make(chan []byte, 16)
+	jobCancels := make(map[string]context.CancelFunc)
+	var jobMu sync.Mutex
 	go func() {
 		for msg := range sendCh {
 			ws.Write(ctx, websocket.MessageText, msg)
@@ -67,25 +70,46 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 		if err := json.Unmarshal(data, &env); err != nil {
 			continue
 		}
-		if env.Type == "job_request" {
+		switch env.Type {
+		case "job_request":
 			var jr ctrl.JobRequestMessage
 			if err := json.Unmarshal(data, &jr); err != nil {
 				continue
 			}
 			logx.Log.Info().Str("job", jr.JobID).Msg("job request")
 			if jr.Endpoint == "generate" {
-				handleGenerate(ctx, client, sendCh, jr)
+				go handleGenerate(ctx, client, sendCh, jr, jobCancels, &jobMu)
+			}
+		case "cancel_job":
+			var cj ctrl.CancelJobMessage
+			if err := json.Unmarshal(data, &cj); err == nil {
+				jobMu.Lock()
+				if cancel, ok := jobCancels[cj.JobID]; ok {
+					cancel()
+					delete(jobCancels, cj.JobID)
+				}
+				jobMu.Unlock()
 			}
 		}
 	}
 }
 
-func handleGenerate(ctx context.Context, client *ollama.Client, sendCh chan []byte, jr ctrl.JobRequestMessage) {
+func handleGenerate(ctx context.Context, client *ollama.Client, sendCh chan []byte, jr ctrl.JobRequestMessage, cancels map[string]context.CancelFunc, mu *sync.Mutex) {
 	raw, _ := json.Marshal(jr.Payload)
 	var req relay.GenerateRequest
 	json.Unmarshal(raw, &req)
+	jobCtx, cancel := context.WithCancel(ctx)
+	mu.Lock()
+	cancels[jr.JobID] = cancel
+	mu.Unlock()
+	defer func() {
+		cancel()
+		mu.Lock()
+		delete(cancels, jr.JobID)
+		mu.Unlock()
+	}()
 	if req.Stream {
-		rc, err := client.GenerateStream(ctx, req)
+		rc, err := client.GenerateStream(jobCtx, req)
 		if err != nil {
 			msg := ctrl.JobErrorMessage{Type: "job_error", JobID: jr.JobID, Code: "error", Message: err.Error()}
 			b, _ := json.Marshal(msg)
@@ -99,7 +123,7 @@ func handleGenerate(ctx context.Context, client *ollama.Client, sendCh chan []by
 			sendCh <- b
 		}
 	} else {
-		data, err := client.Generate(ctx, req)
+		data, err := client.Generate(jobCtx, req)
 		if err != nil {
 			msg := ctrl.JobErrorMessage{Type: "job_error", JobID: jr.JobID, Code: "error", Message: err.Error()}
 			b, _ := json.Marshal(msg)

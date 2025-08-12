@@ -51,12 +51,7 @@ func (c *Client) GenerateStream(ctx context.Context, req relay.GenerateRequest) 
 	if err != nil {
 		return nil, err
 	}
-	data, err := io.ReadAll(resp.Body)
-	resp.Body.Close()
-	if err != nil {
-		return nil, err
-	}
-	return io.NopCloser(bytes.NewReader(data)), nil
+	return resp.Body, nil
 }
 
 func (c *Client) Generate(ctx context.Context, req relay.GenerateRequest) ([]byte, error) {

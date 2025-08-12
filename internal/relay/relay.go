@@ -21,6 +21,7 @@ type GenerateRequest struct {
 var (
 	ErrNoWorker     = errors.New("no worker")
 	ErrWorkerFailed = errors.New("worker failure")
+	ErrWorkerBusy   = errors.New("worker busy")
 )
 
 // RelayGenerateStream relays streaming generate requests to a worker.
@@ -40,16 +41,24 @@ func RelayGenerateStream(ctx context.Context, reg *ctrl.Registry, sched ctrl.Sch
 		close(ch)
 	}()
 
-	worker.Send <- ctrl.JobRequestMessage{Type: "job_request", JobID: jobID, Endpoint: "generate", Payload: req}
+	select {
+	case worker.Send <- ctrl.JobRequestMessage{Type: "job_request", JobID: jobID, Endpoint: "generate", Payload: req}:
+	default:
+		return ErrWorkerBusy
+	}
 	flusher, _ := w.(http.Flusher)
 	enc := json.NewEncoder(w)
 	for {
 		select {
 		case <-ctx.Done():
+			select {
+			case worker.Send <- ctrl.CancelJobMessage{Type: "cancel_job", JobID: jobID}:
+			default:
+			}
 			return ctx.Err()
 		case msg, ok := <-ch:
 			if !ok {
-				return nil
+				return ErrWorkerFailed
 			}
 			switch m := msg.(type) {
 			case ctrl.JobChunkMessage:
@@ -93,11 +102,19 @@ func RelayGenerateOnce(ctx context.Context, reg *ctrl.Registry, sched ctrl.Sched
 		close(ch)
 	}()
 
-	worker.Send <- ctrl.JobRequestMessage{Type: "job_request", JobID: jobID, Endpoint: "generate", Payload: req}
+	select {
+	case worker.Send <- ctrl.JobRequestMessage{Type: "job_request", JobID: jobID, Endpoint: "generate", Payload: req}:
+	default:
+		return nil, ErrWorkerBusy
+	}
 
 	for {
 		select {
 		case <-ctx.Done():
+			select {
+			case worker.Send <- ctrl.CancelJobMessage{Type: "cancel_job", JobID: jobID}:
+			default:
+			}
 			return nil, ctx.Err()
 		case msg, ok := <-ch:
 			if !ok {

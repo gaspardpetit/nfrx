@@ -23,6 +23,10 @@ func GenerateHandler(reg *ctrl.Registry, sched ctrl.Scheduler, timeout time.Dura
 		defer cancel()
 		if req.Stream {
 			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Cache-Control", "no-store")
+			if f, ok := w.(http.Flusher); ok {
+				f.Flush()
+			}
 			if err := relay.RelayGenerateStream(ctx, reg, sched, req, w); err != nil {
 				handleRelayErr(w, err)
 			}
@@ -39,11 +43,14 @@ func GenerateHandler(reg *ctrl.Registry, sched ctrl.Scheduler, timeout time.Dura
 }
 
 func handleRelayErr(w http.ResponseWriter, err error) {
-	if errors.Is(err, relay.ErrNoWorker) {
+	switch {
+	case errors.Is(err, relay.ErrNoWorker):
 		http.Error(w, "no worker", http.StatusNotFound)
-	} else if errors.Is(err, context.DeadlineExceeded) {
+	case errors.Is(err, relay.ErrWorkerBusy):
+		http.Error(w, "busy", http.StatusServiceUnavailable)
+	case errors.Is(err, context.DeadlineExceeded):
 		http.Error(w, "timeout", http.StatusGatewayTimeout)
-	} else if err != nil {
+	default:
 		http.Error(w, "worker failure", http.StatusBadGateway)
 	}
 }

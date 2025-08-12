@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -18,5 +19,13 @@ func New(reg *ctrl.Registry, sched ctrl.Scheduler, cfg config.ServerConfig) http
 	r.Handle(cfg.WSPath, ctrl.WSHandler(reg, cfg.WorkerToken))
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
 	r.Handle("/metrics", promhttp.Handler())
+
+	go func() {
+		ticker := time.NewTicker(ctrl.HeartbeatInterval)
+		for range ticker.C {
+			reg.PruneExpired(ctrl.HeartbeatExpiry)
+		}
+	}()
+
 	return r
 }
