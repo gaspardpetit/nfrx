@@ -19,7 +19,10 @@ func New(reg *ctrl.Registry, sched ctrl.Scheduler, cfg config.ServerConfig) http
 	r.Group(func(g chi.Router) {
 		g.Use(auth)
 		g.Mount("/api", api.NewRouter(reg, sched, cfg.RequestTimeout))
-		g.Mount("/v1", api.NewRouter(reg, sched, cfg.RequestTimeout))
+  	r.Route("/v1", func(r chi.Router) {
+  		r.Get("/models", api.ListModelsHandler(reg))
+  		r.Get("/models/{id}", api.GetModelHandler(reg))
+  	})
 	})
 	r.Handle(cfg.WSPath, ctrl.WSHandler(reg, cfg.WorkerKey))
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {

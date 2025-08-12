@@ -53,16 +53,22 @@ func WSHandler(reg *Registry, expectedKey string) http.HandlerFunc {
 		if err := json.Unmarshal(data, &rm); err != nil {
 			return
 		}
-		if rm.WorkerKey == "" && rm.Token != "" {
-			logx.Log.Warn().Msg("token field deprecated in register message, use worker_key")
-			rm.WorkerKey = rm.Token
-		}
 		if expectedKey != "" && rm.WorkerKey != expectedKey {
 			c.Close(websocket.StatusPolicyViolation, "unauthorized")
 			return
+		name := rm.WorkerName
+		if name == "" {
+			if len(rm.WorkerID) >= 8 {
+				name = rm.WorkerID[:8]
+			} else if rm.WorkerID != "" {
+				name = rm.WorkerID
+			} else {
+				name = strings.Split(r.RemoteAddr, ":")[0]
+			}
 		}
 		wk := &Worker{
 			ID:             rm.WorkerID,
+			Name:           name,
 			Models:         map[string]bool{},
 			MaxConcurrency: rm.MaxConcurrency,
 			InFlight:       0,
@@ -74,7 +80,7 @@ func WSHandler(reg *Registry, expectedKey string) http.HandlerFunc {
 			wk.Models[m] = true
 		}
 		reg.Add(wk)
-		logx.Log.Info().Str("worker_id", wk.ID).Str("remote_addr", r.RemoteAddr).Strs("models", rm.Models).Msg("registered")
+		logx.Log.Info().Str("worker_id", wk.ID).Str("worker_name", wk.Name).Int("model_count", len(wk.Models)).Msg("registered")
 		defer reg.Remove(wk.ID)
 
 		go func() {

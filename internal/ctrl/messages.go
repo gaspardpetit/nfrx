@@ -6,7 +6,7 @@ type RegisterMessage struct {
 	Type           string   `json:"type"`
 	WorkerID       string   `json:"worker_id"`
 	WorkerKey      string   `json:"worker_key,omitempty"`
-	Token          string   `json:"token,omitempty"`
+	WorkerName     string   `json:"worker_name,omitempty"`
 	Models         []string `json:"models"`
 	MaxConcurrency int      `json:"max_concurrency"`
 }

@@ -14,6 +14,7 @@ const (
 
 type Worker struct {
 	ID             string
+	Name           string
 	Models         map[string]bool
 	MaxConcurrency int
 	InFlight       int
@@ -24,17 +25,23 @@ type Worker struct {
 }
 
 type Registry struct {
-	mu      sync.RWMutex
-	workers map[string]*Worker
+	mu             sync.RWMutex
+	workers        map[string]*Worker
+	modelFirstSeen map[string]int64
 }
 
 func NewRegistry() *Registry {
-	return &Registry{workers: make(map[string]*Worker)}
+	return &Registry{workers: make(map[string]*Worker), modelFirstSeen: make(map[string]int64)}
 }
 
 func (r *Registry) Add(w *Worker) {
 	r.mu.Lock()
 	r.workers[w.ID] = w
+	for m := range w.Models {
+		if _, ok := r.modelFirstSeen[m]; !ok {
+			r.modelFirstSeen[m] = time.Now().Unix()
+		}
+	}
 	r.mu.Unlock()
 }
 
