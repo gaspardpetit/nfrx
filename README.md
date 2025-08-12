@@ -109,6 +109,9 @@ docker run --rm \
 
 ## Example request
 
+Ensure that the requested `model` is installed on the connected worker's local
+Ollama instance. If the model is missing, the server responds with `no worker`.
+
 On Linux:
 
 ```bash
