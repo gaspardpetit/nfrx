@@ -22,7 +22,10 @@ func New(base string) *Client {
 }
 
 func (c *Client) Tags(ctx context.Context) ([]string, error) {
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+"/api/tags", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+"/api/tags", nil)
+	if err != nil {
+		return nil, err
+	}
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -45,7 +48,10 @@ func (c *Client) Tags(ctx context.Context) ([]string, error) {
 
 func (c *Client) GenerateStream(ctx context.Context, req relay.GenerateRequest) (io.ReadCloser, error) {
 	b, _ := json.Marshal(req)
-	httpReq, _ := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+"/api/generate?stream=true", bytes.NewReader(b))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+"/api/generate?stream=true", bytes.NewReader(b))
+	if err != nil {
+		return nil, err
+	}
 	httpReq.Header.Set("Content-Type", "application/json")
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
@@ -56,7 +62,10 @@ func (c *Client) GenerateStream(ctx context.Context, req relay.GenerateRequest) 
 
 func (c *Client) Generate(ctx context.Context, req relay.GenerateRequest) ([]byte, error) {
 	b, _ := json.Marshal(req)
-	httpReq, _ := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+"/api/generate", bytes.NewReader(b))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+"/api/generate", bytes.NewReader(b))
+	if err != nil {
+		return nil, err
+	}
 	httpReq.Header.Set("Content-Type", "application/json")
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
