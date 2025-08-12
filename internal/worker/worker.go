@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"sync"
 	"time"
 
@@ -26,7 +27,9 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 	if err != nil {
 		return err
 	}
-	ws, _, err := websocket.Dial(ctx, cfg.ServerURL, nil)
+	ws, _, err := websocket.Dial(ctx, cfg.ServerURL, &websocket.DialOptions{HTTPHeader: http.Header{
+		"Authorization": {"Bearer " + cfg.Token},
+	}})
 	if err != nil {
 		return err
 	}
@@ -122,6 +125,9 @@ func handleGenerate(ctx context.Context, client *ollama.Client, sendCh chan []by
 			b, _ := json.Marshal(msg)
 			sendCh <- b
 		}
+		done := ctrl.JobChunkMessage{Type: "job_chunk", JobID: jr.JobID, Data: json.RawMessage(`{"done":true}`)}
+		b, _ := json.Marshal(done)
+		sendCh <- b
 	} else {
 		data, err := client.Generate(jobCtx, req)
 		if err != nil {

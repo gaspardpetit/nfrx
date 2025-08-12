@@ -4,7 +4,8 @@
 
 Llamapool is a minimal worker pool that exposes an Ollama-compatible HTTP API. The
 `llamapool-server` binary accepts client requests and dispatches them to connected
-`llamapool-worker` processes over WebSocket.
+`llamapool-worker` processes over WebSocket. Workers authenticate using a shared
+bearer token provided via the `TOKEN` environment variable.
 
 ## Build
 
@@ -32,6 +33,12 @@ SERVER_URL=ws://localhost:8080/workers/connect TOKEN=secret OLLAMA_URL=http://12
 curl -N -X POST http://localhost:8080/api/generate \
   -H 'Content-Type: application/json' \
   -d '{"model":"llama3","prompt":"Hello","stream":true}'
+```
+
+The server also exposes a basic health check:
+
+```bash
+curl http://localhost:8080/healthz
 ```
 
 ## Testing

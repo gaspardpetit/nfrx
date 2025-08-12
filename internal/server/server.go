@@ -17,7 +17,10 @@ func New(reg *ctrl.Registry, sched ctrl.Scheduler, cfg config.ServerConfig) http
 	r := chi.NewRouter()
 	r.Mount("/api", api.NewRouter(reg, sched, cfg.RequestTimeout))
 	r.Handle(cfg.WSPath, ctrl.WSHandler(reg, cfg.WorkerToken))
-	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
+	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"status":"ok"}`))
+	})
 	r.Handle("/metrics", promhttp.Handler())
 
 	go func() {

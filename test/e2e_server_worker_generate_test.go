@@ -31,7 +31,7 @@ func TestE2EGenerateStream(t *testing.T) {
 	ctx := context.Background()
 	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/workers/connect"
 	go func() {
-		conn, _, err := websocket.Dial(ctx, wsURL, nil)
+		conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: http.Header{"Authorization": {"Bearer secret"}}})
 		if err != nil {
 			return
 		}
