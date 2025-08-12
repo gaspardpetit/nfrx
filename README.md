@@ -108,6 +108,9 @@ curl -N -X POST http://localhost:8080/api/generate `
   -d '{ "model": "llama3", "prompt": "Hello", "stream": true }'
 ```
 
+Ensure that the requested `model` is installed on the connected worker's local
+Ollama instance. If the model is missing, the server responds with `no worker`.
+
 
 ## Testing
 

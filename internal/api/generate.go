@@ -24,9 +24,6 @@ func GenerateHandler(reg *ctrl.Registry, sched ctrl.Scheduler, timeout time.Dura
 		if req.Stream {
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("Cache-Control", "no-store")
-			if f, ok := w.(http.Flusher); ok {
-				f.Flush()
-			}
 			if err := relay.RelayGenerateStream(ctx, reg, sched, req, w); err != nil {
 				handleRelayErr(w, err)
 			}
