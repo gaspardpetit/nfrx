@@ -19,16 +19,17 @@ import (
 
 // Run starts the worker agent.
 func Run(ctx context.Context, cfg config.WorkerConfig) error {
-	if cfg.WorkerID == "" {
-		cfg.WorkerID = uuid.NewString()
+	if cfg.WorkerName == "" {
+		cfg.WorkerName = uuid.NewString()
 	}
+	logx.Log.Info().Str("worker_name", cfg.WorkerName).Bool("auth", cfg.WorkerKey != "").Msg("worker starting")
 	client := ollama.New(cfg.OllamaURL)
 	models, err := client.Tags(ctx)
 	if err != nil {
 		return err
 	}
 	ws, _, err := websocket.Dial(ctx, cfg.ServerURL, &websocket.DialOptions{HTTPHeader: http.Header{
-		"Authorization": {"Bearer " + cfg.Token},
+		"Authorization": {"Bearer " + cfg.WorkerKey},
 	}})
 	if err != nil {
 		return err
@@ -44,7 +45,7 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 		}
 	}()
 
-	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: cfg.WorkerID, Token: cfg.Token, Models: models, MaxConcurrency: cfg.MaxConcurrency}
+	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: cfg.WorkerName, WorkerKey: cfg.WorkerKey, Models: models, MaxConcurrency: cfg.MaxConcurrency}
 	b, _ := json.Marshal(regMsg)
 	sendCh <- b
 

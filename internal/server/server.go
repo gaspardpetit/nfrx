@@ -15,8 +15,13 @@ import (
 // New constructs the HTTP handler for the server.
 func New(reg *ctrl.Registry, sched ctrl.Scheduler, cfg config.ServerConfig) http.Handler {
 	r := chi.NewRouter()
-	r.Mount("/api", api.NewRouter(reg, sched, cfg.RequestTimeout))
-	r.Handle(cfg.WSPath, ctrl.WSHandler(reg, cfg.WorkerToken))
+	auth := api.APIKeyMiddleware(cfg.APIKey)
+	r.Group(func(g chi.Router) {
+		g.Use(auth)
+		g.Mount("/api", api.NewRouter(reg, sched, cfg.RequestTimeout))
+		g.Mount("/v1", api.NewRouter(reg, sched, cfg.RequestTimeout))
+	})
+	r.Handle(cfg.WSPath, ctrl.WSHandler(reg, cfg.WorkerKey))
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"status":"ok"}`))

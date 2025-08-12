@@ -12,16 +12,22 @@ import (
 )
 
 // WSHandler handles incoming worker websocket connections.
-func WSHandler(reg *Registry, token string) http.HandlerFunc {
+func WSHandler(reg *Registry, expectedKey string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		tok := ""
+		provided := ""
 		if auth := r.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
-			tok = strings.TrimPrefix(auth, "Bearer ")
+			provided = strings.TrimPrefix(auth, "Bearer ")
 		}
-		if tok == "" {
-			tok = r.URL.Query().Get("token")
+		if provided == "" {
+			provided = r.URL.Query().Get("worker_key")
 		}
-		if token != "" && tok != token {
+		if provided == "" {
+			if tok := r.URL.Query().Get("token"); tok != "" {
+				logx.Log.Warn().Msg("token query param deprecated, use worker_key")
+				provided = tok
+			}
+		}
+		if expectedKey != "" && provided != expectedKey {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
@@ -45,6 +51,14 @@ func WSHandler(reg *Registry, token string) http.HandlerFunc {
 		}
 		var rm RegisterMessage
 		if err := json.Unmarshal(data, &rm); err != nil {
+			return
+		}
+		if rm.WorkerKey == "" && rm.Token != "" {
+			logx.Log.Warn().Msg("token field deprecated in register message, use worker_key")
+			rm.WorkerKey = rm.Token
+		}
+		if expectedKey != "" && rm.WorkerKey != expectedKey {
+			c.Close(websocket.StatusPolicyViolation, "unauthorized")
 			return
 		}
 		wk := &Worker{

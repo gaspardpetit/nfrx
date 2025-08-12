@@ -5,7 +5,8 @@ import "encoding/json"
 type RegisterMessage struct {
 	Type           string   `json:"type"`
 	WorkerID       string   `json:"worker_id"`
-	Token          string   `json:"token"`
+	WorkerKey      string   `json:"worker_key,omitempty"`
+	Token          string   `json:"token,omitempty"`
 	Models         []string `json:"models"`
 	MaxConcurrency int      `json:"max_concurrency"`
 }

@@ -32,6 +32,12 @@ func main() {
 		srv.Shutdown(context.Background())
 	}()
 
+	if cfg.APIKey != "" {
+		logx.Log.Info().Msg("API key auth enabled")
+	}
+	if cfg.WorkerKey != "" {
+		logx.Log.Info().Msg("Worker key required")
+	}
 	logx.Log.Info().Int("port", cfg.Port).Msg("server starting")
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		logx.Log.Fatal().Err(err).Msg("server error")

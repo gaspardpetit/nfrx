@@ -20,14 +20,17 @@ func TestWorkerBusy(t *testing.T) {
 	worker.Send <- struct{}{}
 	reg.Add(worker)
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	cfg := config.ServerConfig{WorkerToken: "secret", WSPath: "/workers/connect", RequestTimeout: 5 * time.Second}
+	cfg := config.ServerConfig{APIKey: "testkey", WSPath: "/workers/connect", RequestTimeout: 5 * time.Second}
 	handler := server.New(reg, sched, cfg)
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
 	req := relay.GenerateRequest{Model: "m", Prompt: "hi", Stream: true}
 	b, _ := json.Marshal(req)
-	resp, err := http.Post(srv.URL+"/api/generate", "application/json", bytes.NewReader(b))
+	httpReq, _ := http.NewRequest(http.MethodPost, srv.URL+"/api/generate", bytes.NewReader(b))
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", "Bearer testkey")
+	resp, err := http.DefaultClient.Do(httpReq)
 	if err != nil {
 		t.Fatalf("post: %v", err)
 	}

@@ -19,7 +19,7 @@ import (
 func TestWorkerAuth(t *testing.T) {
 	reg := ctrl.NewRegistry()
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	cfg := config.ServerConfig{WorkerToken: "secret", WSPath: "/workers/connect", RequestTimeout: 5 * time.Second}
+	cfg := config.ServerConfig{APIKey: "testkey", WorkerKey: "secret", WSPath: "/workers/connect", RequestTimeout: 5 * time.Second}
 	handler := server.New(reg, sched, cfg)
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -27,7 +27,7 @@ func TestWorkerAuth(t *testing.T) {
 	ctx := context.Background()
 	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/workers/connect"
 
-	// bad token
+	// bad key
 	_, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: http.Header{"Authorization": {"Bearer nope"}}})
 	if err == nil {
 		t.Fatalf("expected auth failure")
@@ -36,13 +36,13 @@ func TestWorkerAuth(t *testing.T) {
 		t.Fatalf("unexpected worker registered")
 	}
 
-	// good token
+	// good key
 	conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: http.Header{"Authorization": {"Bearer secret"}}})
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}
 	defer conn.Close(websocket.StatusNormalClosure, "")
-	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w1", Models: []string{"m"}, MaxConcurrency: 1}
+	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w1", WorkerKey: "secret", Models: []string{"m"}, MaxConcurrency: 1}
 	b, _ := json.Marshal(regMsg)
 	conn.Write(ctx, websocket.MessageText, b)
 
@@ -54,6 +54,7 @@ func TestWorkerAuth(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 	}
 	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/api/tags", nil)
+	req.Header.Set("Authorization", "Bearer testkey")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil || resp.StatusCode != http.StatusOK {
 		t.Fatalf("tags: %v %d", err, resp.StatusCode)

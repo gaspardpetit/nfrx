@@ -22,7 +22,7 @@ import (
 func TestCancelPropagates(t *testing.T) {
 	reg := ctrl.NewRegistry()
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	cfg := config.ServerConfig{WorkerToken: "secret", WSPath: "/workers/connect", RequestTimeout: 5 * time.Second}
+	cfg := config.ServerConfig{APIKey: "testkey", WorkerKey: "secret", WSPath: "/workers/connect", RequestTimeout: 5 * time.Second}
 	handler := server.New(reg, sched, cfg)
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -36,7 +36,7 @@ func TestCancelPropagates(t *testing.T) {
 			return
 		}
 		defer conn.Close(websocket.StatusNormalClosure, "")
-		regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w1", Models: []string{"m"}, MaxConcurrency: 1}
+		regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w1", WorkerKey: "secret", Models: []string{"m"}, MaxConcurrency: 1}
 		b, _ := json.Marshal(regMsg)
 		conn.Write(ctx, websocket.MessageText, b)
 		for {
@@ -75,6 +75,7 @@ func TestCancelPropagates(t *testing.T) {
 	cctx, cancel := context.WithCancel(context.Background())
 	httpReq, _ := http.NewRequestWithContext(cctx, http.MethodPost, srv.URL+"/api/generate", bytes.NewReader(b))
 	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", "Bearer testkey")
 	resp, err := http.DefaultClient.Do(httpReq)
 	if err != nil {
 		t.Fatalf("post: %v", err)

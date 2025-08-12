@@ -16,5 +16,6 @@ func NewRouter(reg *ctrl.Registry, sched ctrl.Scheduler, timeout time.Duration) 
 	}
 	r.Post("/generate", GenerateHandler(reg, sched, timeout))
 	r.Get("/tags", TagsHandler(reg))
+	r.Get("/models", TagsHandler(reg))
 	return r
 }

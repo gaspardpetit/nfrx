@@ -8,15 +8,15 @@ import (
 // WorkerConfig holds configuration for the worker agent.
 type WorkerConfig struct {
 	ServerURL      string
-	Token          string
+	WorkerKey      string
 	OllamaURL      string
 	MaxConcurrency int
-	WorkerID       string
+	WorkerName     string
 }
 
 func (c *WorkerConfig) BindFlags() {
 	c.ServerURL = getEnv("SERVER_URL", "ws://localhost:8080/workers/connect")
-	c.Token = getEnv("TOKEN", "")
+	c.WorkerKey = getEnv("WORKER_KEY", "")
 	c.OllamaURL = getEnv("OLLAMA_URL", "http://127.0.0.1:11434")
 	mc := getEnv("MAX_CONCURRENCY", "2")
 	if v, err := strconv.Atoi(mc); err == nil {
@@ -24,11 +24,11 @@ func (c *WorkerConfig) BindFlags() {
 	} else {
 		c.MaxConcurrency = 2
 	}
-	c.WorkerID = getEnv("WORKER_ID", "")
+	c.WorkerName = getEnv("WORKER_NAME", "")
 
 	flag.StringVar(&c.ServerURL, "server-url", c.ServerURL, "server websocket url")
-	flag.StringVar(&c.Token, "token", c.Token, "registration token")
+	flag.StringVar(&c.WorkerKey, "worker-key", c.WorkerKey, "worker authentication key")
 	flag.StringVar(&c.OllamaURL, "ollama-url", c.OllamaURL, "local Ollama URL")
 	flag.IntVar(&c.MaxConcurrency, "max-concurrency", c.MaxConcurrency, "max concurrent jobs")
-	flag.StringVar(&c.WorkerID, "worker-id", c.WorkerID, "worker identifier")
+	flag.StringVar(&c.WorkerName, "worker-name", c.WorkerName, "worker name")
 }

@@ -15,12 +15,14 @@ import (
 func TestRoutes(t *testing.T) {
 	reg := ctrl.NewRegistry()
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	cfg := config.ServerConfig{WorkerToken: "secret", WSPath: "/workers/connect", RequestTimeout: 5 * time.Second}
+	cfg := config.ServerConfig{APIKey: "testkey", WSPath: "/workers/connect", RequestTimeout: 5 * time.Second}
 	handler := server.New(reg, sched, cfg)
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
-	resp, err := http.Get(srv.URL + "/api/tags")
+	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/api/tags", nil)
+	req.Header.Set("Authorization", "Bearer testkey")
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil || resp.StatusCode != http.StatusOK {
 		t.Fatalf("/api/tags: %v %d", err, resp.StatusCode)
 	}
