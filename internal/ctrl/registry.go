@@ -3,6 +3,8 @@ package ctrl
 import (
 	"sync"
 	"time"
+
+	"github.com/you/llamapool/internal/logx"
 )
 
 const (
@@ -38,7 +40,17 @@ func (r *Registry) Add(w *Worker) {
 
 func (r *Registry) Remove(id string) {
 	r.mu.Lock()
-	delete(r.workers, id)
+	if w, ok := r.workers[id]; ok {
+		delete(r.workers, id)
+		for _, ch := range w.Jobs {
+			if ch != nil {
+				close(ch)
+			}
+		}
+		if w.Send != nil {
+			close(w.Send)
+		}
+	}
 	r.mu.Unlock()
 }
 
@@ -103,6 +115,7 @@ func (r *Registry) PruneExpired(maxAge time.Duration) {
 				close(ch)
 			}
 			close(w.Send)
+			logx.Log.Info().Str("worker_id", id).Str("reason", "heartbeat_expired").Msg("evicted")
 		}
 	}
 	r.mu.Unlock()

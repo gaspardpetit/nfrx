@@ -6,9 +6,11 @@ import (
 	"errors"
 	"net/http"
 
+	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 
 	"github.com/you/llamapool/internal/ctrl"
+	"github.com/you/llamapool/internal/logx"
 )
 
 // GenerateRequest is the minimal request for generation.
@@ -34,6 +36,8 @@ func RelayGenerateStream(ctx context.Context, reg *ctrl.Registry, sched ctrl.Sch
 	defer reg.DecInFlight(worker.ID)
 
 	jobID := uuid.NewString()
+	reqID := chiMiddleware.GetReqID(ctx)
+	logx.Log.Info().Str("request_id", reqID).Str("job_id", jobID).Str("worker_id", worker.ID).Msg("dispatch")
 	ch := make(chan interface{}, 16)
 	worker.AddJob(jobID, ch)
 	defer func() {
@@ -48,6 +52,7 @@ func RelayGenerateStream(ctx context.Context, reg *ctrl.Registry, sched ctrl.Sch
 	}
 	flusher, _ := w.(http.Flusher)
 	enc := json.NewEncoder(w)
+	doneSent := false
 	for {
 		select {
 		case <-ctx.Done():
@@ -58,6 +63,9 @@ func RelayGenerateStream(ctx context.Context, reg *ctrl.Registry, sched ctrl.Sch
 			return ctx.Err()
 		case msg, ok := <-ch:
 			if !ok {
+				if !doneSent {
+					enc.Encode(map[string]any{"done": true})
+				}
 				return ErrWorkerFailed
 			}
 			switch m := msg.(type) {
@@ -69,15 +77,33 @@ func RelayGenerateStream(ctx context.Context, reg *ctrl.Registry, sched ctrl.Sch
 						flusher.Flush()
 					}
 					if done, ok := data["done"].(bool); ok && done {
+						doneSent = true
+						logx.Log.Info().Str("request_id", reqID).Str("job_id", jobID).Str("worker_id", worker.ID).Msg("complete")
 						return nil
 					}
 				}
 			case ctrl.JobErrorMessage:
+				if !doneSent {
+					enc.Encode(map[string]any{"done": true})
+				}
+				logx.Log.Info().Str("request_id", reqID).Str("job_id", jobID).Str("worker_id", worker.ID).Msg("error")
 				return ErrWorkerFailed
 			case ctrl.JobResultMessage:
 				var data map[string]interface{}
 				if err := json.Unmarshal(m.Data, &data); err == nil {
 					enc.Encode(data)
+				}
+				if flusher != nil {
+					flusher.Flush()
+				}
+				doneSent = true
+				logx.Log.Info().Str("request_id", reqID).Str("job_id", jobID).Str("worker_id", worker.ID).Msg("complete")
+				if done, ok := data["done"].(bool); ok && done {
+				} else {
+					enc.Encode(map[string]any{"done": true})
+					if flusher != nil {
+						flusher.Flush()
+					}
 				}
 				return nil
 			}
@@ -95,6 +121,8 @@ func RelayGenerateOnce(ctx context.Context, reg *ctrl.Registry, sched ctrl.Sched
 	defer reg.DecInFlight(worker.ID)
 
 	jobID := uuid.NewString()
+	reqID := chiMiddleware.GetReqID(ctx)
+	logx.Log.Info().Str("request_id", reqID).Str("job_id", jobID).Str("worker_id", worker.ID).Msg("dispatch")
 	ch := make(chan interface{}, 16)
 	worker.AddJob(jobID, ch)
 	defer func() {
@@ -126,14 +154,17 @@ func RelayGenerateOnce(ctx context.Context, reg *ctrl.Registry, sched ctrl.Sched
 				if err := json.Unmarshal(m.Data, &v); err != nil {
 					return nil, err
 				}
+				logx.Log.Info().Str("request_id", reqID).Str("job_id", jobID).Str("worker_id", worker.ID).Msg("complete")
 				return v, nil
 			case ctrl.JobErrorMessage:
+				logx.Log.Info().Str("request_id", reqID).Str("job_id", jobID).Str("worker_id", worker.ID).Msg("error")
 				return nil, ErrWorkerFailed
 			case ctrl.JobChunkMessage:
 				var v any
 				if err := json.Unmarshal(m.Data, &v); err != nil {
 					return nil, err
 				}
+				logx.Log.Info().Str("request_id", reqID).Str("job_id", jobID).Str("worker_id", worker.ID).Msg("complete")
 				return v, nil
 			}
 		}
