@@ -33,9 +33,11 @@ PORT=8080 WORKER_TOKEN=secret go run ./cmd/llamapool-server
 On Windows (CMD)
 
 ```
-set PORT=8080 && set WORKER_TOKEN=secret && go run .\cmd\llamapool-server
+set PORT=8080
+set WORKER_TOKEN=secret
+go run .\cmd\llamapool-server
 REM or if you built:
-set PORT=8080 && set WORKER_TOKEN=secret && .\bin\llamapool-server.exe
+.\bin\llamapool-server.exe
 ```
 
 On Windows (Powershell)
@@ -59,16 +61,12 @@ SERVER_URL=ws://localhost:8080/workers/connect TOKEN=secret OLLAMA_URL=http://12
 On Windows (CMD)
 
 ```
-set SERVER_URL=ws://localhost:8080/workers/connect ^
-&& set TOKEN=secret ^
-&& set OLLAMA_URL=http://127.0.0.1:11434 ^
-&& go run .\cmd\llamapool-worker
-
+set SERVER_URL=ws://localhost:8080/workers/connect
+set TOKEN=secret
+set OLLAMA_URL=http://127.0.0.1:11434
+go run .\cmd\llamapool-worker
 REM or if you built:
-set SERVER_URL=ws://localhost:8080/workers/connect ^
-&& set TOKEN=secret ^
-&& set OLLAMA_URL=http://127.0.0.1:11434 ^
-&& .\bin\llamapool-worker.exe
+.\bin\llamapool-worker.exe
 ```
 
 On Windows (Powershell)
@@ -97,9 +95,9 @@ curl -N -X POST http://localhost:8080/api/generate \
 On Windows (CMD):
 
 ```
-curl -N -X POST http://localhost:8080/api/generate `
-  -H "Content-Type: application/json" `
-  -d '{ "model": "llama3", "prompt": "Hello", "stream": true }'
+curl -N -X POST "http://localhost:8080/api/generate" ^
+  -H "Content-Type: application/json" ^
+  -d "{ \"model\": \"llama3\", \"prompt\": \"Hello\", \"stream\": true }"
 ```
 
 On Windows (Powershell):
