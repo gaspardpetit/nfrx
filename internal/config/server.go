@@ -9,7 +9,8 @@ import (
 // ServerConfig holds configuration for the llamapool server.
 type ServerConfig struct {
 	Port           int
-	WorkerToken    string
+	APIKey         string
+	WorkerKey      string
 	WSPath         string
 	RequestTimeout time.Duration
 }
@@ -19,13 +20,15 @@ type ServerConfig struct {
 func (c *ServerConfig) BindFlags() {
 	port, _ := strconv.Atoi(getEnv("PORT", "8080"))
 	c.Port = port
-	c.WorkerToken = getEnv("WORKER_TOKEN", "")
+	c.APIKey = getEnv("API_KEY", "")
+	c.WorkerKey = getEnv("WORKER_KEY", "")
 	c.WSPath = getEnv("WS_PATH", "/workers/connect")
 	rt, _ := time.ParseDuration(getEnv("REQUEST_TIMEOUT", "60s"))
 	c.RequestTimeout = rt
 
 	flag.IntVar(&c.Port, "port", c.Port, "HTTP listen port")
-	flag.StringVar(&c.WorkerToken, "worker-token", c.WorkerToken, "worker shared token")
+	flag.StringVar(&c.APIKey, "api-key", c.APIKey, "client API key")
+	flag.StringVar(&c.WorkerKey, "worker-key", c.WorkerKey, "worker shared key")
 	flag.StringVar(&c.WSPath, "ws-path", c.WSPath, "websocket path")
 	flag.DurationVar(&c.RequestTimeout, "request-timeout", c.RequestTimeout, "request timeout")
 }

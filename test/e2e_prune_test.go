@@ -3,7 +3,6 @@ package test
 import (
 	"context"
 	"encoding/json"
-	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -19,19 +18,19 @@ import (
 func TestHeartbeatPrune(t *testing.T) {
 	reg := ctrl.NewRegistry()
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	cfg := config.ServerConfig{WorkerToken: "secret", WSPath: "/workers/connect", RequestTimeout: 5 * time.Second}
+	cfg := config.ServerConfig{WorkerKey: "secret", WSPath: "/workers/connect", RequestTimeout: 5 * time.Second}
 	handler := server.New(reg, sched, cfg)
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
 	ctx := context.Background()
 	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/workers/connect"
-	conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: http.Header{"Authorization": {"Bearer secret"}}})
+	conn, _, err := websocket.Dial(ctx, wsURL, nil)
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}
 	defer conn.Close(websocket.StatusNormalClosure, "")
-	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w1", Models: []string{"m"}, MaxConcurrency: 1}
+	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w1", WorkerKey: "secret", Models: []string{"m"}, MaxConcurrency: 1}
 	b, _ := json.Marshal(regMsg)
 	conn.Write(ctx, websocket.MessageText, b)
 

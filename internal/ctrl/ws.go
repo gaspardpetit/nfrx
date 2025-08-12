@@ -12,19 +12,8 @@ import (
 )
 
 // WSHandler handles incoming worker websocket connections.
-func WSHandler(reg *Registry, token string) http.HandlerFunc {
+func WSHandler(reg *Registry, workerKey string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		tok := ""
-		if auth := r.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
-			tok = strings.TrimPrefix(auth, "Bearer ")
-		}
-		if tok == "" {
-			tok = r.URL.Query().Get("token")
-		}
-		if token != "" && tok != token {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
-			return
-		}
 		c, err := websocket.Accept(w, r, nil)
 		if err != nil {
 			return
@@ -45,6 +34,15 @@ func WSHandler(reg *Registry, token string) http.HandlerFunc {
 		}
 		var rm RegisterMessage
 		if err := json.Unmarshal(data, &rm); err != nil {
+			return
+		}
+		key := rm.WorkerKey
+		if key == "" && rm.Token != "" {
+			logx.Log.Warn().Msg("register message 'token' field is deprecated; use 'worker_key'")
+			key = rm.Token
+		}
+		if workerKey != "" && key != workerKey {
+			c.Close(websocket.StatusPolicyViolation, "unauthorized")
 			return
 		}
 		name := rm.WorkerName

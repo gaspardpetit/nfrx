@@ -22,7 +22,7 @@ import (
 func TestE2EGenerateStream(t *testing.T) {
 	reg := ctrl.NewRegistry()
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	cfg := config.ServerConfig{WorkerToken: "secret", WSPath: "/workers/connect", RequestTimeout: 5 * time.Second}
+	cfg := config.ServerConfig{WorkerKey: "secret", WSPath: "/workers/connect", RequestTimeout: 5 * time.Second}
 	handler := server.New(reg, sched, cfg)
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -31,12 +31,12 @@ func TestE2EGenerateStream(t *testing.T) {
 	ctx := context.Background()
 	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/workers/connect"
 	go func() {
-		conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: http.Header{"Authorization": {"Bearer secret"}}})
+		conn, _, err := websocket.Dial(ctx, wsURL, nil)
 		if err != nil {
 			return
 		}
 		defer conn.Close(websocket.StatusNormalClosure, "")
-		regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w1", Token: "secret", Models: []string{"llama3"}, MaxConcurrency: 2}
+		regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w1", WorkerKey: "secret", Models: []string{"llama3"}, MaxConcurrency: 2}
 		b, _ := json.Marshal(regMsg)
 		conn.Write(ctx, websocket.MessageText, b)
 		for {
