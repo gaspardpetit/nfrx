@@ -21,7 +21,7 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 	if cfg.WorkerID == "" {
 		cfg.WorkerID = uuid.NewString()
 	}
-	client := ollama.New(cfg.OllamaURL)
+	client := ollama.New(cfg.OllamaBaseURL)
 	models, err := client.Tags(ctx)
 	if err != nil {
 		return err
@@ -33,7 +33,7 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 	defer ws.Close(websocket.StatusInternalError, "closing")
 
 	sendCh := make(chan []byte, 16)
-	jobCancels := make(map[string]context.CancelFunc)
+	reqCancels := make(map[string]context.CancelFunc)
 	var jobMu sync.Mutex
 	go func() {
 		for msg := range sendCh {
@@ -78,15 +78,32 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 			}
 			logx.Log.Info().Str("job", jr.JobID).Msg("job request")
 			if jr.Endpoint == "generate" {
-				go handleGenerate(ctx, client, sendCh, jr, jobCancels, &jobMu)
+				go handleGenerate(ctx, client, sendCh, jr, reqCancels, &jobMu)
 			}
 		case "cancel_job":
 			var cj ctrl.CancelJobMessage
 			if err := json.Unmarshal(data, &cj); err == nil {
 				jobMu.Lock()
-				if cancel, ok := jobCancels[cj.JobID]; ok {
+				if cancel, ok := reqCancels[cj.JobID]; ok {
 					cancel()
-					delete(jobCancels, cj.JobID)
+					delete(reqCancels, cj.JobID)
+				}
+				jobMu.Unlock()
+			}
+		case "http_proxy_request":
+			var hr ctrl.HTTPProxyRequestMessage
+			if err := json.Unmarshal(data, &hr); err != nil {
+				continue
+			}
+			logx.Log.Info().Str("request_id", hr.RequestID).Str("path", hr.Path).Msg("http proxy request")
+			go handleHTTPProxy(ctx, cfg, sendCh, hr, reqCancels, &jobMu)
+		case "http_proxy_cancel":
+			var hc ctrl.HTTPProxyCancelMessage
+			if err := json.Unmarshal(data, &hc); err == nil {
+				jobMu.Lock()
+				if cancel, ok := reqCancels[hc.RequestID]; ok {
+					cancel()
+					delete(reqCancels, hc.RequestID)
 				}
 				jobMu.Unlock()
 			}
