@@ -83,6 +83,30 @@ go run .\cmd\llamapool-worker
 
 
 
+## Run with Docker
+
+Pre-built images are available:
+
+- Server: `ghcr.io/gaspardpetit/llamapool-server:main`
+- Client: `ghcr.io/gaspardpetit/llamapool-client:main`
+
+### Server
+
+```bash
+docker run --rm -p 8080:8080 -e WORKER_TOKEN=secret \
+  ghcr.io/gaspardpetit/llamapool-server:main
+```
+
+### Client
+
+```bash
+docker run --rm \
+  -e SERVER_URL=ws://localhost:8080/workers/connect \
+  -e TOKEN=secret \
+  -e OLLAMA_URL=http://host.docker.internal:11434 \
+  ghcr.io/gaspardpetit/llamapool-client:main
+```
+
 ## Example request
 
 On Linux:
