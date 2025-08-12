@@ -27,6 +27,7 @@ func New(reg *ctrl.Registry, sched ctrl.Scheduler, cfg config.ServerConfig) http
 		}
 		r.Get("/models", api.ListModelsHandler(reg))
 		r.Get("/models/{id}", api.GetModelHandler(reg))
+		r.Post("/chat/completions", api.ChatCompletionsHandler(reg, sched))
 	})
 	r.Handle(cfg.WSPath, ctrl.WSHandler(reg, cfg.WorkerKey))
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {

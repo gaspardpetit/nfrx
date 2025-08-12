@@ -12,7 +12,8 @@ import (
 type WorkerConfig struct {
 	ServerURL      string
 	WorkerKey      string
-	OllamaURL      string
+	OllamaBaseURL  string
+	OllamaAPIKey   string
 	MaxConcurrency int
 	WorkerID       string
 	WorkerName     string
@@ -21,7 +22,9 @@ type WorkerConfig struct {
 func (c *WorkerConfig) BindFlags() {
 	c.ServerURL = getEnv("SERVER_URL", "ws://localhost:8080/workers/connect")
 	c.WorkerKey = getEnv("WORKER_KEY", "")
-	c.OllamaURL = getEnv("OLLAMA_URL", "http://127.0.0.1:11434")
+	base := getEnv("OLLAMA_BASE_URL", getEnv("OLLAMA_URL", "http://127.0.0.1:11434"))
+	c.OllamaBaseURL = base
+	c.OllamaAPIKey = getEnv("OLLAMA_API_KEY", "")
 	mc := getEnv("MAX_CONCURRENCY", "2")
 	if v, err := strconv.Atoi(mc); err == nil {
 		c.MaxConcurrency = v
@@ -38,7 +41,8 @@ func (c *WorkerConfig) BindFlags() {
 
 	flag.StringVar(&c.ServerURL, "server-url", c.ServerURL, "server websocket url")
 	flag.StringVar(&c.WorkerKey, "worker-key", c.WorkerKey, "worker auth key")
-	flag.StringVar(&c.OllamaURL, "ollama-url", c.OllamaURL, "local Ollama URL")
+	flag.StringVar(&c.OllamaBaseURL, "ollama-base-url", c.OllamaBaseURL, "base URL for local Ollama")
+	flag.StringVar(&c.OllamaAPIKey, "ollama-api-key", c.OllamaAPIKey, "Ollama API key")
 	flag.IntVar(&c.MaxConcurrency, "max-concurrency", c.MaxConcurrency, "max concurrent jobs")
 	flag.StringVar(&c.WorkerID, "worker-id", c.WorkerID, "worker identifier")
 	flag.StringVar(&c.WorkerName, "worker-name", c.WorkerName, "worker display name")

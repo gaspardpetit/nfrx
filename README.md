@@ -6,7 +6,9 @@ Llamapool is a minimal worker pool that exposes an Ollama-compatible HTTP API. T
 `llamapool-server` binary accepts client requests and dispatches them to connected
 `llamapool-worker` processes over WebSocket. Workers authenticate using a shared
 key provided via the `WORKER_KEY` environment variable. Client HTTP requests can
-be protected with an `API_KEY` passed in the `Authorization` header.
+be protected with an `API_KEY` passed in the `Authorization` header. The server
+also proxies OpenAI-style `POST /v1/chat/completions` requests to workers without
+modifying the JSON payloads.
 
 ## Build
 
@@ -58,15 +60,16 @@ go run .\cmd\llamapool-server
 On Linux:
 
 ```bash
-SERVER_URL=ws://localhost:8080/workers/connect WORKER_KEY=secret OLLAMA_URL=http://127.0.0.1:11434 WORKER_NAME=Alpha go run ./cmd/llamapool-worker
+SERVER_URL=ws://localhost:8080/workers/connect WORKER_KEY=secret OLLAMA_BASE_URL=http://127.0.0.1:11434 WORKER_NAME=Alpha go run ./cmd/llamapool-worker
 ```
+Optionally set `OLLAMA_API_KEY` to forward an API key to the local Ollama instance. The worker proxies requests to `${OLLAMA_BASE_URL}/v1/chat/completions`.
 
 On Windows (CMD)
 
 ```
 set SERVER_URL=ws://localhost:8080/workers/connect
 set WORKER_KEY=secret
-set OLLAMA_URL=http://127.0.0.1:11434
+set OLLAMA_BASE_URL=http://127.0.0.1:11434
 go run .\cmd\llamapool-worker
 REM or if you built:
 .\bin\llamapool-worker.exe
@@ -77,7 +80,7 @@ On Windows (Powershell)
 ```
 $env:SERVER_URL = "ws://localhost:8080/workers/connect"
 $env:WORKER_KEY = "secret"
-$env:OLLAMA_URL = "http://127.0.0.1:11434"
+$env:OLLAMA_BASE_URL = "http://127.0.0.1:11434"
 $env:WORKER_NAME = "Alpha"
 go run .\cmd\llamapool-worker
 # or:
@@ -106,7 +109,7 @@ docker run --rm -p 8080:8080 -e WORKER_KEY=secret -e API_KEY=test123 \
 docker run --rm \
   -e SERVER_URL=ws://localhost:8080/workers/connect \
   -e WORKER_KEY=secret \
-  -e OLLAMA_URL=http://host.docker.internal:11434 \
+  -e OLLAMA_BASE_URL=http://host.docker.internal:11434 \
   ghcr.io/gaspardpetit/llamapool-client:main
 ```
 

@@ -1,0 +1,80 @@
+package worker
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"sync"
+	"testing"
+
+	"github.com/you/llamapool/internal/config"
+	"github.com/you/llamapool/internal/ctrl"
+)
+
+func TestHandleHTTPProxyAuthAndStream(t *testing.T) {
+	var gotAuth string
+	ollama := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/chat/completions" {
+			gotAuth = r.Header.Get("Authorization")
+			if r.URL.Query().Get("stream") != "true" {
+				t.Fatalf("missing stream query")
+			}
+			w.Header().Set("Content-Type", "text/event-stream")
+			w.WriteHeader(200)
+			fl := w.(http.Flusher)
+			w.Write([]byte("data: 1\n\n"))
+			fl.Flush()
+			w.Write([]byte("data: 2\n\n"))
+			fl.Flush()
+			return
+		}
+		if r.URL.Path == "/api/tags" {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{"models":[{"name":"llama3"}]}`))
+			return
+		}
+		w.WriteHeader(404)
+	}))
+	defer ollama.Close()
+
+	cfg := config.WorkerConfig{OllamaBaseURL: ollama.URL, OllamaAPIKey: "secret-123"}
+	sendCh := make(chan []byte, 16)
+	cancels := make(map[string]context.CancelFunc)
+	var mu sync.Mutex
+	req := ctrl.HTTPProxyRequestMessage{Type: "http_proxy_request", RequestID: "r1", Method: http.MethodPost, Path: "/v1/chat/completions", Headers: map[string]string{"Content-Type": "application/json"}, Stream: true, Body: []byte(`{}`)}
+	ctx := context.Background()
+	go handleHTTPProxy(ctx, cfg, sendCh, req, cancels, &mu)
+
+	// headers
+	b := <-sendCh
+	var h ctrl.HTTPProxyResponseHeadersMessage
+	if err := json.Unmarshal(b, &h); err != nil {
+		t.Fatalf("unmarshal headers: %v", err)
+	}
+	if h.Status != 200 {
+		t.Fatalf("status %d", h.Status)
+	}
+	// collect body
+	var body []byte
+	for {
+		b = <-sendCh
+		var env struct {
+			Type string `json:"type"`
+		}
+		json.Unmarshal(b, &env)
+		if env.Type == "http_proxy_response_chunk" {
+			var c ctrl.HTTPProxyResponseChunkMessage
+			json.Unmarshal(b, &c)
+			body = append(body, c.Data...)
+		} else if env.Type == "http_proxy_response_end" {
+			break
+		}
+	}
+	if string(body) != "data: 1\n\ndata: 2\n\n" {
+		t.Fatalf("body %q", string(body))
+	}
+	if gotAuth != "Bearer secret-123" {
+		t.Fatalf("auth %q", gotAuth)
+	}
+}

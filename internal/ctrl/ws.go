@@ -96,26 +96,73 @@ func WSHandler(reg *Registry, workerKey string) http.HandlerFunc {
 			case "job_chunk":
 				var m JobChunkMessage
 				if err := json.Unmarshal(msg, &m); err == nil {
-					if ch, ok := wk.Jobs[m.JobID]; ok {
+					wk.mu.Lock()
+					ch, ok := wk.Jobs[m.JobID]
+					wk.mu.Unlock()
+					if ok {
 						ch <- m
 					}
 				}
 			case "job_result":
 				var m JobResultMessage
 				if err := json.Unmarshal(msg, &m); err == nil {
-					if ch, ok := wk.Jobs[m.JobID]; ok {
+					wk.mu.Lock()
+					ch, ok := wk.Jobs[m.JobID]
+					if ok {
+						delete(wk.Jobs, m.JobID)
+					}
+					wk.mu.Unlock()
+					if ok {
 						ch <- m
 						close(ch)
-						delete(wk.Jobs, m.JobID)
 					}
 				}
 			case "job_error":
 				var m JobErrorMessage
 				if err := json.Unmarshal(msg, &m); err == nil {
-					if ch, ok := wk.Jobs[m.JobID]; ok {
+					wk.mu.Lock()
+					ch, ok := wk.Jobs[m.JobID]
+					if ok {
+						delete(wk.Jobs, m.JobID)
+					}
+					wk.mu.Unlock()
+					if ok {
 						ch <- m
 						close(ch)
-						delete(wk.Jobs, m.JobID)
+					}
+				}
+			case "http_proxy_response_headers":
+				var m HTTPProxyResponseHeadersMessage
+				if err := json.Unmarshal(msg, &m); err == nil {
+					wk.mu.Lock()
+					ch, ok := wk.Jobs[m.RequestID]
+					wk.mu.Unlock()
+					if ok {
+						ch <- m
+					}
+				}
+			case "http_proxy_response_chunk":
+				var m HTTPProxyResponseChunkMessage
+				if err := json.Unmarshal(msg, &m); err == nil {
+					wk.mu.Lock()
+					ch, ok := wk.Jobs[m.RequestID]
+					wk.mu.Unlock()
+					if ok {
+						ch <- m
+					}
+				}
+			case "http_proxy_response_end":
+				var m HTTPProxyResponseEndMessage
+				if err := json.Unmarshal(msg, &m); err == nil {
+					wk.mu.Lock()
+					ch, ok := wk.Jobs[m.RequestID]
+					if ok {
+						delete(wk.Jobs, m.RequestID)
+					}
+					wk.mu.Unlock()
+					if ok {
+						ch <- m
+						close(ch)
 					}
 				}
 			}
