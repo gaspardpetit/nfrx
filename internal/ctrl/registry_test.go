@@ -1,0 +1,33 @@
+package ctrl
+
+import (
+	"testing"
+	"time"
+)
+
+func TestRegistry(t *testing.T) {
+	reg := NewRegistry()
+	w := &Worker{ID: "w1", Models: map[string]bool{"m": true}}
+	reg.Add(w)
+	if len(reg.WorkersForModel("m")) != 1 {
+		t.Fatalf("expected worker for model")
+	}
+	reg.UpdateHeartbeat("w1")
+	if reg.workers["w1"].LastHeartbeat.IsZero() {
+		t.Fatalf("heartbeat not updated")
+	}
+	reg.Remove("w1")
+	if len(reg.WorkersForModel("m")) != 0 {
+		t.Fatalf("expected no workers after remove")
+	}
+}
+
+func TestRegistryPruneExpired(t *testing.T) {
+	reg := NewRegistry()
+	w := &Worker{ID: "w1", Models: map[string]bool{"m": true}, LastHeartbeat: time.Now().Add(-HeartbeatExpiry - time.Second), Send: make(chan interface{}), Jobs: make(map[string]chan interface{})}
+	reg.Add(w)
+	reg.PruneExpired(HeartbeatExpiry)
+	if len(reg.WorkersForModel("m")) != 0 {
+		t.Fatalf("expected worker pruned")
+	}
+}
