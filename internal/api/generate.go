@@ -44,7 +44,9 @@ func handleRelayErr(w http.ResponseWriter, err error) {
 	case errors.Is(err, relay.ErrNoWorker):
 		http.Error(w, "no worker", http.StatusNotFound)
 	case errors.Is(err, relay.ErrWorkerBusy):
-		http.Error(w, "busy", http.StatusServiceUnavailable)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		json.NewEncoder(w).Encode(map[string]string{"error": "worker_busy"})
 	case errors.Is(err, context.DeadlineExceeded):
 		http.Error(w, "timeout", http.StatusGatewayTimeout)
 	default:

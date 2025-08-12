@@ -3,6 +3,7 @@ package ctrl
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/you/llamapool/internal/logx"
@@ -13,6 +14,17 @@ import (
 // WSHandler handles incoming worker websocket connections.
 func WSHandler(reg *Registry, token string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		tok := ""
+		if auth := r.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
+			tok = strings.TrimPrefix(auth, "Bearer ")
+		}
+		if tok == "" {
+			tok = r.URL.Query().Get("token")
+		}
+		if token != "" && tok != token {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
 		c, err := websocket.Accept(w, r, nil)
 		if err != nil {
 			return
@@ -35,10 +47,6 @@ func WSHandler(reg *Registry, token string) http.HandlerFunc {
 		if err := json.Unmarshal(data, &rm); err != nil {
 			return
 		}
-		if rm.Token != token {
-			c.Close(websocket.StatusPolicyViolation, "bad token")
-			return
-		}
 		wk := &Worker{
 			ID:             rm.WorkerID,
 			Models:         map[string]bool{},
@@ -52,14 +60,8 @@ func WSHandler(reg *Registry, token string) http.HandlerFunc {
 			wk.Models[m] = true
 		}
 		reg.Add(wk)
-		logx.Log.Info().Str("worker", wk.ID).Msg("registered")
-		defer func() {
-			reg.Remove(wk.ID)
-			for _, ch := range wk.Jobs {
-				close(ch)
-			}
-			close(wk.Send)
-		}()
+		logx.Log.Info().Str("worker_id", wk.ID).Str("remote_addr", r.RemoteAddr).Strs("models", rm.Models).Msg("registered")
+		defer reg.Remove(wk.ID)
 
 		go func() {
 			for msg := range wk.Send {

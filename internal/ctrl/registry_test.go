@@ -25,9 +25,17 @@ func TestRegistry(t *testing.T) {
 func TestRegistryPruneExpired(t *testing.T) {
 	reg := NewRegistry()
 	w := &Worker{ID: "w1", Models: map[string]bool{"m": true}, LastHeartbeat: time.Now().Add(-HeartbeatExpiry - time.Second), Send: make(chan interface{}), Jobs: make(map[string]chan interface{})}
+	jobCh := make(chan interface{})
+	w.Jobs["j1"] = jobCh
 	reg.Add(w)
 	reg.PruneExpired(HeartbeatExpiry)
 	if len(reg.WorkersForModel("m")) != 0 {
 		t.Fatalf("expected worker pruned")
+	}
+	if _, ok := <-w.Send; ok {
+		t.Fatalf("expected send channel closed")
+	}
+	if _, ok := <-jobCh; ok {
+		t.Fatalf("expected job channel closed")
 	}
 }
