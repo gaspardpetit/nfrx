@@ -59,17 +59,6 @@ SERVER_URL=ws://localhost:8080/workers/connect TOKEN=secret OLLAMA_URL=http://12
 On Windows (CMD)
 
 ```
-$env:SERVER_URL = "ws://localhost:8080/workers/connect"
-$env:TOKEN = "secret"
-$env:OLLAMA_URL = "http://127.0.0.1:11434"
-go run .\cmd\llamapool-worker
-# or:
-.\bin\llamapool-worker.exe
-```
-
-On Windows (Powershell)
-
-```
 set SERVER_URL=ws://localhost:8080/workers/connect ^
 && set TOKEN=secret ^
 && set OLLAMA_URL=http://127.0.0.1:11434 ^
@@ -80,6 +69,17 @@ set SERVER_URL=ws://localhost:8080/workers/connect ^
 && set TOKEN=secret ^
 && set OLLAMA_URL=http://127.0.0.1:11434 ^
 && .\bin\llamapool-worker.exe
+```
+
+On Windows (Powershell)
+
+```
+$env:SERVER_URL = "ws://localhost:8080/workers/connect"
+$env:TOKEN = "secret"
+$env:OLLAMA_URL = "http://127.0.0.1:11434"
+go run .\cmd\llamapool-worker
+# or:
+.\bin\llamapool-worker.exe
 ```
 
 
