@@ -56,7 +56,7 @@ go run .\cmd\llamapool-server
 On Linux:
 
 ```bash
-SERVER_URL=ws://localhost:8080/workers/connect TOKEN=secret OLLAMA_URL=http://127.0.0.1:11434 go run ./cmd/llamapool-worker
+SERVER_URL=ws://localhost:8080/workers/connect TOKEN=secret OLLAMA_URL=http://127.0.0.1:11434 WORKER_NAME=Alpha go run ./cmd/llamapool-worker
 ```
 
 On Windows (CMD)
@@ -76,6 +76,7 @@ On Windows (Powershell)
 $env:SERVER_URL = "ws://localhost:8080/workers/connect"
 $env:TOKEN = "secret"
 $env:OLLAMA_URL = "http://127.0.0.1:11434"
+$env:WORKER_NAME = "Alpha"
 go run .\cmd\llamapool-worker
 # or:
 .\bin\llamapool-worker.exe
@@ -137,6 +138,13 @@ The server also exposes a basic health check:
 
 ```bash
 curl http://localhost:8080/healthz
+```
+
+The server also exposes OpenAI-style model listing endpoints:
+
+```bash
+curl http://localhost:8080/v1/models
+curl http://localhost:8080/v1/models/llama3:8b
 ```
 
 ## Testing
