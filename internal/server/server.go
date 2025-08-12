@@ -13,13 +13,13 @@ import (
 )
 
 // New constructs the HTTP handler for the server.
-func New(reg *ctrl.Registry, sched ctrl.Scheduler, cfg config.ServerConfig) http.Handler {
+func New(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler, cfg config.ServerConfig) http.Handler {
 	r := chi.NewRouter()
 	r.Route("/api", func(r chi.Router) {
 		if cfg.APIKey != "" {
 			r.Use(api.APIKeyMiddleware(cfg.APIKey))
 		}
-		r.Mount("/", api.NewRouter(reg, sched, cfg.RequestTimeout))
+		r.Mount("/", api.NewRouter(reg, metrics, sched, cfg.RequestTimeout))
 	})
 	r.Route("/v1", func(r chi.Router) {
 		if cfg.APIKey != "" {

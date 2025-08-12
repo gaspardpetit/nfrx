@@ -9,10 +9,19 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/you/llamapool/internal/config"
 	"github.com/you/llamapool/internal/ctrl"
 	"github.com/you/llamapool/internal/logx"
+	"github.com/you/llamapool/internal/metrics"
 	"github.com/you/llamapool/internal/server"
+)
+
+var (
+	version   = "dev"
+	buildSHA  = "unknown"
+	buildDate = "unknown"
 )
 
 func main() {
@@ -21,8 +30,11 @@ func main() {
 	flag.Parse()
 
 	reg := ctrl.NewRegistry()
+	metricsReg := ctrl.NewMetricsRegistry(version, buildSHA, buildDate)
+	metrics.Register(prometheus.DefaultRegisterer)
+	metrics.SetServerBuildInfo(version, buildSHA, buildDate)
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	handler := server.New(reg, sched, cfg)
+	handler := server.New(reg, metricsReg, sched, cfg)
 	srv := &http.Server{Addr: fmt.Sprintf(":%d", cfg.Port), Handler: handler}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
