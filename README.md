@@ -1,6 +1,6 @@
-# llamapool
+[![ci](https://github.com/gaspardpetit/llamapool/actions/workflows/ci.yml/badge.svg)](https://github.com/gaspardpetit/llamapool/actions/workflows/ci.yml)
 
-[![ci](https://github.com/you/llamapool/actions/workflows/ci.yml/badge.svg)](https://github.com/you/llamapool/actions/workflows/ci.yml)
+# llamapool
 
 Llamapool is a minimal worker pool that exposes an Ollama-compatible HTTP API. The
 `llamapool-server` binary accepts client requests and dispatches them to connected
