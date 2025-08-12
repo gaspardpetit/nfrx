@@ -73,7 +73,7 @@ func TestCancelPropagates(t *testing.T) {
 	req := relay.GenerateRequest{Model: "m", Prompt: "hi", Stream: true}
 	b, _ := json.Marshal(req)
 	cctx, cancel := context.WithCancel(context.Background())
-	httpReq, _ := http.NewRequestWithContext(cctx, http.MethodPost, srv.URL+"/api/generate", bytes.NewReader(b))
+	httpReq, _ := http.NewRequestWithContext(cctx, http.MethodPost, srv.URL+"/v1/generate", bytes.NewReader(b))
 	httpReq.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(httpReq)
 	if err != nil {

@@ -20,9 +20,9 @@ func TestRoutes(t *testing.T) {
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
-	resp, err := http.Get(srv.URL + "/api/tags")
+	resp, err := http.Get(srv.URL + "/v1/tags")
 	if err != nil || resp.StatusCode != http.StatusOK {
-		t.Fatalf("/api/tags: %v %d", err, resp.StatusCode)
+		t.Fatalf("/v1/tags: %v %d", err, resp.StatusCode)
 	}
 	resp.Body.Close()
 

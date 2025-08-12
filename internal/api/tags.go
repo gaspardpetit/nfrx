@@ -7,7 +7,7 @@ import (
 	"github.com/you/llamapool/internal/ctrl"
 )
 
-// TagsHandler handles GET /api/tags.
+// TagsHandler handles GET /v1/tags.
 func TagsHandler(reg *ctrl.Registry) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		models := reg.Models()

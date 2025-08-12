@@ -27,7 +27,7 @@ func TestWorkerBusy(t *testing.T) {
 
 	req := relay.GenerateRequest{Model: "m", Prompt: "hi", Stream: true}
 	b, _ := json.Marshal(req)
-	resp, err := http.Post(srv.URL+"/api/generate", "application/json", bytes.NewReader(b))
+	resp, err := http.Post(srv.URL+"/v1/generate", "application/json", bytes.NewReader(b))
 	if err != nil {
 		t.Fatalf("post: %v", err)
 	}

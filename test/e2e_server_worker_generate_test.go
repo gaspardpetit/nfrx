@@ -63,7 +63,7 @@ func TestE2EGenerateStream(t *testing.T) {
 
 	// Wait for worker to register
 	for i := 0; i < 20; i++ {
-		resp, err := http.Get(srv.URL + "/api/tags")
+		resp, err := http.Get(srv.URL + "/v1/tags")
 		if err == nil {
 			var tr struct {
 				Models []struct {
@@ -82,7 +82,7 @@ func TestE2EGenerateStream(t *testing.T) {
 	// Call generate
 	req := relay.GenerateRequest{Model: "llama3", Prompt: "hi", Stream: true}
 	b, _ := json.Marshal(req)
-	resp, err := http.Post(srv.URL+"/api/generate", "application/json", bytes.NewReader(b))
+	resp, err := http.Post(srv.URL+"/v1/generate", "application/json", bytes.NewReader(b))
 	if err != nil {
 		t.Fatalf("post: %v", err)
 	}

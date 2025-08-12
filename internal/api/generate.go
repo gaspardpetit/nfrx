@@ -11,7 +11,7 @@ import (
 	"github.com/you/llamapool/internal/relay"
 )
 
-// GenerateHandler handles POST /api/generate.
+// GenerateHandler handles POST /v1/generate.
 func GenerateHandler(reg *ctrl.Registry, sched ctrl.Scheduler, timeout time.Duration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req relay.GenerateRequest

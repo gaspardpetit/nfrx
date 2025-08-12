@@ -118,7 +118,7 @@ Ollama instance. If the model is missing, the server responds with `no worker`.
 On Linux:
 
 ```bash
-curl -N -X POST http://localhost:8080/api/generate \
+curl -N -X POST http://localhost:8080/v1/generate \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer test123' \
   -d '{"model":"llama3","prompt":"Hello","stream":true}'
@@ -127,7 +127,7 @@ curl -N -X POST http://localhost:8080/api/generate \
 On Windows (CMD):
 
 ```
-curl -N -X POST "http://localhost:8080/api/generate" ^
+curl -N -X POST "http://localhost:8080/v1/generate" ^
   -H "Content-Type: application/json" ^
   -H "Authorization: Bearer test123" ^
   -d "{ \"model\": \"llama3\", \"prompt\": \"Hello\", \"stream\": true }"
@@ -136,7 +136,7 @@ curl -N -X POST "http://localhost:8080/api/generate" ^
 On Windows (Powershell):
 
 ```
-curl -N -X POST http://localhost:8080/api/generate `
+curl -N -X POST http://localhost:8080/v1/generate `
   -H "Content-Type: application/json" `
   -H "Authorization: Bearer test123" `
   -d '{ "model": "llama3", "prompt": "Hello", "stream": true }'

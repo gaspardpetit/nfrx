@@ -61,7 +61,7 @@ func TestWorkerAuth(t *testing.T) {
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/api/tags", nil)
+	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/v1/tags", nil)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil || resp.StatusCode != http.StatusOK {
 		t.Fatalf("tags: %v %d", err, resp.StatusCode)

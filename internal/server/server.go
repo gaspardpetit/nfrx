@@ -15,18 +15,11 @@ import (
 // New constructs the HTTP handler for the server.
 func New(reg *ctrl.Registry, sched ctrl.Scheduler, cfg config.ServerConfig) http.Handler {
 	r := chi.NewRouter()
-	r.Route("/api", func(r chi.Router) {
-		if cfg.APIKey != "" {
-			r.Use(api.APIKeyMiddleware(cfg.APIKey))
-		}
-		r.Mount("/", api.NewRouter(reg, sched, cfg.RequestTimeout))
-	})
 	r.Route("/v1", func(r chi.Router) {
 		if cfg.APIKey != "" {
 			r.Use(api.APIKeyMiddleware(cfg.APIKey))
 		}
-		r.Get("/models", api.ListModelsHandler(reg))
-		r.Get("/models/{id}", api.GetModelHandler(reg))
+		r.Mount("/", api.NewRouter(reg, sched, cfg.RequestTimeout))
 	})
 	r.Handle(cfg.WSPath, ctrl.WSHandler(reg, cfg.WorkerKey))
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
