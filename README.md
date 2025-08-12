@@ -5,7 +5,8 @@
 Llamapool is a minimal worker pool that exposes an Ollama-compatible HTTP API. The
 `llamapool-server` binary accepts client requests and dispatches them to connected
 `llamapool-worker` processes over WebSocket. Workers authenticate using a shared
-bearer token provided via the `TOKEN` environment variable.
+key provided via the `WORKER_KEY` environment variable. Client HTTP requests can
+be protected with an `API_KEY` passed in the `Authorization` header.
 
 ## Build
 
@@ -28,14 +29,15 @@ go build -o .\bin\llamapool-worker.exe .\cmd\llamapool-worker
 On Linux:
 
 ```bash
-PORT=8080 WORKER_TOKEN=secret go run ./cmd/llamapool-server
+PORT=8080 WORKER_KEY=secret API_KEY=test123 go run ./cmd/llamapool-server
 ```
 
 On Windows (CMD)
 
 ```
 set PORT=8080
-set WORKER_TOKEN=secret
+set WORKER_KEY=secret
+set API_KEY=test123
 go run .\cmd\llamapool-server
 REM or if you built:
 .\bin\llamapool-server.exe
@@ -44,7 +46,7 @@ REM or if you built:
 On Windows (Powershell)
 
 ```
-$env:PORT = "8080"; $env:WORKER_TOKEN = "secret"
+$env:PORT = "8080"; $env:WORKER_KEY = "secret"; $env:API_KEY = "test123"
 go run .\cmd\llamapool-server
 # or if you built:
 .\bin\llamapool-server.exe
@@ -56,14 +58,14 @@ go run .\cmd\llamapool-server
 On Linux:
 
 ```bash
-SERVER_URL=ws://localhost:8080/workers/connect TOKEN=secret OLLAMA_URL=http://127.0.0.1:11434 WORKER_NAME=Alpha go run ./cmd/llamapool-worker
+SERVER_URL=ws://localhost:8080/workers/connect WORKER_KEY=secret OLLAMA_URL=http://127.0.0.1:11434 WORKER_NAME=Alpha go run ./cmd/llamapool-worker
 ```
 
 On Windows (CMD)
 
 ```
 set SERVER_URL=ws://localhost:8080/workers/connect
-set TOKEN=secret
+set WORKER_KEY=secret
 set OLLAMA_URL=http://127.0.0.1:11434
 go run .\cmd\llamapool-worker
 REM or if you built:
@@ -74,7 +76,7 @@ On Windows (Powershell)
 
 ```
 $env:SERVER_URL = "ws://localhost:8080/workers/connect"
-$env:TOKEN = "secret"
+$env:WORKER_KEY = "secret"
 $env:OLLAMA_URL = "http://127.0.0.1:11434"
 $env:WORKER_NAME = "Alpha"
 go run .\cmd\llamapool-worker
@@ -94,7 +96,7 @@ Pre-built images are available:
 ### Server
 
 ```bash
-docker run --rm -p 8080:8080 -e WORKER_TOKEN=secret \
+docker run --rm -p 8080:8080 -e WORKER_KEY=secret -e API_KEY=test123 \
   ghcr.io/gaspardpetit/llamapool-server:main
 ```
 
@@ -103,7 +105,7 @@ docker run --rm -p 8080:8080 -e WORKER_TOKEN=secret \
 ```bash
 docker run --rm \
   -e SERVER_URL=ws://localhost:8080/workers/connect \
-  -e TOKEN=secret \
+  -e WORKER_KEY=secret \
   -e OLLAMA_URL=http://host.docker.internal:11434 \
   ghcr.io/gaspardpetit/llamapool-client:main
 ```
@@ -118,6 +120,7 @@ On Linux:
 ```bash
 curl -N -X POST http://localhost:8080/api/generate \
   -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer test123' \
   -d '{"model":"llama3","prompt":"Hello","stream":true}'
 ```
 
@@ -126,6 +129,7 @@ On Windows (CMD):
 ```
 curl -N -X POST "http://localhost:8080/api/generate" ^
   -H "Content-Type: application/json" ^
+  -H "Authorization: Bearer test123" ^
   -d "{ \"model\": \"llama3\", \"prompt\": \"Hello\", \"stream\": true }"
 ```
 
@@ -134,6 +138,7 @@ On Windows (Powershell):
 ```
 curl -N -X POST http://localhost:8080/api/generate `
   -H "Content-Type: application/json" `
+  -H "Authorization: Bearer test123" `
   -d '{ "model": "llama3", "prompt": "Hello", "stream": true }'
 ```
 
@@ -146,8 +151,8 @@ curl http://localhost:8080/healthz
 The server also exposes OpenAI-style model listing endpoints:
 
 ```bash
-curl http://localhost:8080/v1/models
-curl http://localhost:8080/v1/models/llama3:8b
+curl -H "Authorization: Bearer test123" http://localhost:8080/v1/models
+curl -H "Authorization: Bearer test123" http://localhost:8080/v1/models/llama3:8b
 ```
 
 ## Testing

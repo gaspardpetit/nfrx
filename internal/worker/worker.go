@@ -3,7 +3,6 @@ package worker
 import (
 	"context"
 	"encoding/json"
-	"net/http"
 	"sync"
 	"time"
 
@@ -27,9 +26,7 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 	if err != nil {
 		return err
 	}
-	ws, _, err := websocket.Dial(ctx, cfg.ServerURL, &websocket.DialOptions{HTTPHeader: http.Header{
-		"Authorization": {"Bearer " + cfg.Token},
-	}})
+	ws, _, err := websocket.Dial(ctx, cfg.ServerURL, nil)
 	if err != nil {
 		return err
 	}
@@ -44,7 +41,7 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 		}
 	}()
 
-	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: cfg.WorkerID, WorkerName: cfg.WorkerName, Token: cfg.Token, Models: models, MaxConcurrency: cfg.MaxConcurrency}
+	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: cfg.WorkerID, WorkerName: cfg.WorkerName, WorkerKey: cfg.WorkerKey, Models: models, MaxConcurrency: cfg.MaxConcurrency}
 	b, _ := json.Marshal(regMsg)
 	sendCh <- b
 

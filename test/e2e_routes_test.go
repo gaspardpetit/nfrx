@@ -15,7 +15,7 @@ import (
 func TestRoutes(t *testing.T) {
 	reg := ctrl.NewRegistry()
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	cfg := config.ServerConfig{WorkerToken: "secret", WSPath: "/workers/connect", RequestTimeout: 5 * time.Second}
+	cfg := config.ServerConfig{WorkerKey: "secret", WSPath: "/workers/connect", RequestTimeout: 5 * time.Second}
 	handler := server.New(reg, sched, cfg)
 	srv := httptest.NewServer(handler)
 	defer srv.Close()

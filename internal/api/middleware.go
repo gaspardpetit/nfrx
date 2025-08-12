@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strings"
 
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 
@@ -21,4 +22,24 @@ func requestLogger(next http.Handler) http.Handler {
 		logx.Log.Info().Str("request_id", reqID).Str("method", r.Method).Str("path", r.URL.Path).Msg("request")
 		next.ServeHTTP(w, r)
 	})
+}
+
+// APIKeyMiddleware checks the Authorization header for a matching API key.
+func APIKeyMiddleware(apiKey string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if apiKey == "" {
+				next.ServeHTTP(w, r)
+				return
+			}
+			auth := r.Header.Get("Authorization")
+			if !strings.HasPrefix(auth, "Bearer ") || strings.TrimPrefix(auth, "Bearer ") != apiKey {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte(`{"error":"unauthorized"}`))
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }

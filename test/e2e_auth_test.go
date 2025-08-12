@@ -19,7 +19,7 @@ import (
 func TestWorkerAuth(t *testing.T) {
 	reg := ctrl.NewRegistry()
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	cfg := config.ServerConfig{WorkerToken: "secret", WSPath: "/workers/connect", RequestTimeout: 5 * time.Second}
+	cfg := config.ServerConfig{WorkerKey: "secret", WSPath: "/workers/connect", RequestTimeout: 5 * time.Second}
 	handler := server.New(reg, sched, cfg)
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -27,23 +27,31 @@ func TestWorkerAuth(t *testing.T) {
 	ctx := context.Background()
 	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/workers/connect"
 
-	// bad token
-	_, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: http.Header{"Authorization": {"Bearer nope"}}})
-	if err == nil {
-		t.Fatalf("expected auth failure")
+	// bad key
+	connBad, _, err := websocket.Dial(ctx, wsURL, nil)
+	if err != nil {
+		t.Fatalf("dial bad: %v", err)
 	}
+	regBad := ctrl.RegisterMessage{Type: "register", WorkerID: "wbad", WorkerKey: "nope", Models: []string{"m"}, MaxConcurrency: 1}
+	b, _ := json.Marshal(regBad)
+	connBad.Write(ctx, websocket.MessageText, b)
+	_, _, err = connBad.Read(ctx)
+	if err == nil {
+		t.Fatalf("expected close for bad key")
+	}
+	connBad.Close(websocket.StatusNormalClosure, "")
 	if len(reg.Models()) != 0 {
 		t.Fatalf("unexpected worker registered")
 	}
 
-	// good token
-	conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: http.Header{"Authorization": {"Bearer secret"}}})
+	// good key
+	conn, _, err := websocket.Dial(ctx, wsURL, nil)
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}
 	defer conn.Close(websocket.StatusNormalClosure, "")
-	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w1", Models: []string{"m"}, MaxConcurrency: 1}
-	b, _ := json.Marshal(regMsg)
+	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w1", WorkerKey: "secret", Models: []string{"m"}, MaxConcurrency: 1}
+	b, _ = json.Marshal(regMsg)
 	conn.Write(ctx, websocket.MessageText, b)
 
 	// wait for registration
