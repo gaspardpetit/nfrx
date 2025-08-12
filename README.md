@@ -2,17 +2,26 @@
 
 [![ci](https://github.com/you/llamapool/actions/workflows/ci.yml/badge.svg)](https://github.com/you/llamapool/actions/workflows/ci.yml)
 
-Llamapool provides a simple pool of workers that proxy requests to local
-Ollama instances.
+Llamapool is a minimal worker pool that exposes an Ollama-compatible HTTP API. The
+`llamapool-server` binary accepts client requests and dispatches them to connected
+`llamapool-worker` processes over WebSocket.
 
-## Running locally
+## Build
+
+```bash
+make build
+```
+
+## Run
 
 ### Server
+
 ```bash
 PORT=8080 WORKER_TOKEN=secret go run ./cmd/llamapool-server
 ```
 
 ### Worker
+
 ```bash
 SERVER_URL=ws://localhost:8080/workers/connect TOKEN=secret OLLAMA_URL=http://127.0.0.1:11434 go run ./cmd/llamapool-worker
 ```
