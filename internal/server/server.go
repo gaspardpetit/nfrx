@@ -16,6 +16,10 @@ import (
 func New(reg *ctrl.Registry, sched ctrl.Scheduler, cfg config.ServerConfig) http.Handler {
 	r := chi.NewRouter()
 	r.Mount("/api", api.NewRouter(reg, sched, cfg.RequestTimeout))
+	r.Route("/v1", func(r chi.Router) {
+		r.Get("/models", api.ListModelsHandler(reg))
+		r.Get("/models/{id}", api.GetModelHandler(reg))
+	})
 	r.Handle(cfg.WSPath, ctrl.WSHandler(reg, cfg.WorkerToken))
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

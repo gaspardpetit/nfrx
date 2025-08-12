@@ -44,7 +44,7 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 		}
 	}()
 
-	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: cfg.WorkerID, Token: cfg.Token, Models: models, MaxConcurrency: cfg.MaxConcurrency}
+	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: cfg.WorkerID, WorkerName: cfg.WorkerName, Token: cfg.Token, Models: models, MaxConcurrency: cfg.MaxConcurrency}
 	b, _ := json.Marshal(regMsg)
 	sendCh <- b
 
