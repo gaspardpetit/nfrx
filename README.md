@@ -151,6 +151,15 @@ The server also exposes a basic health check:
 curl http://localhost:8080/healthz
 ```
 
+For server administration and monitoring:
+
+```bash
+curl -H "Authorization: Bearer test123" http://localhost:8080/api/v1/state
+curl -H "Authorization: Bearer test123" http://localhost:8080/api/v1/state/stream
+# Prometheus metrics
+curl http://localhost:8080/metrics
+```
+
 The server also exposes OpenAI-style model listing endpoints:
 
 ```bash

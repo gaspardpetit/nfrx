@@ -1,0 +1,326 @@
+package ctrl
+
+import (
+	"sync"
+	"time"
+)
+
+// WorkerStatus represents the current state of a worker.
+type WorkerStatus string
+
+const (
+	StatusConnected WorkerStatus = "connected"
+	StatusWorking   WorkerStatus = "working"
+	StatusIdle      WorkerStatus = "idle"
+	StatusGone      WorkerStatus = "gone"
+)
+
+// PerModelStats holds per-model aggregates.
+type PerModelStats struct {
+	SuccessTotal   uint64 `json:"success_total"`
+	ErrorTotal     uint64 `json:"error_total"`
+	TokensInTotal  uint64 `json:"tokens_in_total"`
+	TokensOutTotal uint64 `json:"tokens_out_total"`
+}
+
+// WorkerSnapshot represents a snapshot of worker metrics.
+type WorkerSnapshot struct {
+	ID                string                   `json:"id"`
+	Status            WorkerStatus             `json:"status"`
+	ConnectedAt       time.Time                `json:"connected_at"`
+	LastHeartbeat     time.Time                `json:"last_heartbeat"`
+	Version           string                   `json:"version"`
+	BuildSHA          string                   `json:"build_sha,omitempty"`
+	BuildDate         string                   `json:"build_date,omitempty"`
+	ModelsSupported   []string                 `json:"models_supported"`
+	ProcessedTotal    uint64                   `json:"processed_total"`
+	ProcessingMsTotal uint64                   `json:"processing_ms_total"`
+	AvgProcessingMs   float64                  `json:"avg_processing_ms"`
+	Inflight          int                      `json:"inflight"`
+	FailuresTotal     uint64                   `json:"failures_total"`
+	QueueLen          int                      `json:"queue_len"`
+	LastError         string                   `json:"last_error,omitempty"`
+	TokensInTotal     uint64                   `json:"tokens_in_total"`
+	TokensOutTotal    uint64                   `json:"tokens_out_total"`
+	PerModel          map[string]PerModelStats `json:"per_model"`
+}
+
+// ServerSnapshot contains server-wide aggregates.
+type ServerSnapshot struct {
+	Now                time.Time `json:"now"`
+	Version            string    `json:"version"`
+	BuildSHA           string    `json:"build_sha,omitempty"`
+	BuildDate          string    `json:"build_date,omitempty"`
+	UptimeSeconds      uint64    `json:"uptime_s"`
+	JobsInflight       int       `json:"jobs_inflight_total"`
+	JobsCompletedTotal uint64    `json:"jobs_completed_total"`
+	JobsFailedTotal    uint64    `json:"jobs_failed_total"`
+	SchedulerQueueLen  int       `json:"scheduler_queue_len"`
+}
+
+// WorkersSummary summarizes workers by status.
+type WorkersSummary struct {
+	Connected int `json:"connected"`
+	Working   int `json:"working"`
+	Idle      int `json:"idle"`
+	Gone      int `json:"gone"`
+}
+
+// ModelCount tracks number of workers supporting a model.
+type ModelCount struct {
+	Name    string `json:"name"`
+	Workers int    `json:"workers"`
+}
+
+// StateResponse is the top-level snapshot returned to clients.
+type StateResponse struct {
+	Server         ServerSnapshot   `json:"server"`
+	WorkersSummary WorkersSummary   `json:"workers_summary"`
+	Models         []ModelCount     `json:"models"`
+	Workers        []WorkerSnapshot `json:"workers"`
+}
+
+// MetricsRegistry maintains metrics about the server and workers.
+type MetricsRegistry struct {
+	mu sync.RWMutex
+
+	serverStart time.Time
+	serverVer   string
+	serverSHA   string
+	serverDate  string
+
+	jobsInflight       int
+	jobsCompletedTotal uint64
+	jobsFailedTotal    uint64
+	schedulerQueueLen  int
+
+	workers map[string]*workerMetrics
+}
+
+type workerMetrics struct {
+	id              string
+	status          WorkerStatus
+	connectedAt     time.Time
+	lastHeartbeat   time.Time
+	version         string
+	buildSHA        string
+	buildDate       string
+	modelsSupported []string
+
+	processedTotal    uint64
+	processingMsTotal uint64
+	inflight          int
+	failuresTotal     uint64
+	queueLen          int
+	lastError         string
+
+	tokensInTotal  uint64
+	tokensOutTotal uint64
+
+	perModel map[string]*PerModelStats
+}
+
+// NewMetricsRegistry constructs a new registry.
+func NewMetricsRegistry(serverVersion, serverSHA, serverDate string) *MetricsRegistry {
+	return &MetricsRegistry{
+		serverStart: time.Now(),
+		serverVer:   serverVersion,
+		serverSHA:   serverSHA,
+		serverDate:  serverDate,
+		workers:     make(map[string]*workerMetrics),
+	}
+}
+
+// UpsertWorker registers or updates a worker.
+func (m *MetricsRegistry) UpsertWorker(id, version, buildSHA, buildDate string, models []string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	w, ok := m.workers[id]
+	if !ok {
+		w = &workerMetrics{id: id, connectedAt: time.Now(), perModel: make(map[string]*PerModelStats)}
+		m.workers[id] = w
+	}
+	w.version = version
+	w.buildSHA = buildSHA
+	w.buildDate = buildDate
+	w.modelsSupported = models
+	w.lastHeartbeat = time.Now()
+	if w.status == "" {
+		w.status = StatusConnected
+	}
+}
+
+// SetWorkerStatus sets the status of a worker.
+func (m *MetricsRegistry) SetWorkerStatus(id string, status WorkerStatus) {
+	m.mu.Lock()
+	if w, ok := m.workers[id]; ok {
+		w.status = status
+	}
+	m.mu.Unlock()
+}
+
+// RecordHeartbeat updates the last heartbeat time for a worker.
+func (m *MetricsRegistry) RecordHeartbeat(id string) {
+	m.mu.Lock()
+	if w, ok := m.workers[id]; ok {
+		w.lastHeartbeat = time.Now()
+	}
+	m.mu.Unlock()
+}
+
+// RecordJobStart increments inflight counters.
+func (m *MetricsRegistry) RecordJobStart(id string) {
+	m.mu.Lock()
+	if w, ok := m.workers[id]; ok {
+		w.inflight++
+	}
+	m.jobsInflight++
+	m.mu.Unlock()
+}
+
+// RecordJobEnd records the end of a job.
+func (m *MetricsRegistry) RecordJobEnd(id, model string, duration time.Duration, tokensIn, tokensOut uint64, success bool, errMsg string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if w, ok := m.workers[id]; ok {
+		if w.inflight > 0 {
+			w.inflight--
+		}
+		w.processedTotal++
+		w.processingMsTotal += uint64(duration.Milliseconds())
+		w.tokensInTotal += tokensIn
+		w.tokensOutTotal += tokensOut
+		if w.perModel == nil {
+			w.perModel = make(map[string]*PerModelStats)
+		}
+		pm := w.perModel[model]
+		if pm == nil {
+			pm = &PerModelStats{}
+			w.perModel[model] = pm
+		}
+		pm.TokensInTotal += tokensIn
+		pm.TokensOutTotal += tokensOut
+		if success {
+			pm.SuccessTotal++
+		} else {
+			pm.ErrorTotal++
+			w.failuresTotal++
+			w.lastError = errMsg
+		}
+	}
+	if m.jobsInflight > 0 {
+		m.jobsInflight--
+	}
+	if success {
+		m.jobsCompletedTotal++
+	} else {
+		m.jobsFailedTotal++
+	}
+}
+
+// RecordJobError records an error for a worker and model.
+func (m *MetricsRegistry) RecordJobError(id, model, errMsg string) {
+	m.mu.Lock()
+	if w, ok := m.workers[id]; ok {
+		w.failuresTotal++
+		w.lastError = errMsg
+		if w.perModel == nil {
+			w.perModel = make(map[string]*PerModelStats)
+		}
+		pm := w.perModel[model]
+		if pm == nil {
+			pm = &PerModelStats{}
+			w.perModel[model] = pm
+		}
+		pm.ErrorTotal++
+	}
+	m.jobsFailedTotal++
+	m.mu.Unlock()
+}
+
+// SetWorkerQueueLen sets a worker's internal queue length.
+func (m *MetricsRegistry) SetWorkerQueueLen(id string, n int) {
+	m.mu.Lock()
+	if w, ok := m.workers[id]; ok {
+		w.queueLen = n
+	}
+	m.mu.Unlock()
+}
+
+// SetSchedulerQueueLen sets the scheduler queue length.
+func (m *MetricsRegistry) SetSchedulerQueueLen(n int) {
+	m.mu.Lock()
+	m.schedulerQueueLen = n
+	m.mu.Unlock()
+}
+
+// Snapshot returns a consistent snapshot of all metrics.
+func (m *MetricsRegistry) Snapshot() StateResponse {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	resp := StateResponse{}
+	resp.Server = ServerSnapshot{
+		Now:                time.Now(),
+		Version:            m.serverVer,
+		BuildSHA:           m.serverSHA,
+		BuildDate:          m.serverDate,
+		UptimeSeconds:      uint64(time.Since(m.serverStart).Seconds()),
+		JobsInflight:       m.jobsInflight,
+		JobsCompletedTotal: m.jobsCompletedTotal,
+		JobsFailedTotal:    m.jobsFailedTotal,
+		SchedulerQueueLen:  m.schedulerQueueLen,
+	}
+
+	modelWorkers := make(map[string]int)
+	for _, w := range m.workers {
+		switch w.status {
+		case StatusConnected:
+			resp.WorkersSummary.Connected++
+		case StatusWorking:
+			resp.WorkersSummary.Working++
+		case StatusIdle:
+			resp.WorkersSummary.Idle++
+		case StatusGone:
+			resp.WorkersSummary.Gone++
+		}
+		for _, mname := range w.modelsSupported {
+			modelWorkers[mname]++
+		}
+		avg := 0.0
+		if w.processedTotal > 0 {
+			avg = float64(w.processingMsTotal) / float64(w.processedTotal)
+		}
+		perModel := make(map[string]PerModelStats, len(w.perModel))
+		for k, v := range w.perModel {
+			perModel[k] = *v
+		}
+		snapshot := WorkerSnapshot{
+			ID:                w.id,
+			Status:            w.status,
+			ConnectedAt:       w.connectedAt,
+			LastHeartbeat:     w.lastHeartbeat,
+			Version:           w.version,
+			BuildSHA:          w.buildSHA,
+			BuildDate:         w.buildDate,
+			ModelsSupported:   append([]string(nil), w.modelsSupported...),
+			ProcessedTotal:    w.processedTotal,
+			ProcessingMsTotal: w.processingMsTotal,
+			AvgProcessingMs:   avg,
+			Inflight:          w.inflight,
+			FailuresTotal:     w.failuresTotal,
+			QueueLen:          w.queueLen,
+			LastError:         w.lastError,
+			TokensInTotal:     w.tokensInTotal,
+			TokensOutTotal:    w.tokensOutTotal,
+			PerModel:          perModel,
+		}
+		resp.Workers = append(resp.Workers, snapshot)
+	}
+
+	for name, count := range modelWorkers {
+		resp.Models = append(resp.Models, ModelCount{Name: name, Workers: count})
+	}
+
+	return resp
+}

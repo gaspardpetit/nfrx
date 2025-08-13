@@ -21,7 +21,8 @@ func TestWorkerBusy(t *testing.T) {
 	reg.Add(worker)
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
 	cfg := config.ServerConfig{WorkerKey: "secret", WSPath: "/workers/connect", RequestTimeout: 5 * time.Second}
-	handler := server.New(reg, sched, cfg)
+	metricsReg := ctrl.NewMetricsRegistry("test", "", "")
+	handler := server.New(reg, metricsReg, sched, cfg)
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
