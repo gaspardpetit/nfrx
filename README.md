@@ -2,13 +2,95 @@
 
 # llamapool
 
-Llamapool is a minimal worker pool that exposes an Ollama-compatible HTTP API. The
-`llamapool-server` binary accepts client requests and dispatches them to connected
-`llamapool-worker` processes over WebSocket. Workers authenticate using a shared
-key provided via the `WORKER_KEY` environment variable. Client HTTP requests can
-be protected with an `API_KEY` passed in the `Authorization` header. The server
-also proxies OpenAI-style `POST /v1/chat/completions` requests to workers without
-modifying the JSON payloads.
+## Overview
+
+**Llamapool** is a lightweight, distributed worker pool that exposes an OpenAI-compatible `chat/completions` API, forwarding requests to one or more connected **LLM workers**.  
+It sits in front of existing LLM runtimes such as [Ollama](https://github.com/ollama/ollama), [vLLM](https://github.com/vllm-project/vllm), or [Open-WebUI](https://github.com/open-webui/open-webui), allowing you to scale, load-balance, and securely access them from anywhere.
+
+A typical deployment looks like this:
+
+- **`llamapool-server`** is deployed to a public or semi-public location (e.g., Azure, GCP, AWS, or a self-hosted server with dynamic DNS).
+- **`llamapool-worker`** runs on private machines (e.g., a Mac Studio or personal GPU workstation) alongside an LLM service.  
+  When a worker connects, its available models are registered with the server and become accessible via the public API.
+
+### Key features
+- **Dynamic worker discovery** – Workers can connect and disconnect at any time; the server updates the available model list in real-time.
+- **Least-busy routing** – If multiple workers support the same model, the server dispatches requests to the one with the lowest current load.
+- **Security by design** –  
+  - Separate authentication keys for clients (`API_KEY`) and workers (`WORKER_KEY`).  
+  - Workers typically run behind firewalls and connect outbound over HTTPS/WSS.  
+  - All traffic is encrypted end-to-end.
+- **Protocol compatibility** – Accepts and forwards OpenAI-style `POST /v1/chat/completions` without altering JSON payloads.
+
+### How it works
+- The **server** accepts incoming HTTP requests from clients, authenticates them, and routes them to workers via WebSocket connections.
+- **Workers** authenticate using a shared `WORKER_KEY` and advertise the models they can serve.
+- Requests are proxied directly to the worker’s LLM backend, and the responses are returned unmodified to the client.
+
+
+## Currently Supported
+
+| Feature | Supported | Notes |
+| --- | --- | --- |
+| OpenAI-compatible `POST /v1/chat/completions` | ✅ | Proxied to workers without payload mutation |
+| Multiple worker registration | ✅ | Workers can join/leave dynamically; models registered on connect |
+| Model-based routing (least-busy) | ✅ | `LeastBusyScheduler` selects worker by current load |
+| API key authentication for clients | ✅ | `Authorization: Bearer <API_KEY>` for `/api` and `/v1` routes |
+| Worker key authentication | ✅ | Workers authenticate over WebSocket using `WORKER_KEY` |
+| Dynamic model discovery | ✅ | Workers advertise supported models; server aggregates |
+| HTTPS/WSS transport | ✅ | Use TLS terminator or run behind reverse proxy; WS path configurable |
+| Prometheus metrics endpoint | ✅ | `/metrics`; includes build info, per-model counters, histograms |
+| Real-time state API (JSON) | ✅ | `GET /api/v1/state` returns full server/worker snapshot |
+| Real-time state stream (SSE) | ✅ | `GET /api/v1/state/stream` for dashboards |
+| Token usage tracking | ✅ | Per-model and per-worker token totals (in/out) |
+| Per-model success/error rates | ✅ | `llamapool_model_requests_total{outcome=...}` |
+| Build info (server & worker) | ✅ | Server ldflags; worker-reported version/SHA/date reflected in state |
+
+
+## Endpoints
+
+- Health: `GET /healthz`
+- OpenAI Models:
+  - `GET /v1/models`
+  - `GET /v1/models/{id}`
+- OpenAI Chat Completions: `POST /v1/chat/completions`
+- Llamapool API:
+  - **State (JSON):** `GET /api/v1/state`
+  - **State (SSE):** `GET /api/v1/state/stream`
+- Prometheus metrics: `GET /metrics`
+
+
+## Security
+
+- **Client authentication**: `API_KEY` required for `/api` and `/v1` routes via `Authorization: Bearer <API_KEY>`.
+- **Worker authentication**: `WORKER_KEY` required for worker WebSocket registration.
+- **Transport**: run behind TLS (HTTPS/WSS) via reverse proxy or terminate TLS in-process.
+
+
+## Monitoring & Observability
+
+- **Prometheus** (`/metrics`):  
+  - `llamapool_build_info{component="server",version,sha,date}`  
+  - `llamapool_model_requests_total{model,outcome}`  
+  - `llamapool_model_tokens_total{model,kind}`  
+  - `llamapool_request_duration_seconds{worker_id,model}` (histogram)
+  - (Optionally) per-worker gauges/counters if enabled.
+
+- **JSON/SSE State** (`/api/v1/state`, `/api/v1/state/stream`): suitable for custom dashboards showing:
+  - worker list and status (connected/working/idle/gone)
+  - per-worker totals (processed, inflight, failures, avg duration)
+  - per-model availability (how many workers support each model)
+  - versions/build info for server & workers
+
+
+## Objectives
+
+- Provide a **minimal, self-contained** worker pool that can be deployed anywhere.
+- Make it easy to **expose private LLM hardware** securely to authorized clients.
+- Support **multiple LLM runtimes** without protocol translation overhead.
+- Enable **scalable and fault-tolerant** request routing across many workers.
+- Offer **transparent monitoring and metrics** for operational insight.
+
 
 ## Build
 
