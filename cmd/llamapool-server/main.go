@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -24,10 +26,23 @@ var (
 	buildDate = "unknown"
 )
 
+func binaryName() string {
+	b := filepath.Base(os.Args[0])
+	if strings.HasPrefix(b, "llamapool-") {
+		return strings.TrimPrefix(b, "llamapool-")
+	}
+	return b
+}
+
 func main() {
+	showVersion := flag.Bool("version", false, "print version and exit")
 	var cfg config.ServerConfig
 	cfg.BindFlags()
 	flag.Parse()
+	if *showVersion {
+		fmt.Printf("llamapool-%s version=%s sha=%s date=%s\n", binaryName(), version, buildSHA, buildDate)
+		return
+	}
 
 	reg := ctrl.NewRegistry()
 	metricsReg := ctrl.NewMetricsRegistry(version, buildSHA, buildDate)
