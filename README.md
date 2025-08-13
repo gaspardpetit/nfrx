@@ -45,6 +45,7 @@ A typical deployment looks like this:
 | Token usage tracking | ✅ | Per-model and per-worker token totals (in/out) |
 | Per-model success/error rates | ✅ | `llamapool_model_requests_total{outcome=...}` |
 | Build info (server & worker) | ✅ | Server ldflags; worker-reported version/SHA/date reflected in state |
+| Private MCP Endpoints | Planned | Allow clients to expose an ephemeral MCP server through the llamapool-server |
 
 
 ## Endpoints
@@ -65,6 +66,47 @@ A typical deployment looks like this:
 - **Client authentication**: `API_KEY` required for `/api` and `/v1` routes via `Authorization: Bearer <API_KEY>`.
 - **Worker authentication**: `WORKER_KEY` required for worker WebSocket registration.
 - **Transport**: run behind TLS (HTTPS/WSS) via reverse proxy or terminate TLS in-process.
+
+## Architecture
+
+```
+                         ┌───────────────────────────────────────┐
+                         │             Clients (API)             │
+                         │  curl / SDKs / Apps / OpenAI clients  │
+                         └───────────────┬───────────────────────┘
+                                         │  REQUEST 
+                                         │  (API_KEY)
+┌────────────────────────────────────────▼──────────────────────────────┐
+│                                 llamapool-server                      │
+│                                                                       │
+│  ┌──────────────────────────┐                     ┌───────────────┐   │
+│  │  OpenAI-compatible API   │                     │  Observability│   │
+│  │  /v1/chat/completions    │                     │  /metrics     │   │
+│  │  /v1/models (+/{id})     │                     └───────────────┘   │
+│  └──────────────┬────────── ┘                                         │
+│                 │                                                     │
+│          ┌──────▼──────────────────────────────────────────────────┐  │
+│          │                 Router + Scheduler (Least Busy)         │  │
+│          │  - Model registry (from workers)                        │  │
+│          │  - Dispatch by model & load                             │  │
+│          └──────┬───────────────────────────────────────────┬──────┘  │
+│                 │  WebSocket (WSS)                          |         │
+└────────────▲────|───────────────────────────────▲───────────|─────────┘
+     CONNECT |    |                       CONNECT |           |  
+(WORKER_KEY) │    | REQUEST          (WORKER_KEY) │           | REQUEST
+     ┌───────┴────▼────────────┐           ┌──────┴───────────▼────────┐
+     │      llamapool-worker   │           │      llamapool-worker    │
+     │     (private/home lab)  │           │       (cloud/on-prem)    │
+     │                         │           │                          │
+     └─────────────┬───────────┘           └─────────────┬────────────┘
+                   |                                     |
+              ┌────▼──────┐                        ┌─────▼──────┐
+              │  LLM      │                        │  LLM       │
+              │ (Ollama,  │                        │ (Ollama,   │
+              │  vLLM, …) │                        │  vLLM,   …)│
+              └───────────┘                        └────────────┘
+
+```
 
 
 ## Monitoring & Observability
