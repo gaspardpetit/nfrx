@@ -3,8 +3,11 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/you/llamapool/internal/config"
@@ -12,10 +15,29 @@ import (
 	"github.com/you/llamapool/internal/worker"
 )
 
+var (
+	version   = "dev"
+	buildSHA  = "unknown"
+	buildDate = "unknown"
+)
+
+func binaryName() string {
+	b := filepath.Base(os.Args[0])
+	if strings.HasPrefix(b, "llamapool-") {
+		return strings.TrimPrefix(b, "llamapool-")
+	}
+	return b
+}
+
 func main() {
+	showVersion := flag.Bool("version", false, "print version and exit")
 	var cfg config.WorkerConfig
 	cfg.BindFlags()
 	flag.Parse()
+	if *showVersion {
+		fmt.Printf("llamapool-%s version=%s sha=%s date=%s\n", binaryName(), version, buildSHA, buildDate)
+		return
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
