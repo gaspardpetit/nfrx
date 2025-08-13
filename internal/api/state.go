@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/you/llamapool/internal/ctrl"
+	"github.com/you/llamapool/internal/logx"
 )
 
 // StateHandler serves state snapshots and streams.
@@ -15,7 +16,10 @@ type StateHandler struct{ Metrics *ctrl.MetricsRegistry }
 func (h *StateHandler) GetState(w http.ResponseWriter, r *http.Request) {
 	state := h.Metrics.Snapshot()
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(state)
+	if err := json.NewEncoder(w).Encode(state); err != nil {
+		// ignore write error but log
+		logx.Log.Error().Err(err).Msg("encode state")
+	}
 }
 
 // GetStateStream streams state snapshots as Server-Sent Events.
@@ -37,9 +41,15 @@ func (h *StateHandler) GetStateStream(w http.ResponseWriter, r *http.Request) {
 		case <-ticker.C:
 			state := h.Metrics.Snapshot()
 			b, _ := json.Marshal(state)
-			w.Write([]byte("data: "))
-			w.Write(b)
-			w.Write([]byte("\n\n"))
+			if _, err := w.Write([]byte("data: ")); err != nil {
+				return
+			}
+			if _, err := w.Write(b); err != nil {
+				return
+			}
+			if _, err := w.Write([]byte("\n\n")); err != nil {
+				return
+			}
 			flusher.Flush()
 		}
 	}

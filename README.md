@@ -106,6 +106,17 @@ go build -o .\bin\llamapool-server.exe .\cmd\llamapool-server
 go build -o .\bin\llamapool-worker.exe .\cmd\llamapool-worker
 ```
 
+### Version
+
+Both binaries expose a `--version` flag that prints the build metadata:
+
+```bash
+llamapool-server --version
+llamapool-worker --version
+```
+
+The output includes the version, git SHA and build date.
+
 ## Run
 
 ### Server

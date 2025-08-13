@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coder/websocket"
 	"github.com/google/uuid"
-	"nhooyr.io/websocket"
 
 	"github.com/you/llamapool/internal/config"
 	"github.com/you/llamapool/internal/ctrl"
@@ -30,14 +30,18 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 	if err != nil {
 		return err
 	}
-	defer ws.Close(websocket.StatusInternalError, "closing")
+	defer func() {
+		_ = ws.Close(websocket.StatusInternalError, "closing")
+	}()
 
 	sendCh := make(chan []byte, 16)
 	reqCancels := make(map[string]context.CancelFunc)
 	var jobMu sync.Mutex
 	go func() {
 		for msg := range sendCh {
-			ws.Write(ctx, websocket.MessageText, msg)
+			if err := ws.Write(ctx, websocket.MessageText, msg); err != nil {
+				return
+			}
 		}
 	}()
 
@@ -114,7 +118,10 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 func handleGenerate(ctx context.Context, client *ollama.Client, sendCh chan []byte, jr ctrl.JobRequestMessage, cancels map[string]context.CancelFunc, mu *sync.Mutex) {
 	raw, _ := json.Marshal(jr.Payload)
 	var req relay.GenerateRequest
-	json.Unmarshal(raw, &req)
+	if err := json.Unmarshal(raw, &req); err != nil {
+		logx.Log.Error().Err(err).Msg("unmarshal generate request")
+		return
+	}
 	jobCtx, cancel := context.WithCancel(ctx)
 	mu.Lock()
 	cancels[jr.JobID] = cancel
@@ -133,7 +140,9 @@ func handleGenerate(ctx context.Context, client *ollama.Client, sendCh chan []by
 			sendCh <- b
 			return
 		}
-		defer rc.Close()
+		defer func() {
+			_ = rc.Close()
+		}()
 		for line := range ollama.ReadLines(rc) {
 			msg := ctrl.JobChunkMessage{Type: "job_chunk", JobID: jr.JobID, Data: json.RawMessage(line)}
 			b, _ := json.Marshal(msg)

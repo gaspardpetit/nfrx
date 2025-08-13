@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"nhooyr.io/websocket"
+	"github.com/coder/websocket"
 
 	"github.com/you/llamapool/internal/config"
 	"github.com/you/llamapool/internal/ctrl"
@@ -36,10 +36,12 @@ func TestE2EGenerateStream(t *testing.T) {
 		if err != nil {
 			return
 		}
-		defer conn.Close(websocket.StatusNormalClosure, "")
+		defer func() { _ = conn.Close(websocket.StatusNormalClosure, "") }()
 		regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w1", WorkerKey: "secret", Models: []string{"llama3"}, MaxConcurrency: 2}
 		b, _ := json.Marshal(regMsg)
-		conn.Write(ctx, websocket.MessageText, b)
+		if err := conn.Write(ctx, websocket.MessageText, b); err != nil {
+			return
+		}
 		for {
 			_, data, err := conn.Read(ctx)
 			if err != nil {
@@ -48,16 +50,24 @@ func TestE2EGenerateStream(t *testing.T) {
 			var env struct {
 				Type string `json:"type"`
 			}
-			json.Unmarshal(data, &env)
+			if err := json.Unmarshal(data, &env); err != nil {
+				continue
+			}
 			if env.Type == "job_request" {
 				var jr ctrl.JobRequestMessage
-				json.Unmarshal(data, &jr)
+				if err := json.Unmarshal(data, &jr); err != nil {
+					continue
+				}
 				chunk1 := ctrl.JobChunkMessage{Type: "job_chunk", JobID: jr.JobID, Data: json.RawMessage(`{"response":"hi","done":false}`)}
 				b1, _ := json.Marshal(chunk1)
-				conn.Write(ctx, websocket.MessageText, b1)
+				if err := conn.Write(ctx, websocket.MessageText, b1); err != nil {
+					return
+				}
 				chunk2 := ctrl.JobChunkMessage{Type: "job_chunk", JobID: jr.JobID, Data: json.RawMessage(`{"done":true}`)}
 				b2, _ := json.Marshal(chunk2)
-				conn.Write(ctx, websocket.MessageText, b2)
+				if err := conn.Write(ctx, websocket.MessageText, b2); err != nil {
+					return
+				}
 			}
 		}
 	}()
@@ -71,11 +81,13 @@ func TestE2EGenerateStream(t *testing.T) {
 					Name string `json:"name"`
 				} `json:"models"`
 			}
-			json.NewDecoder(resp.Body).Decode(&tr)
-			resp.Body.Close()
-			if len(tr.Models) > 0 {
-				break
+			if err := json.NewDecoder(resp.Body).Decode(&tr); err == nil {
+				if len(tr.Models) > 0 {
+					_ = resp.Body.Close()
+					break
+				}
 			}
+			_ = resp.Body.Close()
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
@@ -87,7 +99,7 @@ func TestE2EGenerateStream(t *testing.T) {
 	if err != nil {
 		t.Fatalf("post: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status %d", resp.StatusCode)
 	}

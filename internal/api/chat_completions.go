@@ -85,7 +85,9 @@ func ChatCompletionsHandler(reg *ctrl.Registry, sched ctrl.Scheduler) http.Handl
 		default:
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusServiceUnavailable)
-			w.Write([]byte(`{"error":"worker_busy"}`))
+			if _, err := w.Write([]byte(`{"error":"worker_busy"}`)); err != nil {
+				logx.Log.Error().Err(err).Msg("write worker busy")
+			}
 			return
 		}
 
@@ -107,7 +109,9 @@ func ChatCompletionsHandler(reg *ctrl.Registry, sched ctrl.Scheduler) http.Handl
 					if !headersSent {
 						w.Header().Set("Content-Type", "application/json")
 						w.WriteHeader(http.StatusBadGateway)
-						w.Write([]byte(`{"error":"upstream_error"}`))
+						if _, err := w.Write([]byte(`{"error":"upstream_error"}`)); err != nil {
+							logx.Log.Error().Err(err).Msg("write upstream error")
+						}
 					}
 					return
 				}
@@ -129,10 +133,13 @@ func ChatCompletionsHandler(reg *ctrl.Registry, sched ctrl.Scheduler) http.Handl
 					}
 				case ctrl.HTTPProxyResponseChunkMessage:
 					if len(m.Data) > 0 {
-						w.Write(m.Data)
-						bytesSent = true
-						if flusher != nil {
-							flusher.Flush()
+						if _, err := w.Write(m.Data); err != nil {
+							logx.Log.Error().Err(err).Msg("write chunk")
+						} else {
+							bytesSent = true
+							if flusher != nil {
+								flusher.Flush()
+							}
 						}
 					}
 				case ctrl.HTTPProxyResponseEndMessage:
@@ -141,7 +148,9 @@ func ChatCompletionsHandler(reg *ctrl.Registry, sched ctrl.Scheduler) http.Handl
 							w.Header().Set("Content-Type", "application/json")
 							w.WriteHeader(http.StatusBadGateway)
 						}
-						w.Write([]byte(`{"error":"upstream_error"}`))
+						if _, err := w.Write([]byte(`{"error":"upstream_error"}`)); err != nil {
+							logx.Log.Error().Err(err).Msg("write upstream error")
+						}
 					}
 					logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID).Str("model", meta.Model).Bool("stream", meta.Stream).Dur("duration", time.Since(start)).Msg("complete")
 					return

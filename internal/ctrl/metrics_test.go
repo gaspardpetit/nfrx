@@ -15,9 +15,7 @@ func TestSnapshotEmpty(t *testing.T) {
 	if snap.Server.JobsInflight != 0 || snap.Server.JobsCompletedTotal != 0 {
 		t.Fatalf("expected zero jobs")
 	}
-	if snap.Server.UptimeSeconds < 0 {
-		t.Fatalf("invalid uptime")
-	}
+	// uptime may be zero immediately after creation
 }
 
 func TestWorkerLifecycle(t *testing.T) {

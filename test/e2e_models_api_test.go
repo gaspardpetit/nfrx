@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"nhooyr.io/websocket"
+	"github.com/coder/websocket"
 
 	"github.com/you/llamapool/internal/config"
 	"github.com/you/llamapool/internal/ctrl"
@@ -35,7 +35,9 @@ func TestModelsAPI(t *testing.T) {
 	}
 	rmA := ctrl.RegisterMessage{Type: "register", WorkerID: "wA", WorkerName: "Alpha", Models: []string{"llama3:8b", "mistral:7b"}, MaxConcurrency: 1}
 	b, _ := json.Marshal(rmA)
-	connA.Write(ctx, websocket.MessageText, b)
+	if err := connA.Write(ctx, websocket.MessageText, b); err != nil {
+		t.Fatalf("write alpha: %v", err)
+	}
 
 	// Worker Beta
 	connB, _, err := websocket.Dial(ctx, wsURL, nil)
@@ -44,7 +46,9 @@ func TestModelsAPI(t *testing.T) {
 	}
 	rmB := ctrl.RegisterMessage{Type: "register", WorkerID: "wB", WorkerName: "Beta", Models: []string{"llama3:8b", "qwen2.5:14b"}, MaxConcurrency: 1}
 	b, _ = json.Marshal(rmB)
-	connB.Write(ctx, websocket.MessageText, b)
+	if err := connB.Write(ctx, websocket.MessageText, b); err != nil {
+		t.Fatalf("write beta: %v", err)
+	}
 
 	// wait for registration
 	for i := 0; i < 50; i++ {
@@ -56,11 +60,13 @@ func TestModelsAPI(t *testing.T) {
 					OwnedBy string `json:"owned_by"`
 				} `json:"data"`
 			}
-			json.NewDecoder(resp.Body).Decode(&lr)
-			resp.Body.Close()
-			if len(lr.Data) == 3 {
-				break
+			if err := json.NewDecoder(resp.Body).Decode(&lr); err == nil {
+				if len(lr.Data) == 3 {
+					_ = resp.Body.Close()
+					break
+				}
 			}
+			_ = resp.Body.Close()
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
@@ -75,8 +81,11 @@ func TestModelsAPI(t *testing.T) {
 			OwnedBy string `json:"owned_by"`
 		} `json:"data"`
 	}
-	json.NewDecoder(resp.Body).Decode(&list)
-	resp.Body.Close()
+	if err := json.NewDecoder(resp.Body).Decode(&list); err != nil {
+		_ = resp.Body.Close()
+		t.Fatalf("decode list: %v", err)
+	}
+	_ = resp.Body.Close()
 	if len(list.Data) != 3 {
 		t.Fatalf("expected 3 models, got %d", len(list.Data))
 	}
@@ -90,14 +99,14 @@ func TestModelsAPI(t *testing.T) {
 	if err != nil || resp.StatusCode != http.StatusOK {
 		t.Fatalf("get model: %v %d", err, resp.StatusCode)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	resp, err = http.Get(srv.URL + "/v1/models/doesnotexist")
 	if err != nil || resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("missing model: %v %d", err, resp.StatusCode)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
-	connB.Close(websocket.StatusNormalClosure, "")
+	_ = connB.Close(websocket.StatusNormalClosure, "")
 	// wait for deregistration
 	for i := 0; i < 50; i++ {
 		resp, err := http.Get(srv.URL + "/v1/models")
@@ -108,11 +117,13 @@ func TestModelsAPI(t *testing.T) {
 					OwnedBy string `json:"owned_by"`
 				} `json:"data"`
 			}
-			json.NewDecoder(resp.Body).Decode(&lr)
-			resp.Body.Close()
-			if len(lr.Data) == 2 {
-				break
+			if err := json.NewDecoder(resp.Body).Decode(&lr); err == nil {
+				if len(lr.Data) == 2 {
+					_ = resp.Body.Close()
+					break
+				}
 			}
+			_ = resp.Body.Close()
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
@@ -121,8 +132,11 @@ func TestModelsAPI(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list after disconnect: %v", err)
 	}
-	json.NewDecoder(resp.Body).Decode(&list)
-	resp.Body.Close()
+	if err := json.NewDecoder(resp.Body).Decode(&list); err != nil {
+		_ = resp.Body.Close()
+		t.Fatalf("decode after disconnect: %v", err)
+	}
+	_ = resp.Body.Close()
 	for _, m := range list.Data {
 		if m.ID == "llama3:8b" && m.OwnedBy != "Alpha" {
 			t.Fatalf("owned_by after disconnect: %s", m.OwnedBy)
@@ -132,5 +146,5 @@ func TestModelsAPI(t *testing.T) {
 		}
 	}
 
-	connA.Close(websocket.StatusNormalClosure, "")
+	_ = connA.Close(websocket.StatusNormalClosure, "")
 }

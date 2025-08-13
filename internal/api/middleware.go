@@ -36,7 +36,9 @@ func APIKeyMiddleware(apiKey string) func(http.Handler) http.Handler {
 			if !strings.HasPrefix(auth, "Bearer ") || strings.TrimPrefix(auth, "Bearer ") != apiKey {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte(`{"error":"unauthorized"}`))
+				if _, err := w.Write([]byte(`{"error":"unauthorized"}`)); err != nil {
+					logx.Log.Error().Err(err).Msg("write unauthorized")
+				}
 				return
 			}
 			next.ServeHTTP(w, r)

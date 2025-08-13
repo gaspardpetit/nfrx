@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -31,18 +32,26 @@ func TestE2EChatCompletionsProxy(t *testing.T) {
 		switch {
 		case r.URL.Path == "/api/tags":
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{"models":[{"name":"llama3"}]}`))
+			if _, err := w.Write([]byte(`{"models":[{"name":"llama3"}]}`)); err != nil {
+				t.Fatalf("write tags: %v", err)
+			}
 		case r.URL.Path == "/v1/chat/completions" && r.URL.Query().Get("stream") == "true":
 			gotAuth = r.Header.Get("Authorization")
 			w.Header().Set("Content-Type", "text/event-stream")
 			w.Header().Set("Cache-Control", "no-store")
 			fl := w.(http.Flusher)
 			w.WriteHeader(200)
-			w.Write([]byte("data: 1\n\n"))
+			if _, err := w.Write([]byte("data: 1\n\n")); err != nil {
+				t.Fatalf("write chunk1: %v", err)
+			}
 			fl.Flush()
-			w.Write([]byte("data: 2\n\n"))
+			if _, err := w.Write([]byte("data: 2\n\n")); err != nil {
+				t.Fatalf("write chunk2: %v", err)
+			}
 			fl.Flush()
-			w.Write([]byte("data: [DONE]\n\n"))
+			if _, err := w.Write([]byte("data: [DONE]\n\n")); err != nil {
+				t.Fatalf("write done: %v", err)
+			}
 			fl.Flush()
 		default:
 			w.WriteHeader(404)
@@ -53,7 +62,9 @@ func TestE2EChatCompletionsProxy(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/workers/connect"
-	go worker.Run(ctx, config.WorkerConfig{ServerURL: wsURL, WorkerKey: "secret", OllamaBaseURL: ollama.URL, OllamaAPIKey: "secret-123", WorkerID: "w1", WorkerName: "w1", MaxConcurrency: 2})
+	go func() {
+		_ = worker.Run(ctx, config.WorkerConfig{ServerURL: wsURL, WorkerKey: "secret", OllamaBaseURL: ollama.URL, OllamaAPIKey: "secret-123", WorkerID: "w1", WorkerName: "w1", MaxConcurrency: 2})
+	}()
 
 	// wait for worker registration
 	for i := 0; i < 20; i++ {
@@ -64,11 +75,13 @@ func TestE2EChatCompletionsProxy(t *testing.T) {
 					ID string `json:"id"`
 				} `json:"data"`
 			}
-			json.NewDecoder(resp.Body).Decode(&v)
-			resp.Body.Close()
-			if len(v.Data) > 0 {
-				break
+			if err := json.NewDecoder(resp.Body).Decode(&v); err == nil {
+				if len(v.Data) > 0 {
+					_ = resp.Body.Close()
+					break
+				}
 			}
+			_ = resp.Body.Close()
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
@@ -81,7 +94,9 @@ func TestE2EChatCompletionsProxy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != 200 {
 		t.Fatalf("status %d", resp.StatusCode)
 	}
@@ -91,7 +106,10 @@ func TestE2EChatCompletionsProxy(t *testing.T) {
 	if cc := resp.Header.Get("Cache-Control"); cc != "no-store" {
 		t.Fatalf("cache-control %s", cc)
 	}
-	b, _ := io.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
+	if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) {
+		t.Fatalf("read body: %v", err)
+	}
 	expected := "data: 1\n\ndata: 2\n\ndata: [DONE]\n\n"
 	if string(b) != expected {
 		t.Fatalf("body %q", string(b))
