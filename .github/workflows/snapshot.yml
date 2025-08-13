@@ -1,0 +1,79 @@
+name: snapshot
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  CGO_ENABLED: 0
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux, windows, darwin]
+        goarch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute version metadata
+        id: meta
+        shell: bash
+        run: |
+          SHA=$(git rev-parse --short HEAD)
+          DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            VERSION="${GITHUB_REF_NAME}"
+            DESCRIBE="${GITHUB_REF_NAME}"
+          else
+            DESCRIBE="$(git describe --tags --always --dirty)"
+            VERSION="${DESCRIBE}"
+          fi
+          echo "version=${VERSION}"   >> $GITHUB_OUTPUT
+          echo "describe=${DESCRIBE}" >> $GITHUB_OUTPUT
+          echo "sha=${SHA}"           >> $GITHUB_OUTPUT
+          echo "date=${DATE}"         >> $GITHUB_OUTPUT
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          LDFLAGS: >-
+            -s -w -X main.version=${{ steps.meta.outputs.version }} -X main.buildSHA=${{ steps.meta.outputs.sha }} -X main.buildDate=${{ steps.meta.outputs.date }}
+        run: |
+          EXT=""
+          if [ "$GOOS" = "windows" ]; then EXT=".exe"; fi
+          mkdir -p dist
+          go build -ldflags "$LDFLAGS" -o dist/llamapool-server${EXT} ./cmd/llamapool-server
+          go build -ldflags "$LDFLAGS" -o dist/llamapool-worker${EXT} ./cmd/llamapool-worker
+
+      - name: Package
+        id: pkg
+        run: |
+          OS=${{ matrix.goos }}
+          ARCH=${{ matrix.goarch }}
+          NAME="llamapool_${OS}_${ARCH}_${{ steps.meta.outputs.describe }}"
+          mkdir -p "pkg/$NAME"
+          cp -v LICENSE README.md dist/* "pkg/$NAME"/
+          if [ "$OS" = "windows" ]; then
+            (cd pkg && powershell -Command "Compress-Archive -Path '$NAME/*' -DestinationPath '$NAME.zip'")
+            ASSET="pkg/$NAME.zip"
+          else
+            tar -C pkg -czf "pkg/$NAME.tar.gz" "$NAME"
+            ASSET="pkg/$NAME.tar.gz"
+          fi
+          rm -rf "pkg/$NAME"
+          BASENAME=$(basename "$ASSET")
+          echo "file=$ASSET" >> $GITHUB_OUTPUT
+          echo "name=$BASENAME" >> $GITHUB_OUTPUT
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.pkg.outputs.name }}
+          path: ${{ steps.pkg.outputs.file }}
