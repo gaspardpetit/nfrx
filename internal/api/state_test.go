@@ -46,7 +46,9 @@ func TestGetStateStream(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	reader := bufio.NewReader(resp.Body)
 	line, err := reader.ReadString('\n')
 	if err != nil {

@@ -57,7 +57,7 @@ func handleHTTPProxy(ctx context.Context, cfg config.WorkerConfig, sendCh chan [
 		sendProxyError(req.RequestID, sendCh, err)
 		return
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	hdrs := map[string]string{}
 	for k, v := range resp.Header {

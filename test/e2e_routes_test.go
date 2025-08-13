@@ -25,13 +25,17 @@ func TestRoutes(t *testing.T) {
 	if err != nil || resp.StatusCode != http.StatusOK {
 		t.Fatalf("/api/tags: %v %d", err, resp.StatusCode)
 	}
-	resp.Body.Close()
+	if err := resp.Body.Close(); err != nil {
+		t.Fatalf("close body: %v", err)
+	}
 
 	resp, _ = http.Get(srv.URL + "/tags")
 	if resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("expected 404 for /tags")
 	}
-	resp.Body.Close()
+	if err := resp.Body.Close(); err != nil {
+		t.Fatalf("close body: %v", err)
+	}
 
 	resp, err = http.Get(srv.URL + "/healthz")
 	if err != nil || resp.StatusCode != http.StatusOK {
@@ -40,8 +44,13 @@ func TestRoutes(t *testing.T) {
 	var v struct {
 		Status string `json:"status"`
 	}
-	json.NewDecoder(resp.Body).Decode(&v)
-	resp.Body.Close()
+	if err := json.NewDecoder(resp.Body).Decode(&v); err != nil {
+		_ = resp.Body.Close()
+		t.Fatalf("decode: %v", err)
+	}
+	if err := resp.Body.Close(); err != nil {
+		t.Fatalf("close body: %v", err)
+	}
 	if v.Status != "ok" {
 		t.Fatalf("bad health body")
 	}

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"nhooyr.io/websocket"
+	"github.com/coder/websocket"
 
 	"github.com/you/llamapool/internal/config"
 	"github.com/you/llamapool/internal/ctrl"
@@ -35,12 +35,16 @@ func TestWorkerAuth(t *testing.T) {
 	}
 	regBad := ctrl.RegisterMessage{Type: "register", WorkerID: "wbad", WorkerKey: "nope", Models: []string{"m"}, MaxConcurrency: 1}
 	b, _ := json.Marshal(regBad)
-	connBad.Write(ctx, websocket.MessageText, b)
+	if err := connBad.Write(ctx, websocket.MessageText, b); err != nil {
+		t.Fatalf("write bad: %v", err)
+	}
 	_, _, err = connBad.Read(ctx)
 	if err == nil {
 		t.Fatalf("expected close for bad key")
 	}
-	connBad.Close(websocket.StatusNormalClosure, "")
+	if err := connBad.Close(websocket.StatusNormalClosure, ""); err != nil {
+		t.Logf("close bad: %v", err)
+	}
 	if len(reg.Models()) != 0 {
 		t.Fatalf("unexpected worker registered")
 	}
@@ -50,10 +54,14 @@ func TestWorkerAuth(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}
-	defer conn.Close(websocket.StatusNormalClosure, "")
+	defer func() {
+		_ = conn.Close(websocket.StatusNormalClosure, "")
+	}()
 	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w1", WorkerKey: "secret", Models: []string{"m"}, MaxConcurrency: 1}
 	b, _ = json.Marshal(regMsg)
-	conn.Write(ctx, websocket.MessageText, b)
+	if err := conn.Write(ctx, websocket.MessageText, b); err != nil {
+		t.Fatalf("write: %v", err)
+	}
 
 	// wait for registration
 	for i := 0; i < 50; i++ {
@@ -67,5 +75,7 @@ func TestWorkerAuth(t *testing.T) {
 	if err != nil || resp.StatusCode != http.StatusOK {
 		t.Fatalf("tags: %v %d", err, resp.StatusCode)
 	}
-	resp.Body.Close()
+	if err := resp.Body.Close(); err != nil {
+		t.Fatalf("close body: %v", err)
+	}
 }

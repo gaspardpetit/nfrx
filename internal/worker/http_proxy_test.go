@@ -23,15 +23,21 @@ func TestHandleHTTPProxyAuthAndStream(t *testing.T) {
 			w.Header().Set("Content-Type", "text/event-stream")
 			w.WriteHeader(200)
 			fl := w.(http.Flusher)
-			w.Write([]byte("data: 1\n\n"))
+			if _, err := w.Write([]byte("data: 1\n\n")); err != nil {
+				t.Fatalf("write: %v", err)
+			}
 			fl.Flush()
-			w.Write([]byte("data: 2\n\n"))
+			if _, err := w.Write([]byte("data: 2\n\n")); err != nil {
+				t.Fatalf("write: %v", err)
+			}
 			fl.Flush()
 			return
 		}
 		if r.URL.Path == "/api/tags" {
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{"models":[{"name":"llama3"}]}`))
+			if _, err := w.Write([]byte(`{"models":[{"name":"llama3"}]}`)); err != nil {
+				t.Fatalf("write: %v", err)
+			}
 			return
 		}
 		w.WriteHeader(404)
@@ -62,10 +68,14 @@ func TestHandleHTTPProxyAuthAndStream(t *testing.T) {
 		var env struct {
 			Type string `json:"type"`
 		}
-		json.Unmarshal(b, &env)
+		if err := json.Unmarshal(b, &env); err != nil {
+			t.Fatalf("unmarshal env: %v", err)
+		}
 		if env.Type == "http_proxy_response_chunk" {
 			var c ctrl.HTTPProxyResponseChunkMessage
-			json.Unmarshal(b, &c)
+			if err := json.Unmarshal(b, &c); err != nil {
+				t.Fatalf("unmarshal chunk: %v", err)
+			}
 			body = append(body, c.Data...)
 		} else if env.Type == "http_proxy_response_end" {
 			break

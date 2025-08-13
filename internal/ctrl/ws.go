@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/you/llamapool/internal/logx"
+	"github.com/coder/websocket"
 
-	"nhooyr.io/websocket"
+	"github.com/you/llamapool/internal/logx"
 )
 
 // WSHandler handles incoming worker websocket connections.
@@ -19,7 +19,9 @@ func WSHandler(reg *Registry, workerKey string) http.HandlerFunc {
 			return
 		}
 		ctx := r.Context()
-		defer c.Close(websocket.StatusInternalError, "server error")
+		defer func() {
+			_ = c.Close(websocket.StatusInternalError, "server error")
+		}()
 
 		_, data, err := c.Read(ctx)
 		if err != nil {
@@ -29,7 +31,7 @@ func WSHandler(reg *Registry, workerKey string) http.HandlerFunc {
 			Type string `json:"type"`
 		}
 		if err := json.Unmarshal(data, &env); err != nil || env.Type != "register" {
-			c.Close(websocket.StatusPolicyViolation, "expected register")
+			_ = c.Close(websocket.StatusPolicyViolation, "expected register")
 			return
 		}
 		var rm RegisterMessage
@@ -42,7 +44,7 @@ func WSHandler(reg *Registry, workerKey string) http.HandlerFunc {
 			key = rm.Token
 		}
 		if workerKey != "" && key != workerKey {
-			c.Close(websocket.StatusPolicyViolation, "unauthorized")
+			_ = c.Close(websocket.StatusPolicyViolation, "unauthorized")
 			return
 		}
 		name := rm.WorkerName
@@ -74,8 +76,13 @@ func WSHandler(reg *Registry, workerKey string) http.HandlerFunc {
 
 		go func() {
 			for msg := range wk.Send {
-				b, _ := json.Marshal(msg)
-				c.Write(ctx, websocket.MessageText, b)
+				b, err := json.Marshal(msg)
+				if err != nil {
+					continue
+				}
+				if err := c.Write(ctx, websocket.MessageText, b); err != nil {
+					return
+				}
 			}
 		}()
 

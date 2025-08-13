@@ -10,6 +10,7 @@ import (
 	"github.com/you/llamapool/internal/api"
 	"github.com/you/llamapool/internal/config"
 	"github.com/you/llamapool/internal/ctrl"
+	"github.com/you/llamapool/internal/logx"
 )
 
 // New constructs the HTTP handler for the server.
@@ -32,7 +33,9 @@ func New(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler
 	r.Handle(cfg.WSPath, ctrl.WSHandler(reg, cfg.WorkerKey))
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"status":"ok"}`))
+		if _, err := w.Write([]byte(`{"status":"ok"}`)); err != nil {
+			logx.Log.Error().Err(err).Msg("write healthz")
+		}
 	})
 	r.Handle("/metrics", promhttp.Handler())
 

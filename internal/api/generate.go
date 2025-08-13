@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/you/llamapool/internal/ctrl"
+	"github.com/you/llamapool/internal/logx"
 	"github.com/you/llamapool/internal/relay"
 )
 
@@ -35,7 +36,9 @@ func GenerateHandler(reg *ctrl.Registry, sched ctrl.Scheduler, timeout time.Dura
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(res)
+		if err := json.NewEncoder(w).Encode(res); err != nil {
+			logx.Log.Error().Err(err).Msg("encode generate result")
+		}
 	}
 }
 
@@ -46,7 +49,9 @@ func handleRelayErr(w http.ResponseWriter, err error) {
 	case errors.Is(err, relay.ErrWorkerBusy):
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusServiceUnavailable)
-		json.NewEncoder(w).Encode(map[string]string{"error": "worker_busy"})
+		if err := json.NewEncoder(w).Encode(map[string]string{"error": "worker_busy"}); err != nil {
+			logx.Log.Error().Err(err).Msg("encode worker busy")
+		}
 	case errors.Is(err, context.DeadlineExceeded):
 		http.Error(w, "timeout", http.StatusGatewayTimeout)
 	default:

@@ -27,7 +27,9 @@ func TestAPIKeyEnforcement(t *testing.T) {
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", resp.StatusCode)
 	}
-	resp.Body.Close()
+	if err := resp.Body.Close(); err != nil {
+		t.Fatalf("close body: %v", err)
+	}
 
 	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/v1/models", nil)
 	req.Header.Set("Authorization", "Bearer test123")
@@ -38,5 +40,7 @@ func TestAPIKeyEnforcement(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
-	resp.Body.Close()
+	if err := resp.Body.Close(); err != nil {
+		t.Fatalf("close body: %v", err)
+	}
 }
