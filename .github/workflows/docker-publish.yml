@@ -33,6 +33,35 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Compute version metadata
+        id: meta
+        shell: bash
+        run: |
+          SHA=$(git rev-parse --short HEAD)
+          DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            VERSION="${GITHUB_REF_NAME}"
+            DESCRIBE="${GITHUB_REF_NAME}"
+          else
+            DESCRIBE="$(git describe --tags --always --dirty)"
+            VERSION="${DESCRIBE}"
+          fi
+          echo "version=${VERSION}"   >> $GITHUB_OUTPUT
+          echo "describe=${DESCRIBE}" >> $GITHUB_OUTPUT
+          echo "sha=${SHA}"           >> $GITHUB_OUTPUT
+          echo "date=${DATE}"         >> $GITHUB_OUTPUT
+          if [[ "${GITHUB_REF_TYPE}" == "tag" && "${GITHUB_REF_NAME}" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            MAJOR="${BASH_REMATCH[1]}"
+            MINOR="${BASH_REMATCH[2]}"
+            PATCH="${BASH_REMATCH[3]}"
+            echo "major=${MAJOR}" >> $GITHUB_OUTPUT
+            echo "minor=${MINOR}" >> $GITHUB_OUTPUT
+            echo "patch=${PATCH}" >> $GITHUB_OUTPUT
+            echo "is_clean_release=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_clean_release=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Install cosign
         if: github.event_name != 'pull_request'
         uses: sigstore/cosign-installer@59acb6260d9c0ba8f4a2f9d9b48431a222b68e20 # v3.5.0
@@ -51,33 +80,39 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract Docker metadata ( ${{ matrix.variant.name }} )
-        id: meta
-        uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 # v5.0.0
+        id: dmeta
+        uses: docker/metadata-action@v5
         with:
-          # Publish separate images per variant by suffixing the repo name
-          images: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.variant.name }}
-          # (optional) add custom tags; the action already adds sha, branch, semver, etc.
-          # tags: |
-          #   type=ref,event=branch
-          #   type=ref,event=tag
-          #   type=sha
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.variant.name }}
+          tags: |
+            type=raw,value=sha-${{ steps.meta.outputs.sha }}
+            type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=desc-${{ steps.meta.outputs.describe }},enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=${{ github.ref_name }},enable=${{ steps.meta.outputs.is_clean_release == 'true' }}
+            type=raw,value=v${{ steps.meta.outputs.major }}.${{ steps.meta.outputs.minor }},enable=${{ steps.meta.outputs.is_clean_release == 'true' }}
+            type=raw,value=v${{ steps.meta.outputs.major }},enable=${{ steps.meta.outputs.is_clean_release == 'true' }}
+            type=raw,value=latest,enable=${{ steps.meta.outputs.is_clean_release == 'true' }}
 
       - name: Build and push Docker image ( ${{ matrix.variant.name }} )
         id: build-and-push
-        uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
+        uses: docker/build-push-action@v5
         with:
           context: .
           file: ${{ matrix.variant.dockerfile }}
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.dmeta.outputs.tags }}
+          labels: ${{ steps.dmeta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            VERSION=${{ steps.meta.outputs.version }}
+            GIT_SHA=${{ steps.meta.outputs.sha }}
+            BUILD_DATE=${{ steps.meta.outputs.date }}
 
       - name: Sign the published Docker image ( ${{ matrix.variant.name }} )
         if: ${{ github.event_name != 'pull_request' }}
         env:
-          TAGS: ${{ steps.meta.outputs.tags }}
+          TAGS: ${{ steps.dmeta.outputs.tags }}
           DIGEST: ${{ steps.build-and-push.outputs.digest }}
         run: echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}

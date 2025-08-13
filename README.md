@@ -207,7 +207,9 @@ go run .\cmd\llamapool-worker
 Pre-built images are available:
 
 - Server: `ghcr.io/gaspardpetit/llamapool-server:main`
-- Client: `ghcr.io/gaspardpetit/llamapool-client:main`
+- Worker: `ghcr.io/gaspardpetit/llamapool-worker:main`
+
+Tagged releases follow semantic versioning (e.g., `v1.2.3`, `v1.2`, `v1`, `latest`); the `main` tag tracks the latest development snapshot.
 
 ### Server
 
@@ -216,14 +218,14 @@ docker run --rm -p 8080:8080 -e WORKER_KEY=secret -e API_KEY=test123 \
   ghcr.io/gaspardpetit/llamapool-server:main
 ```
 
-### Client
+### Worker
 
 ```bash
 docker run --rm \
   -e SERVER_URL=ws://localhost:8080/workers/connect \
   -e WORKER_KEY=secret \
   -e OLLAMA_BASE_URL=http://host.docker.internal:11434 \
-  ghcr.io/gaspardpetit/llamapool-client:main
+  ghcr.io/gaspardpetit/llamapool-worker:main
 ```
 
 ## Example request
