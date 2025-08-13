@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/you/llamapool/internal/ctrl"
+	"github.com/you/llamapool/internal/logx"
 )
 
 // TagsHandler handles GET /api/tags.
@@ -21,6 +22,8 @@ func TagsHandler(reg *ctrl.Registry) http.HandlerFunc {
 			resp.Models = append(resp.Models, m{Name: mod})
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			logx.Log.Error().Err(err).Msg("encode tags")
+		}
 	}
 }

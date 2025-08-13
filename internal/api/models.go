@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/you/llamapool/internal/ctrl"
+	"github.com/you/llamapool/internal/logx"
 )
 
 // ListModelsHandler handles GET /v1/models.
@@ -29,7 +30,9 @@ func ListModelsHandler(reg *ctrl.Registry) http.HandlerFunc {
 			resp.Data = append(resp.Data, item{ID: m.ID, Object: "model", Created: m.Created, OwnedBy: strings.Join(m.Owners, ",")})
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			logx.Log.Error().Err(err).Msg("encode models list")
+		}
 	}
 }
 
@@ -41,7 +44,9 @@ func GetModelHandler(reg *ctrl.Registry) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		if !ok {
 			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode(map[string]string{"error": "model_not_found"})
+			if err := json.NewEncoder(w).Encode(map[string]string{"error": "model_not_found"}); err != nil {
+				logx.Log.Error().Err(err).Msg("encode model not found")
+			}
 			return
 		}
 		resp := struct {
@@ -50,6 +55,8 @@ func GetModelHandler(reg *ctrl.Registry) http.HandlerFunc {
 			Created int64  `json:"created"`
 			OwnedBy string `json:"owned_by"`
 		}{ID: m.ID, Object: "model", Created: m.Created, OwnedBy: strings.Join(m.Owners, ",")}
-		json.NewEncoder(w).Encode(resp)
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			logx.Log.Error().Err(err).Msg("encode model detail")
+		}
 	}
 }

@@ -52,7 +52,6 @@ func RelayGenerateStream(ctx context.Context, reg *ctrl.Registry, sched ctrl.Sch
 	}
 	flusher, _ := w.(http.Flusher)
 	enc := json.NewEncoder(w)
-	doneSent := false
 	for {
 		select {
 		case <-ctx.Done():
@@ -63,8 +62,8 @@ func RelayGenerateStream(ctx context.Context, reg *ctrl.Registry, sched ctrl.Sch
 			return ctx.Err()
 		case msg, ok := <-ch:
 			if !ok {
-				if !doneSent {
-					enc.Encode(map[string]any{"done": true})
+				if err := enc.Encode(map[string]any{"done": true}); err != nil {
+					return err
 				}
 				return ErrWorkerFailed
 			}
@@ -72,35 +71,39 @@ func RelayGenerateStream(ctx context.Context, reg *ctrl.Registry, sched ctrl.Sch
 			case ctrl.JobChunkMessage:
 				var data map[string]interface{}
 				if err := json.Unmarshal(m.Data, &data); err == nil {
-					enc.Encode(data)
+					if err := enc.Encode(data); err != nil {
+						return err
+					}
 					if flusher != nil {
 						flusher.Flush()
 					}
 					if done, ok := data["done"].(bool); ok && done {
-						doneSent = true
 						logx.Log.Info().Str("request_id", reqID).Str("job_id", jobID).Str("worker_id", worker.ID).Msg("complete")
 						return nil
 					}
 				}
 			case ctrl.JobErrorMessage:
-				if !doneSent {
-					enc.Encode(map[string]any{"done": true})
+				if err := enc.Encode(map[string]any{"done": true}); err != nil {
+					return err
 				}
 				logx.Log.Info().Str("request_id", reqID).Str("job_id", jobID).Str("worker_id", worker.ID).Msg("error")
 				return ErrWorkerFailed
 			case ctrl.JobResultMessage:
 				var data map[string]interface{}
 				if err := json.Unmarshal(m.Data, &data); err == nil {
-					enc.Encode(data)
+					if err := enc.Encode(data); err != nil {
+						return err
+					}
 				}
 				if flusher != nil {
 					flusher.Flush()
 				}
-				doneSent = true
 				logx.Log.Info().Str("request_id", reqID).Str("job_id", jobID).Str("worker_id", worker.ID).Msg("complete")
 				if done, ok := data["done"].(bool); ok && done {
 				} else {
-					enc.Encode(map[string]any{"done": true})
+					if err := enc.Encode(map[string]any{"done": true}); err != nil {
+						return err
+					}
 					if flusher != nil {
 						flusher.Flush()
 					}

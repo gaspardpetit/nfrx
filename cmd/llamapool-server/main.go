@@ -56,7 +56,9 @@ func main() {
 	defer stop()
 	go func() {
 		<-ctx.Done()
-		srv.Shutdown(context.Background())
+		if err := srv.Shutdown(context.Background()); err != nil {
+			logx.Log.Error().Err(err).Msg("server shutdown")
+		}
 	}()
 
 	if cfg.APIKey != "" {

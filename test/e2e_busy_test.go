@@ -32,12 +32,16 @@ func TestWorkerBusy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("post: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusServiceUnavailable {
 		t.Fatalf("expected 503, got %d", resp.StatusCode)
 	}
 	var v map[string]string
-	json.NewDecoder(resp.Body).Decode(&v)
+	if err := json.NewDecoder(resp.Body).Decode(&v); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
 	if v["error"] != "worker_busy" {
 		t.Fatalf("unexpected error body: %v", v)
 	}

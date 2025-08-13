@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"nhooyr.io/websocket"
+	"github.com/coder/websocket"
 )
 
 func TestRegisterStoresWorkerName(t *testing.T) {
@@ -22,10 +22,14 @@ func TestRegisterStoresWorkerName(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}
-	defer conn.Close(websocket.StatusNormalClosure, "")
+	defer func() {
+		_ = conn.Close(websocket.StatusNormalClosure, "")
+	}()
 	rm := RegisterMessage{Type: "register", WorkerID: "w1abcdef", WorkerName: "Alpha", Models: []string{"m"}, MaxConcurrency: 1}
 	b, _ := json.Marshal(rm)
-	conn.Write(ctx, websocket.MessageText, b)
+	if err := conn.Write(ctx, websocket.MessageText, b); err != nil {
+		t.Fatalf("write: %v", err)
+	}
 	// wait for registration
 	for i := 0; i < 50; i++ {
 		reg.mu.RLock()
@@ -52,10 +56,14 @@ func TestRegisterFallbackName(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}
-	defer conn.Close(websocket.StatusNormalClosure, "")
+	defer func() {
+		_ = conn.Close(websocket.StatusNormalClosure, "")
+	}()
 	rm := RegisterMessage{Type: "register", WorkerID: "w123456789", Models: []string{"m"}, MaxConcurrency: 1}
 	b, _ := json.Marshal(rm)
-	conn.Write(ctx, websocket.MessageText, b)
+	if err := conn.Write(ctx, websocket.MessageText, b); err != nil {
+		t.Fatalf("write: %v", err)
+	}
 	var name string
 	for i := 0; i < 50; i++ {
 		reg.mu.RLock()

@@ -30,7 +30,9 @@ func (c *Client) Tags(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	var v struct {
 		Models []struct {
 			Name string `json:"name"`
@@ -71,7 +73,9 @@ func (c *Client) Generate(ctx context.Context, req relay.GenerateRequest) ([]byt
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	return io.ReadAll(resp.Body)
 }
 

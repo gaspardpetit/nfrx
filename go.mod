@@ -5,11 +5,11 @@ go 1.23.0
 toolchain go1.24.3
 
 require (
+	github.com/coder/websocket v1.8.13
 	github.com/go-chi/chi/v5 v5.2.2
 	github.com/google/uuid v1.6.0
 	github.com/prometheus/client_golang v1.23.0
 	github.com/rs/zerolog v1.34.0
-	nhooyr.io/websocket v1.8.17
 )
 
 require (

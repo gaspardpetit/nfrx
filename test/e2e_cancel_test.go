@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"nhooyr.io/websocket"
+	"github.com/coder/websocket"
 
 	"github.com/you/llamapool/internal/config"
 	"github.com/you/llamapool/internal/ctrl"
@@ -36,10 +36,12 @@ func TestCancelPropagates(t *testing.T) {
 		if err != nil {
 			return
 		}
-		defer conn.Close(websocket.StatusNormalClosure, "")
+		defer func() { _ = conn.Close(websocket.StatusNormalClosure, "") }()
 		regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w1", WorkerKey: "secret", Models: []string{"m"}, MaxConcurrency: 1}
 		b, _ := json.Marshal(regMsg)
-		conn.Write(ctx, websocket.MessageText, b)
+		if err := conn.Write(ctx, websocket.MessageText, b); err != nil {
+			return
+		}
 		for {
 			_, data, err := conn.Read(ctx)
 			if err != nil {
@@ -48,14 +50,20 @@ func TestCancelPropagates(t *testing.T) {
 			var env struct {
 				Type string `json:"type"`
 			}
-			json.Unmarshal(data, &env)
+			if err := json.Unmarshal(data, &env); err != nil {
+				continue
+			}
 			switch env.Type {
 			case "job_request":
 				var jr ctrl.JobRequestMessage
-				json.Unmarshal(data, &jr)
+				if err := json.Unmarshal(data, &jr); err != nil {
+					continue
+				}
 				chunk := ctrl.JobChunkMessage{Type: "job_chunk", JobID: jr.JobID, Data: json.RawMessage(`{"response":"hi","done":false}`)}
 				bb, _ := json.Marshal(chunk)
-				conn.Write(ctx, websocket.MessageText, bb)
+				if err := conn.Write(ctx, websocket.MessageText, bb); err != nil {
+					return
+				}
 			case "cancel_job":
 				close(cancelReceived)
 				return
@@ -88,7 +96,9 @@ func TestCancelPropagates(t *testing.T) {
 	if scanner.Scan() {
 		t.Fatalf("unexpected extra line after cancel")
 	}
-	resp.Body.Close()
+	if err := resp.Body.Close(); err != nil {
+		t.Fatalf("close body: %v", err)
+	}
 	select {
 	case <-cancelReceived:
 	case <-time.After(2 * time.Second):
