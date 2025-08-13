@@ -27,46 +27,6 @@ A typical deployment looks like this:
 - **Workers** authenticate using a shared `WORKER_KEY` and advertise the models they can serve.
 - Requests are proxied directly to the worker’s LLM backend, and the responses are returned unmodified to the client.
 
-
-## Currently Supported
-
-| Feature | Supported | Notes |
-| --- | --- | --- |
-| OpenAI-compatible `POST /v1/chat/completions` | ✅ | Proxied to workers without payload mutation |
-| Multiple worker registration | ✅ | Workers can join/leave dynamically; models registered on connect |
-| Model-based routing (least-busy) | ✅ | `LeastBusyScheduler` selects worker by current load |
-| API key authentication for clients | ✅ | `Authorization: Bearer <API_KEY>` for `/api` and `/v1` routes |
-| Worker key authentication | ✅ | Workers authenticate over WebSocket using `WORKER_KEY` |
-| Dynamic model discovery | ✅ | Workers advertise supported models; server aggregates |
-| HTTPS/WSS transport | ✅ | Use TLS terminator or run behind reverse proxy; WS path configurable |
-| Prometheus metrics endpoint | ✅ | `/metrics`; includes build info, per-model counters, histograms |
-| Real-time state API (JSON) | ✅ | `GET /api/v1/state` returns full server/worker snapshot |
-| Real-time state stream (SSE) | ✅ | `GET /api/v1/state/stream` for dashboards |
-| Token usage tracking | ✅ | Per-model and per-worker token totals (in/out) |
-| Per-model success/error rates | ✅ | `llamapool_model_requests_total{outcome=...}` |
-| Build info (server & worker) | ✅ | Server ldflags; worker-reported version/SHA/date reflected in state |
-| Private MCP Endpoints | Planned | Allow clients to expose an ephemeral MCP server through the llamapool-server |
-
-
-## Endpoints
-
-- Health: `GET /healthz`
-- OpenAI Models:
-  - `GET /v1/models`
-  - `GET /v1/models/{id}`
-- OpenAI Chat Completions: `POST /v1/chat/completions`
-- Llamapool API:
-  - **State (JSON):** `GET /api/v1/state`
-  - **State (SSE):** `GET /api/v1/state/stream`
-- Prometheus metrics: `GET /metrics`
-
-
-## Security
-
-- **Client authentication**: `API_KEY` required for `/api` and `/v1` routes via `Authorization: Bearer <API_KEY>`.
-- **Worker authentication**: `WORKER_KEY` required for worker WebSocket registration.
-- **Transport**: run behind TLS (HTTPS/WSS) via reverse proxy or terminate TLS in-process.
-
 ## Architecture
 
 ```
@@ -108,6 +68,24 @@ A typical deployment looks like this:
 
 ```
 
+## Endpoints
+
+- Health: `GET /healthz`
+- OpenAI Models:
+  - `GET /v1/models`
+  - `GET /v1/models/{id}`
+- OpenAI Chat Completions: `POST /v1/chat/completions`
+- Llamapool API:
+  - **State (JSON):** `GET /api/v1/state`
+  - **State (SSE):** `GET /api/v1/state/stream`
+- Prometheus metrics: `GET /metrics`
+
+
+## Security
+
+- **Client authentication**: `API_KEY` required for `/api` and `/v1` routes via `Authorization: Bearer <API_KEY>`.
+- **Worker authentication**: `WORKER_KEY` required for worker WebSocket registration.
+- **Transport**: run behind TLS (HTTPS/WSS) via reverse proxy or terminate TLS in-process.
 
 ## Monitoring & Observability
 
@@ -316,3 +294,21 @@ On Windows:
 go test ./...
 ```
 
+## Currently Supported
+
+| Feature | Supported | Notes |
+| --- | --- | --- |
+| OpenAI-compatible `POST /v1/chat/completions` | ✅ | Proxied to workers without payload mutation |
+| Multiple worker registration | ✅ | Workers can join/leave dynamically; models registered on connect |
+| Model-based routing (least-busy) | ✅ | `LeastBusyScheduler` selects worker by current load |
+| API key authentication for clients | ✅ | `Authorization: Bearer <API_KEY>` for `/api` and `/v1` routes |
+| Worker key authentication | ✅ | Workers authenticate over WebSocket using `WORKER_KEY` |
+| Dynamic model discovery | ✅ | Workers advertise supported models; server aggregates |
+| HTTPS/WSS transport | ✅ | Use TLS terminator or run behind reverse proxy; WS path configurable |
+| Prometheus metrics endpoint | ✅ | `/metrics`; includes build info, per-model counters, histograms |
+| Real-time state API (JSON) | ✅ | `GET /api/v1/state` returns full server/worker snapshot |
+| Real-time state stream (SSE) | ✅ | `GET /api/v1/state/stream` for dashboards |
+| Token usage tracking | ✅ | Per-model and per-worker token totals (in/out) |
+| Per-model success/error rates | ✅ | `llamapool_model_requests_total{outcome=...}` |
+| Build info (server & worker) | ✅ | Server ldflags; worker-reported version/SHA/date reflected in state |
+| Private MCP Endpoints | Planned | Allow clients to expose an ephemeral MCP server through the llamapool-server |
