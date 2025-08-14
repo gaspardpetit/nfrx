@@ -22,8 +22,7 @@ A typical deployment looks like this:
 
 ## macOS Menu Bar App
 
-An early-stage macOS menu bar companion lives under `desktop/macos/llamapool/`. It offers a
-status item with placeholder controls for managing a local `llamapool-worker`.
+An early-stage macOS menu bar companion lives under `desktop/macos/llamapool/`. It polls `http://127.0.0.1:4555/status` every two seconds to display live worker status and offers placeholder controls for managing a local `llamapool-worker`.
 The app icon is stored as a base64 file (`AppIcon.png.b64`); decode it to `AppIcon.png` before building.
 
 ### Key features
