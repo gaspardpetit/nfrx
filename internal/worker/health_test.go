@@ -9,6 +9,7 @@ import (
 
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"sync/atomic"
 
 	"github.com/you/llamapool/internal/ollama"
@@ -63,7 +64,8 @@ func TestHealthProbeIntegration(t *testing.T) {
 	client := ollama.New(srv.URL)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	addr, err := StartStatusServer(ctx, "127.0.0.1:0")
+	cfgFile := filepath.Join(t.TempDir(), "worker.yaml")
+	addr, err := StartStatusServer(ctx, "127.0.0.1:0", cfgFile, time.Second, cancel)
 	if err != nil {
 		t.Fatalf("start status server: %v", err)
 	}

@@ -35,10 +35,14 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 	}
 	SetModels(models)
 	SetConnectedToOllama(true)
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	go startHealthProbe(ctx, client, 20*time.Second)
 
 	if cfg.StatusAddr != "" {
-		if _, err := StartStatusServer(ctx, cfg.StatusAddr); err != nil {
+		if _, err := StartStatusServer(ctx, cfg.StatusAddr, cfg.ConfigFile, cfg.DrainTimeout, cancel); err != nil {
 			return err
 		}
 	}
@@ -47,9 +51,6 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 			return err
 		}
 	}
-
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
 
 	ws, _, err := websocket.Dial(ctx, cfg.ServerURL, nil)
 	if err != nil {

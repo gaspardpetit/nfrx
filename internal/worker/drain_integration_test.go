@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -53,7 +54,7 @@ func TestDrainAndTerminate(t *testing.T) {
 	statusAddr := ln.Addr().String()
 	_ = ln.Close()
 
-	cfg := config.WorkerConfig{ServerURL: wsURL, OllamaBaseURL: ollama.URL, MaxConcurrency: 1, StatusAddr: statusAddr}
+	cfg := config.WorkerConfig{ServerURL: wsURL, OllamaBaseURL: ollama.URL, MaxConcurrency: 1, StatusAddr: statusAddr, ConfigFile: filepath.Join(t.TempDir(), "worker.yaml")}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	errCh := make(chan error, 1)

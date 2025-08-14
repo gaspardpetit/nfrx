@@ -269,6 +269,9 @@ When started with `--status-addr <addr>`, the worker serves local endpoints:
 
 - `GET /status` returns the current worker state.
 - `GET /version` returns build information.
+- `POST /control/drain` begins graceful draining.
+- `POST /control/undrain` resumes accepting jobs.
+- `POST /control/shutdown` drains and exits.
 
 Sending `SIGTERM` causes the worker to stop accepting new jobs and wait up to
 `--drain-timeout` (default 1m) for in-flight work to finish before exiting.
@@ -277,6 +280,9 @@ without waiting or `--drain-timeout=-1` to wait indefinitely.
 
 The worker periodically checks the local Ollama instance so that
 `connected_to_ollama` and `models` stay current in the `/status` output.
+
+Control endpoints require an `X-Auth-Token` header. The token is generated on
+first run and stored alongside the worker config as `worker.token`.
 
 ## Configuration
 
