@@ -54,6 +54,14 @@ class LaunchAgentManager {
         return false
     }
 
+    func configDirectory() -> URL {
+        configDirURL
+    }
+
+    func logsDirectory() -> URL {
+        logsDirURL
+    }
+
     func isAgentLoaded() -> Bool {
         (try? runLaunchctl(["list", label]).exitCode) == 0
     }
