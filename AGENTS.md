@@ -1,7 +1,7 @@
 # AGENTS.md
 
 ## Project Overview
-Llamapool provides a minimal Ollama-compatible server with a pool of workers that proxy
+llamapool provides a minimal Ollama-compatible server with a pool of workers that proxy
 requests to local Ollama instances. The repository contains two binaries:
 - `llamapool-server`: hosts the public HTTP API and coordinates workers over WebSocket
 - `llamapool-worker`: connects to the server and forwards requests to a local Ollama
@@ -16,6 +16,7 @@ requests to local Ollama instances. The repository contains two binaries:
 - Use standard Go formatting via `gofmt -w` or `go fmt`
 - Prefer clarity over cleverness; keep functions small and well named
 - Default to the patterns already present in the `internal/` packages
+- Use lowercase `llamapool` in documentation and text unless referring to binaries or package names
 
 ## Testing Guidelines
 - Unit tests live alongside the code using `*_test.go` files

@@ -10,11 +10,11 @@ Rules-Requires-Root: no
 Package: llamapool-server
 Architecture: any
 Depends: ${misc:Depends}, adduser
-Description: Llamapool server component (daemon)
- The server for Llamapool.
+Description: llamapool server component (daemon)
+ The server for llamapool.
 
 Package: llamapool-worker
 Architecture: any
 Depends: ${misc:Depends}, adduser
-Description: Llamapool worker component (daemon)
- The worker for Llamapool.
+Description: llamapool worker component (daemon)
+ The worker for llamapool.

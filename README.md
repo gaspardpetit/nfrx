@@ -276,6 +276,17 @@ Each file contains `KEY=value` pairs, for example:
 
 Commented example files are installed to `/etc/llamapool/`; edit these files to configure the services.
 
+When no explicit paths are provided, the worker falls back to OS defaults for
+its configuration and logs:
+
+- **macOS:** `~/Library/Application Support/llamapool/worker.yaml` and
+  `~/Library/Logs/llamapool/`
+- **Windows:** `%ProgramData%\llamapool\worker.yaml` and
+  `%ProgramData%\llamapool\Logs\`
+
+These locations can be overridden via the `CONFIG_FILE` and `LOG_DIR`
+environment variables or the `--config` and `--log-dir` flags.
+
 ## Example request
 
 Ensure that the requested `model` is installed on the connected worker's local
