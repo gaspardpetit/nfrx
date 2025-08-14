@@ -45,6 +45,7 @@ jobs:
             DEBVER="${UPSTREAM}-1"
             VERSION="${RAW_TAG}"
             DESCRIBE="${RAW_TAG}"
+            BUILD_KIND="release"
           else
             # Snapshot build: base on latest tag if available
             LAST_TAG="$(git describe --tags --abbrev=0 2>/dev/null || echo 0.0.0)"
@@ -53,6 +54,7 @@ jobs:
             DEBVER="${BASE_UPSTREAM}~git${DATE_DEB}+${SHA}-1"
             DESCRIBE="$(git describe --tags --always --dirty)"
             VERSION="${DESCRIBE}"
+            BUILD_KIND="snapshot"
           fi
 
           {
@@ -61,31 +63,24 @@ jobs:
             echo "sha=${SHA}"
             echo "date=${DATE_TAG}"
             echo "debver=${DEBVER}"
+            echo "build_kind=${BUILD_KIND}"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Update changelog
+      - name: Generate Debian changelog (via script)
         shell: bash
         env:
           DEBFULLNAME: "CI"
           DEBEMAIL: "ci@example.invalid"
+          DEB_VERSION: ${{ steps.meta.outputs.debver }}
+          BUILD_KIND: ${{ steps.meta.outputs.build_kind }}
+          DESCRIBE: ${{ steps.meta.outputs.describe }}
+          BUILD_SHA: ${{ steps.meta.outputs.sha }}
+          BUILD_DATE: ${{ steps.meta.outputs.date }}
         run: |
-          set -euo pipefail
-          VER="${{ steps.meta.outputs.debver }}"
-          MSG="Automated build: ${{ steps.meta.outputs.describe }} (${{ steps.meta.outputs.sha }} @ ${{ steps.meta.outputs.date }})"
-
-          if [[ -f debian/changelog ]]; then
-            # If the exact version is already the top entry, just append a note.
-            if dpkg-parsechangelog -S Version | grep -qx "$VER"; then
-              echo "changelog already at $VER; appending a note"
-              dch --no-auto-nmu "$MSG"
-            else
-              # Create a new top entry with the new version.
-              dch --newversion "$VER" --distribution unstable "$MSG"
-            fi
-          else
-            # No changelog yet: create it.
-            dch --create -v "$VER" --package llamapool --distribution unstable "$MSG"
-          fi
+          # ensure we never depend on a committed changelog
+          rm -f debian/changelog
+          chmod +x .github/scripts/deb_changelog.sh
+          .github/scripts/deb_changelog.sh
 
       - name: Build binary packages
         env:
@@ -102,6 +97,7 @@ jobs:
         run: |
           dpkg-buildpackage -b -us -uc
           mkdir -p out && mv ../*.deb out/
+
 
       - uses: actions/upload-artifact@v4
         with:
