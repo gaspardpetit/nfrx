@@ -229,6 +229,22 @@ docker run --rm \
   ghcr.io/gaspardpetit/llamapool-worker:main
 ```
 
+## Configuration
+
+When running as a systemd service, both components read optional configuration
+files managed by systemd. The server loads variables from
+`/etc/llamapool/server.env` while the worker reads `/etc/llamapool/worker.env`.
+Each file contains `KEY=value` pairs, for example:
+
+```bash
+# /etc/llamapool/server.env
+# API_KEY=your_api_key
+# WORKER_KEY=secret
+```
+
+Template files with commented defaults are available under
+`deploy/systemd/` and can be copied into place as needed.
+
 ## Example request
 
 Ensure that the requested `model` is installed on the connected worker's local

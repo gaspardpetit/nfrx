@@ -1,0 +1,28 @@
+[Unit]
+Description=Llamapool Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=llamapool
+Group=llamapool
+EnvironmentFile=-/etc/llamapool/server.env
+ExecStart=/usr/bin/llamapool-server $SERVER_FLAGS
+Restart=on-failure
+RestartSec=3s
+AmbientCapabilities=
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+CapabilityBoundingSet=
+StateDirectory=llamapool
+RuntimeDirectory=llamapool
+# Hardening knobs (adjust as needed)
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target
