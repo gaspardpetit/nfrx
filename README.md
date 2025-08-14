@@ -374,8 +374,9 @@ The service wrapper launches `llamapool-worker.exe` installed at
 `%ProgramData%\llamapool`. Configuration is read from
 `%ProgramData%\llamapool\worker.yaml` and log output is written to
 `%ProgramData%\llamapool\Logs\worker.log`. The service is registered as
-`llamapool` with delayed automatic start. The tray app currently hosts a tray icon
-with placeholder menu items for controlling the worker.
+`llamapool` with delayed automatic start. The tray app now polls the local worker
+every two seconds and updates its menu and tooltip to reflect the current status.
+A details dialog shows connection information, job counts, and any last error.
 
 ## Currently Supported
 
