@@ -12,6 +12,7 @@ import (
 	"syscall"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/you/llamapool/internal/config"
 	"github.com/you/llamapool/internal/ctrl"
@@ -55,6 +56,12 @@ func main() {
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
 	handler := server.New(reg, metricsReg, sched, cfg)
 	srv := &http.Server{Addr: fmt.Sprintf(":%d", cfg.Port), Handler: handler}
+	var metricsSrv *http.Server
+	if cfg.MetricsPort != cfg.Port {
+		mux := http.NewServeMux()
+		mux.Handle("/metrics", promhttp.Handler())
+		metricsSrv = &http.Server{Addr: fmt.Sprintf(":%d", cfg.MetricsPort), Handler: mux}
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -64,6 +71,14 @@ func main() {
 			logx.Log.Error().Err(err).Msg("server shutdown")
 		}
 	}()
+	if metricsSrv != nil {
+		go func() {
+			<-ctx.Done()
+			if err := metricsSrv.Shutdown(context.Background()); err != nil {
+				logx.Log.Error().Err(err).Msg("metrics server shutdown")
+			}
+		}()
+	}
 
 	if cfg.APIKey != "" {
 		logx.Log.Info().Msg("API key auth enabled")
@@ -72,6 +87,14 @@ func main() {
 		logx.Log.Info().Msg("Worker key required")
 	}
 	logx.Log.Info().Int("port", cfg.Port).Msg("server starting")
+	if metricsSrv != nil {
+		go func() {
+			logx.Log.Info().Int("port", cfg.MetricsPort).Msg("metrics server starting")
+			if err := metricsSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				logx.Log.Error().Err(err).Msg("metrics server error")
+			}
+		}()
+	}
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		logx.Log.Fatal().Err(err).Msg("server error")
 	}

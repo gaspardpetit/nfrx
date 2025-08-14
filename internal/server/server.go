@@ -37,7 +37,13 @@ func New(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler
 			logx.Log.Error().Err(err).Msg("write healthz")
 		}
 	})
-	r.Handle("/metrics", promhttp.Handler())
+	metricsPort := cfg.MetricsPort
+	if metricsPort == 0 {
+		metricsPort = cfg.Port
+	}
+	if metricsPort == cfg.Port {
+		r.Handle("/metrics", promhttp.Handler())
+	}
 
 	go func() {
 		ticker := time.NewTicker(ctrl.HeartbeatInterval)

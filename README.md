@@ -86,7 +86,7 @@ A typical deployment looks like this:
 - llamapool API:
   - **State (JSON):** `GET /api/v1/state`
   - **State (SSE):** `GET /api/v1/state/stream`
-- Prometheus metrics: `GET /metrics`
+- Prometheus metrics: `GET /metrics` (can run on a separate port via `--metrics-port`)
 
 
 ## Security
@@ -101,10 +101,10 @@ A typical deployment looks like this:
 
 ## Monitoring & Observability
 
-- **Prometheus** (`/metrics`):  
-  - `llamapool_build_info{component="server",version,sha,date}`  
-  - `llamapool_model_requests_total{model,outcome}`  
-  - `llamapool_model_tokens_total{model,kind}`  
+- **Prometheus** (`/metrics`, configurable port via `--metrics-port`):
+  - `llamapool_build_info{component="server",version,sha,date}`
+  - `llamapool_model_requests_total{model,outcome}`
+  - `llamapool_model_tokens_total{model,kind}`
   - `llamapool_request_duration_seconds{worker_id,model}` (histogram)
   - (Optionally) per-worker gauges/counters if enabled.
 
@@ -165,6 +165,8 @@ On Linux:
 
 ```bash
 PORT=8080 WORKER_KEY=secret API_KEY=test123 go run ./cmd/llamapool-server
+# or to expose metrics on a different port:
+# PORT=8080 METRICS_PORT=9090 WORKER_KEY=secret API_KEY=test123 go run ./cmd/llamapool-server
 ```
 
 On Windows (CMD)
@@ -316,6 +318,8 @@ curl -H "Authorization: Bearer test123" http://localhost:8080/api/v1/state
 curl -H "Authorization: Bearer test123" http://localhost:8080/api/v1/state/stream
 # Prometheus metrics
 curl http://localhost:8080/metrics
+# or if `--metrics-port` is set:
+curl http://localhost:9090/metrics
 ```
 
 The server also exposes OpenAI-style model listing endpoints:
@@ -353,7 +357,7 @@ go test ./...
 | Worker key authentication | ✅ | Workers authenticate over WebSocket using `WORKER_KEY` |
 | Dynamic model discovery | ✅ | Workers advertise supported models; server aggregates |
 | HTTPS/WSS transport | ✅ | Use TLS terminator or run behind reverse proxy; WS path configurable |
-| Prometheus metrics endpoint | ✅ | `/metrics`; includes build info, per-model counters, histograms |
+| Prometheus metrics endpoint | ✅ | `/metrics`; includes build info, per-model counters, histograms; supports separate `--metrics-port` |
 | Real-time state API (JSON) | ✅ | `GET /api/v1/state` returns full server/worker snapshot |
 | Real-time state stream (SSE) | ✅ | `GET /api/v1/state/stream` for dashboards |
 | Token usage tracking | ✅ | Per-model and per-worker token totals (in/out) |
