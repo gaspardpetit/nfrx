@@ -2,11 +2,16 @@
 [![Docker](https://github.com/gaspardpetit/llamapool/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/gaspardpetit/llamapool/actions/workflows/docker-publish.yml)
 [![.deb](https://github.com/gaspardpetit/llamapool/actions/workflows/release-deb.yml/badge.svg)](https://github.com/gaspardpetit/llamapool/actions/workflows/release-deb.yml)
 
+
 # llamapool
+
+<div align="center">
+  <img alt="llamapool" width="240" src="https://github.com/gaspardpetit/llamapool/blob/888f4e74e32c752adb75662813438d2da16513a4/doc/img/llamapool-logo-3.png">
+</div>
 
 ## Overview
 
-**Llamapool** is a lightweight, distributed worker pool that exposes an OpenAI-compatible `chat/completions` API, forwarding requests to one or more connected **LLM workers**.  
+**llamapool** is a lightweight, distributed worker pool that exposes an OpenAI-compatible `chat/completions` API, forwarding requests to one or more connected **LLM workers**.  
 It sits in front of existing LLM runtimes such as [Ollama](https://github.com/ollama/ollama), [vLLM](https://github.com/vllm-project/vllm), or [Open-WebUI](https://github.com/open-webui/open-webui), allowing you to scale, load-balance, and securely access them from anywhere.
 
 A typical deployment looks like this:
@@ -77,7 +82,7 @@ A typical deployment looks like this:
   - `GET /v1/models`
   - `GET /v1/models/{id}`
 - OpenAI Chat Completions: `POST /v1/chat/completions`
-- Llamapool API:
+- llamapool API:
   - **State (JSON):** `GET /api/v1/state`
   - **State (SSE):** `GET /api/v1/state/stream`
 - Prometheus metrics: `GET /metrics`
