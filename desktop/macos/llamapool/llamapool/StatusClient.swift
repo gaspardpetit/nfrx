@@ -82,3 +82,40 @@ class StatusClient {
         }.resume()
     }
 }
+
+class ControlClient {
+    private let session: URLSession
+    private let baseURL: URL
+
+    init(port: Int = 4555, session: URLSession = .shared) {
+        self.session = session
+        self.baseURL = URL(string: "http://127.0.0.1:\(port)")!
+    }
+
+    private func send(_ path: String) {
+        guard let token = ConfigManager.shared.loadToken() else {
+            print("Missing worker token")
+            return
+        }
+        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        request.httpMethod = "POST"
+        request.addValue(token, forHTTPHeaderField: "X-Auth-Token")
+        session.dataTask(with: request) { _, _, error in
+            if let error = error {
+                print("Control request to \(path) failed: \(error)")
+            }
+        }.resume()
+    }
+
+    func drain() {
+        send("/control/drain")
+    }
+
+    func undrain() {
+        send("/control/undrain")
+    }
+
+    func terminateAfterDrain() {
+        send("/control/terminate-after-drain")
+    }
+}

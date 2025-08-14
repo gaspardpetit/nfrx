@@ -34,4 +34,9 @@ class ConfigManager {
         let logsURL = fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/Llamapool", isDirectory: true)
         NSWorkspace.shared.open(logsURL)
     }
+
+    func loadToken() -> String? {
+        let tokenURL = configDirURL.appendingPathComponent("worker.token")
+        return try? String(contentsOf: tokenURL).trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 }
