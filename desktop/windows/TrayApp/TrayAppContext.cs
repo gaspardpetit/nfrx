@@ -1,6 +1,8 @@
 using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.Net.Http;
+using System.ServiceProcess;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -18,6 +20,8 @@ public class TrayAppContext : ApplicationContext
     private readonly Timer _statusTimer;
     private WorkerStatus? _currentStatus;
     private string? _lastError;
+
+    private const string ServiceName = "llamapool";
 
     public TrayAppContext()
     {
@@ -65,12 +69,34 @@ public class TrayAppContext : ApplicationContext
         _statusTimer = new Timer { Interval = 2000 };
         _statusTimer.Tick += async (_, _) => await RefreshStatusAsync();
         _statusTimer.Start();
+
+        RefreshServiceState();
     }
 
     private void OnStartStopClicked(object? sender, EventArgs e)
     {
-        // TODO: Start or stop the worker service
-        MessageBox.Show("Start/Stop Worker clicked");
+        try
+        {
+            using var sc = new ServiceController(ServiceName);
+            if (sc.Status is ServiceControllerStatus.Running or ServiceControllerStatus.StartPending)
+            {
+                sc.Stop();
+                sc.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(10));
+            }
+            else if (sc.Status is ServiceControllerStatus.Stopped or ServiceControllerStatus.StopPending)
+            {
+                sc.Start();
+                sc.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(10));
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed to control service: {ex.Message}");
+        }
+        finally
+        {
+            RefreshServiceState();
+        }
     }
 
     private void OnPreferencesClicked(object? sender, EventArgs e)
@@ -87,8 +113,18 @@ public class TrayAppContext : ApplicationContext
 
     private void OnStartWithWindowsClicked(object? sender, EventArgs e)
     {
-        // TODO: Toggle start with Windows
-        MessageBox.Show("Start with Windows toggled");
+        try
+        {
+            SetServiceStartMode(_startWithWindowsItem.Checked);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed to update start mode: {ex.Message}");
+        }
+        finally
+        {
+            RefreshServiceState();
+        }
     }
 
     private void OnCheckForUpdatesClicked(object? sender, EventArgs e)
@@ -106,6 +142,8 @@ public class TrayAppContext : ApplicationContext
 
     private async Task RefreshStatusAsync()
     {
+        RefreshServiceState();
+
         try
         {
             var status = await _statusClient.FetchStatusAsync();
@@ -165,4 +203,59 @@ public class TrayAppContext : ApplicationContext
         WorkerState.Error => "Error",
         _ => "Unknown"
     };
+
+    private void RefreshServiceState()
+    {
+        try
+        {
+            using var sc = new ServiceController(ServiceName);
+            _startStopItem.Enabled = sc.Status is not (ServiceControllerStatus.StartPending or ServiceControllerStatus.StopPending);
+            _startStopItem.Text = sc.Status is ServiceControllerStatus.Running or ServiceControllerStatus.StartPending
+                ? "Stop Worker"
+                : "Start Worker";
+            _startWithWindowsItem.Enabled = true;
+            _startWithWindowsItem.Checked = IsServiceAutoStart();
+        }
+        catch
+        {
+            _startStopItem.Enabled = false;
+            _startStopItem.Text = "Start Worker";
+            _startWithWindowsItem.Enabled = false;
+            _startWithWindowsItem.Checked = false;
+        }
+    }
+
+    private static bool IsServiceAutoStart()
+    {
+        try
+        {
+            var psi = new ProcessStartInfo("sc.exe", $"qc {ServiceName}")
+            {
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            using var proc = Process.Start(psi);
+            if (proc == null) return false;
+            var output = proc.StandardOutput.ReadToEnd();
+            proc.WaitForExit();
+            return output.Contains("AUTO_START", StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static void SetServiceStartMode(bool auto)
+    {
+        var startType = auto ? "delayed-auto" : "demand";
+        var psi = new ProcessStartInfo("sc.exe", $"config {ServiceName} start= {startType}")
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        using var proc = Process.Start(psi);
+        proc?.WaitForExit();
+    }
 }
