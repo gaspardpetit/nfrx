@@ -1,32 +1,62 @@
 #!/usr/bin/make -f
+
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
-export CGO_ENABLED=0
+export CGO_ENABLED := 0
 export GOFLAGS := -trimpath
-# Inject version metadata (set in debian/changelog or via env)
-export LDFLAGS := -s -w \
-  -X main.version=$(DEB_VERSION_UPSTREAM) \
-  -X main.buildSHA=$(shell git rev-parse --short HEAD 2>/dev/null || echo unknown) \
-  -X main.buildDate=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+
+# --- Version / metadata ----------------------------------------------
+
+# CI can pass these; if empty, we derive sane defaults.
+APP_VERSION ?=                      # e.g. v1.4.0 or v1.4.0-rc1 or git-describe
+APP_SHA     ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
+APP_DATE    ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+
+# If APP_VERSION is not provided by CI, use upstream version from changelog
+# (strip Debian revision suffix like "-1")
+ifeq ($(strip $(APP_VERSION)),)
+  APP_VERSION := $(shell dpkg-parsechangelog -S Version | sed -E 's/-[^-]+$$//')
+endif
+
+# --- Stripping policy -------------------------------------------------
+# Snapshots may want tiny binaries immediately (-s -w) and to skip dh_strip.
+# For official repo builds, leave GO_NOSTRIP empty (no -s -w) and let dh_strip
+# handle stripping and dbgsym generation.
+GO_NOSTRIP ?=                       # set to "yes" for snapshots
+
+ifeq ($(GO_NOSTRIP),yes)
+  GO_STRIP_FLAGS := -s -w
+else
+  GO_STRIP_FLAGS :=
+endif
+
+GO_LDFLAGS := $(GO_STRIP_FLAGS) \
+  -X 'main.version=$(APP_VERSION)' \
+  -X 'main.buildSHA=$(APP_SHA)' \
+  -X 'main.buildDate=$(APP_DATE)'
+
+# ---------------------------------------------------------------------
 
 %:
 	dh $@ --buildsystem=golang
 
 override_dh_auto_build:
 	# Build server
-	GOBIN=$$(pwd)/build/bin go build -ldflags "$(LDFLAGS)" -o build/bin/llamapool-server ./cmd/llamapool-server
+	GOBIN=$(CURDIR)/build/bin go build -ldflags "$(GO_LDFLAGS)" -o build/bin/llamapool-server ./cmd/llamapool-server
 	# Build worker
-	GOBIN=$$(pwd)/build/bin go build -ldflags "$(LDFLAGS)" -o build/bin/llamapool-worker ./cmd/llamapool-worker
+	GOBIN=$(CURDIR)/build/bin go build -ldflags "$(GO_LDFLAGS)" -o build/bin/llamapool-worker ./cmd/llamapool-worker
 
 override_dh_auto_install:
 	# Installation handled via .install files
+	:
 
 override_dh_auto_test:
 	# (optional) go test ./...
+	:
 
 override_dh_dwz:
 	# skip dwz on Go binaries
-	true
+	:
 
 override_dh_golang:
 	# skip dh_golang for pure binaries
-	true
+	:

@@ -87,6 +87,10 @@ A typical deployment looks like this:
 - **Worker authentication**: `WORKER_KEY` required for worker WebSocket registration.
 - **Transport**: run behind TLS (HTTPS/WSS) via reverse proxy or terminate TLS in-process.
 
+- **Service isolation**: Debian packages run the daemons as the dedicated `llamapool` user with systemd-managed directories
+  (`/var/lib/llamapool`, `/var/cache/llamapool`, `/run/llamapool`) and hardening flags like `NoNewPrivileges=true` and
+  `ProtectSystem=full`.
+
 ## Monitoring & Observability
 
 - **Prometheus** (`/metrics`):  
@@ -111,6 +115,13 @@ A typical deployment looks like this:
 - Enable **scalable and fault-tolerant** request routing across many workers.
 - Offer **transparent monitoring and metrics** for operational insight.
 
+## Install via .deb
+
+```bash
+wget https://github.com/gaspardpetit/llamapool/releases/download/v1.3.0/llamapool-server_1.3.0-1_amd64.deb
+sudo dpkg -i llamapool-server_1.3.0-1_amd64.deb
+sudo systemctl status llamapool-server
+```
 
 ## Build
 
@@ -242,8 +253,7 @@ Each file contains `KEY=value` pairs, for example:
 # WORKER_KEY=secret
 ```
 
-Template files with commented defaults are available under
-`deploy/systemd/` and can be copied into place as needed.
+Commented example files are installed to `/etc/llamapool/`; edit these files to configure the services.
 
 ## Example request
 
