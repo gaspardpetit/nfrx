@@ -10,6 +10,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var jobsItem: NSMenuItem!
     var lastErrorItem: NSMenuItem!
     var statusClient: StatusClient?
+    var loginItem: NSMenuItem!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -41,8 +42,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "Preferences…", action: #selector(openPreferences), keyEquivalent: ","))
         menu.addItem(NSMenuItem(title: "Logs…", action: #selector(openLogs), keyEquivalent: "l"))
-        let loginItem = NSMenuItem(title: "Start at Login", action: #selector(toggleStartAtLogin), keyEquivalent: "")
-        loginItem.state = .off
+        loginItem = NSMenuItem(title: "Start at Login", action: #selector(toggleStartAtLogin), keyEquivalent: "")
+        loginItem.state = LaunchAgentManager.shared.isRunAtLoadEnabled() ? .on : .off
         menu.addItem(loginItem)
         menu.addItem(NSMenuItem(title: "Check for Updates", action: #selector(checkForUpdates), keyEquivalent: ""))
         menu.addItem(NSMenuItem.separator())
@@ -112,11 +113,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func startWorker(_ sender: Any?) {
-        print("Start Worker clicked")
+        do {
+            try LaunchAgentManager.shared.start()
+        } catch {
+            print("Failed to start worker: \(error)")
+        }
     }
 
     @objc func stopWorker(_ sender: Any?) {
-        print("Stop Worker clicked")
+        do {
+            try LaunchAgentManager.shared.stop()
+        } catch {
+            print("Failed to stop worker: \(error)")
+        }
     }
 
     @objc func openPreferences(_ sender: Any?) {
@@ -128,8 +137,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func toggleStartAtLogin(_ sender: NSMenuItem) {
-        sender.state = sender.state == .on ? .off : .on
-        print("Start at Login toggled")
+        let enable = sender.state == .off
+        do {
+            try LaunchAgentManager.shared.setRunAtLoad(enable)
+            sender.state = enable ? .on : .off
+        } catch {
+            print("Failed to toggle Start at Login: \(error)")
+        }
     }
 
     @objc func checkForUpdates(_ sender: Any?) {

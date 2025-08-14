@@ -10,6 +10,8 @@
     77EE2F6323744EB4AF1E26772BAA8DF7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DB20D9050486454BA6F1464F12F231D1 /* Assets.xcassets */; };
     4AB0C8F71A2346C8B30B5E02 /* StatusClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6F8C39D6E9C4E14A5D0E2D9 /* StatusClient.swift */; };
     B21ACD2F315B40E38B7B6A6E /* StatusClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EAD688B5AC2497F99047482 /* StatusClientTests.swift */; };
+    3C5A9DCC93AC47D2A548BBF1F8E26370 /* LaunchAgentManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F4338ED4FF54C8F9A7491F083790C23 /* LaunchAgentManager.swift */; };
+    5D748F4BE7C9450EAD7714010E8AA9F8 /* io.llamapool.worker.plist.template in Resources */ = {isa = PBXBuildFile; fileRef = 911230C1E6D64B889FDC9BC0A8E368F2 /* io.llamapool.worker.plist.template */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -20,6 +22,8 @@
     D6F8C39D6E9C4E14A5D0E2D9 /* StatusClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusClient.swift; sourceTree = "<group>"; };
     4EAD688B5AC2497F99047482 /* StatusClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusClientTests.swift; sourceTree = "<group>"; };
     9FDC5B0B495D4A6C8C96F2E9 /* llamapoolTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = llamapoolTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+    6F4338ED4FF54C8F9A7491F083790C23 /* LaunchAgentManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAgentManager.swift; sourceTree = "<group>"; };
+    911230C1E6D64B889FDC9BC0A8E368F2 /* io.llamapool.worker.plist.template */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = io.llamapool.worker.plist.template; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -41,11 +45,21 @@
       isa = PBXGroup;
       children = (
         9B993A0AF20C45B9BFF02576573C7A4D /* AppDelegate.swift */,
+        6F4338ED4FF54C8F9A7491F083790C23 /* LaunchAgentManager.swift */,
         D6F8C39D6E9C4E14A5D0E2D9 /* StatusClient.swift */,
         DB20D9050486454BA6F1464F12F231D1 /* Assets.xcassets */,
         24B6B6BC5ECD4E9CA7C7F7E8086B9FA5 /* Info.plist */,
+        B3A7F042CB5C4B0891846F5A8C13A01F /* Resources */,
       );
       path = llamapool;
+      sourceTree = "<group>";
+    };
+    B3A7F042CB5C4B0891846F5A8C13A01F /* Resources */ = {
+      isa = PBXGroup;
+      children = (
+        911230C1E6D64B889FDC9BC0A8E368F2 /* io.llamapool.worker.plist.template */,
+      );
+      path = Resources;
       sourceTree = "<group>";
     };
     B6510F4A0DAF4274A96E1F24 /* llamapoolTests */ = {
@@ -151,6 +165,7 @@
       buildActionMask = 2147483647;
       files = (
         77EE2F6323744EB4AF1E26772BAA8DF7 /* Assets.xcassets in Resources */,
+        5D748F4BE7C9450EAD7714010E8AA9F8 /* io.llamapool.worker.plist.template in Resources */,
       );
       runOnlyForDeploymentPostprocessing = 0;
     };
@@ -163,6 +178,7 @@
       files = (
         0CC07EE6BD4045DDAE821661FA6666E4 /* AppDelegate.swift in Sources */,
         4AB0C8F71A2346C8B30B5E02 /* StatusClient.swift in Sources */,
+        3C5A9DCC93AC47D2A548BBF1F8E26370 /* LaunchAgentManager.swift in Sources */,
       );
       runOnlyForDeploymentPostprocessing = 0;
     };
