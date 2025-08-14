@@ -241,6 +241,8 @@ go run .\cmd\llamapool-worker
 .\bin\llamapool-worker.exe
 ```
 
+By default the worker exits if the server is unavailable. Add `-r` or `--reconnect` to keep retrying with backoff (1s×3, 5s×3, 15s×3, then every 30s).
+
 
 
 ## Run with Docker
