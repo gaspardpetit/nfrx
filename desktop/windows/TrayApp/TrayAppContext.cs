@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.Net.Http;
+using System.IO;
 using System.ServiceProcess;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -16,10 +17,11 @@ public class TrayAppContext : ApplicationContext
     private readonly ToolStripMenuItem _startStopItem;
     private readonly ToolStripMenuItem _startWithWindowsItem;
 
-    private readonly StatusClient _statusClient;
+    private StatusClient _statusClient;
     private readonly Timer _statusTimer;
     private WorkerStatus? _currentStatus;
     private string? _lastError;
+    private WorkerConfig _config;
 
     private const string ServiceName = "llamapool";
 
@@ -51,7 +53,8 @@ public class TrayAppContext : ApplicationContext
             new ToolStripSeparator(),
             _startStopItem,
             new ToolStripMenuItem("Preferences...", null, OnPreferencesClicked),
-            new ToolStripMenuItem("Logs...", null, OnLogsClicked),
+            new ToolStripMenuItem("Open Config Folder", null, OnOpenConfigFolderClicked),
+            new ToolStripMenuItem("Open Logs Folder", null, OnOpenLogsFolderClicked),
             _startWithWindowsItem,
             new ToolStripMenuItem("Check for Updates", null, OnCheckForUpdatesClicked),
             new ToolStripMenuItem("Exit", null, OnExitClicked)
@@ -65,7 +68,8 @@ public class TrayAppContext : ApplicationContext
             Text = "llamapool"
         };
 
-        _statusClient = new StatusClient();
+        _config = WorkerConfig.Load(Paths.ConfigPath);
+        _statusClient = new StatusClient(_config.StatusPort);
         _statusTimer = new Timer { Interval = 2000 };
         _statusTimer.Tick += async (_, _) => await RefreshStatusAsync();
         _statusTimer.Start();
@@ -101,14 +105,66 @@ public class TrayAppContext : ApplicationContext
 
     private void OnPreferencesClicked(object? sender, EventArgs e)
     {
-        // TODO: Open preferences dialog
-        MessageBox.Show("Preferences clicked");
+        using var form = new PreferencesForm(new WorkerConfig
+        {
+            ServerUrl = _config.ServerUrl,
+            WorkerKey = _config.WorkerKey,
+            OllamaBaseUrl = _config.OllamaBaseUrl,
+            MaxConcurrency = _config.MaxConcurrency,
+            StatusPort = _config.StatusPort
+        });
+        if (form.ShowDialog() == DialogResult.OK)
+        {
+            var running = IsServiceRunning();
+            form.Config.Save(Paths.ConfigPath);
+            _config = form.Config;
+            _statusClient = new StatusClient(_config.StatusPort);
+            if (running)
+            {
+                var res = MessageBox.Show("Restart worker service now?", "llamapool", MessageBoxButtons.YesNo);
+                if (res == DialogResult.Yes)
+                {
+                    try
+                    {
+                        using var sc = new ServiceController(ServiceName);
+                        sc.Stop();
+                        sc.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(10));
+                        sc.Start();
+                        sc.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(10));
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Failed to restart service: {ex.Message}");
+                    }
+                }
+            }
+        }
     }
 
-    private void OnLogsClicked(object? sender, EventArgs e)
+    private void OnOpenConfigFolderClicked(object? sender, EventArgs e)
     {
-        // TODO: Open logs viewer
-        MessageBox.Show("Logs clicked");
+        try
+        {
+            Directory.CreateDirectory(Paths.ProgramDataDir);
+            Process.Start("explorer.exe", Paths.ProgramDataDir);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed to open config folder: {ex.Message}");
+        }
+    }
+
+    private void OnOpenLogsFolderClicked(object? sender, EventArgs e)
+    {
+        try
+        {
+            Directory.CreateDirectory(Paths.LogsDir);
+            Process.Start("explorer.exe", Paths.LogsDir);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed to open logs folder: {ex.Message}");
+        }
     }
 
     private void OnStartWithWindowsClicked(object? sender, EventArgs e)
@@ -257,5 +313,18 @@ public class TrayAppContext : ApplicationContext
         };
         using var proc = Process.Start(psi);
         proc?.WaitForExit();
+    }
+
+    private static bool IsServiceRunning()
+    {
+        try
+        {
+            using var sc = new ServiceController(ServiceName);
+            return sc.Status == ServiceControllerStatus.Running;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }
