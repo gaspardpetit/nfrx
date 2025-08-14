@@ -98,14 +98,14 @@ jobs:
 
       - name: Build (binary package only)
         env:
-          DEB_BUILD_ARCH: ${{ matrix.arch }}
+          DEB_HOST_ARCH: ${{ matrix.arch }}
           GOOS: linux
           GOARCH: ${{ matrix.arch }}
           APP_VERSION: ${{ steps.meta.outputs.version }}
           APP_SHA:     ${{ steps.meta.outputs.sha }}
           APP_DATE:    ${{ steps.meta.outputs.date }}
         run: |
-          dpkg-buildpackage -b -us -uc
+          dpkg-buildpackage -b -us -uc -a${{ matrix.arch }}
           mkdir -p out && mv ../*.deb out/
 
       - name: Lintian
