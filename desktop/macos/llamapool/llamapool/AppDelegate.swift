@@ -10,8 +10,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var jobsItem: NSMenuItem!
     var lastErrorItem: NSMenuItem!
     var statusClient: StatusClient?
+    var controlClient: ControlClient?
     var loginItem: NSMenuItem!
     var preferencesWindow: PreferencesWindowController?
+    var startWorkerItem: NSMenuItem!
+    var stopWorkerItem: NSMenuItem!
+    var drainItem: NSMenuItem!
+    var undrainItem: NSMenuItem!
+    var shutdownItem: NSMenuItem!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -38,8 +44,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(detailsItem)
 
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: "Start Worker", action: #selector(startWorker), keyEquivalent: ""))
-        menu.addItem(NSMenuItem(title: "Stop Worker", action: #selector(stopWorker), keyEquivalent: ""))
+        startWorkerItem = NSMenuItem(title: "Start Worker", action: #selector(startWorker), keyEquivalent: "")
+        menu.addItem(startWorkerItem)
+        stopWorkerItem = NSMenuItem(title: "Stop Worker", action: #selector(stopWorker), keyEquivalent: "")
+        menu.addItem(stopWorkerItem)
+        drainItem = NSMenuItem(title: "Drain (finish current jobs, stop new)", action: #selector(drainWorker), keyEquivalent: "")
+        drainItem.isEnabled = false
+        menu.addItem(drainItem)
+        undrainItem = NSMenuItem(title: "Undrain", action: #selector(undrainWorker), keyEquivalent: "")
+        undrainItem.isEnabled = false
+        menu.addItem(undrainItem)
+        shutdownItem = NSMenuItem(title: "Shutdown after drain", action: #selector(shutdownAfterDrain), keyEquivalent: "")
+        shutdownItem.isEnabled = false
+        menu.addItem(shutdownItem)
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "Preferences…", action: #selector(openPreferences), keyEquivalent: ","))
         menu.addItem(NSMenuItem(title: "Open Config Folder", action: #selector(openConfigFolder), keyEquivalent: ""))
@@ -59,6 +76,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         statusClient?.start()
+        controlClient = ControlClient()
     }
 
     func updateStatusDot(color: NSColor) {
@@ -78,6 +96,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             connectionItem.title = "Connected: Server \(status.connectedToServer ? "Yes" : "No"), Ollama \(status.connectedToOllama ? "Yes" : "No")"
             jobsItem.title = "Jobs: \(status.currentJobs) / \(status.maxConcurrency)"
             lastErrorItem.title = status.lastError.isEmpty ? "Last Error: None" : "Last Error: \(status.lastError)"
+            startWorkerItem.isEnabled = status.state == .disconnected
+            stopWorkerItem.isEnabled = status.state != .disconnected
         case .failure(let error):
             statusMenuItem.title = "Status: Disconnected"
             statusItem.button?.toolTip = error.localizedDescription
@@ -88,6 +108,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             connectionItem.title = "Connected: Server –, Ollama –"
             jobsItem.title = "Jobs: 0 / 0"
             lastErrorItem.title = "Last Error: \(error.localizedDescription)"
+            startWorkerItem.isEnabled = true
+            stopWorkerItem.isEnabled = false
         }
     }
 
@@ -128,6 +150,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         } catch {
             print("Failed to stop worker: \(error)")
         }
+    }
+
+    @objc func drainWorker(_ sender: Any?) {
+        controlClient?.drain()
+    }
+
+    @objc func undrainWorker(_ sender: Any?) {
+        controlClient?.undrain()
+    }
+
+    @objc func shutdownAfterDrain(_ sender: Any?) {
+        controlClient?.terminateAfterDrain()
     }
 
     @objc func openPreferences(_ sender: Any?) {
