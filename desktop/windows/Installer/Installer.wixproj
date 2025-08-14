@@ -4,6 +4,5 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Product.wxs" />
   </ItemGroup>
 </Project>

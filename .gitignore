@@ -34,3 +34,4 @@ go.work.sum
 # Windows build output
 desktop/windows/**/bin/
 desktop/windows/**/obj/
+**/.vs/
