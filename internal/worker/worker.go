@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"encoding/json"
+	"reflect"
 	"sync"
 	"time"
 
@@ -34,6 +35,7 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 	}
 	SetModels(models)
 	SetConnectedToOllama(true)
+	go startHealthProbe(ctx, client, 20*time.Second)
 
 	if cfg.StatusAddr != "" {
 		if _, err := StartStatusServer(ctx, cfg.StatusAddr); err != nil {
@@ -137,6 +139,39 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 			}
 		}
 	}
+}
+
+type healthClient interface {
+	Health(context.Context) ([]string, error)
+}
+
+func startHealthProbe(ctx context.Context, client healthClient, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	go func() {
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				probeOllama(ctx, client)
+			}
+		}
+	}()
+}
+
+func probeOllama(ctx context.Context, client healthClient) {
+	models, err := client.Health(ctx)
+	if err != nil {
+		SetConnectedToOllama(false)
+		SetLastError(err.Error())
+		return
+	}
+	SetConnectedToOllama(true)
+	if !reflect.DeepEqual(models, GetState().Models) {
+		SetModels(models)
+	}
+	SetLastError("")
 }
 
 func handleGenerate(ctx context.Context, client *ollama.Client, sendCh chan []byte, jr ctrl.JobRequestMessage, cancels map[string]context.CancelFunc, mu *sync.Mutex) {

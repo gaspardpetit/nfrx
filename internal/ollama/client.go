@@ -48,6 +48,12 @@ func (c *Client) Tags(ctx context.Context) ([]string, error) {
 	return models, nil
 }
 
+// Health checks the Ollama instance by fetching tags. Success indicates a
+// healthy Ollama and returns the list of available models.
+func (c *Client) Health(ctx context.Context) ([]string, error) {
+	return c.Tags(ctx)
+}
+
 func (c *Client) GenerateStream(ctx context.Context, req relay.GenerateRequest) (io.ReadCloser, error) {
 	b, _ := json.Marshal(req)
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+"/api/generate?stream=true", bytes.NewReader(b))
