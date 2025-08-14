@@ -21,18 +21,38 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 	if cfg.WorkerID == "" {
 		cfg.WorkerID = uuid.NewString()
 	}
+	SetWorkerInfo(cfg.WorkerID, cfg.WorkerName, cfg.MaxConcurrency, nil)
+	SetState("connecting")
+	SetConnectedToServer(false)
+	SetConnectedToOllama(false)
+
 	client := ollama.New(cfg.OllamaBaseURL)
 	models, err := client.Tags(ctx)
 	if err != nil {
+		SetLastError(err.Error())
 		return err
 	}
+	SetModels(models)
+	SetConnectedToOllama(true)
+
+	if cfg.StatusAddr != "" {
+		if _, err := StartStatusServer(ctx, cfg.StatusAddr); err != nil {
+			return err
+		}
+	}
+
 	ws, _, err := websocket.Dial(ctx, cfg.ServerURL, nil)
 	if err != nil {
+		SetLastError(err.Error())
 		return err
 	}
 	defer func() {
 		_ = ws.Close(websocket.StatusInternalError, "closing")
 	}()
+
+	SetConnectedToServer(true)
+	SetState("connected_idle")
+	SetLastError("")
 
 	sendCh := make(chan []byte, 16)
 	reqCancels := make(map[string]context.CancelFunc)
@@ -59,6 +79,7 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 				hb := ctrl.HeartbeatMessage{Type: "heartbeat", TS: t.Unix()}
 				bb, _ := json.Marshal(hb)
 				sendCh <- bb
+				SetLastHeartbeat(t)
 			}
 		}
 	}()
@@ -66,6 +87,9 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 	for {
 		_, data, err := ws.Read(ctx)
 		if err != nil {
+			SetLastError(err.Error())
+			SetConnectedToServer(false)
+			SetState("error")
 			return err
 		}
 		var env struct {
@@ -126,11 +150,13 @@ func handleGenerate(ctx context.Context, client *ollama.Client, sendCh chan []by
 	mu.Lock()
 	cancels[jr.JobID] = cancel
 	mu.Unlock()
+	IncJobs()
 	defer func() {
 		cancel()
 		mu.Lock()
 		delete(cancels, jr.JobID)
 		mu.Unlock()
+		DecJobs()
 	}()
 	if req.Stream {
 		rc, err := client.GenerateStream(jobCtx, req)
@@ -138,6 +164,7 @@ func handleGenerate(ctx context.Context, client *ollama.Client, sendCh chan []by
 			msg := ctrl.JobErrorMessage{Type: "job_error", JobID: jr.JobID, Code: "error", Message: err.Error()}
 			b, _ := json.Marshal(msg)
 			sendCh <- b
+			SetLastError(err.Error())
 			return
 		}
 		defer func() {
@@ -157,6 +184,7 @@ func handleGenerate(ctx context.Context, client *ollama.Client, sendCh chan []by
 			msg := ctrl.JobErrorMessage{Type: "job_error", JobID: jr.JobID, Code: "error", Message: err.Error()}
 			b, _ := json.Marshal(msg)
 			sendCh <- b
+			SetLastError(err.Error())
 			return
 		}
 		msg := ctrl.JobResultMessage{Type: "job_result", JobID: jr.JobID, Data: json.RawMessage(data)}

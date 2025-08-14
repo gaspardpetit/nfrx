@@ -247,6 +247,11 @@ docker run --rm \
   ghcr.io/gaspardpetit/llamapool-worker:main
 ```
 
+When started with `--status-addr <addr>`, the worker serves local endpoints:
+
+- `GET /status` returns the current worker state.
+- `GET /version` returns build information.
+
 ## Configuration
 
 When running as a systemd service, both components read optional configuration

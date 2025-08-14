@@ -13,6 +13,7 @@ import (
 )
 
 func TestHandleHTTPProxyAuthAndStream(t *testing.T) {
+	resetState()
 	var gotAuth string
 	ollama := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v1/chat/completions" {

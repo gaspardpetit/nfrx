@@ -19,11 +19,13 @@ func handleHTTPProxy(ctx context.Context, cfg config.WorkerConfig, sendCh chan [
 	mu.Lock()
 	cancels[req.RequestID] = cancel
 	mu.Unlock()
+	IncJobs()
 	defer func() {
 		cancel()
 		mu.Lock()
 		delete(cancels, req.RequestID)
 		mu.Unlock()
+		DecJobs()
 	}()
 
 	logx.Log.Info().Str("request_id", req.RequestID).Msg("proxy start")
@@ -102,4 +104,5 @@ func sendProxyError(id string, sendCh chan []byte, err error) {
 	eb, _ := json.Marshal(end)
 	sendCh <- eb
 	logx.Log.Error().Str("request_id", id).Err(err).Msg("proxy error")
+	SetLastError(err.Error())
 }

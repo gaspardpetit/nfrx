@@ -43,6 +43,8 @@ func main() {
 		return
 	}
 
+	worker.SetBuildInfo(version, buildSHA, buildDate)
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
