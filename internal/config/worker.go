@@ -17,6 +17,7 @@ type WorkerConfig struct {
 	MaxConcurrency int
 	WorkerID       string
 	WorkerName     string
+	StatusAddr     string
 }
 
 func (c *WorkerConfig) BindFlags() {
@@ -32,6 +33,7 @@ func (c *WorkerConfig) BindFlags() {
 		c.MaxConcurrency = 2
 	}
 	c.WorkerID = getEnv("WORKER_ID", "")
+	c.StatusAddr = getEnv("STATUS_ADDR", "")
 
 	host, err := os.Hostname()
 	if err != nil || host == "" {
@@ -46,4 +48,5 @@ func (c *WorkerConfig) BindFlags() {
 	flag.IntVar(&c.MaxConcurrency, "max-concurrency", c.MaxConcurrency, "max concurrent jobs")
 	flag.StringVar(&c.WorkerID, "worker-id", c.WorkerID, "worker identifier")
 	flag.StringVar(&c.WorkerName, "worker-name", c.WorkerName, "worker display name")
+	flag.StringVar(&c.StatusAddr, "status-addr", c.StatusAddr, "local status http listen address")
 }
