@@ -137,6 +137,21 @@ func StartDrain() {
 	SetState("draining")
 }
 
+func StopDrain() {
+	draining.Store(false)
+	stateMu.Lock()
+	if stateData.ConnectedToServer {
+		if stateData.CurrentJobs > 0 {
+			stateData.State = "connected_busy"
+		} else {
+			stateData.State = "connected_idle"
+		}
+	} else {
+		stateData.State = "disconnected"
+	}
+	stateMu.Unlock()
+}
+
 func IsDraining() bool {
 	return draining.Load()
 }
