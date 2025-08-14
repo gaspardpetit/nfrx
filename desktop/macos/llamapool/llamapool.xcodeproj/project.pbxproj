@@ -1,0 +1,186 @@
+// !$*UTF8*$!
+{
+  archiveVersion = 1;
+  classes = {};
+  objectVersion = 55;
+  objects = {
+
+/* Begin PBXBuildFile section */
+    0CC07EE6BD4045DDAE821661FA6666E4 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B993A0AF20C45B9BFF02576573C7A4D /* AppDelegate.swift */; };
+    77EE2F6323744EB4AF1E26772BAA8DF7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DB20D9050486454BA6F1464F12F231D1 /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+    E9B117E139B24CC89E7EDB0E95964914 /* llamapool.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = llamapool.app; sourceTree = BUILT_PRODUCTS_DIR; };
+    9B993A0AF20C45B9BFF02576573C7A4D /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+    DB20D9050486454BA6F1464F12F231D1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+    24B6B6BC5ECD4E9CA7C7F7E8086B9FA5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+    0A44A43592684603805C437737106041 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+    C4AF78D32CA148FD840522B16CD390C5 = {
+      isa = PBXGroup;
+      children = (
+        141EB2E1593C4112932B0389AB5F9296,
+        44CFCA963667432983C404F9C521016F,
+      );
+      sourceTree = "<group>";
+    };
+    141EB2E1593C4112932B0389AB5F9296 = {
+      isa = PBXGroup;
+      children = (
+        9B993A0AF20C45B9BFF02576573C7A4D /* AppDelegate.swift */,
+        DB20D9050486454BA6F1464F12F231D1 /* Assets.xcassets */,
+        24B6B6BC5ECD4E9CA7C7F7E8086B9FA5 /* Info.plist */,
+      );
+      path = llamapool;
+      sourceTree = "<group>";
+    };
+    44CFCA963667432983C404F9C521016F /* Products */ = {
+      isa = PBXGroup;
+      children = (
+        E9B117E139B24CC89E7EDB0E95964914 /* llamapool.app */,
+      );
+      name = Products;
+      sourceTree = "<group>";
+    };
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+    7E40A3A7183646E390A7675E6A480D3A /* llamapool */ = {
+      isa = PBXNativeTarget;
+      buildConfigurationList = C7B568CE9BB341ADBBBA73E0E8F9FA73 /* Build configuration list for PBXNativeTarget "llamapool" */;
+      buildPhases = (
+        37CB0AE7999D42FA885AD32F59A81DF4 /* Sources */,
+        0A44A43592684603805C437737106041 /* Frameworks */,
+        2BBDB0A8DF1244A2BB0BC766F82EC1CD /* Resources */,
+      );
+      buildRules = (
+      );
+      dependencies = (
+      );
+      name = llamapool;
+      productName = llamapool;
+      productReference = E9B117E139B24CC89E7EDB0E95964914 /* llamapool.app */;
+      productType = "com.apple.product-type.application";
+    };
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+    EFA3DD98CD7E44A39AE163AC1EE87901 /* Project object */ = {
+      isa = PBXProject;
+      attributes = {
+        LastSwiftUpdateCheck = 1430;
+        LastUpgradeCheck = 1430;
+        TargetAttributes = {
+          7E40A3A7183646E390A7675E6A480D3A = {
+            CreatedOnToolsVersion = 14.3.0;
+          };
+        };
+      };
+      buildConfigurationList = A7403101D9BC406791D60A9DD5DA68C4 /* Build configuration list for PBXProject "llamapool" */;
+      compatibilityVersion = "Xcode 14.0";
+      developmentRegion = en;
+      hasScannedForEncodings = 0;
+      knownRegions = (
+        en,
+      );
+      mainGroup = C4AF78D32CA148FD840522B16CD390C5;
+      productRefGroup = 44CFCA963667432983C404F9C521016F /* Products */;
+      projectDirPath = "";
+      projectRoot = "";
+      targets = (
+        7E40A3A7183646E390A7675E6A480D3A /* llamapool */,
+      );
+    };
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+    2BBDB0A8DF1244A2BB0BC766F82EC1CD /* Resources */ = {
+      isa = PBXResourcesBuildPhase;
+      buildActionMask = 2147483647;
+      files = (
+        77EE2F6323744EB4AF1E26772BAA8DF7 /* Assets.xcassets in Resources */,
+      );
+      runOnlyForDeploymentPostprocessing = 0;
+    };
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+    37CB0AE7999D42FA885AD32F59A81DF4 /* Sources */ = {
+      isa = PBXSourcesBuildPhase;
+      buildActionMask = 2147483647;
+      files = (
+        0CC07EE6BD4045DDAE821661FA6666E4 /* AppDelegate.swift in Sources */,
+      );
+      runOnlyForDeploymentPostprocessing = 0;
+    };
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+    D9CBDBA712C2439483B0194F53AD3372 /* Debug */ = {
+      isa = XCBuildConfiguration;
+      buildSettings = {
+        INFOPLIST_FILE = llamapool/Info.plist;
+        LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+        MACOSX_DEPLOYMENT_TARGET = 12.0;
+        PRODUCT_BUNDLE_IDENTIFIER = io.llamapool.menubar;
+        PRODUCT_NAME = "$(TARGET_NAME)";
+        SWIFT_VERSION = 5.0;
+      };
+      name = Debug;
+    };
+    ECD3E064191B426EAC726FEBF5103A6B /* Release */ = {
+      isa = XCBuildConfiguration;
+      buildSettings = {
+        INFOPLIST_FILE = llamapool/Info.plist;
+        LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+        MACOSX_DEPLOYMENT_TARGET = 12.0;
+        PRODUCT_BUNDLE_IDENTIFIER = io.llamapool.menubar;
+        PRODUCT_NAME = "$(TARGET_NAME)";
+        SWIFT_VERSION = 5.0;
+      };
+      name = Release;
+    };
+    8928F6627FB749B593B2DD95BD265C64 /* Debug */ = {
+      isa = XCBuildConfiguration;
+      buildSettings = {
+      };
+      name = Debug;
+    };
+    6A1B8C797FA241B392CFED847DC7F7A6 /* Release */ = {
+      isa = XCBuildConfiguration;
+      buildSettings = {
+      };
+      name = Release;
+    };
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+    C7B568CE9BB341ADBBBA73E0E8F9FA73 /* Build configuration list for PBXNativeTarget "llamapool" */ = {
+      isa = XCConfigurationList;
+      buildConfigurations = (
+        D9CBDBA712C2439483B0194F53AD3372 /* Debug */,
+        ECD3E064191B426EAC726FEBF5103A6B /* Release */,
+      );
+      defaultConfigurationIsVisible = 0;
+      defaultConfigurationName = Release;
+    };
+    A7403101D9BC406791D60A9DD5DA68C4 /* Build configuration list for PBXProject "llamapool" */ = {
+      isa = XCConfigurationList;
+      buildConfigurations = (
+        8928F6627FB749B593B2DD95BD265C64 /* Debug */,
+        6A1B8C797FA241B392CFED847DC7F7A6 /* Release */,
+      );
+      defaultConfigurationIsVisible = 0;
+      defaultConfigurationName = Release;
+    };
+/* End XCConfigurationList section */
+
+  };
+  rootObject = EFA3DD98CD7E44A39AE163AC1EE87901 /* Project object */;
+}

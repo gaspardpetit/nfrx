@@ -17,8 +17,14 @@ It sits in front of existing LLM runtimes such as [Ollama](https://github.com/ol
 A typical deployment looks like this:
 
 - **`llamapool-server`** is deployed to a public or semi-public location (e.g., Azure, GCP, AWS, or a self-hosted server with dynamic DNS).
-- **`llamapool-worker`** runs on private machines (e.g., a Mac Studio or personal GPU workstation) alongside an LLM service.  
+- **`llamapool-worker`** runs on private machines (e.g., a Mac Studio or personal GPU workstation) alongside an LLM service.
   When a worker connects, its available models are registered with the server and become accessible via the public API.
+
+## macOS Menu Bar App
+
+An early-stage macOS menu bar companion lives under `desktop/macos/llamapool/`. It offers a
+status item with placeholder controls for managing a local `llamapool-worker`.
+The app icon is stored as a base64 file (`AppIcon.png.b64`); decode it to `AppIcon.png` before building.
 
 ### Key features
 - **Dynamic worker discovery** – Workers can connect and disconnect at any time; the server updates the available model list in real-time.
