@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="llamapool" Manufacturer="llamapool" Version="0.0.1" UpgradeCode="2b2ad0a1-9a9a-4f85-becb-f93347172913">
+    <MediaTemplate />
+    <Feature Id="ProductFeature" Title="llamapool" Level="1">
+      <!-- Components go here -->
+    </Feature>
+  </Package>
+</Wix>

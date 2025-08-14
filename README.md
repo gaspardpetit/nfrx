@@ -350,6 +350,10 @@ golangci-lint run
 go test ./...
 ```
 
+## Windows integration (experimental)
+
+An initial Windows tray application and service wrapper live under `desktop/windows/`. The tray app hosts a tray icon with placeholder menu items for controlling a future worker.
+
 ## Currently Supported
 
 | Feature | Supported | Notes |
