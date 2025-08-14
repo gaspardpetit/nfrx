@@ -14,7 +14,7 @@ import (
 	"github.com/you/llamapool/internal/logx"
 )
 
-func handleHTTPProxy(ctx context.Context, cfg config.WorkerConfig, sendCh chan []byte, req ctrl.HTTPProxyRequestMessage, cancels map[string]context.CancelFunc, mu *sync.Mutex) {
+func handleHTTPProxy(ctx context.Context, cfg config.WorkerConfig, sendCh chan []byte, req ctrl.HTTPProxyRequestMessage, cancels map[string]context.CancelFunc, mu *sync.Mutex, onDone func()) {
 	reqCtx, cancel := context.WithCancel(ctx)
 	mu.Lock()
 	cancels[req.RequestID] = cancel
@@ -25,7 +25,8 @@ func handleHTTPProxy(ctx context.Context, cfg config.WorkerConfig, sendCh chan [
 		mu.Lock()
 		delete(cancels, req.RequestID)
 		mu.Unlock()
-		DecJobs()
+		_ = DecJobs()
+		onDone()
 	}()
 
 	logx.Log.Info().Str("request_id", req.RequestID).Msg("proxy start")

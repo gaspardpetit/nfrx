@@ -2,6 +2,7 @@ package worker
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -29,12 +30,14 @@ var (
 	stateMu   sync.RWMutex
 	stateData = State{State: "disconnected"}
 	buildInfo = VersionInfo{Version: "dev", BuildSHA: "unknown", BuildDate: "unknown"}
+	draining  atomic.Bool
 )
 
 func resetState() {
 	stateMu.Lock()
 	defer stateMu.Unlock()
 	stateData = State{State: "disconnected"}
+	draining.Store(false)
 }
 
 func SetBuildInfo(v, sha, date string) {
@@ -96,25 +99,36 @@ func SetLastHeartbeat(t time.Time) {
 func IncJobs() {
 	stateMu.Lock()
 	stateData.CurrentJobs++
-	if stateData.ConnectedToServer {
+	if stateData.ConnectedToServer && !IsDraining() {
 		stateData.State = "connected_busy"
 	}
 	stateMu.Unlock()
 }
 
-func DecJobs() {
+func DecJobs() int {
 	stateMu.Lock()
 	if stateData.CurrentJobs > 0 {
 		stateData.CurrentJobs--
 	}
-	if stateData.CurrentJobs == 0 && stateData.ConnectedToServer {
+	remaining := stateData.CurrentJobs
+	if remaining == 0 && stateData.ConnectedToServer && !IsDraining() {
 		stateData.State = "connected_idle"
 	}
 	stateMu.Unlock()
+	return remaining
 }
 
 func GetState() State {
 	stateMu.RLock()
 	defer stateMu.RUnlock()
 	return stateData
+}
+
+func StartDrain() {
+	draining.Store(true)
+	SetState("draining")
+}
+
+func IsDraining() bool {
+	return draining.Load()
 }

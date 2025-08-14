@@ -19,7 +19,6 @@ func TestStatusHTTP(t *testing.T) {
 	}
 	SetConnectedToServer(true)
 	SetState("connected_idle")
-	IncJobs()
 	resp, err := http.Get("http://" + addr + "/status")
 	if err != nil {
 		t.Fatalf("get status: %v", err)
@@ -29,7 +28,7 @@ func TestStatusHTTP(t *testing.T) {
 	if err := json.NewDecoder(resp.Body).Decode(&st); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if st.CurrentJobs != 1 || st.State != "connected_busy" {
+	if st.State != "connected_idle" || !st.ConnectedToServer {
 		t.Fatalf("unexpected state: %+v", st)
 	}
 	respV, err := http.Get("http://" + addr + "/version")

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/you/llamapool/internal/config"
 	"github.com/you/llamapool/internal/logx"
@@ -45,8 +46,33 @@ func main() {
 
 	worker.SetBuildInfo(version, buildSHA, buildDate)
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
+	ctx, cancel := context.WithCancel(context.Background())
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		for range sigCh {
+			if worker.IsDraining() || cfg.DrainTimeout == 0 {
+				logx.Log.Warn().Msg("termination requested")
+				worker.SetState("terminating")
+				cancel()
+				return
+			}
+			worker.StartDrain()
+			if cfg.DrainTimeout > 0 {
+				logx.Log.Info().Dur("timeout", cfg.DrainTimeout).Msg("draining; send SIGTERM again to terminate immediately")
+				go func(d time.Duration) {
+					time.Sleep(d)
+					if worker.IsDraining() {
+						logx.Log.Warn().Msg("drain timeout exceeded; terminating")
+						worker.SetState("terminating")
+						cancel()
+					}
+				}(cfg.DrainTimeout)
+			} else {
+				logx.Log.Info().Msg("draining; send SIGTERM again to terminate immediately")
+			}
+		}
+	}()
 
 	log := logx.Log.Info().Str("worker_name", cfg.WorkerName)
 	if cfg.WorkerKey != "" {

@@ -4,6 +4,7 @@ import (
 	"flag"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -18,6 +19,7 @@ type WorkerConfig struct {
 	WorkerID       string
 	WorkerName     string
 	StatusAddr     string
+	DrainTimeout   time.Duration
 }
 
 func (c *WorkerConfig) BindFlags() {
@@ -34,6 +36,11 @@ func (c *WorkerConfig) BindFlags() {
 	}
 	c.WorkerID = getEnv("WORKER_ID", "")
 	c.StatusAddr = getEnv("STATUS_ADDR", "")
+	if d, err := time.ParseDuration(getEnv("DRAIN_TIMEOUT", "1m")); err == nil {
+		c.DrainTimeout = d
+	} else {
+		c.DrainTimeout = time.Minute
+	}
 
 	host, err := os.Hostname()
 	if err != nil || host == "" {
@@ -49,4 +56,5 @@ func (c *WorkerConfig) BindFlags() {
 	flag.StringVar(&c.WorkerID, "worker-id", c.WorkerID, "worker identifier")
 	flag.StringVar(&c.WorkerName, "worker-name", c.WorkerName, "worker display name")
 	flag.StringVar(&c.StatusAddr, "status-addr", c.StatusAddr, "local status http listen address")
+	flag.DurationVar(&c.DrainTimeout, "drain-timeout", c.DrainTimeout, "time to wait for in-flight jobs on shutdown (-1 to wait indefinitely, 0 to exit immediately)")
 }
