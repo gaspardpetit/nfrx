@@ -90,8 +90,15 @@ jobs:
       - name: Build binary packages
         env:
           DEB_BUILD_ARCH: ${{ matrix.arch }}
-          GOARCH: ${{ matrix.arch }}
           GOOS: linux
+          GOARCH: ${{ matrix.arch }}
+          # Snapshots: smaller binaries and avoid cross-arch strip issues
+          DEB_BUILD_OPTIONS: nostrip          # skip dh_strip
+          GO_NOSTRIP: "yes"                   # adds -s -w in Go build
+          # Version metadata for -X flags used in rules
+          APP_VERSION: ${{ steps.meta.outputs.version }}
+          APP_SHA:     ${{ steps.meta.outputs.sha }}
+          APP_DATE:    ${{ steps.meta.outputs.date }}
         run: |
           dpkg-buildpackage -b -us -uc
           mkdir -p out && mv ../*.deb out/
