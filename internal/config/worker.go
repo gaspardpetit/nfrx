@@ -3,7 +3,10 @@ package config
 import (
 	"flag"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,9 +23,15 @@ type WorkerConfig struct {
 	WorkerName     string
 	StatusAddr     string
 	DrainTimeout   time.Duration
+	ConfigFile     string
+	LogDir         string
 }
 
 func (c *WorkerConfig) BindFlags() {
+	cfgPath, logDir := defaultWorkerPaths()
+	c.ConfigFile = getEnv("CONFIG_FILE", cfgPath)
+	c.LogDir = getEnv("LOG_DIR", logDir)
+
 	c.ServerURL = getEnv("SERVER_URL", "ws://localhost:8080/workers/connect")
 	c.WorkerKey = getEnv("WORKER_KEY", "")
 	base := getEnv("OLLAMA_BASE_URL", getEnv("OLLAMA_URL", "http://127.0.0.1:11434"))
@@ -56,5 +65,31 @@ func (c *WorkerConfig) BindFlags() {
 	flag.StringVar(&c.WorkerID, "worker-id", c.WorkerID, "worker identifier")
 	flag.StringVar(&c.WorkerName, "worker-name", c.WorkerName, "worker display name")
 	flag.StringVar(&c.StatusAddr, "status-addr", c.StatusAddr, "local status http listen address")
+	flag.StringVar(&c.ConfigFile, "config", c.ConfigFile, "worker config file path")
+	flag.StringVar(&c.LogDir, "log-dir", c.LogDir, "log directory")
 	flag.DurationVar(&c.DrainTimeout, "drain-timeout", c.DrainTimeout, "time to wait for in-flight jobs on shutdown (-1 to wait indefinitely, 0 to exit immediately)")
+}
+
+func defaultWorkerPaths() (configFile, logDir string) {
+	home, _ := os.UserHomeDir()
+	programData := os.Getenv("ProgramData")
+	return resolveWorkerPaths(runtime.GOOS, home, programData)
+}
+
+func resolveWorkerPaths(goos, home, programData string) (configFile, logDir string) {
+	switch goos {
+	case "darwin":
+		configFile = filepath.Join(home, "Library", "Application Support", "llamapool", "worker.yaml")
+		logDir = filepath.Join(home, "Library", "Logs", "llamapool")
+	case "windows":
+		if programData == "" {
+			programData = "C:/ProgramData"
+		}
+		programData = strings.TrimRight(programData, "\\/")
+		configFile = filepath.Join(programData, "llamapool", "worker.yaml")
+		logDir = filepath.Join(programData, "llamapool", "Logs")
+	default:
+		// Linux and other platforms keep existing behavior with no defaults.
+	}
+	return
 }
