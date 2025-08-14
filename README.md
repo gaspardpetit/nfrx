@@ -314,12 +314,14 @@ curl -H "Authorization: Bearer test123" http://localhost:8080/v1/models/llama3:8
 On Linux:
 
 ```bash
+make lint
 make test
 ```
 
 On Windows:
 
 ```
+golangci-lint run
 go test ./...
 ```
 

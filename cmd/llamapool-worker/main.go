@@ -34,7 +34,7 @@ func main() {
 	var cfg config.WorkerConfig
 	cfg.BindFlags()
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "llamapool-%s version=%s sha=%s date=%s\n\n", binaryName(), version, buildSHA, buildDate)
+		_, _ = fmt.Fprintf(flag.CommandLine.Output(), "llamapool-%s version=%s sha=%s date=%s\n\n", binaryName(), version, buildSHA, buildDate)
 		flag.PrintDefaults()
 	}
 	flag.Parse()
