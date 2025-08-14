@@ -12,33 +12,92 @@ jobs:
         arch: [amd64, arm64]
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
       - uses: actions/setup-go@v5
         with:
           go-version: '1.23'
           cache: true
+
       - name: Install deb tools
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential devscripts debhelper dh-golang golang-any
-      - name: Synthesize snapshot version
-        id: v
+
+      - name: Compute version metadata (tag vs snapshot)
+        id: meta
+        shell: bash
         run: |
-          DATE=$(date -u +%Y%m%d)
+          set -euo pipefail
+          DATE_TAG=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          DATE_DEB=$(date -u +%Y%m%d)
           SHA=$(git rev-parse --short HEAD)
-          echo "ver=1.3.0~git${DATE}+${SHA}-1" >> $GITHUB_OUTPUT
+
+          if [[ "${GITHUB_REF_TYPE:-}" == "tag" ]]; then
+            # Tag build: use tag as upstream version; normalize for Debian
+            RAW_TAG="${GITHUB_REF_NAME}"
+            # Strip leading 'v' if present
+            UPSTREAM="${RAW_TAG#v}"
+            # Debian upstream version can't contain '-', map pre-releases like -rc1 to ~rc1
+            UPSTREAM="${UPSTREAM//-/"~"}"
+            DEBVER="${UPSTREAM}-1"
+            VERSION="${RAW_TAG}"
+            DESCRIBE="${RAW_TAG}"
+          else
+            # Snapshot build: base on latest tag if available
+            LAST_TAG="$(git describe --tags --abbrev=0 2>/dev/null || echo 0.0.0)"
+            BASE_UPSTREAM="${LAST_TAG#v}"
+            BASE_UPSTREAM="${BASE_UPSTREAM//-/"~"}"
+            DEBVER="${BASE_UPSTREAM}~git${DATE_DEB}+${SHA}-1"
+            DESCRIBE="$(git describe --tags --always --dirty)"
+            VERSION="${DESCRIBE}"
+          fi
+
+          {
+            echo "version=${VERSION}"
+            echo "describe=${DESCRIBE}"
+            echo "sha=${SHA}"
+            echo "date=${DATE_TAG}"
+            echo "debver=${DEBVER}"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Update changelog
+        shell: bash
+        env:
+          DEBFULLNAME: "CI"
+          DEBEMAIL: "ci@example.invalid"
         run: |
-          dch --create -v "${{ steps.v.outputs.ver }}" --package llamapool \
-            --distribution unstable "Snapshot build"
+          set -euo pipefail
+          VER="${{ steps.meta.outputs.debver }}"
+          MSG="Automated build: ${{ steps.meta.outputs.describe }} (${{ steps.meta.outputs.sha }} @ ${{ steps.meta.outputs.date }})"
+
+          if [[ -f debian/changelog ]]; then
+            # If the exact version is already the top entry, just append a note.
+            if dpkg-parsechangelog -S Version | grep -qx "$VER"; then
+              echo "changelog already at $VER; appending a note"
+              dch --no-auto-nmu "$MSG"
+            else
+              # Create a new top entry with the new version.
+              dch --newversion "$VER" --distribution unstable "$MSG"
+            fi
+          else
+            # No changelog yet: create it.
+            dch --create -v "$VER" --package llamapool --distribution unstable "$MSG"
+          fi
+
       - name: Build binary packages
         env:
           DEB_BUILD_ARCH: ${{ matrix.arch }}
           GOARCH: ${{ matrix.arch }}
+          GOOS: linux
         run: |
           dpkg-buildpackage -b -us -uc
           mkdir -p out && mv ../*.deb out/
+
       - uses: actions/upload-artifact@v4
         with:
-          name: debs-${{ matrix.arch }}-${{ steps.v.outputs.ver }}
+          name: debs-${{ matrix.arch }}-${{ steps.meta.outputs.debver }}
           path: out/*.deb
           retention-days: 14

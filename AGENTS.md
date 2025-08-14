@@ -12,6 +12,7 @@ requests to local Ollama instances. The repository contains two binaries:
 - Lint (requires golangci-lint): `make lint`
 
 ## Code Style
+- Version of Go used is 1.23
 - Use standard Go formatting via `gofmt -w` or `go fmt`
 - Prefer clarity over cleverness; keep functions small and well named
 - Default to the patterns already present in the `internal/` packages
