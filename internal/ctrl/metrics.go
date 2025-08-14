@@ -259,7 +259,10 @@ func (m *MetricsRegistry) Snapshot() StateResponse {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	resp := StateResponse{}
+	resp := StateResponse{
+		Models:  []ModelCount{},
+		Workers: []WorkerSnapshot{},
+	}
 	resp.Server = ServerSnapshot{
 		Now:                time.Now(),
 		Version:            m.serverVer,

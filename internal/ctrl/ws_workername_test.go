@@ -13,7 +13,8 @@ import (
 
 func TestRegisterStoresWorkerName(t *testing.T) {
 	reg := NewRegistry()
-	srv := httptest.NewServer(WSHandler(reg, ""))
+	metricsReg := NewMetricsRegistry("test", "", "")
+	srv := httptest.NewServer(WSHandler(reg, metricsReg, ""))
 	defer srv.Close()
 
 	ctx := context.Background()
@@ -47,7 +48,8 @@ func TestRegisterStoresWorkerName(t *testing.T) {
 
 func TestRegisterFallbackName(t *testing.T) {
 	reg := NewRegistry()
-	srv := httptest.NewServer(WSHandler(reg, ""))
+	metricsReg := NewMetricsRegistry("test", "", "")
+	srv := httptest.NewServer(WSHandler(reg, metricsReg, ""))
 	defer srv.Close()
 
 	ctx := context.Background()

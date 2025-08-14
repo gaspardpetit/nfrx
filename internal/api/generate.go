@@ -13,7 +13,7 @@ import (
 )
 
 // GenerateHandler handles POST /api/generate.
-func GenerateHandler(reg *ctrl.Registry, sched ctrl.Scheduler, timeout time.Duration) http.HandlerFunc {
+func GenerateHandler(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler, timeout time.Duration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req relay.GenerateRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -25,12 +25,12 @@ func GenerateHandler(reg *ctrl.Registry, sched ctrl.Scheduler, timeout time.Dura
 		if req.Stream {
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("Cache-Control", "no-store")
-			if err := relay.RelayGenerateStream(ctx, reg, sched, req, w); err != nil {
+			if err := relay.RelayGenerateStream(ctx, reg, metrics, sched, req, w); err != nil {
 				handleRelayErr(w, err)
 			}
 			return
 		}
-		res, err := relay.RelayGenerateOnce(ctx, reg, sched, req)
+		res, err := relay.RelayGenerateOnce(ctx, reg, metrics, sched, req)
 		if err != nil {
 			handleRelayErr(w, err)
 			return
