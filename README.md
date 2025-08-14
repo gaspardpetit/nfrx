@@ -358,7 +358,14 @@ go test ./...
 
 ## Windows integration (experimental)
 
-An initial Windows tray application and service wrapper live under `desktop/windows/`. The tray app hosts a tray icon with placeholder menu items for controlling a future worker.
+An initial Windows tray application and service wrapper live under `desktop/windows/`.
+The service wrapper launches `llamapool-worker.exe` installed at
+`%ProgramFiles%\llamapool\llamapool-worker.exe` with its working directory set to
+`%ProgramData%\llamapool`. Configuration is read from
+`%ProgramData%\llamapool\worker.yaml` and log output is written to
+`%ProgramData%\llamapool\Logs\worker.log`. The service is registered as
+`llamapool` with delayed automatic start. The tray app currently hosts a tray icon
+with placeholder menu items for controlling the worker.
 
 ## Currently Supported
 
