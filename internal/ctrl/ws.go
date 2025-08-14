@@ -12,7 +12,7 @@ import (
 )
 
 // WSHandler handles incoming worker websocket connections.
-func WSHandler(reg *Registry, workerKey string) http.HandlerFunc {
+func WSHandler(reg *Registry, metrics *MetricsRegistry, workerKey string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		c, err := websocket.Accept(w, r, nil)
 		if err != nil {
@@ -71,8 +71,13 @@ func WSHandler(reg *Registry, workerKey string) http.HandlerFunc {
 			wk.Models[m] = true
 		}
 		reg.Add(wk)
+		metrics.UpsertWorker(wk.ID, "", "", "", rm.Models)
+		metrics.SetWorkerStatus(wk.ID, StatusIdle)
 		logx.Log.Info().Str("worker_id", wk.ID).Str("worker_name", wk.Name).Int("model_count", len(wk.Models)).Msg("registered")
-		defer reg.Remove(wk.ID)
+		defer func() {
+			reg.Remove(wk.ID)
+			metrics.SetWorkerStatus(wk.ID, StatusGone)
+		}()
 
 		go func() {
 			for msg := range wk.Send {
@@ -100,6 +105,7 @@ func WSHandler(reg *Registry, workerKey string) http.HandlerFunc {
 			switch env.Type {
 			case "heartbeat":
 				reg.UpdateHeartbeat(wk.ID)
+				metrics.RecordHeartbeat(wk.ID)
 			case "job_chunk":
 				var m JobChunkMessage
 				if err := json.Unmarshal(msg, &m); err == nil {

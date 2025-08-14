@@ -14,7 +14,7 @@ func NewRouter(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Sch
 	for _, m := range middlewareChain() {
 		r.Use(m)
 	}
-	r.Post("/generate", GenerateHandler(reg, sched, timeout))
+	r.Post("/generate", GenerateHandler(reg, metrics, sched, timeout))
 	r.Get("/tags", TagsHandler(reg))
 
 	stateHandler := &StateHandler{Metrics: metrics}

@@ -30,7 +30,7 @@ func New(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler
 		r.Get("/models/{id}", api.GetModelHandler(reg))
 		r.Post("/chat/completions", api.ChatCompletionsHandler(reg, sched))
 	})
-	r.Handle(cfg.WSPath, ctrl.WSHandler(reg, cfg.WorkerKey))
+	r.Handle(cfg.WSPath, ctrl.WSHandler(reg, metrics, cfg.WorkerKey))
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if _, err := w.Write([]byte(`{"status":"ok"}`)); err != nil {

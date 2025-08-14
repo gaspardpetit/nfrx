@@ -16,6 +16,7 @@ func TestRelayGenerateStream(t *testing.T) {
 	worker := &ctrl.Worker{ID: "w1", Models: map[string]bool{"m": true}, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
 	reg.Add(worker)
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
+	metricsReg := ctrl.NewMetricsRegistry("test", "", "")
 
 	go func() {
 		msg := <-worker.Send
@@ -27,7 +28,7 @@ func TestRelayGenerateStream(t *testing.T) {
 
 	req := GenerateRequest{Model: "m", Prompt: "hi", Stream: true}
 	rr := httptest.NewRecorder()
-	if err := RelayGenerateStream(context.Background(), reg, sched, req, rr); err != nil {
+	if err := RelayGenerateStream(context.Background(), reg, metricsReg, sched, req, rr); err != nil {
 		t.Fatalf("relay error: %v", err)
 	}
 	lines := strings.Split(strings.TrimSpace(rr.Body.String()), "\n")
@@ -42,9 +43,10 @@ func TestRelayGenerateBusy(t *testing.T) {
 	worker.Send <- struct{}{}
 	reg.Add(worker)
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
+	metricsReg := ctrl.NewMetricsRegistry("test", "", "")
 	req := GenerateRequest{Model: "m", Prompt: "hi", Stream: true}
 	rr := httptest.NewRecorder()
-	err := RelayGenerateStream(context.Background(), reg, sched, req, rr)
+	err := RelayGenerateStream(context.Background(), reg, metricsReg, sched, req, rr)
 	if !errors.Is(err, ErrWorkerBusy) {
 		t.Fatalf("expected busy error")
 	}
