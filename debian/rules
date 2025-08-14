@@ -62,5 +62,5 @@ override_dh_golang:
 	:
 
 override_dh_strip:
-	# skip ddebs so we can cross compile arm64
+	# keep stripping, just skip dbgsym packages
 	dh_strip --no-ddebs
