@@ -23,7 +23,6 @@ A typical deployment looks like this:
 ## macOS Menu Bar App
 
 An early-stage macOS menu bar companion lives under `desktop/macos/llamapool/`. It polls `http://127.0.0.1:4555/status` every two seconds to display live worker status and can manage a per-user LaunchAgent to start or stop a local `llamapool-worker` and toggle launching at login. A simple preferences window lets you edit worker connection settings which are written to `~/Library/Application Support/Llamapool/worker.yaml`, and the menu offers quick links to open the config and logs folders.
-The app icon is stored as a base64 file (`AppIcon.png.b64`); decode it to `AppIcon.png` before building.
 
 ## Windows Tray App
 
@@ -417,4 +416,8 @@ A details dialog shows connection information, job counts, and any last error.
 | Token usage tracking | ✅ | Per-model and per-worker token totals (in/out) |
 | Per-model success/error rates | ✅ | `llamapool_model_requests_total{outcome=...}` |
 | Build info (server & worker) | ✅ | Server ldflags; worker-reported version/SHA/date reflected in state |
+| Draining | ✅ | Workers can be configured to drain before exiting to avoid interrupting an ongoing request with `--drain-timeout` |
+| Linux Deamons | ✅ | Debian packages are provided to install the worker and server as daemons |
+| Desktop Trays | In Progress | Windows and macOS tray applications to launch, configure and monitor the worker |
+| Server dashboard | Planned | Graphically display the state of the the pool for quick troubleshooting |
 | Private MCP Endpoints | Planned | Allow clients to expose an ephemeral MCP server through the llamapool-server |
