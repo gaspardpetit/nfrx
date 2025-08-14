@@ -252,6 +252,9 @@ When started with `--status-addr <addr>`, the worker serves local endpoints:
 - `GET /status` returns the current worker state.
 - `GET /version` returns build information.
 
+The worker periodically checks the local Ollama instance so that
+`connected_to_ollama` and `models` stay current in the `/status` output.
+
 ## Configuration
 
 When running as a systemd service, both components read optional configuration
