@@ -38,6 +38,10 @@ func main() {
 	showVersion := flag.Bool("version", false, "print version and exit")
 	var cfg config.ServerConfig
 	cfg.BindFlags()
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "llamapool-%s version=%s sha=%s date=%s\n\n", binaryName(), version, buildSHA, buildDate)
+		flag.PrintDefaults()
+	}
 	flag.Parse()
 	if *showVersion {
 		fmt.Printf("llamapool-%s version=%s sha=%s date=%s\n", binaryName(), version, buildSHA, buildDate)
