@@ -39,3 +39,13 @@ func TestRegistryPruneExpired(t *testing.T) {
 		t.Fatalf("expected job channel closed")
 	}
 }
+
+func TestRegistryWorkersForAlias(t *testing.T) {
+	reg := NewRegistry()
+	w := &Worker{ID: "w1", Models: map[string]bool{"llama2:7b-fp16": true}}
+	reg.Add(w)
+	ws := reg.WorkersForAlias("llama2:7b-q4_0")
+	if len(ws) != 1 || ws[0].ID != "w1" {
+		t.Fatalf("expected alias worker")
+	}
+}

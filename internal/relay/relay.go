@@ -30,9 +30,15 @@ var (
 
 // RelayGenerateStream relays streaming generate requests to a worker.
 func RelayGenerateStream(ctx context.Context, reg *ctrl.Registry, metricsReg *ctrl.MetricsRegistry, sched ctrl.Scheduler, req GenerateRequest, w http.ResponseWriter) error {
+	exact := reg.WorkersForModel(req.Model)
 	worker, err := sched.PickWorker(req.Model)
 	if err != nil {
 		return ErrNoWorker
+	}
+	if len(exact) == 0 {
+		if key, ok := ctrl.AliasKey(req.Model); ok {
+			logx.Log.Info().Str("event", "alias_fallback").Str("requested_id", req.Model).Str("alias_key", key).Str("worker_id", worker.ID).Msg("alias fallback")
+		}
 	}
 	reg.IncInFlight(worker.ID)
 	defer reg.DecInFlight(worker.ID)
@@ -155,9 +161,15 @@ func RelayGenerateStream(ctx context.Context, reg *ctrl.Registry, metricsReg *ct
 
 // RelayGenerateOnce handles non-streaming requests.
 func RelayGenerateOnce(ctx context.Context, reg *ctrl.Registry, metricsReg *ctrl.MetricsRegistry, sched ctrl.Scheduler, req GenerateRequest) (any, error) {
+	exact := reg.WorkersForModel(req.Model)
 	worker, err := sched.PickWorker(req.Model)
 	if err != nil {
 		return nil, ErrNoWorker
+	}
+	if len(exact) == 0 {
+		if key, ok := ctrl.AliasKey(req.Model); ok {
+			logx.Log.Info().Str("event", "alias_fallback").Str("requested_id", req.Model).Str("alias_key", key).Str("worker_id", worker.ID).Msg("alias fallback")
+		}
 	}
 	reg.IncInFlight(worker.ID)
 	defer reg.DecInFlight(worker.ID)

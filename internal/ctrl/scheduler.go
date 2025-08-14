@@ -15,7 +15,11 @@ type LeastBusyScheduler struct {
 func (s *LeastBusyScheduler) PickWorker(model string) (*Worker, error) {
 	workers := s.Reg.WorkersForModel(model)
 	if len(workers) == 0 {
-		return nil, errors.New("no worker")
+		// alias fallback
+		workers = s.Reg.WorkersForAlias(model)
+		if len(workers) == 0 {
+			return nil, errors.New("no worker")
+		}
 	}
 	best := workers[0]
 	for _, w := range workers[1:] {

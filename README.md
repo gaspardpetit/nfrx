@@ -23,8 +23,9 @@ A typical deployment looks like this:
 ### Key features
 - **Dynamic worker discovery** – Workers can connect and disconnect at any time; the server updates the available model list in real-time.
 - **Least-busy routing** – If multiple workers support the same model, the server dispatches requests to the one with the lowest current load.
-- **Security by design** –  
-  - Separate authentication keys for clients (`API_KEY`) and workers (`WORKER_KEY`).  
+- **Alias-based model fallback** – Requests for a missing quantization fall back to workers serving the same base model.
+- **Security by design** –
+  - Separate authentication keys for clients (`API_KEY`) and workers (`WORKER_KEY`).
   - Workers typically run behind firewalls and connect outbound over HTTPS/WSS.  
   - All traffic is encrypted end-to-end.
 - **Protocol compatibility** – Accepts and forwards OpenAI-style `POST /v1/chat/completions` without altering JSON payloads.
@@ -347,6 +348,7 @@ go test ./...
 | OpenAI-compatible `POST /v1/chat/completions` | ✅ | Proxied to workers without payload mutation |
 | Multiple worker registration | ✅ | Workers can join/leave dynamically; models registered on connect |
 | Model-based routing (least-busy) | ✅ | `LeastBusyScheduler` selects worker by current load |
+| Model alias fallback | ✅ | Falls back to base model when exact quantization not available |
 | API key authentication for clients | ✅ | `Authorization: Bearer <API_KEY>` for `/api` and `/v1` routes |
 | Worker key authentication | ✅ | Workers authenticate over WebSocket using `WORKER_KEY` |
 | Dynamic model discovery | ✅ | Workers advertise supported models; server aggregates |
