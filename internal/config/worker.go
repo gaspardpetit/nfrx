@@ -22,6 +22,7 @@ type WorkerConfig struct {
 	WorkerID       string
 	WorkerName     string
 	StatusAddr     string
+	MetricsAddr    string
 	DrainTimeout   time.Duration
 	ConfigFile     string
 	LogDir         string
@@ -45,6 +46,7 @@ func (c *WorkerConfig) BindFlags() {
 	}
 	c.WorkerID = getEnv("WORKER_ID", "")
 	c.StatusAddr = getEnv("STATUS_ADDR", "")
+	c.MetricsAddr = getEnv("METRICS_ADDR", "")
 	if d, err := time.ParseDuration(getEnv("DRAIN_TIMEOUT", "1m")); err == nil {
 		c.DrainTimeout = d
 	} else {
@@ -65,6 +67,7 @@ func (c *WorkerConfig) BindFlags() {
 	flag.StringVar(&c.WorkerID, "worker-id", c.WorkerID, "worker identifier")
 	flag.StringVar(&c.WorkerName, "worker-name", c.WorkerName, "worker display name")
 	flag.StringVar(&c.StatusAddr, "status-addr", c.StatusAddr, "local status http listen address")
+	flag.StringVar(&c.MetricsAddr, "metrics-addr", c.MetricsAddr, "prometheus metrics listen address")
 	flag.StringVar(&c.ConfigFile, "config", c.ConfigFile, "worker config file path")
 	flag.StringVar(&c.LogDir, "log-dir", c.LogDir, "log directory")
 	flag.DurationVar(&c.DrainTimeout, "drain-timeout", c.DrainTimeout, "time to wait for in-flight jobs on shutdown (-1 to wait indefinitely, 0 to exit immediately)")

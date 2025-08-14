@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/you/llamapool/internal/config"
 	"github.com/you/llamapool/internal/ctrl"
@@ -20,6 +21,9 @@ func handleHTTPProxy(ctx context.Context, cfg config.WorkerConfig, sendCh chan [
 	cancels[req.RequestID] = cancel
 	mu.Unlock()
 	IncJobs()
+	JobStarted()
+	start := time.Now()
+	success := false
 	defer func() {
 		cancel()
 		mu.Lock()
@@ -27,6 +31,7 @@ func handleHTTPProxy(ctx context.Context, cfg config.WorkerConfig, sendCh chan [
 		mu.Unlock()
 		_ = DecJobs()
 		onDone()
+		JobCompleted(success, time.Since(start))
 	}()
 
 	logx.Log.Info().Str("request_id", req.RequestID).Msg("proxy start")
@@ -91,6 +96,7 @@ func handleHTTPProxy(ctx context.Context, cfg config.WorkerConfig, sendCh chan [
 			break
 		}
 	}
+	success = true
 	logx.Log.Info().Str("request_id", req.RequestID).Msg("proxy end")
 }
 
