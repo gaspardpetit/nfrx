@@ -127,3 +127,51 @@ func TestDrainAndTerminate(t *testing.T) {
 		t.Fatalf("timeout waiting for worker exit")
 	}
 }
+
+func TestDrainTerminatesWhenIdle(t *testing.T) {
+	resetState()
+	ollama := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/tags" {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"models":[{"name":"m1"}]}`))
+			return
+		}
+		w.WriteHeader(404)
+	}))
+	defer ollama.Close()
+
+	connCh := make(chan *websocket.Conn, 1)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c, err := websocket.Accept(w, r, nil)
+		if err != nil {
+			t.Fatalf("accept: %v", err)
+		}
+		connCh <- c
+	}))
+	defer srv.Close()
+	wsURL := "ws://" + srv.Listener.Addr().String()
+
+	cfg := config.WorkerConfig{ServerURL: wsURL, OllamaBaseURL: ollama.URL, MaxConcurrency: 1}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	errCh := make(chan error, 1)
+	go func() { errCh <- Run(ctx, cfg) }()
+
+	srvConn := <-connCh
+	ctxR, cancelR := context.WithTimeout(context.Background(), time.Second)
+	defer cancelR()
+	if _, _, err := srvConn.Read(ctxR); err != nil {
+		t.Fatalf("read register: %v", err)
+	}
+
+	StartDrain()
+
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Fatalf("run error: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("timeout waiting for worker exit")
+	}
+}

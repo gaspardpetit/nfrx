@@ -277,7 +277,8 @@ When started with `--status-addr <addr>`, the worker serves local endpoints:
 - `POST /control/undrain` resumes accepting jobs.
 - `POST /control/shutdown` drains and exits.
 
-Sending `SIGTERM` causes the worker to stop accepting new jobs and wait up to
+Sending `SIGTERM` causes the worker to stop accepting new jobs. If no work is in
+progress, the worker exits immediately; otherwise it waits up to
 `--drain-timeout` (default 1m) for in-flight work to finish before exiting.
 Send `SIGTERM` again to terminate immediately. Set `--drain-timeout=0` to exit
 without waiting or `--drain-timeout=-1` to wait indefinitely.
