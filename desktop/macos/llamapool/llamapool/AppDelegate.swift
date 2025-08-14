@@ -11,6 +11,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var lastErrorItem: NSMenuItem!
     var statusClient: StatusClient?
     var loginItem: NSMenuItem!
+    var preferencesWindow: PreferencesWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -41,7 +42,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem(title: "Stop Worker", action: #selector(stopWorker), keyEquivalent: ""))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "Preferences…", action: #selector(openPreferences), keyEquivalent: ","))
-        menu.addItem(NSMenuItem(title: "Logs…", action: #selector(openLogs), keyEquivalent: "l"))
+        menu.addItem(NSMenuItem(title: "Open Config Folder", action: #selector(openConfigFolder), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Open Logs Folder", action: #selector(openLogsFolder), keyEquivalent: ""))
         loginItem = NSMenuItem(title: "Start at Login", action: #selector(toggleStartAtLogin), keyEquivalent: "")
         loginItem.state = LaunchAgentManager.shared.isRunAtLoadEnabled() ? .on : .off
         menu.addItem(loginItem)
@@ -129,11 +131,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func openPreferences(_ sender: Any?) {
-        print("Preferences clicked")
+        if preferencesWindow == nil {
+            preferencesWindow = PreferencesWindowController()
+        }
+        preferencesWindow?.showWindow(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 
-    @objc func openLogs(_ sender: Any?) {
-        print("Logs clicked")
+    @objc func openConfigFolder(_ sender: Any?) {
+        ConfigManager.shared.openConfigFolder()
+    }
+
+    @objc func openLogsFolder(_ sender: Any?) {
+        ConfigManager.shared.openLogsFolder()
     }
 
     @objc func toggleStartAtLogin(_ sender: NSMenuItem) {
