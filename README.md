@@ -25,6 +25,11 @@ A typical deployment looks like this:
 An early-stage macOS menu bar companion lives under `desktop/macos/llamapool/`. It polls `http://127.0.0.1:4555/status` every two seconds to display live worker status and can manage a per-user LaunchAgent to start or stop a local `llamapool-worker` and toggle launching at login.
 The app icon is stored as a base64 file (`AppIcon.png.b64`); decode it to `AppIcon.png` before building.
 
+## Windows Tray App
+
+A Windows tray companion lives under `desktop/windows/`. It polls `http://127.0.0.1:4555/status` every two seconds to display worker status.
+The tray can start or stop the local `llamapool` Windows service and toggle whether it launches automatically with Windows.
+
 ### Key features
 - **Dynamic worker discovery** – Workers can connect and disconnect at any time; the server updates the available model list in real-time.
 - **Least-busy routing** – If multiple workers support the same model, the server dispatches requests to the one with the lowest current load.
