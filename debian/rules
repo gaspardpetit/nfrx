@@ -60,3 +60,7 @@ override_dh_dwz:
 override_dh_golang:
 	# skip dh_golang for pure binaries
 	:
+
+override_dh_strip:
+	# skip ddebs so we can cross compile arm64
+	dh_strip --no-ddebs
