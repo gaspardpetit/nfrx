@@ -42,6 +42,11 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 			return err
 		}
 	}
+	if cfg.MetricsAddr != "" {
+		if _, err := StartMetricsServer(ctx, cfg.MetricsAddr); err != nil {
+			return err
+		}
+	}
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -215,6 +220,9 @@ func handleGenerate(ctx context.Context, client *ollama.Client, sendCh chan []by
 	cancels[jr.JobID] = cancel
 	mu.Unlock()
 	IncJobs()
+	JobStarted()
+	start := time.Now()
+	success := false
 	defer func() {
 		cancel()
 		mu.Lock()
@@ -222,6 +230,7 @@ func handleGenerate(ctx context.Context, client *ollama.Client, sendCh chan []by
 		mu.Unlock()
 		_ = DecJobs()
 		onDone()
+		JobCompleted(success, time.Since(start))
 	}()
 	if req.Stream {
 		rc, err := client.GenerateStream(jobCtx, req)
@@ -255,5 +264,9 @@ func handleGenerate(ctx context.Context, client *ollama.Client, sendCh chan []by
 		msg := ctrl.JobResultMessage{Type: "job_result", JobID: jr.JobID, Data: json.RawMessage(data)}
 		b, _ := json.Marshal(msg)
 		sendCh <- b
+		success = true
+	}
+	if req.Stream {
+		success = true
 	}
 }

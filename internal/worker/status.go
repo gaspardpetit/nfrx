@@ -57,7 +57,10 @@ func SetWorkerInfo(id, name string, maxConc int, models []string) {
 	stateData.WorkerName = name
 	stateData.MaxConcurrency = maxConc
 	stateData.Models = append([]string(nil), models...)
+	cur := stateData.CurrentJobs
 	stateMu.Unlock()
+	setMaxConcurrency(maxConc)
+	setCurrentJobs(cur)
 }
 
 func SetState(s string) {
@@ -70,12 +73,14 @@ func SetConnectedToServer(v bool) {
 	stateMu.Lock()
 	stateData.ConnectedToServer = v
 	stateMu.Unlock()
+	setConnectedToServer(v)
 }
 
 func SetConnectedToOllama(v bool) {
 	stateMu.Lock()
 	stateData.ConnectedToOllama = v
 	stateMu.Unlock()
+	setConnectedToOllama(v)
 }
 
 func SetModels(models []string) {
@@ -102,7 +107,9 @@ func IncJobs() {
 	if stateData.ConnectedToServer && !IsDraining() {
 		stateData.State = "connected_busy"
 	}
+	cur := stateData.CurrentJobs
 	stateMu.Unlock()
+	setCurrentJobs(cur)
 }
 
 func DecJobs() int {
@@ -115,6 +122,7 @@ func DecJobs() int {
 		stateData.State = "connected_idle"
 	}
 	stateMu.Unlock()
+	setCurrentJobs(remaining)
 	return remaining
 }
 

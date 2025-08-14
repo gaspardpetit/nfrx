@@ -112,6 +112,16 @@ The app icon is stored as a base64 file (`AppIcon.png.b64`); decode it to `AppIc
   - `llamapool_model_tokens_total{model,kind}`
   - `llamapool_request_duration_seconds{worker_id,model}` (histogram)
   - (Optionally) per-worker gauges/counters if enabled.
+- **Worker metrics** (`--metrics-addr`):
+  - Exposes `llamapool_worker_*` series such as
+    `llamapool_worker_connected_to_server`,
+    `llamapool_worker_connected_to_ollama`,
+    `llamapool_worker_current_jobs`,
+    `llamapool_worker_max_concurrency`,
+    `llamapool_worker_jobs_started_total`,
+    `llamapool_worker_jobs_succeeded_total`,
+    `llamapool_worker_jobs_failed_total`, and
+    `llamapool_worker_job_duration_seconds` (histogram).
 
 - **JSON/SSE State** (`/api/v1/state`, `/api/v1/state/stream`): suitable for custom dashboards showing:
   - worker list and status (connected/working/idle/gone)
