@@ -2,21 +2,19 @@ Source: llamapool
 Section: utils
 Priority: optional
 Maintainer: Gaspard Petit <gaspardpetit@gmail.com>
-Build-Depends: debhelper-compat (= 13), dh-sequence-golang, golang-any
+Build-Depends: debhelper-compat (= 13), dh-golang, golang-any:native
 Standards-Version: 4.7.0
 Homepage: https://github.com/gaspardpetit/llamapool
 Rules-Requires-Root: no
 
 Package: llamapool-server
-Architecture: amd64 arm64
+Architecture: any
 Depends: ${misc:Depends}, adduser
 Description: Llamapool server component (daemon)
  The server for Llamapool.
- .
 
 Package: llamapool-worker
-Architecture: amd64 arm64
+Architecture: any
 Depends: ${misc:Depends}, adduser
 Description: Llamapool worker component (daemon)
  The worker for Llamapool.
- .
