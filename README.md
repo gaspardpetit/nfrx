@@ -136,6 +136,7 @@ llamapool-worker --version
 ```
 
 The output includes the version, git SHA and build date.
+The same version information appears at the top of `--help` output.
 
 ## Run
 
