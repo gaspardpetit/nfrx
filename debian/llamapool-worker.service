@@ -1,0 +1,27 @@
+[Unit]
+Description=Llamapool Worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=llamapool
+Group=llamapool
+EnvironmentFile=-/etc/llamapool/worker.env
+ExecStart=/usr/bin/llamapool-worker $WORKER_FLAGS
+Restart=on-failure
+RestartSec=3s
+AmbientCapabilities=
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+CapabilityBoundingSet=
+StateDirectory=llamapool
+RuntimeDirectory=llamapool
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

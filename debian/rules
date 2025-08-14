@@ -1,0 +1,32 @@
+#!/usr/bin/make -f
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export CGO_ENABLED=0
+export GOFLAGS := -trimpath
+# Inject version metadata (set in debian/changelog or via env)
+export LDFLAGS := -s -w \
+  -X main.version=$(DEB_VERSION_UPSTREAM) \
+  -X main.buildSHA=$(shell git rev-parse --short HEAD 2>/dev/null || echo unknown) \
+  -X main.buildDate=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+
+%:
+	dh $@ --buildsystem=golang
+
+override_dh_auto_build:
+	# Build server
+	GOBIN=$$(pwd)/build/bin go build -ldflags "$(LDFLAGS)" -o build/bin/llamapool-server ./cmd/llamapool-server
+	# Build worker
+	GOBIN=$$(pwd)/build/bin go build -ldflags "$(LDFLAGS)" -o build/bin/llamapool-worker ./cmd/llamapool-worker
+
+override_dh_auto_install:
+	# Installation handled via .install files
+
+override_dh_auto_test:
+	# (optional) go test ./...
+
+override_dh_dwz:
+	# skip dwz on Go binaries
+	true
+
+override_dh_golang:
+	# skip dh_golang for pure binaries
+	true
