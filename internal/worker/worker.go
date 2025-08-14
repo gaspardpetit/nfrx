@@ -43,6 +43,9 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 		}
 	}
 
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	ws, _, err := websocket.Dial(ctx, cfg.ServerURL, nil)
 	if err != nil {
 		SetLastError(err.Error())
@@ -86,11 +89,22 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 		}
 	}()
 
+	checkDrain := func() {
+		if IsDraining() && GetState().CurrentJobs == 0 {
+			SetState("terminating")
+			go func() { _ = ws.Close(websocket.StatusNormalClosure, "drained") }()
+			cancel()
+		}
+	}
+
 	for {
 		_, data, err := ws.Read(ctx)
 		if err != nil {
-			SetLastError(err.Error())
 			SetConnectedToServer(false)
+			if IsDraining() {
+				return nil
+			}
+			SetLastError(err.Error())
 			SetState("error")
 			return err
 		}
@@ -107,8 +121,14 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 				continue
 			}
 			logx.Log.Info().Str("job", jr.JobID).Msg("job request")
+			if IsDraining() {
+				msg := ctrl.JobErrorMessage{Type: "job_error", JobID: jr.JobID, Code: "worker_draining", Message: "worker is draining"}
+				b, _ := json.Marshal(msg)
+				sendCh <- b
+				continue
+			}
 			if jr.Endpoint == "generate" {
-				go handleGenerate(ctx, client, sendCh, jr, reqCancels, &jobMu)
+				go handleGenerate(ctx, client, sendCh, jr, reqCancels, &jobMu, checkDrain)
 			}
 		case "cancel_job":
 			var cj ctrl.CancelJobMessage
@@ -126,7 +146,16 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 				continue
 			}
 			logx.Log.Info().Str("request_id", hr.RequestID).Str("path", hr.Path).Msg("http proxy request")
-			go handleHTTPProxy(ctx, cfg, sendCh, hr, reqCancels, &jobMu)
+			if IsDraining() {
+				h := ctrl.HTTPProxyResponseHeadersMessage{Type: "http_proxy_response_headers", RequestID: hr.RequestID, Status: 503, Headers: map[string]string{"Content-Type": "application/json"}}
+				hb, _ := json.Marshal(h)
+				sendCh <- hb
+				end := ctrl.HTTPProxyResponseEndMessage{Type: "http_proxy_response_end", RequestID: hr.RequestID, Error: &ctrl.HTTPProxyError{Code: "worker_draining", Message: "worker is draining"}}
+				eb, _ := json.Marshal(end)
+				sendCh <- eb
+				continue
+			}
+			go handleHTTPProxy(ctx, cfg, sendCh, hr, reqCancels, &jobMu, checkDrain)
 		case "http_proxy_cancel":
 			var hc ctrl.HTTPProxyCancelMessage
 			if err := json.Unmarshal(data, &hc); err == nil {
@@ -174,7 +203,7 @@ func probeOllama(ctx context.Context, client healthClient) {
 	SetLastError("")
 }
 
-func handleGenerate(ctx context.Context, client *ollama.Client, sendCh chan []byte, jr ctrl.JobRequestMessage, cancels map[string]context.CancelFunc, mu *sync.Mutex) {
+func handleGenerate(ctx context.Context, client *ollama.Client, sendCh chan []byte, jr ctrl.JobRequestMessage, cancels map[string]context.CancelFunc, mu *sync.Mutex, onDone func()) {
 	raw, _ := json.Marshal(jr.Payload)
 	var req relay.GenerateRequest
 	if err := json.Unmarshal(raw, &req); err != nil {
@@ -191,7 +220,8 @@ func handleGenerate(ctx context.Context, client *ollama.Client, sendCh chan []by
 		mu.Lock()
 		delete(cancels, jr.JobID)
 		mu.Unlock()
-		DecJobs()
+		_ = DecJobs()
+		onDone()
 	}()
 	if req.Stream {
 		rc, err := client.GenerateStream(jobCtx, req)

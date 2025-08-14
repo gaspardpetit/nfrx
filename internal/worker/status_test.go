@@ -14,7 +14,7 @@ func TestStateTransitions(t *testing.T) {
 	if s.CurrentJobs != 1 || s.State != "connected_busy" {
 		t.Fatalf("expected busy state, got %+v", s)
 	}
-	DecJobs()
+	_ = DecJobs()
 	s = GetState()
 	if s.CurrentJobs != 0 || s.State != "connected_idle" {
 		t.Fatalf("expected idle state, got %+v", s)

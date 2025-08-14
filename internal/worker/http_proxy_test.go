@@ -51,7 +51,7 @@ func TestHandleHTTPProxyAuthAndStream(t *testing.T) {
 	var mu sync.Mutex
 	req := ctrl.HTTPProxyRequestMessage{Type: "http_proxy_request", RequestID: "r1", Method: http.MethodPost, Path: "/v1/chat/completions", Headers: map[string]string{"Content-Type": "application/json"}, Stream: true, Body: []byte(`{}`)}
 	ctx := context.Background()
-	go handleHTTPProxy(ctx, cfg, sendCh, req, cancels, &mu)
+	go handleHTTPProxy(ctx, cfg, sendCh, req, cancels, &mu, func() {})
 
 	// headers
 	b := <-sendCh
