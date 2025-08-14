@@ -35,10 +35,16 @@ func ChatCompletionsHandler(reg *ctrl.Registry, sched ctrl.Scheduler) http.Handl
 			Stream bool   `json:"stream"`
 		}
 		_ = json.Unmarshal(body, &meta)
+		exact := reg.WorkersForModel(meta.Model)
 		worker, err := sched.PickWorker(meta.Model)
 		if err != nil {
 			http.Error(w, "no worker", http.StatusNotFound)
 			return
+		}
+		if len(exact) == 0 {
+			if key, ok := ctrl.AliasKey(meta.Model); ok {
+				logx.Log.Info().Str("event", "alias_fallback").Str("requested_id", meta.Model).Str("alias_key", key).Str("worker_id", worker.ID).Msg("alias fallback")
+			}
 		}
 		reg.IncInFlight(worker.ID)
 		defer reg.DecInFlight(worker.ID)

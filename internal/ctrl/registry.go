@@ -81,6 +81,27 @@ func (r *Registry) WorkersForModel(model string) []*Worker {
 	return res
 }
 
+// WorkersForAlias returns any worker that exposes a model whose alias matches the alias of requested.
+func (r *Registry) WorkersForAlias(requested string) []*Worker {
+	key, ok := AliasKey(requested)
+	if !ok {
+		return nil
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var res []*Worker
+	for _, w := range r.workers {
+		for m := range w.Models {
+			if ak, ok := AliasKey(m); ok && ak == key {
+				res = append(res, w)
+				break
+			}
+		}
+	}
+	return res
+}
+
 func (r *Registry) IncInFlight(id string) {
 	r.mu.Lock()
 	if w, ok := r.workers[id]; ok {
