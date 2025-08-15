@@ -138,6 +138,7 @@ func newOAuthHTTPConnector(cfg Config) (*transportConnector, error) {
 		ClientSecret:          cfg.OAuth.ClientSecret,
 		Scopes:                cfg.OAuth.Scopes,
 		AuthServerMetadataURL: cfg.OAuth.TokenURL,
+		TokenStore:            cfg.OAuth.TokenStore,
 	})}
 	if cfg.HTTP.EnablePush {
 		opts = append(opts, transport.WithContinuousListening())
