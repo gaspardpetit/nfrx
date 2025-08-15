@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/mark3labs/mcp-go/client/transport"
 )
 
 // Config controls how the MCP client connects to third-party servers.
@@ -61,6 +63,7 @@ type OAuthConfig struct {
 	ClientID     string
 	ClientSecret string
 	Scopes       []string
+	TokenStore   transport.TokenStore
 }
 
 // BindFlags populates the config using environment variables and binds CLI flags.
