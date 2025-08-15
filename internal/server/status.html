@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>llamapool Status</title>
+<style>
+:root {
+  --bg: #fff;
+  --fg: #000;
+  --box-bg: #f9f9f9;
+  --box-border: #ccc;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #000;
+    --fg: #fff;
+    --box-bg: #111;
+    --box-border: #444;
+  }
+}
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: sans-serif;
+  margin: 1rem;
+}
+h1 {
+  font-size: 1.5rem;
+}
+#summary {
+  margin-bottom: 1rem;
+}
+#workers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.worker {
+  border: 1px solid var(--box-border);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  background: var(--box-bg);
+  flex: 1 1 200px;
+}
+.worker .emoji {
+  font-size: 2rem;
+}
+.worker .name {
+  font-weight: bold;
+  margin-top: 0.5rem;
+}
+@media (max-width: 600px) {
+  #workers { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+<h1>llamapool status</h1>
+<div id="summary">Loading…</div>
+<div id="workers"></div>
+<script>
+function update(data) {
+  const sum = data.workers_summary;
+  document.getElementById('summary').textContent = `Workers: ${sum.connected} connected, ${sum.working} working, ${sum.idle} idle`;
+  const container = document.getElementById('workers');
+  container.innerHTML = '';
+  data.workers.forEach(w => {
+    const div = document.createElement('div');
+    div.className = 'worker';
+    div.innerHTML = `<div class="emoji">🦙</div><div class="name">${w.id}</div><div>${w.status}</div><div>inflight: ${w.inflight}</div>`;
+    container.appendChild(div);
+  });
+}
+const es = new EventSource('/api/v1/state/stream');
+es.onmessage = (e) => {
+  try {
+    const data = JSON.parse(e.data);
+    update(data);
+  } catch (err) {
+    console.error('parse', err);
+  }
+};
+</script>
+</body>
+</html>
