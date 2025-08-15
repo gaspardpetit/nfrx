@@ -43,6 +43,8 @@ xcrun stapler staple build/Llamapool.dmg
 
 `AC_API_P8` must contain a base64-encoded App Store Connect API key. Once notarization completes, the DMG can be distributed and will pass Gatekeeper on clean systems.
 
+When using the GitHub Actions workflow, provide the `AC_TEAM_ID` secret with your Apple Developer Team ID so the archive can be signed and exported.
+
 ## Windows Tray App
 
 A Windows tray companion lives under `desktop/windows/`. It polls `http://127.0.0.1:4555/status` every two seconds to display worker status.
