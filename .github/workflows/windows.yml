@@ -1,0 +1,65 @@
+name: Windows Build
+on:
+  push:
+    branches: [ main ]
+  release:
+    types: [ published ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compute version metadata
+        id: meta
+        shell: bash
+        run: |
+          SHA=$(git rev-parse --short HEAD)
+          DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            VERSION="${GITHUB_REF_NAME}"
+            DESCRIBE="${GITHUB_REF_NAME}"
+          else
+            DESCRIBE="$(git describe --tags --always --dirty)"
+            VERSION="${DESCRIBE}"
+          fi
+          echo "version=${VERSION}"   >> $GITHUB_OUTPUT
+          echo "describe=${DESCRIBE}" >> $GITHUB_OUTPUT
+          echo "sha=${SHA}"           >> $GITHUB_OUTPUT
+          echo "date=${DATE}"         >> $GITHUB_OUTPUT
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Build worker
+        run: |
+          go build -trimpath -o cmd/llamapool-worker/llamapool-worker.exe -ldflags "-s -w -X main.version=${{ steps.meta.outputs.version }} -X main.buildSHA=${{ steps.meta.outputs.sha }} -X main.buildDate=${{ steps.meta.outputs.date }}" ./cmd/llamapool-worker
+      - name: Build .NET projects
+        run: dotnet build desktop/windows/Llamapool.Windows.sln -c Release
+      - name: Install WiX
+        run: choco install wixtoolset --no-progress -y
+      - name: Build MSI
+        run: |
+          New-Item -ItemType Directory -Path build | Out-Null
+          candle.exe desktop/windows/Installer/Product.wxs -dWorkerExe="cmd\llamapool-worker\llamapool-worker.exe" -dServiceExe="desktop\windows\WindowsService\bin\Release\net8.0-windows\WindowsService.exe" -dTrayExe="desktop\windows\TrayApp\bin\Release\net8.0-windows\TrayApp.exe" -dDefaultConfig="desktop\windows\Installer\worker.yaml" -out build\
+          light.exe build\Product.wixobj -out build\llamapool.msi
+      - name: Code Sign (EXEs & MSI)
+        if: ${{ secrets.WIN_CODE_SIGN_PFX_B64 != '' }}
+        shell: cmd
+        env:
+          PFX_B64: ${{ secrets.WIN_CODE_SIGN_PFX_B64 }}
+          PFX_PASS: ${{ secrets.WIN_CODE_SIGN_PFX_PASS }}
+        run: |
+          echo %PFX_B64% > build\cert.b64
+          certutil -decode build\cert.b64 build\codesign.pfx
+          signtool sign /f build\codesign.pfx /p %PFX_PASS% /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 desktop\windows\TrayApp\bin\Release\net8.0-windows\TrayApp.exe
+          signtool sign /f build\codesign.pfx /p %PFX_PASS% /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 desktop\windows\WindowsService\bin\Release\net8.0-windows\WindowsService.exe
+          signtool sign /f build\codesign.pfx /p %PFX_PASS% /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 cmd\llamapool-worker\llamapool-worker.exe
+          signtool sign /f build\codesign.pfx /p %PFX_PASS% /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 build\llamapool.msi
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: llamapool-Windows
+          path: build\llamapool.msi

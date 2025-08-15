@@ -2,6 +2,7 @@
 [![Docker](https://github.com/gaspardpetit/llamapool/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/gaspardpetit/llamapool/actions/workflows/docker-publish.yml)
 [![.deb](https://github.com/gaspardpetit/llamapool/actions/workflows/release-deb.yml/badge.svg)](https://github.com/gaspardpetit/llamapool/actions/workflows/release-deb.yml)
 [![macOS Build](https://github.com/gaspardpetit/llamapool/actions/workflows/macos.yml/badge.svg)](https://github.com/gaspardpetit/llamapool/actions/workflows/macos.yml)
+[![Windows Build](https://github.com/gaspardpetit/llamapool/actions/workflows/windows.yml/badge.svg)](https://github.com/gaspardpetit/llamapool/actions/workflows/windows.yml)
 
 
 # llamapool
@@ -428,6 +429,7 @@ The service wrapper launches `llamapool-worker.exe` installed at
 every two seconds and updates its menu and tooltip to reflect the current status.
 A details dialog shows connection information, job counts, and any last error. A preferences window can edit the worker configuration and write it back to the YAML file, and the menu offers quick links to open the config and logs folders, view live logs, and collect diagnostics.
 The tray app also supports automatic updates via Squirrel.Windows.
+For manual end-to-end verification on a clean VM, see [desktop/windows/ACCEPTANCE.md](desktop/windows/ACCEPTANCE.md).
 
 ## Currently Supported
 
