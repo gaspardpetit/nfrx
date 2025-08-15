@@ -10,6 +10,7 @@ public class Worker : BackgroundService
     private readonly ILogger<Worker> _logger;
     private readonly IHostApplicationLifetime _lifetime;
     private Process? _process;
+    private JobObject? _job;
 
     public Worker(ILogger<Worker> logger, IHostApplicationLifetime lifetime)
     {
@@ -51,6 +52,15 @@ public class Worker : BackgroundService
             CreateNoWindow = true
         };
 
+        try
+        {
+            _job = new JobObject();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to create job object; worker may survive service termination");
+        }
+
         _process = new Process { StartInfo = psi, EnableRaisingEvents = true };
         _process.Exited += (_, _) =>
         {
@@ -64,6 +74,15 @@ public class Worker : BackgroundService
         try
         {
             _process.Start();
+
+            try
+            {
+                _job?.AddProcess(_process.Handle);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to assign worker to job object");
+            }
 
             using var logWriter = TextWriter.Synchronized(new StreamWriter(logPath, append: true));
             _process.OutputDataReceived += (_, e) => { if (e.Data != null) logWriter.WriteLine(e.Data); };
@@ -93,14 +112,9 @@ public class Worker : BackgroundService
 
     private void TryKillWorker()
     {
-        if (_process == null)
-        {
-            return;
-        }
-
         try
         {
-            if (!_process.HasExited)
+            if (_process != null && !_process.HasExited)
             {
                 _process.CloseMainWindow();
                 if (!_process.WaitForExit(5000))
@@ -112,6 +126,11 @@ public class Worker : BackgroundService
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to stop worker process gracefully");
+        }
+        finally
+        {
+            _job?.Dispose();
+            _job = null;
         }
     }
 }
