@@ -20,6 +20,10 @@ func New(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler
 		if cfg.APIKey != "" {
 			r.Use(api.APIKeyMiddleware(cfg.APIKey))
 		}
+		r.Route("/client", func(r chi.Router) {
+			r.Get("/openapi.json", api.OpenAPIHandler())
+			r.Get("/*", api.SwaggerHandler())
+		})
 		r.Mount("/", api.NewRouter(reg, metrics, sched, cfg.RequestTimeout))
 	})
 	r.Route("/v1", func(r chi.Router) {

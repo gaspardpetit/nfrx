@@ -1,0 +1,83 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "llamapool API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/generate": {
+      "post": {
+        "summary": "Generate content",
+        "responses": {
+          "200": {
+            "description": "Generated response"
+          }
+        }
+      }
+    },
+    "/api/tags": {
+      "get": {
+        "summary": "List models",
+        "responses": {
+          "200": {"description": "List of models"}
+        }
+      }
+    },
+    "/api/v1/state": {
+      "get": {
+        "summary": "Get server state",
+        "responses": {
+          "200": {"description": "State"}
+        }
+      }
+    },
+    "/api/v1/state/stream": {
+      "get": {
+        "summary": "Stream server state",
+        "responses": {
+          "200": {"description": "Event stream"}
+        }
+      }
+    },
+    "/v1/models": {
+      "get": {
+        "summary": "List models",
+        "responses": {
+          "200": {"description": "OK"}
+        }
+      }
+    },
+    "/v1/models/{id}": {
+      "get": {
+        "summary": "Get model",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"}
+          }
+        ],
+        "responses": {
+          "200": {"description": "OK"}
+        }
+      }
+    },
+    "/v1/chat/completions": {
+      "post": {
+        "summary": "Chat completions",
+        "responses": {
+          "200": {"description": "OK"}
+        }
+      }
+    },
+    "/healthz": {
+      "get": {
+        "summary": "Health check",
+        "responses": {
+          "200": {"description": "OK"}
+        }
+      }
+    }
+  }
+}

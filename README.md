@@ -96,6 +96,9 @@ The tray can start or stop the local `llamapool` Windows service, toggle whether
   - **State (JSON):** `GET /api/v1/state`
   - **State (SSE):** `GET /api/v1/state/stream`
 - Prometheus metrics: `GET /metrics` (can run on a separate port via `--metrics-port`)
+- API docs:
+  - Swagger UI: `GET /api/client/`
+  - OpenAPI schema: `GET /api/client/openapi.json`
 
 
 ## Security
