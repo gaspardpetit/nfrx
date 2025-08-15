@@ -47,7 +47,7 @@ func TestMetricsEndpointSeparatePort(t *testing.T) {
 	}
 }
 
-func TestStatusPage(t *testing.T) {
+func TestStatePage(t *testing.T) {
 	reg := ctrl.NewRegistry()
 	metricsReg := ctrl.NewMetricsRegistry("test", "", "")
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
@@ -56,9 +56,9 @@ func TestStatusPage(t *testing.T) {
 	ts := httptest.NewServer(h)
 	defer ts.Close()
 
-	resp, err := http.Get(ts.URL + "/status")
+	resp, err := http.Get(ts.URL + "/state")
 	if err != nil {
-		t.Fatalf("GET /status: %v", err)
+		t.Fatalf("GET /state: %v", err)
 	}
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
