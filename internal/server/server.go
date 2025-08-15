@@ -40,6 +40,7 @@ func New(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler
 			v1.Use(api.APIKeyMiddleware(cfg.APIKey))
 		}
 		v1.Post("/v1/chat/completions", wrapper.PostV1ChatCompletions)
+		v1.Post("/v1/embeddings", wrapper.PostV1Embeddings)
 		v1.Get("/v1/models", wrapper.GetV1Models)
 		v1.Get("/v1/models/{id}", wrapper.GetV1ModelsId)
 		v1.Get("/v1/state", wrapper.GetV1State)

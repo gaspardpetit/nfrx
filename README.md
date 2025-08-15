@@ -54,7 +54,7 @@ The tray can start or stop the local `llamapool` Windows service, toggle whether
   - Separate authentication keys for clients (`API_KEY`) and workers (`WORKER_KEY`).
   - Workers typically run behind firewalls and connect outbound over HTTPS/WSS.  
   - All traffic is encrypted end-to-end.
-- **Protocol compatibility** – Accepts and forwards OpenAI-style `POST /v1/chat/completions` without altering JSON payloads.
+- **Protocol compatibility** – Accepts and forwards OpenAI-style `POST /v1/chat/completions` and `POST /v1/embeddings` without altering JSON payloads.
 
 ### How it works
 - The **server** accepts incoming HTTP requests from clients, authenticates them, and routes them to workers via WebSocket connections.
@@ -76,7 +76,8 @@ The tray can start or stop the local `llamapool` Windows service, toggle whether
 │  ┌──────────────────────────┐                     ┌───────────────┐   │
 │  │  OpenAI-compatible API   │                     │  Observability│   │
 │  │  /v1/chat/completions    │                     │  /metrics     │   │
-│  │  /v1/models (+/{id})     │                     └───────────────┘   │
+│  │  /v1/embeddings          │                     └───────────────┘   │
+│  │  /v1/models (+/{id})     │                                         │
 │  └──────────────┬────────── ┘                                         │
 │                 │                                                     │
 │          ┌──────▼──────────────────────────────────────────────────┐  │
@@ -109,6 +110,7 @@ The tray can start or stop the local `llamapool` Windows service, toggle whether
   - `GET /v1/models`
   - `GET /v1/models/{id}`
 - OpenAI Chat Completions: `POST /v1/chat/completions`
+- OpenAI Embeddings: `POST /v1/embeddings`
 - llamapool API:
   - **State (JSON):** `GET /v1/state`
   - **State (SSE):** `GET /v1/state/stream`
@@ -436,6 +438,7 @@ For manual end-to-end verification on a clean VM, see [desktop/windows/ACCEPTANC
 | Feature | Supported | Notes |
 | --- | --- | --- |
 | OpenAI-compatible `POST /v1/chat/completions` | ✅ | Proxied to workers without payload mutation |
+| OpenAI-compatible `POST /v1/embeddings` | ✅ | Proxied to workers without payload mutation |
 | Multiple worker registration | ✅ | Workers can join/leave dynamically; models registered on connect |
 | Model-based routing (least-busy) | ✅ | `LeastBusyScheduler` selects worker by current load |
 | Model alias fallback | ✅ | Falls back to base model when exact quantization not available |
