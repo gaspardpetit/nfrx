@@ -14,45 +14,51 @@ import (
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// Generate content
-	// (POST /api/generate)
-	PostApiGenerate(w http.ResponseWriter, r *http.Request)
-	// List models (tags)
-	// (GET /api/tags)
-	GetApiTags(w http.ResponseWriter, r *http.Request)
+	// Get server state
+	// (GET /api/state)
+	GetApiState(w http.ResponseWriter, r *http.Request)
+	// Stream server state
+	// (GET /api/state/stream)
+	GetApiStateStream(w http.ResponseWriter, r *http.Request)
+	// Worker connect (WebSocket)
+	// (GET /api/workers/connect)
+	GetApiWorkersConnect(w http.ResponseWriter, r *http.Request)
 	// Health check
 	// (GET /healthz)
 	GetHealthz(w http.ResponseWriter, r *http.Request)
 	// Chat completions (proxy)
 	// (POST /v1/chat/completions)
 	PostV1ChatCompletions(w http.ResponseWriter, r *http.Request)
+	// Embeddings (proxy)
+	// (POST /v1/embeddings)
+	PostV1Embeddings(w http.ResponseWriter, r *http.Request)
 	// List models
 	// (GET /v1/models)
 	GetV1Models(w http.ResponseWriter, r *http.Request)
 	// Get model
 	// (GET /v1/models/{id})
 	GetV1ModelsId(w http.ResponseWriter, r *http.Request, id string)
-	// Get server state
-	// (GET /v1/state)
-	GetV1State(w http.ResponseWriter, r *http.Request)
-	// Stream server state
-	// (GET /v1/state/stream)
-	GetV1StateStream(w http.ResponseWriter, r *http.Request)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
 
 type Unimplemented struct{}
 
-// Generate content
-// (POST /api/generate)
-func (_ Unimplemented) PostApiGenerate(w http.ResponseWriter, r *http.Request) {
+// Get server state
+// (GET /api/state)
+func (_ Unimplemented) GetApiState(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// List models (tags)
-// (GET /api/tags)
-func (_ Unimplemented) GetApiTags(w http.ResponseWriter, r *http.Request) {
+// Stream server state
+// (GET /api/state/stream)
+func (_ Unimplemented) GetApiStateStream(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Worker connect (WebSocket)
+// (GET /api/workers/connect)
+func (_ Unimplemented) GetApiWorkersConnect(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -68,6 +74,12 @@ func (_ Unimplemented) PostV1ChatCompletions(w http.ResponseWriter, r *http.Requ
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// Embeddings (proxy)
+// (POST /v1/embeddings)
+func (_ Unimplemented) PostV1Embeddings(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // List models
 // (GET /v1/models)
 func (_ Unimplemented) GetV1Models(w http.ResponseWriter, r *http.Request) {
@@ -80,18 +92,6 @@ func (_ Unimplemented) GetV1ModelsId(w http.ResponseWriter, r *http.Request, id 
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// Get server state
-// (GET /v1/state)
-func (_ Unimplemented) GetV1State(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// Stream server state
-// (GET /v1/state/stream)
-func (_ Unimplemented) GetV1StateStream(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
 // ServerInterfaceWrapper converts contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler            ServerInterface
@@ -101,11 +101,17 @@ type ServerInterfaceWrapper struct {
 
 type MiddlewareFunc func(http.Handler) http.Handler
 
-// PostApiGenerate operation middleware
-func (siw *ServerInterfaceWrapper) PostApiGenerate(w http.ResponseWriter, r *http.Request) {
+// GetApiState operation middleware
+func (siw *ServerInterfaceWrapper) GetApiState(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostApiGenerate(w, r)
+		siw.Handler.GetApiState(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -115,11 +121,31 @@ func (siw *ServerInterfaceWrapper) PostApiGenerate(w http.ResponseWriter, r *htt
 	handler.ServeHTTP(w, r)
 }
 
-// GetApiTags operation middleware
-func (siw *ServerInterfaceWrapper) GetApiTags(w http.ResponseWriter, r *http.Request) {
+// GetApiStateStream operation middleware
+func (siw *ServerInterfaceWrapper) GetApiStateStream(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetApiTags(w, r)
+		siw.Handler.GetApiStateStream(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetApiWorkersConnect operation middleware
+func (siw *ServerInterfaceWrapper) GetApiWorkersConnect(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetApiWorkersConnect(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -154,6 +180,26 @@ func (siw *ServerInterfaceWrapper) PostV1ChatCompletions(w http.ResponseWriter, 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.PostV1ChatCompletions(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PostV1Embeddings operation middleware
+func (siw *ServerInterfaceWrapper) PostV1Embeddings(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PostV1Embeddings(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -205,46 +251,6 @@ func (siw *ServerInterfaceWrapper) GetV1ModelsId(w http.ResponseWriter, r *http.
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetV1ModelsId(w, r, id)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// GetV1State operation middleware
-func (siw *ServerInterfaceWrapper) GetV1State(w http.ResponseWriter, r *http.Request) {
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetV1State(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// GetV1StateStream operation middleware
-func (siw *ServerInterfaceWrapper) GetV1StateStream(w http.ResponseWriter, r *http.Request) {
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetV1StateStream(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -368,10 +374,13 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	}
 
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/api/generate", wrapper.PostApiGenerate)
+		r.Get(options.BaseURL+"/api/state", wrapper.GetApiState)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/api/tags", wrapper.GetApiTags)
+		r.Get(options.BaseURL+"/api/state/stream", wrapper.GetApiStateStream)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/workers/connect", wrapper.GetApiWorkersConnect)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/healthz", wrapper.GetHealthz)
@@ -380,16 +389,13 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/v1/chat/completions", wrapper.PostV1ChatCompletions)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/embeddings", wrapper.PostV1Embeddings)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/models", wrapper.GetV1Models)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/models/{id}", wrapper.GetV1ModelsId)
-	})
-	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/v1/state", wrapper.GetV1State)
-	})
-	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/v1/state/stream", wrapper.GetV1StateStream)
 	})
 
 	return r

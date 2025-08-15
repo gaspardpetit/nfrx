@@ -24,44 +24,12 @@ paths:
                   status:
                     type: string
                 required: [status]
-  /api/tags:
+  /api/workers/connect:
     get:
-      summary: List models (tags)
+      summary: Worker connect (WebSocket)
       responses:
-        '200':
-          description: List of models
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  models:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        name:
-                          type: string
-                      required: [name]
-                required: [models]
-  /api/generate:
-    post:
-      summary: Generate content
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: true
-      responses:
-        '200':
-          description: Generated response
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
+        '101':
+          description: Switching Protocols
   /v1/models:
     get:
       security: [ { BearerAuth: [] } ]
@@ -140,7 +108,26 @@ paths:
             text/event-stream:
               schema:
                 type: string
-  /v1/state:
+  /v1/embeddings:
+    post:
+      security: [ { BearerAuth: [] } ]
+      summary: Embeddings (proxy)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+  /api/state:
     get:
       security: [ { BearerAuth: [] } ]
       summary: Get server state
@@ -152,7 +139,7 @@ paths:
               schema:
                 type: object
                 additionalProperties: true
-  /v1/state/stream:
+  /api/state/stream:
     get:
       security: [ { BearerAuth: [] } ]
       summary: Stream server state

@@ -56,7 +56,7 @@ The tray can start or stop the local `llamapool` Windows service, toggle whether
   - Separate authentication keys for clients (`API_KEY`) and workers (`WORKER_KEY`).
   - Workers typically run behind firewalls and connect outbound over HTTPS/WSS.  
   - All traffic is encrypted end-to-end.
-- **Protocol compatibility** – Accepts and forwards OpenAI-style `POST /v1/chat/completions` without altering JSON payloads.
+- **Protocol compatibility** – Accepts and forwards OpenAI-style `POST /v1/chat/completions` and `POST /v1/embeddings` without altering JSON payloads.
 
 ### How it works
 - The **server** accepts incoming HTTP requests from clients, authenticates them, and routes them to workers via WebSocket connections.
@@ -78,7 +78,8 @@ The tray can start or stop the local `llamapool` Windows service, toggle whether
 │  ┌──────────────────────────┐                     ┌───────────────┐   │
 │  │  OpenAI-compatible API   │                     │  Observability│   │
 │  │  /v1/chat/completions    │                     │  /metrics     │   │
-│  │  /v1/models (+/{id})     │                     └───────────────┘   │
+│  │  /v1/embeddings          │                     └───────────────┘   │
+│  │  /v1/models (+/{id})     │                                         │
 │  └──────────────┬────────── ┘                                         │
 │                 │                                                     │
 │          ┌──────▼──────────────────────────────────────────────────┐  │
@@ -111,9 +112,10 @@ The tray can start or stop the local `llamapool` Windows service, toggle whether
   - `GET /v1/models`
   - `GET /v1/models/{id}`
 - OpenAI Chat Completions: `POST /v1/chat/completions`
+- OpenAI Embeddings: `POST /v1/embeddings`
 - llamapool API:
-  - **State (JSON):** `GET /v1/state`
-  - **State (SSE):** `GET /v1/state/stream`
+  - **State (JSON):** `GET /api/state`
+  - **State (SSE):** `GET /api/state/stream`
 - Prometheus metrics: `GET /metrics` (can run on a separate port via `--metrics-port`)
 - API docs:
   - Swagger UI: `GET /api/client/`
@@ -151,7 +153,7 @@ The tray can start or stop the local `llamapool` Windows service, toggle whether
     `llamapool_worker_jobs_failed_total`, and
     `llamapool_worker_job_duration_seconds` (histogram).
 
-- **JSON/SSE State** (`/v1/state`, `/v1/state/stream`): suitable for custom dashboards showing:
+- **JSON/SSE State** (`/api/state`, `/api/state/stream`): suitable for custom dashboards showing:
   - worker list and status (connected/working/idle/gone)
   - per-worker totals (processed, inflight, failures, avg duration)
   - per-model availability (how many workers support each model)
@@ -243,14 +245,14 @@ go run .\cmd\llamapool-server
 On Linux:
 
 ```bash
-SERVER_URL=ws://localhost:8080/workers/connect WORKER_KEY=secret OLLAMA_BASE_URL=http://127.0.0.1:11434 WORKER_NAME=Alpha go run ./cmd/llamapool-worker
+SERVER_URL=ws://localhost:8080/api/workers/connect WORKER_KEY=secret OLLAMA_BASE_URL=http://127.0.0.1:11434 WORKER_NAME=Alpha go run ./cmd/llamapool-worker
 ```
 Optionally set `OLLAMA_API_KEY` to forward an API key to the local Ollama instance. The worker proxies requests to `${OLLAMA_BASE_URL}/v1/chat/completions`.
 
 On Windows (CMD)
 
 ```
-set SERVER_URL=ws://localhost:8080/workers/connect
+set SERVER_URL=ws://localhost:8080/api/workers/connect
 set WORKER_KEY=secret
 set OLLAMA_BASE_URL=http://127.0.0.1:11434
 go run .\cmd\llamapool-worker
@@ -261,7 +263,7 @@ REM or if you built:
 On Windows (Powershell)
 
 ```
-$env:SERVER_URL = "ws://localhost:8080/workers/connect"
+$env:SERVER_URL = "ws://localhost:8080/api/workers/connect"
 $env:WORKER_KEY = "secret"
 $env:OLLAMA_BASE_URL = "http://127.0.0.1:11434"
 $env:WORKER_NAME = "Alpha"
@@ -294,7 +296,7 @@ docker run --rm -p 8080:8080 -e WORKER_KEY=secret -e API_KEY=test123 \
 
 ```bash
 docker run --rm \
-  -e SERVER_URL=ws://localhost:8080/workers/connect \
+  -e SERVER_URL=ws://localhost:8080/api/workers/connect \
   -e WORKER_KEY=secret \
   -e OLLAMA_BASE_URL=http://host.docker.internal:11434 \
   ghcr.io/gaspardpetit/llamapool-worker:main
@@ -354,28 +356,28 @@ Ollama instance. If the model is missing, the server responds with `no worker`.
 On Linux:
 
 ```bash
-curl -N -X POST http://localhost:8080/api/generate \
+curl -N -X POST http://localhost:8080/v1/chat/completions \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer test123' \
-  -d '{"model":"llama3","prompt":"Hello","stream":true}'
+  -d '{"model":"llama3","messages":[{"role":"user","content":"Hello"}],"stream":true}'
 ```
 
 On Windows (CMD):
 
 ```
-curl -N -X POST "http://localhost:8080/api/generate" ^
+curl -N -X POST "http://localhost:8080/v1/chat/completions" ^
   -H "Content-Type: application/json" ^
   -H "Authorization: Bearer test123" ^
-  -d "{ \"model\": \"llama3\", \"prompt\": \"Hello\", \"stream\": true }"
+  -d "{ \"model\": \"llama3\", \"messages\": [ { \"role\": \"user\", \"content\": \"Hello\" } ], \"stream\": true }"
 ```
 
 On Windows (Powershell):
 
 ```
-curl -N -X POST http://localhost:8080/api/generate `
+curl -N -X POST http://localhost:8080/v1/chat/completions `
   -H "Content-Type: application/json" `
   -H "Authorization: Bearer test123" `
-  -d '{ "model": "llama3", "prompt": "Hello", "stream": true }'
+  -d '{ "model": "llama3", "messages": [ { "role": "user", "content": "Hello" } ], "stream": true }'
 ```
 
 The server also exposes a basic health check:
@@ -387,8 +389,8 @@ curl http://localhost:8080/healthz
 For server administration and monitoring:
 
 ```bash
-curl -H "Authorization: Bearer test123" http://localhost:8080/v1/state
-curl -H "Authorization: Bearer test123" http://localhost:8080/v1/state/stream
+curl -H "Authorization: Bearer test123" http://localhost:8080/api/state
+curl -H "Authorization: Bearer test123" http://localhost:8080/api/state/stream
 # Prometheus metrics
 curl http://localhost:8080/metrics
 # or if `--metrics-port` is set:
@@ -438,6 +440,7 @@ For manual end-to-end verification on a clean VM, see [desktop/windows/ACCEPTANC
 | Feature | Supported | Notes |
 | --- | --- | --- |
 | OpenAI-compatible `POST /v1/chat/completions` | ✅ | Proxied to workers without payload mutation |
+| OpenAI-compatible `POST /v1/embeddings` | ✅ | Proxied to workers without payload mutation |
 | Multiple worker registration | ✅ | Workers can join/leave dynamically; models registered on connect |
 | Model-based routing (least-busy) | ✅ | `LeastBusyScheduler` selects worker by current load |
 | Model alias fallback | ✅ | Falls back to base model when exact quantization not available |
@@ -446,8 +449,8 @@ For manual end-to-end verification on a clean VM, see [desktop/windows/ACCEPTANC
 | Dynamic model discovery | ✅ | Workers advertise supported models; server aggregates |
 | HTTPS/WSS transport | ✅ | Use TLS terminator or run behind reverse proxy; WS path configurable |
 | Prometheus metrics endpoint | ✅ | `/metrics`; includes build info, per-model counters, histograms; supports separate `--metrics-port` |
-| Real-time state API (JSON) | ✅ | `GET /v1/state` returns full server/worker snapshot |
-| Real-time state stream (SSE) | ✅ | `GET /v1/state/stream` for dashboards |
+| Real-time state API (JSON) | ✅ | `GET /api/state` returns full server/worker snapshot |
+| Real-time state stream (SSE) | ✅ | `GET /api/state/stream` for dashboards |
 | Token usage tracking | ✅ | Per-model and per-worker token totals (in/out) |
 | Per-model success/error rates | ✅ | `llamapool_model_requests_total{outcome=...}` |
 | Build info (server & worker) | ✅ | Server ldflags; worker-reported version/SHA/date reflected in state |

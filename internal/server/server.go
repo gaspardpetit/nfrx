@@ -30,26 +30,35 @@ func New(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler
 	})
 
 	r.Group(func(public chi.Router) {
-		public.Post("/api/generate", wrapper.PostApiGenerate)
-		public.Get("/api/tags", wrapper.GetApiTags)
 		public.Get("/healthz", wrapper.GetHealthz)
 		public.Get("/status", StatusHandler())
 	})
 
-	r.Group(func(v1 chi.Router) {
+	r.Group(func(apiGroup chi.Router) {
 		if cfg.APIKey != "" {
-			v1.Use(api.APIKeyMiddleware(cfg.APIKey))
+			apiGroup.Use(api.APIKeyMiddleware(cfg.APIKey))
 		}
 		v1.Post("/v1/chat/completions", wrapper.PostV1ChatCompletions)
+		v1.Post("/v1/embeddings", wrapper.PostV1Embeddings)
 		v1.Get("/v1/models", wrapper.GetV1Models)
 		v1.Get("/v1/models/{id}", wrapper.GetV1ModelsId)
-		v1.Get("/v1/state", wrapper.GetV1State)
-		v1.Get("/v1/state/stream", wrapper.GetV1StateStream)
+		apiGroup.Get("/api/state", wrapper.GetApiState)
+		apiGroup.Get("/api/state/stream", wrapper.GetApiStateStream)
 	})
 	mcpReg := mcp.NewRegistry()
 	r.Post("/mcp/{client_id}", mcpReg.HTTPHandler())
 	r.Handle("/ws/relay", mcpReg.WSHandler())
 	r.Handle(cfg.WSPath, ctrl.WSHandler(reg, metrics, cfg.WorkerKey))
+
+	r.Group(func(openai chi.Router) {
+		if cfg.APIKey != "" {
+			openai.Use(api.APIKeyMiddleware(cfg.APIKey))
+		}
+		openai.Post("/v1/chat/completions", wrapper.PostV1ChatCompletions)
+		openai.Get("/v1/models", wrapper.GetV1Models)
+		openai.Get("/v1/models/{id}", wrapper.GetV1ModelsId)
+	})
+	r.Handle("/api/workers/connect", ctrl.WSHandler(reg, metrics, cfg.WorkerKey))
 	metricsPort := cfg.MetricsPort
 	if metricsPort == 0 {
 		metricsPort = cfg.Port

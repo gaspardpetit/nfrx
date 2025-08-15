@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -18,41 +18,32 @@ import (
 	"github.com/gaspardpetit/llamapool/internal/worker"
 )
 
-func TestE2EChatCompletionsProxy(t *testing.T) {
+func TestE2EEmbeddingsProxy(t *testing.T) {
 	reg := ctrl.NewRegistry()
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	cfg := config.ServerConfig{WorkerKey: "secret", APIKey: "apikey", RequestTimeout: 5 * time.Second}
+	cfg := config.ServerConfig{WorkerKey: "secret", APIKey: "apikey", WSPath: "/workers/connect", RequestTimeout: 5 * time.Second}
 	metricsReg := ctrl.NewMetricsRegistry("test", "", "")
 	handler := server.New(reg, metricsReg, sched, cfg)
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
 	var gotAuth string
+	var mu sync.Mutex
 	ollama := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.URL.Path == "/api/tags":
+		switch r.URL.Path {
+		case "/api/tags":
 			w.Header().Set("Content-Type", "application/json")
 			if _, err := w.Write([]byte(`{"models":[{"name":"llama3"}]}`)); err != nil {
 				t.Fatalf("write tags: %v", err)
 			}
-		case r.URL.Path == "/v1/chat/completions" && r.URL.Query().Get("stream") == "true":
+		case "/v1/embeddings":
+			mu.Lock()
 			gotAuth = r.Header.Get("Authorization")
-			w.Header().Set("Content-Type", "text/event-stream")
-			w.Header().Set("Cache-Control", "no-store")
-			fl := w.(http.Flusher)
-			w.WriteHeader(200)
-			if _, err := w.Write([]byte("data: 1\n\n")); err != nil {
-				t.Fatalf("write chunk1: %v", err)
+			mu.Unlock()
+			w.Header().Set("Content-Type", "application/json")
+			if _, err := w.Write([]byte(`{"data":[{"embedding":[1,2,3],"index":0}],"model":"llama3","usage":{"prompt_tokens":1,"total_tokens":1}}`)); err != nil {
+				t.Fatalf("write embeddings: %v", err)
 			}
-			fl.Flush()
-			if _, err := w.Write([]byte("data: 2\n\n")); err != nil {
-				t.Fatalf("write chunk2: %v", err)
-			}
-			fl.Flush()
-			if _, err := w.Write([]byte("data: [DONE]\n\n")); err != nil {
-				t.Fatalf("write done: %v", err)
-			}
-			fl.Flush()
 		default:
 			w.WriteHeader(404)
 		}
@@ -61,12 +52,11 @@ func TestE2EChatCompletionsProxy(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/api/workers/connect"
+	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/workers/connect"
 	go func() {
 		_ = worker.Run(ctx, config.WorkerConfig{ServerURL: wsURL, WorkerKey: "secret", OllamaBaseURL: ollama.URL, OllamaAPIKey: "secret-123", WorkerID: "w1", WorkerName: "w1", MaxConcurrency: 2})
 	}()
 
-	// wait for worker registration
 	for i := 0; i < 20; i++ {
 		resp, err := http.Get(srv.URL + "/v1/models")
 		if err == nil {
@@ -86,35 +76,32 @@ func TestE2EChatCompletionsProxy(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	reqBody := []byte(`{"model":"llama3","stream":true}`)
-	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/v1/chat/completions", bytes.NewReader(reqBody))
+	reqBody := []byte(`{"model":"llama3","input":"hi"}`)
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/v1/embeddings", bytes.NewReader(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer apikey")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("request: %v", err)
 	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != 200 {
 		t.Fatalf("status %d", resp.StatusCode)
 	}
-	if ct := resp.Header.Get("Content-Type"); ct != "text/event-stream" {
+	if ct := resp.Header.Get("Content-Type"); ct != "application/json" {
 		t.Fatalf("content-type %s", ct)
 	}
-	if cc := resp.Header.Get("Cache-Control"); cc != "no-store" {
-		t.Fatalf("cache-control %s", cc)
-	}
 	b, err := io.ReadAll(resp.Body)
-	if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) {
+	if err != nil {
 		t.Fatalf("read body: %v", err)
 	}
-	expected := "data: 1\n\ndata: 2\n\ndata: [DONE]\n\n"
-	if string(b) != expected {
+	if !strings.Contains(string(b), "embedding") {
 		t.Fatalf("body %q", string(b))
 	}
-	if gotAuth != "Bearer secret-123" {
-		t.Fatalf("auth %q", gotAuth)
+	mu.Lock()
+	auth := gotAuth
+	mu.Unlock()
+	if auth != "Bearer secret-123" {
+		t.Fatalf("auth %q", auth)
 	}
 }
