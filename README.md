@@ -434,7 +434,7 @@ The service wrapper launches `llamapool-worker.exe` installed at
 `llamapool` with delayed automatic start. The tray app now polls the local worker
 every two seconds and updates its menu and tooltip to reflect the current status.
 A details dialog shows connection information, job counts, and any last error. A preferences window can edit the worker configuration and write it back to the YAML file, and the menu offers quick links to open the config and logs folders, view live logs, and collect diagnostics.
-The tray app also supports automatic updates via Squirrel.Windows.
+The tray app checks the [llamapool GitHub releases](https://github.com/gaspardpetit/llamapool/releases) once per day and notifies when a new version is available.
 For manual end-to-end verification on a clean VM, see [desktop/windows/ACCEPTANCE.md](desktop/windows/ACCEPTANCE.md).
 
 ## Currently Supported
