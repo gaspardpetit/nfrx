@@ -29,10 +29,10 @@ func (c *ServerConfig) BindFlags() {
 	rt, _ := time.ParseDuration(getEnv("REQUEST_TIMEOUT", "60s"))
 	c.RequestTimeout = rt
 
-	flag.IntVar(&c.Port, "port", c.Port, "HTTP listen port")
-	flag.IntVar(&c.MetricsPort, "metrics-port", c.MetricsPort, "metrics listen port; defaults to --port")
-	flag.StringVar(&c.APIKey, "api-key", c.APIKey, "client API key")
-	flag.StringVar(&c.WorkerKey, "worker-key", c.WorkerKey, "worker shared key")
-	flag.StringVar(&c.WSPath, "ws-path", c.WSPath, "websocket path")
-	flag.DurationVar(&c.RequestTimeout, "request-timeout", c.RequestTimeout, "request timeout")
+	flag.IntVar(&c.Port, "port", c.Port, "HTTP listen port for the public API")
+	flag.IntVar(&c.MetricsPort, "metrics-port", c.MetricsPort, "Prometheus metrics listen port; defaults to the value of --port")
+	flag.StringVar(&c.APIKey, "api-key", c.APIKey, "client API key required for HTTP requests; leave empty to disable auth")
+	flag.StringVar(&c.WorkerKey, "worker-key", c.WorkerKey, "shared key workers must present when registering")
+	flag.StringVar(&c.WSPath, "ws-path", c.WSPath, "websocket path for worker connections (e.g. /workers/connect)")
+	flag.DurationVar(&c.RequestTimeout, "request-timeout", c.RequestTimeout, "maximum duration to process a client request")
 }

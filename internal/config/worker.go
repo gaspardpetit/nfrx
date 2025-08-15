@@ -59,17 +59,17 @@ func (c *WorkerConfig) BindFlags() {
 	}
 	c.WorkerName = getEnv("WORKER_NAME", host)
 
-	flag.StringVar(&c.ServerURL, "server-url", c.ServerURL, "server websocket url")
-	flag.StringVar(&c.WorkerKey, "worker-key", c.WorkerKey, "worker auth key")
-	flag.StringVar(&c.OllamaBaseURL, "ollama-base-url", c.OllamaBaseURL, "base URL for local Ollama")
-	flag.StringVar(&c.OllamaAPIKey, "ollama-api-key", c.OllamaAPIKey, "Ollama API key")
-	flag.IntVar(&c.MaxConcurrency, "max-concurrency", c.MaxConcurrency, "max concurrent jobs")
-	flag.StringVar(&c.WorkerID, "worker-id", c.WorkerID, "worker identifier")
-	flag.StringVar(&c.WorkerName, "worker-name", c.WorkerName, "worker display name")
-	flag.StringVar(&c.StatusAddr, "status-addr", c.StatusAddr, "local status http listen address")
-	flag.StringVar(&c.MetricsAddr, "metrics-addr", c.MetricsAddr, "prometheus metrics listen address")
+	flag.StringVar(&c.ServerURL, "server-url", c.ServerURL, "server WebSocket URL for registration (e.g. ws://localhost:8080/workers/connect)")
+	flag.StringVar(&c.WorkerKey, "worker-key", c.WorkerKey, "shared secret for authenticating with the server")
+	flag.StringVar(&c.OllamaBaseURL, "ollama-base-url", c.OllamaBaseURL, "base URL of the local Ollama instance (e.g. http://127.0.0.1:11434)")
+	flag.StringVar(&c.OllamaAPIKey, "ollama-api-key", c.OllamaAPIKey, "API key for connecting to Ollama; leave empty for no auth")
+	flag.IntVar(&c.MaxConcurrency, "max-concurrency", c.MaxConcurrency, "maximum number of jobs processed concurrently")
+	flag.StringVar(&c.WorkerID, "worker-id", c.WorkerID, "worker identifier; randomly generated if omitted")
+	flag.StringVar(&c.WorkerName, "worker-name", c.WorkerName, "worker display name shown in logs and status")
+	flag.StringVar(&c.StatusAddr, "status-addr", c.StatusAddr, "local status HTTP listen address (enables /status; e.g. 127.0.0.1:4555)")
+	flag.StringVar(&c.MetricsAddr, "metrics-addr", c.MetricsAddr, "Prometheus metrics listen address (disabled when empty; e.g. 127.0.0.1:9090)")
 	flag.StringVar(&c.ConfigFile, "config", c.ConfigFile, "worker config file path")
-	flag.StringVar(&c.LogDir, "log-dir", c.LogDir, "log directory")
+	flag.StringVar(&c.LogDir, "log-dir", c.LogDir, "directory for worker log files")
 	flag.DurationVar(&c.DrainTimeout, "drain-timeout", c.DrainTimeout, "time to wait for in-flight jobs on shutdown (-1 to wait indefinitely, 0 to exit immediately)")
 }
 
