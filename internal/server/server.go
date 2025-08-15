@@ -37,10 +37,10 @@ func New(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler
 		if cfg.APIKey != "" {
 			apiGroup.Use(api.APIKeyMiddleware(cfg.APIKey))
 		}
-		v1.Post("/v1/chat/completions", wrapper.PostV1ChatCompletions)
-		v1.Post("/v1/embeddings", wrapper.PostV1Embeddings)
-		v1.Get("/v1/models", wrapper.GetV1Models)
-		v1.Get("/v1/models/{id}", wrapper.GetV1ModelsId)
+		apiGroup.Post("/v1/chat/completions", wrapper.PostV1ChatCompletions)
+		apiGroup.Post("/v1/embeddings", wrapper.PostV1Embeddings)
+		apiGroup.Get("/v1/models", wrapper.GetV1Models)
+		apiGroup.Get("/v1/models/{id}", wrapper.GetV1ModelsId)
 		apiGroup.Get("/api/state", wrapper.GetApiState)
 		apiGroup.Get("/api/state/stream", wrapper.GetApiStateStream)
 	})

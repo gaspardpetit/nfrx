@@ -42,6 +42,8 @@ paths:
               schema:
                 type: object
                 properties:
+                  object:
+                    type: string
                   data:
                     type: array
                     items:
@@ -57,7 +59,7 @@ paths:
                         owned_by:
                           type: string
                       required: [id, object, created, owned_by]
-                required: [data]
+                required: [object, data]
   /v1/models/{id}:
     get:
       security: [ { BearerAuth: [] } ]
@@ -86,6 +88,16 @@ paths:
                   owned_by:
                     type: string
                 required: [id, object, created, owned_by]
+        '404':
+          description: Model not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required: [error]
   /v1/chat/completions:
     post:
       security: [ { BearerAuth: [] } ]
