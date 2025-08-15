@@ -3,6 +3,7 @@ package mcpclient
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -153,6 +154,7 @@ func main(){
 	cfg := Config{Order: []string{"stdio"}, InitTimeout: 5 * time.Second}
 	cfg.Stdio.Command = "go"
 	cfg.Stdio.Args = []string{"run", path}
+	cfg.Stdio.AllowRelative = true
 	conn, err := NewOrchestrator(cfg).Connect(context.Background())
 	if err != nil {
 		t.Fatalf("connect: %v", err)
@@ -174,5 +176,25 @@ func TestCompatibility_InvalidJSON(t *testing.T) {
 	cfg.HTTP.URL = srv.URL
 	if _, err := NewOrchestrator(cfg).Connect(context.Background()); err == nil {
 		t.Fatalf("expected error")
+	}
+}
+
+// TestCompatibility_TLSVerify ensures TLS verification is enforced by default.
+func TestCompatibility_TLSVerify(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		body := fmt.Sprintf(`{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"%s"}}`, mcp.LATEST_PROTOCOL_VERSION)
+		_, _ = w.Write([]byte(body))
+	}))
+	defer srv.Close()
+
+	cfg := Config{Order: []string{"http"}, InitTimeout: time.Second}
+	cfg.HTTP.URL = srv.URL
+	if _, err := NewOrchestrator(cfg).Connect(context.Background()); err == nil {
+		t.Fatalf("expected TLS error")
+	}
+	cfg.HTTP.InsecureSkipVerify = true
+	if _, err := NewOrchestrator(cfg).Connect(context.Background()); err != nil {
+		t.Fatalf("connect with skip verify: %v", err)
 	}
 }
