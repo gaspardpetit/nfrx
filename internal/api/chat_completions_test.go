@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/you/llamapool/internal/ctrl"
+	"github.com/gaspardpetit/llamapool/internal/ctrl"
 )
 
 type flushRecorder struct {

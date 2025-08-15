@@ -14,11 +14,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/you/llamapool/internal/config"
-	"github.com/you/llamapool/internal/ctrl"
-	"github.com/you/llamapool/internal/logx"
-	"github.com/you/llamapool/internal/metrics"
-	"github.com/you/llamapool/internal/server"
+	"github.com/gaspardpetit/llamapool/internal/config"
+	"github.com/gaspardpetit/llamapool/internal/ctrl"
+	"github.com/gaspardpetit/llamapool/internal/logx"
+	"github.com/gaspardpetit/llamapool/internal/metrics"
+	"github.com/gaspardpetit/llamapool/internal/server"
 )
 
 var (

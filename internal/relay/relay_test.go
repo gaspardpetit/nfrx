@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/you/llamapool/internal/ctrl"
+	"github.com/gaspardpetit/llamapool/internal/ctrl"
 )
 
 func TestRelayGenerateStream(t *testing.T) {

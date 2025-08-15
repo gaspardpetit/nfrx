@@ -3,8 +3,8 @@ package api
 import (
 	"net/http"
 
-	"github.com/you/llamapool/api/generated"
-	"github.com/you/llamapool/internal/logx"
+	"github.com/gaspardpetit/llamapool/api/generated"
+	"github.com/gaspardpetit/llamapool/internal/logx"
 )
 
 var openapiJSON []byte

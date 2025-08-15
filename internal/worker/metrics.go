@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gaspardpetit/llamapool/internal/logx"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/you/llamapool/internal/logx"
 )
 
 var (
