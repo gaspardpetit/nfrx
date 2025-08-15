@@ -4,9 +4,11 @@ using System.Drawing;
 using System.Net.Http;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.ServiceProcess;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Squirrel;
 
 namespace TrayApp;
 
@@ -28,6 +30,7 @@ public class TrayAppContext : ApplicationContext
     private string? _lastError;
     private WorkerConfig _config;
     private bool _controlsAvailable;
+    private const string UpdateRepo = "gaspardpetit/llamapool";
 
     private const string ServiceName = "llamapool";
 
@@ -103,6 +106,7 @@ public class TrayAppContext : ApplicationContext
         _ = ProbeControlEndpointsAsync();
 
         RefreshServiceState();
+        _ = CheckForUpdatesAsync();
     }
 
     private void OnStartStopClicked(object? sender, EventArgs e)
@@ -313,10 +317,37 @@ public class TrayAppContext : ApplicationContext
         }
     }
 
-    private void OnCheckForUpdatesClicked(object? sender, EventArgs e)
+    private async void OnCheckForUpdatesClicked(object? sender, EventArgs e)
     {
-        // TODO: Check for application updates
-        MessageBox.Show("Check for Updates clicked");
+        await CheckForUpdatesAsync(true);
+    }
+
+    private async Task CheckForUpdatesAsync(bool userInitiated = false)
+    {
+        try
+        {
+            using var mgr = await UpdateManager.GitHubUpdateManager(UpdateRepo);
+            var updates = await mgr.CheckForUpdate();
+            if (updates.ReleasesToApply.Any())
+            {
+                await mgr.UpdateApp();
+                if (userInitiated)
+                {
+                    MessageBox.Show("Update installed. Please restart the application.", "Update", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+            else if (userInitiated)
+            {
+                MessageBox.Show("No updates available.", "Update", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+        catch (Exception ex)
+        {
+            if (userInitiated)
+            {
+                MessageBox.Show($"Failed to check for updates: {ex.Message}", "Update", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
     }
 
     private void OnExitClicked(object? sender, EventArgs e)
