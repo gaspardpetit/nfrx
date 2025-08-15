@@ -72,7 +72,7 @@ function update(data) {
     container.appendChild(div);
   });
 }
-const es = new EventSource('/api/v1/state/stream');
+const es = new EventSource('/api/state/stream');
 es.onmessage = (e) => {
   try {
     const data = JSON.parse(e.data);

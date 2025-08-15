@@ -19,14 +19,14 @@ import (
 func TestModelsAPI(t *testing.T) {
 	reg := ctrl.NewRegistry()
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	cfg := config.ServerConfig{WSPath: "/workers/connect", RequestTimeout: 5 * time.Second}
+	cfg := config.ServerConfig{RequestTimeout: 5 * time.Second}
 	metricsReg := ctrl.NewMetricsRegistry("test", "", "")
 	handler := server.New(reg, metricsReg, sched, cfg)
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
 	ctx := context.Background()
-	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/workers/connect"
+	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/api/workers/connect"
 
 	// Worker Alpha
 	connA, _, err := websocket.Dial(ctx, wsURL, nil)
