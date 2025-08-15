@@ -219,8 +219,7 @@ PORT=8080 WORKER_KEY=secret API_KEY=test123 go run ./cmd/llamapool-server
 # PORT=8080 METRICS_PORT=9090 WORKER_KEY=secret API_KEY=test123 go run ./cmd/llamapool-server
 ```
 
-By default workers connect to `/api/workers/connect`; set `WS_PATH` or `--ws-path`
-to change the registration path.
+Workers register with the server at `/api/workers/connect`.
 
 On Windows (CMD)
 

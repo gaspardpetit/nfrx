@@ -15,7 +15,7 @@ func TestMetricsEndpointDefaultPort(t *testing.T) {
 	reg := ctrl.NewRegistry()
 	metricsReg := ctrl.NewMetricsRegistry("test", "", "")
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	cfg := config.ServerConfig{Port: 8080, RequestTimeout: time.Second, WSPath: "/api/workers/connect"}
+	cfg := config.ServerConfig{Port: 8080, RequestTimeout: time.Second}
 	h := New(reg, metricsReg, sched, cfg)
 	ts := httptest.NewServer(h)
 	defer ts.Close()
@@ -33,7 +33,7 @@ func TestMetricsEndpointSeparatePort(t *testing.T) {
 	reg := ctrl.NewRegistry()
 	metricsReg := ctrl.NewMetricsRegistry("test", "", "")
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	cfg := config.ServerConfig{Port: 8080, MetricsPort: 9090, RequestTimeout: time.Second, WSPath: "/api/workers/connect"}
+	cfg := config.ServerConfig{Port: 8080, MetricsPort: 9090, RequestTimeout: time.Second}
 	h := New(reg, metricsReg, sched, cfg)
 	ts := httptest.NewServer(h)
 	defer ts.Close()
@@ -51,7 +51,7 @@ func TestStatusPage(t *testing.T) {
 	reg := ctrl.NewRegistry()
 	metricsReg := ctrl.NewMetricsRegistry("test", "", "")
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	cfg := config.ServerConfig{Port: 8080, RequestTimeout: time.Second, WSPath: "/api/workers/connect"}
+	cfg := config.ServerConfig{Port: 8080, RequestTimeout: time.Second}
 	h := New(reg, metricsReg, sched, cfg)
 	ts := httptest.NewServer(h)
 	defer ts.Close()

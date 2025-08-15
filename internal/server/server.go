@@ -50,11 +50,7 @@ func New(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler
 	mcpReg := mcp.NewRegistry()
 	r.Post("/mcp/{client_id}", mcpReg.HTTPHandler())
 	r.Handle("/ws/relay", mcpReg.WSHandler())
-	wsPath := cfg.WSPath
-	if wsPath == "" {
-		wsPath = "/api/workers/connect"
-	}
-	r.Handle(wsPath, ctrl.WSHandler(reg, metrics, cfg.WorkerKey))
+	r.Handle("/api/workers/connect", ctrl.WSHandler(reg, metrics, cfg.WorkerKey))
 
 	r.Group(func(openai chi.Router) {
 		if cfg.APIKey != "" {
