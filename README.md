@@ -132,6 +132,10 @@ The tray can start or stop the local `llamapool` Windows service and toggle whet
   - per-worker totals (processed, inflight, failures, avg duration)
   - per-model availability (how many workers support each model)
   - versions/build info for server & workers
+- **Logs**:
+  - `Info` — lifecycle details like connections, disconnections, draining, and job dispatch/completion.
+  - `Warn` — expected failures such as missing models or no available workers.
+  - `Error` — unexpected issues requiring investigation. `Fatal` is used only for unrecoverable errors.
 
 
 ## Objectives

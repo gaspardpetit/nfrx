@@ -2,6 +2,7 @@ package ctrl
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -94,6 +95,16 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, workerKey string) http.H
 		for {
 			_, msg, err := c.Read(ctx)
 			if err != nil {
+				var ce websocket.CloseError
+				if errors.As(err, &ce) {
+					lvl := logx.Log.Info()
+					if ce.Code != websocket.StatusNormalClosure {
+						lvl = logx.Log.Error()
+					}
+					lvl.Str("worker_id", wk.ID).Str("worker_name", wk.Name).Str("reason", ce.Reason).Msg("disconnected")
+				} else {
+					logx.Log.Error().Err(err).Str("worker_id", wk.ID).Str("worker_name", wk.Name).Msg("disconnected")
+				}
 				return
 			}
 			var env struct {

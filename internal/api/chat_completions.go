@@ -38,12 +38,13 @@ func ChatCompletionsHandler(reg *ctrl.Registry, sched ctrl.Scheduler) http.Handl
 		exact := reg.WorkersForModel(meta.Model)
 		worker, err := sched.PickWorker(meta.Model)
 		if err != nil {
+			logx.Log.Warn().Str("model", meta.Model).Msg("no worker")
 			http.Error(w, "no worker", http.StatusNotFound)
 			return
 		}
 		if len(exact) == 0 {
 			if key, ok := ctrl.AliasKey(meta.Model); ok {
-				logx.Log.Info().Str("event", "alias_fallback").Str("requested_id", meta.Model).Str("alias_key", key).Str("worker_id", worker.ID).Msg("alias fallback")
+				logx.Log.Info().Str("event", "alias_fallback").Str("requested_id", meta.Model).Str("alias_key", key).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Msg("alias fallback")
 			}
 		}
 		reg.IncInFlight(worker.ID)
@@ -51,7 +52,7 @@ func ChatCompletionsHandler(reg *ctrl.Registry, sched ctrl.Scheduler) http.Handl
 
 		reqID := uuid.NewString()
 		logID := chiMiddleware.GetReqID(r.Context())
-		logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID).Str("model", meta.Model).Bool("stream", meta.Stream).Msg("dispatch")
+		logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", meta.Model).Bool("stream", meta.Stream).Msg("dispatch")
 		ch := make(chan interface{}, 16)
 		worker.AddJob(reqID, ch)
 		defer func() {
@@ -89,6 +90,7 @@ func ChatCompletionsHandler(reg *ctrl.Registry, sched ctrl.Scheduler) http.Handl
 		select {
 		case worker.Send <- msg:
 		default:
+			logx.Log.Warn().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", meta.Model).Msg("worker busy")
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusServiceUnavailable)
 			if _, err := w.Write([]byte(`{"error":"worker_busy"}`)); err != nil {
@@ -158,7 +160,7 @@ func ChatCompletionsHandler(reg *ctrl.Registry, sched ctrl.Scheduler) http.Handl
 							logx.Log.Error().Err(err).Msg("write upstream error")
 						}
 					}
-					logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID).Str("model", meta.Model).Bool("stream", meta.Stream).Dur("duration", time.Since(start)).Msg("complete")
+					logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", meta.Model).Bool("stream", meta.Stream).Dur("duration", time.Since(start)).Msg("complete")
 					return
 				}
 			}

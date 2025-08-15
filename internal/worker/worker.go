@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"reflect"
 	"sync"
 	"time"
@@ -61,6 +62,7 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 		_ = ws.Close(websocket.StatusInternalError, "closing")
 	}()
 
+	logx.Log.Info().Str("server", cfg.ServerURL).Msg("connected to server")
 	SetConnectedToServer(true)
 	SetState("connected_idle")
 	SetLastError("")
@@ -107,6 +109,16 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 		_, data, err := ws.Read(ctx)
 		if err != nil {
 			SetConnectedToServer(false)
+			var ce websocket.CloseError
+			if errors.As(err, &ce) {
+				lvl := logx.Log.Info()
+				if ce.Code != websocket.StatusNormalClosure {
+					lvl = logx.Log.Error()
+				}
+				lvl.Str("reason", ce.Reason).Msg("server connection closed")
+			} else {
+				logx.Log.Error().Err(err).Msg("server read error")
+			}
 			if IsDraining() {
 				return nil
 			}
@@ -128,6 +140,7 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 			}
 			logx.Log.Info().Str("job", jr.JobID).Msg("job request")
 			if IsDraining() {
+				logx.Log.Warn().Str("job", jr.JobID).Msg("reject job while draining")
 				msg := ctrl.JobErrorMessage{Type: "job_error", JobID: jr.JobID, Code: "worker_draining", Message: "worker is draining"}
 				b, _ := json.Marshal(msg)
 				sendCh <- b
@@ -153,6 +166,7 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 			}
 			logx.Log.Info().Str("request_id", hr.RequestID).Str("path", hr.Path).Msg("http proxy request")
 			if IsDraining() {
+				logx.Log.Warn().Str("request_id", hr.RequestID).Msg("reject proxy while draining")
 				h := ctrl.HTTPProxyResponseHeadersMessage{Type: "http_proxy_response_headers", RequestID: hr.RequestID, Status: 503, Headers: map[string]string{"Content-Type": "application/json"}}
 				hb, _ := json.Marshal(h)
 				sendCh <- hb
@@ -210,10 +224,11 @@ func probeOllama(ctx context.Context, client healthClient) {
 }
 
 func handleGenerate(ctx context.Context, client *ollama.Client, sendCh chan []byte, jr ctrl.JobRequestMessage, cancels map[string]context.CancelFunc, mu *sync.Mutex, onDone func()) {
+	logx.Log.Info().Str("job", jr.JobID).Msg("generate start")
 	raw, _ := json.Marshal(jr.Payload)
 	var req relay.GenerateRequest
 	if err := json.Unmarshal(raw, &req); err != nil {
-		logx.Log.Error().Err(err).Msg("unmarshal generate request")
+		logx.Log.Error().Str("job", jr.JobID).Err(err).Msg("unmarshal generate request")
 		return
 	}
 	jobCtx, cancel := context.WithCancel(ctx)
@@ -231,11 +246,20 @@ func handleGenerate(ctx context.Context, client *ollama.Client, sendCh chan []by
 		mu.Unlock()
 		_ = DecJobs()
 		onDone()
-		JobCompleted(success, time.Since(start))
+		dur := time.Since(start)
+		JobCompleted(success, dur)
+		lvl := logx.Log.Info()
+		msg := "generate complete"
+		if !success {
+			lvl = logx.Log.Warn()
+			msg = "generate failed"
+		}
+		lvl.Str("job", jr.JobID).Dur("duration", dur).Msg(msg)
 	}()
 	if req.Stream {
 		rc, err := client.GenerateStream(jobCtx, req)
 		if err != nil {
+			logx.Log.Error().Str("job", jr.JobID).Err(err).Msg("generate stream error")
 			msg := ctrl.JobErrorMessage{Type: "job_error", JobID: jr.JobID, Code: "error", Message: err.Error()}
 			b, _ := json.Marshal(msg)
 			sendCh <- b
@@ -256,6 +280,7 @@ func handleGenerate(ctx context.Context, client *ollama.Client, sendCh chan []by
 	} else {
 		data, err := client.Generate(jobCtx, req)
 		if err != nil {
+			logx.Log.Error().Str("job", jr.JobID).Err(err).Msg("generate error")
 			msg := ctrl.JobErrorMessage{Type: "job_error", JobID: jr.JobID, Code: "error", Message: err.Error()}
 			b, _ := json.Marshal(msg)
 			sendCh <- b

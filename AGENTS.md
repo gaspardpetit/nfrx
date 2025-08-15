@@ -18,6 +18,13 @@ requests to local Ollama instances. The repository contains two binaries:
 - Default to the patterns already present in the `internal/` packages
 - Use lowercase `llamapool` in documentation and text unless referring to binaries or package names
 
+## Logging Policy
+- Use structured logging via `internal/logx`.
+- `Info` logs capture normal lifecycle events such as connections, disconnections, draining, and job dispatch/completion.
+- `Warn` logs report expected failures (e.g., model not found, no worker available, worker busy, draining rejections).
+- `Error` logs report unexpected failures that require investigation (e.g., socket errors, serialization failures).
+- `Fatal` logs are reserved for unrecoverable errors that terminate the service.
+
 ## Testing Guidelines
 - Unit tests live alongside the code using `*_test.go` files
 - End-to-end tests are in the `test/` directory
