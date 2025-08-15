@@ -7,10 +7,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/you/llamapool/api/generated"
-	"github.com/you/llamapool/internal/api"
-	"github.com/you/llamapool/internal/config"
-	"github.com/you/llamapool/internal/ctrl"
+	"github.com/gaspardpetit/llamapool/api/generated"
+	"github.com/gaspardpetit/llamapool/internal/api"
+	"github.com/gaspardpetit/llamapool/internal/config"
+	"github.com/gaspardpetit/llamapool/internal/ctrl"
 )
 
 // New constructs the HTTP handler for the server.

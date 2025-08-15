@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/you/llamapool/internal/config"
-	"github.com/you/llamapool/internal/ctrl"
-	"github.com/you/llamapool/internal/server"
-	"github.com/you/llamapool/internal/worker"
+	"github.com/gaspardpetit/llamapool/internal/config"
+	"github.com/gaspardpetit/llamapool/internal/ctrl"
+	"github.com/gaspardpetit/llamapool/internal/server"
+	"github.com/gaspardpetit/llamapool/internal/worker"
 )
 
 func TestE2EChatCompletionsProxy(t *testing.T) {

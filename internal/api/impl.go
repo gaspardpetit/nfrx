@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/you/llamapool/api/generated"
-	"github.com/you/llamapool/internal/ctrl"
+	"github.com/gaspardpetit/llamapool/api/generated"
+	"github.com/gaspardpetit/llamapool/internal/ctrl"
 )
 
 type API struct {

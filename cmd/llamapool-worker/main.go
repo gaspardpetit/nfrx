@@ -11,9 +11,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/you/llamapool/internal/config"
-	"github.com/you/llamapool/internal/logx"
-	"github.com/you/llamapool/internal/worker"
+	"github.com/gaspardpetit/llamapool/internal/config"
+	"github.com/gaspardpetit/llamapool/internal/logx"
+	"github.com/gaspardpetit/llamapool/internal/worker"
 )
 
 var (

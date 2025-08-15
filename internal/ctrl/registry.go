@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/you/llamapool/internal/logx"
+	"github.com/gaspardpetit/llamapool/internal/logx"
 )
 
 const (
