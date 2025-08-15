@@ -93,9 +93,13 @@ The tray can start or stop the local `llamapool` Windows service, toggle whether
   - `GET /v1/models/{id}`
 - OpenAI Chat Completions: `POST /v1/chat/completions`
 - llamapool API:
-  - **State (JSON):** `GET /api/v1/state`
-  - **State (SSE):** `GET /api/v1/state/stream`
+  - **State (JSON):** `GET /v1/state`
+  - **State (SSE):** `GET /v1/state/stream`
 - Prometheus metrics: `GET /metrics` (can run on a separate port via `--metrics-port`)
+- API docs:
+  - Swagger UI: `GET /api/client/`
+  - OpenAPI schema: `GET /api/client/openapi.json`
+  - Update schema: edit `api/openapi.yaml` then run `make generate`
 - Web dashboard: `GET /status` (real-time view of workers)
 
 
@@ -128,7 +132,7 @@ The tray can start or stop the local `llamapool` Windows service, toggle whether
     `llamapool_worker_jobs_failed_total`, and
     `llamapool_worker_job_duration_seconds` (histogram).
 
-- **JSON/SSE State** (`/api/v1/state`, `/api/v1/state/stream`): suitable for custom dashboards showing:
+- **JSON/SSE State** (`/v1/state`, `/v1/state/stream`): suitable for custom dashboards showing:
   - worker list and status (connected/working/idle/gone)
   - per-worker totals (processed, inflight, failures, avg duration)
   - per-model availability (how many workers support each model)
@@ -364,8 +368,8 @@ curl http://localhost:8080/healthz
 For server administration and monitoring:
 
 ```bash
-curl -H "Authorization: Bearer test123" http://localhost:8080/api/v1/state
-curl -H "Authorization: Bearer test123" http://localhost:8080/api/v1/state/stream
+curl -H "Authorization: Bearer test123" http://localhost:8080/v1/state
+curl -H "Authorization: Bearer test123" http://localhost:8080/v1/state/stream
 # Prometheus metrics
 curl http://localhost:8080/metrics
 # or if `--metrics-port` is set:
@@ -420,8 +424,8 @@ A details dialog shows connection information, job counts, and any last error. A
 | Dynamic model discovery | ✅ | Workers advertise supported models; server aggregates |
 | HTTPS/WSS transport | ✅ | Use TLS terminator or run behind reverse proxy; WS path configurable |
 | Prometheus metrics endpoint | ✅ | `/metrics`; includes build info, per-model counters, histograms; supports separate `--metrics-port` |
-| Real-time state API (JSON) | ✅ | `GET /api/v1/state` returns full server/worker snapshot |
-| Real-time state stream (SSE) | ✅ | `GET /api/v1/state/stream` for dashboards |
+| Real-time state API (JSON) | ✅ | `GET /v1/state` returns full server/worker snapshot |
+| Real-time state stream (SSE) | ✅ | `GET /v1/state/stream` for dashboards |
 | Token usage tracking | ✅ | Per-model and per-worker token totals (in/out) |
 | Per-model success/error rates | ✅ | `llamapool_model_requests_total{outcome=...}` |
 | Build info (server & worker) | ✅ | Server ldflags; worker-reported version/SHA/date reflected in state |

@@ -9,7 +9,7 @@ import (
 	"github.com/you/llamapool/internal/logx"
 )
 
-func middlewareChain() []func(http.Handler) http.Handler {
+func MiddlewareChain() []func(http.Handler) http.Handler {
 	return []func(http.Handler) http.Handler{
 		chiMiddleware.RequestID,
 		requestLogger,

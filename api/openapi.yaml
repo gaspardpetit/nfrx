@@ -1,0 +1,165 @@
+openapi: 3.0.3
+info:
+  title: llamapool API
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+paths:
+  /healthz:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                required: [status]
+  /api/tags:
+    get:
+      summary: List models (tags)
+      responses:
+        '200':
+          description: List of models
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  models:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                      required: [name]
+                required: [models]
+  /api/generate:
+    post:
+      summary: Generate content
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Generated response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+  /v1/models:
+    get:
+      security: [ { BearerAuth: [] } ]
+      summary: List models
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        object:
+                          type: string
+                        created:
+                          type: integer
+                          format: int64
+                        owned_by:
+                          type: string
+                      required: [id, object, created, owned_by]
+                required: [data]
+  /v1/models/{id}:
+    get:
+      security: [ { BearerAuth: [] } ]
+      summary: Get model
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  object:
+                    type: string
+                  created:
+                    type: integer
+                    format: int64
+                  owned_by:
+                    type: string
+                required: [id, object, created, owned_by]
+  /v1/chat/completions:
+    post:
+      security: [ { BearerAuth: [] } ]
+      summary: Chat completions (proxy)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+            text/event-stream:
+              schema:
+                type: string
+  /v1/state:
+    get:
+      security: [ { BearerAuth: [] } ]
+      summary: Get server state
+      responses:
+        '200':
+          description: State
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+  /v1/state/stream:
+    get:
+      security: [ { BearerAuth: [] } ]
+      summary: Stream server state
+      responses:
+        '200':
+          description: Event stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
