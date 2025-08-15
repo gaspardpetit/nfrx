@@ -72,7 +72,7 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, workerKey string) http.H
 			wk.Models[m] = true
 		}
 		reg.Add(wk)
-		metrics.UpsertWorker(wk.ID, "", "", "", rm.Models)
+		metrics.UpsertWorker(wk.ID, rm.Version, rm.BuildSHA, rm.BuildDate, rm.Models)
 		metrics.SetWorkerStatus(wk.ID, StatusIdle)
 		logx.Log.Info().Str("worker_id", wk.ID).Str("worker_name", wk.Name).Int("model_count", len(wk.Models)).Msg("registered")
 		defer func() {

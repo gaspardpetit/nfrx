@@ -22,7 +22,8 @@ func TestChatCompletionsHeaders(t *testing.T) {
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
 	wk := &ctrl.Worker{ID: "w1", Models: map[string]bool{"m": true}, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
 	reg.Add(wk)
-	h := ChatCompletionsHandler(reg, sched)
+	metricsReg := ctrl.NewMetricsRegistry("", "", "")
+	h := ChatCompletionsHandler(reg, sched, metricsReg)
 
 	go func() {
 		msg := <-wk.Send
@@ -57,7 +58,8 @@ func TestChatCompletionsOpaque(t *testing.T) {
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
 	wk := &ctrl.Worker{ID: "w1", Models: map[string]bool{"m": true}, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
 	reg.Add(wk)
-	h := ChatCompletionsHandler(reg, sched)
+	metricsReg := ctrl.NewMetricsRegistry("", "", "")
+	h := ChatCompletionsHandler(reg, sched, metricsReg)
 
 	go func() {
 		msg := <-wk.Send
@@ -83,7 +85,8 @@ func TestChatCompletionsEarlyError(t *testing.T) {
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
 	wk := &ctrl.Worker{ID: "w1", Models: map[string]bool{"m": true}, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
 	reg.Add(wk)
-	h := ChatCompletionsHandler(reg, sched)
+	metricsReg := ctrl.NewMetricsRegistry("", "", "")
+	h := ChatCompletionsHandler(reg, sched, metricsReg)
 
 	go func() {
 		msg := <-wk.Send
