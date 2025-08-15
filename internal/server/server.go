@@ -11,6 +11,7 @@ import (
 	"github.com/gaspardpetit/llamapool/internal/api"
 	"github.com/gaspardpetit/llamapool/internal/config"
 	"github.com/gaspardpetit/llamapool/internal/ctrl"
+	"github.com/gaspardpetit/llamapool/internal/mcp"
 )
 
 // New constructs the HTTP handler for the server.
@@ -44,6 +45,10 @@ func New(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler
 		apiGroup.Get("/api/state", wrapper.GetApiState)
 		apiGroup.Get("/api/state/stream", wrapper.GetApiStateStream)
 	})
+	mcpReg := mcp.NewRegistry()
+	r.Post("/mcp/{client_id}", mcpReg.HTTPHandler())
+	r.Handle("/ws/relay", mcpReg.WSHandler())
+	r.Handle(cfg.WSPath, ctrl.WSHandler(reg, metrics, cfg.WorkerKey))
 
 	r.Group(func(openai chi.Router) {
 		if cfg.APIKey != "" {
