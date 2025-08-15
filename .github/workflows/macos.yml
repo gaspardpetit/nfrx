@@ -10,6 +10,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build (Release)
+        env:
+          DEVELOPMENT_TEAM: ${{ secrets.AC_TEAM_ID }}
         run: |
           xcodebuild -project desktop/macos/llamapool/llamapool.xcodeproj -scheme llamapool -configuration Release -archivePath build/llamapool.xcarchive archive
           xcodebuild -exportArchive -archivePath build/llamapool.xcarchive -exportOptionsPlist ci/exportOptions.plist -exportPath build/export

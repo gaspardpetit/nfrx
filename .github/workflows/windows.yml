@@ -46,12 +46,19 @@ jobs:
       - name: Build .NET projects
         run: dotnet build desktop/windows/Llamapool.Windows.sln -c Release
       - name: Install WiX
-        run: choco install wixtoolset --no-progress -y
+        shell: pwsh
+        run: |
+          dotnet tool install --global wix
+          echo "$env:USERPROFILE\.dotnet\tools" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Build MSI
         run: |
           New-Item -ItemType Directory -Path build | Out-Null
-          candle.exe desktop/windows/Installer/Product.wxs -dWorkerExe="cmd\llamapool-worker\llamapool-worker.exe" -dServiceExe="desktop\windows\WindowsService\bin\Release\net8.0-windows\WindowsService.exe" -dTrayExe="desktop\windows\TrayApp\bin\Release\net8.0-windows\TrayApp.exe" -dDefaultConfig="desktop\windows\Installer\worker.yaml" -out build\
-          light.exe build\Product.wixobj -out build\llamapool.msi
+          wix build desktop/windows/Installer/Product.wxs `
+            -d:WorkerExe="cmd\llamapool-worker\llamapool-worker.exe" `
+            -d:ServiceExe="desktop\windows\WindowsService\bin\Release\net8.0-windows\WindowsService.exe" `
+            -d:TrayExe="desktop\windows\TrayApp\bin\Release\net8.0-windows\TrayApp.exe" `
+            -d:DefaultConfig="desktop\windows\Installer\worker.yaml" `
+            -out build\llamapool.msi
 
       - name: Restore PFX from secret
         if: ${{ env.PFX_B64 != '' && github.event_name != 'pull_request' }}
