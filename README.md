@@ -1,6 +1,7 @@
 [![Build](https://github.com/gaspardpetit/llamapool/actions/workflows/ci.yml/badge.svg)](https://github.com/gaspardpetit/llamapool/actions/workflows/ci.yml)
 [![Docker](https://github.com/gaspardpetit/llamapool/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/gaspardpetit/llamapool/actions/workflows/docker-publish.yml)
 [![.deb](https://github.com/gaspardpetit/llamapool/actions/workflows/release-deb.yml/badge.svg)](https://github.com/gaspardpetit/llamapool/actions/workflows/release-deb.yml)
+[![macOS Build](https://github.com/gaspardpetit/llamapool/actions/workflows/macos.yml/badge.svg)](https://github.com/gaspardpetit/llamapool/actions/workflows/macos.yml)
 
 
 # llamapool

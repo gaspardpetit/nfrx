@@ -1,0 +1,31 @@
+name: macOS Build
+on:
+  push:
+    branches: [ main ]
+  release:
+    types: [ published ]
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build (Release)
+        run: |
+          xcodebuild -project desktop/macos/llamapool/llamapool.xcodeproj -scheme llamapool -configuration Release -archivePath build/llamapool.xcarchive archive
+          xcodebuild -exportArchive -archivePath build/llamapool.xcarchive -exportOptionsPlist ci/exportOptions.plist -exportPath build/export
+      - name: Create DMG
+        run: |
+          ci/create-dmg.sh build/export/llamapool.app build/Llamapool.dmg
+      - name: Notarize
+        env:
+          AC_API_KEY_ID: ${{ secrets.AC_API_KEY_ID }}
+          AC_API_ISSUER_ID: ${{ secrets.AC_API_ISSUER_ID }}
+          AC_API_P8: ${{ secrets.AC_API_P8 }}
+        run: ci/notarize.sh build/Llamapool.dmg
+      - name: Staple
+        run: xcrun stapler staple build/Llamapool.dmg
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Llamapool-macOS
+          path: build/Llamapool.dmg
