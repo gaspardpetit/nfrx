@@ -96,6 +96,7 @@ The tray can start or stop the local `llamapool` Windows service, toggle whether
   - **State (JSON):** `GET /api/v1/state`
   - **State (SSE):** `GET /api/v1/state/stream`
 - Prometheus metrics: `GET /metrics` (can run on a separate port via `--metrics-port`)
+- Web dashboard: `GET /status` (real-time view of workers)
 
 
 ## Security
@@ -132,6 +133,7 @@ The tray can start or stop the local `llamapool` Windows service, toggle whether
   - per-worker totals (processed, inflight, failures, avg duration)
   - per-model availability (how many workers support each model)
   - versions/build info for server & workers
+- **Web status page** (`/status`): lightweight dashboard powered by the state stream
 - **Logs**:
   - `Info` — lifecycle details like connections, disconnections, draining, and job dispatch/completion.
   - `Warn` — expected failures such as missing models or no available workers.
@@ -426,5 +428,5 @@ A details dialog shows connection information, job counts, and any last error. A
 | Draining | ✅ | Workers can be configured to drain before exiting to avoid interrupting an ongoing request with `--drain-timeout` |
 | Linux Deamons | ✅ | Debian packages are provided to install the worker and server as daemons |
 | Desktop Trays | In Progress | Windows and macOS tray applications to launch, configure and monitor the worker |
-| Server dashboard | Planned | Graphically display the state of the the pool for quick troubleshooting |
+| Server dashboard | ✅ | `/status` HTML page visualizes workers via SSE |
 | Private MCP Endpoints | Planned | Allow clients to expose an ephemeral MCP server through the llamapool-server |
