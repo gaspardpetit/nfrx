@@ -27,10 +27,12 @@ type VersionInfo struct {
 }
 
 var (
-	stateMu   sync.RWMutex
-	stateData = State{State: "disconnected"}
-	buildInfo = VersionInfo{Version: "dev", BuildSHA: "unknown", BuildDate: "unknown"}
-	draining  atomic.Bool
+	stateMu    sync.RWMutex
+	stateData  = State{State: "disconnected"}
+	buildInfo  = VersionInfo{Version: "dev", BuildSHA: "unknown", BuildDate: "unknown"}
+	draining   atomic.Bool
+	drainMu    sync.Mutex
+	drainCheck func()
 )
 
 func resetState() {
@@ -132,9 +134,25 @@ func GetState() State {
 	return stateData
 }
 
+func setDrainCheck(fn func()) {
+	drainMu.Lock()
+	drainCheck = fn
+	drainMu.Unlock()
+}
+
+func triggerDrainCheck() {
+	drainMu.Lock()
+	fn := drainCheck
+	drainMu.Unlock()
+	if fn != nil {
+		fn()
+	}
+}
+
 func StartDrain() {
 	draining.Store(true)
 	SetState("draining")
+	triggerDrainCheck()
 }
 
 func StopDrain() {

@@ -104,6 +104,9 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 			cancel()
 		}
 	}
+	setDrainCheck(checkDrain)
+	defer setDrainCheck(nil)
+	checkDrain()
 
 	for {
 		_, data, err := ws.Read(ctx)
