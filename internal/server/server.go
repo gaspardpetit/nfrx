@@ -11,6 +11,7 @@ import (
 	"github.com/gaspardpetit/llamapool/internal/api"
 	"github.com/gaspardpetit/llamapool/internal/config"
 	"github.com/gaspardpetit/llamapool/internal/ctrl"
+	"github.com/gaspardpetit/llamapool/internal/mcp"
 )
 
 // New constructs the HTTP handler for the server.
@@ -45,6 +46,9 @@ func New(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler
 		v1.Get("/v1/state", wrapper.GetV1State)
 		v1.Get("/v1/state/stream", wrapper.GetV1StateStream)
 	})
+	mcpReg := mcp.NewRegistry()
+	r.Post("/mcp/{client_id}", mcpReg.HTTPHandler())
+	r.Handle("/ws/relay", mcpReg.WSHandler())
 	r.Handle(cfg.WSPath, ctrl.WSHandler(reg, metrics, cfg.WorkerKey))
 	metricsPort := cfg.MetricsPort
 	if metricsPort == 0 {

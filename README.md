@@ -13,8 +13,10 @@
 
 ## Overview
 
-**llamapool** is a lightweight, distributed worker pool that exposes an OpenAI-compatible `chat/completions` API, forwarding requests to one or more connected **LLM workers**.  
+**llamapool** is a lightweight, distributed worker pool that exposes an OpenAI-compatible `chat/completions` API, forwarding requests to one or more connected **LLM workers**.
 It sits in front of existing LLM runtimes such as [Ollama](https://github.com/ollama/ollama), [vLLM](https://github.com/vllm-project/vllm), or [Open-WebUI](https://github.com/open-webui/open-webui), allowing you to scale, load-balance, and securely access them from anywhere.
+
+In addition to LLM workers, llamapool now supports relaying [Model Context Protocol](https://github.com/modelcontextprotocol) calls. The new `llamapool-mcp` binary connects a private MCP provider to the public `llamapool-server`, allowing clients to invoke MCP methods via `POST /mcp/{client_id}`.
 
 A typical deployment looks like this:
 
@@ -453,4 +455,4 @@ For manual end-to-end verification on a clean VM, see [desktop/windows/ACCEPTANC
 | Linux Deamons | ✅ | Debian packages are provided to install the worker and server as daemons |
 | Desktop Trays | In Progress | Windows and macOS tray applications to launch, configure and monitor the worker |
 | Server dashboard | ✅ | `/status` HTML page visualizes workers via SSE |
-| Private MCP Endpoints | Planned | Allow clients to expose an ephemeral MCP server through the llamapool-server |
+| Private MCP Endpoints | ✅ | Allow clients to expose an ephemeral MCP server through the `llamapool-mcp` relay |
