@@ -53,10 +53,36 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 		}
 	}
 
-	ws, _, err := websocket.Dial(ctx, cfg.ServerURL, nil)
+	attempt := 0
+	for {
+		SetState("connecting")
+		SetConnectedToServer(false)
+		connected, err := connectAndServe(ctx, cfg, client)
+		if err == nil || !cfg.Reconnect {
+			return err
+		}
+		if connected {
+			attempt = 0
+		}
+		delay := reconnectDelay(attempt)
+		attempt++
+		logx.Log.Warn().Dur("backoff", delay).Err(err).Msg("connection to server lost; retrying")
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(delay):
+		}
+	}
+}
+
+func connectAndServe(ctx context.Context, cfg config.WorkerConfig, client *ollama.Client) (bool, error) {
+	connCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	ws, _, err := websocket.Dial(connCtx, cfg.ServerURL, nil)
 	if err != nil {
 		SetLastError(err.Error())
-		return err
+		SetState("error")
+		return false, err
 	}
 	defer func() {
 		_ = ws.Close(websocket.StatusInternalError, "closing")
@@ -68,25 +94,28 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 	SetLastError("")
 
 	sendCh := make(chan []byte, 16)
+	defer close(sendCh)
 	reqCancels := make(map[string]context.CancelFunc)
 	var jobMu sync.Mutex
 	go func() {
+		defer cancel()
 		for msg := range sendCh {
-			if err := ws.Write(ctx, websocket.MessageText, msg); err != nil {
+			if err := ws.Write(connCtx, websocket.MessageText, msg); err != nil {
 				return
 			}
 		}
 	}()
 
-	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: cfg.WorkerID, WorkerName: cfg.WorkerName, WorkerKey: cfg.WorkerKey, Models: models, MaxConcurrency: cfg.MaxConcurrency}
+	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: cfg.WorkerID, WorkerName: cfg.WorkerName, WorkerKey: cfg.WorkerKey, Models: GetState().Models, MaxConcurrency: cfg.MaxConcurrency}
 	b, _ := json.Marshal(regMsg)
 	sendCh <- b
 
 	go func() {
 		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
 		for {
 			select {
-			case <-ctx.Done():
+			case <-connCtx.Done():
 				return
 			case t := <-ticker.C:
 				hb := ctrl.HeartbeatMessage{Type: "heartbeat", TS: t.Unix()}
@@ -109,7 +138,7 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 	checkDrain()
 
 	for {
-		_, data, err := ws.Read(ctx)
+		_, data, err := ws.Read(connCtx)
 		if err != nil {
 			SetConnectedToServer(false)
 			var ce websocket.CloseError
@@ -123,11 +152,11 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 				logx.Log.Error().Err(err).Msg("server read error")
 			}
 			if IsDraining() {
-				return nil
+				return true, nil
 			}
 			SetLastError(err.Error())
 			SetState("error")
-			return err
+			return true, err
 		}
 		var env struct {
 			Type string `json:"type"`
@@ -150,7 +179,7 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 				continue
 			}
 			if jr.Endpoint == "generate" {
-				go handleGenerate(ctx, client, sendCh, jr, reqCancels, &jobMu, checkDrain)
+				go handleGenerate(connCtx, client, sendCh, jr, reqCancels, &jobMu, checkDrain)
 			}
 		case "cancel_job":
 			var cj ctrl.CancelJobMessage
@@ -178,7 +207,7 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 				sendCh <- eb
 				continue
 			}
-			go handleHTTPProxy(ctx, cfg, sendCh, hr, reqCancels, &jobMu, checkDrain)
+			go handleHTTPProxy(connCtx, cfg, sendCh, hr, reqCancels, &jobMu, checkDrain)
 		case "http_proxy_cancel":
 			var hc ctrl.HTTPProxyCancelMessage
 			if err := json.Unmarshal(data, &hc); err == nil {
@@ -191,6 +220,14 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 			}
 		}
 	}
+}
+
+func reconnectDelay(attempt int) time.Duration {
+	schedule := []time.Duration{time.Second, time.Second, time.Second, 5 * time.Second, 5 * time.Second, 5 * time.Second, 15 * time.Second, 15 * time.Second, 15 * time.Second}
+	if attempt < len(schedule) {
+		return schedule[attempt]
+	}
+	return 30 * time.Second
 }
 
 type healthClient interface {

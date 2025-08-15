@@ -26,6 +26,7 @@ type WorkerConfig struct {
 	DrainTimeout   time.Duration
 	ConfigFile     string
 	LogDir         string
+	Reconnect      bool
 }
 
 func (c *WorkerConfig) BindFlags() {
@@ -58,6 +59,9 @@ func (c *WorkerConfig) BindFlags() {
 		host = "worker-" + uuid.NewString()[:8]
 	}
 	c.WorkerName = getEnv("WORKER_NAME", host)
+	if b, err := strconv.ParseBool(getEnv("RECONNECT", "false")); err == nil {
+		c.Reconnect = b
+	}
 
 	flag.StringVar(&c.ServerURL, "server-url", c.ServerURL, "server WebSocket URL for registration (e.g. ws://localhost:8080/workers/connect)")
 	flag.StringVar(&c.WorkerKey, "worker-key", c.WorkerKey, "shared secret for authenticating with the server")
@@ -71,6 +75,8 @@ func (c *WorkerConfig) BindFlags() {
 	flag.StringVar(&c.ConfigFile, "config", c.ConfigFile, "worker config file path")
 	flag.StringVar(&c.LogDir, "log-dir", c.LogDir, "directory for worker log files")
 	flag.DurationVar(&c.DrainTimeout, "drain-timeout", c.DrainTimeout, "time to wait for in-flight jobs on shutdown (-1 to wait indefinitely, 0 to exit immediately)")
+	flag.BoolVar(&c.Reconnect, "reconnect", c.Reconnect, "reconnect to server on failure")
+	flag.BoolVar(&c.Reconnect, "r", c.Reconnect, "short for --reconnect")
 }
 
 func defaultWorkerPaths() (configFile, logDir string) {
