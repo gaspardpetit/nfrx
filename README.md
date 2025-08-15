@@ -417,6 +417,7 @@ go test ./...
 ## Windows integration (experimental)
 
 An initial Windows tray application and service wrapper live under `desktop/windows/`.
+A WiX-based MSI installer in `desktop/windows/Installer` installs the worker and tray binaries, registers the `llamapool` service, creates `%ProgramData%\llamapool` with a default configuration, and adds a Start Menu shortcut for the tray.
 The service wrapper launches `llamapool-worker.exe` installed at
 `%ProgramFiles%\llamapool\llamapool-worker.exe` with its working directory set to
 `%ProgramData%\llamapool`. Configuration is read from

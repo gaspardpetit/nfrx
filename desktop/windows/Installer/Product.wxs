@@ -2,8 +2,53 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <Package Name="llamapool" Manufacturer="llamapool" Version="0.0.1" UpgradeCode="2b2ad0a1-9a9a-4f85-becb-f93347172913">
     <MediaTemplate />
+
+    <StandardDirectory Id="ProgramFilesFolder">
+      <Directory Id="INSTALLFOLDER" Name="llamapool">
+        <Component Id="WorkerExe" Guid="2f3e5d88-1b9e-4e76-8cfb-2a4e3cd85406">
+          <File Id="LlamapoolWorkerExe" Source="$(var.WorkerExe)" KeyPath="yes" />
+        </Component>
+        <Component Id="ServiceExe" Guid="ad770f31-08dd-4ec6-9c07-4b993b0c7a40">
+          <File Id="WindowsServiceExe" Source="$(var.ServiceExe)" KeyPath="yes" />
+          <ServiceInstall Id="LlamapoolService" Name="llamapool" DisplayName="llamapool" Start="auto" ErrorControl="normal" Type="ownProcess" DelayedAutoStart="yes" />
+          <ServiceControl Id="StartService" Name="llamapool" Start="install" Stop="both" Remove="uninstall" Wait="yes" />
+        </Component>
+        <Directory Id="TrayDir" Name="Tray">
+          <Component Id="TrayApp" Guid="a7aa5b71-3e64-4f0d-bc67-a70d59cc8bb2">
+            <File Id="TrayAppExe" Source="$(var.TrayExe)" KeyPath="yes" />
+            <Shortcut Id="TrayShortcut" Directory="ProgramMenuDir" Name="llamapool Tray" WorkingDirectory="TrayDir" Icon="TrayAppExe" />
+          </Component>
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ProgramMenuDir" Name="llamapool" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="CommonAppDataFolder">
+      <Directory Id="ProgramDataLlamapool" Name="llamapool">
+        <Component Id="ProgramData" Guid="c025ef5f-08da-4d66-a1fd-a755dc8e7e7b">
+          <CreateFolder />
+        </Component>
+        <Directory Id="LogsDir" Name="Logs">
+          <Component Id="LogsFolder" Guid="fb6cb1a9-1c2e-44c0-9ce2-2f7d9c5f2bf7">
+            <CreateFolder />
+          </Component>
+        </Directory>
+        <Component Id="ConfigFile" Guid="6ab4c1c6-b0a4-4c93-8c56-2c5b4c0d2c77">
+          <File Id="WorkerYaml" Source="$(var.DefaultConfig)" Name="worker.yaml" KeyPath="yes" Permanent="yes" NeverOverwrite="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
     <Feature Id="ProductFeature" Title="llamapool" Level="1">
-      <!-- Components go here -->
+      <ComponentRef Id="WorkerExe" />
+      <ComponentRef Id="ServiceExe" />
+      <ComponentRef Id="TrayApp" />
+      <ComponentRef Id="ProgramData" />
+      <ComponentRef Id="LogsFolder" />
+      <ComponentRef Id="ConfigFile" />
     </Feature>
   </Package>
 </Wix>

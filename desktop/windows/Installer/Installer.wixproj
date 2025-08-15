@@ -2,7 +2,15 @@
   <PropertyGroup>
     <TargetFramework>net8.0-windows</TargetFramework>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <DefineConstants>
+      TrayExe=$(ProjectDir)..\TrayApp\bin\$(Configuration)\net8.0-windows\TrayApp.exe;
+      ServiceExe=$(ProjectDir)..\WindowsService\bin\$(Configuration)\net8.0-windows\WindowsService.exe;
+      WorkerExe=$(ProjectDir)..\..\..\cmd\llamapool-worker\llamapool-worker.exe;
+      DefaultConfig=$(ProjectDir)worker.yaml
+    </DefineConstants>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\TrayApp\TrayApp.csproj" />
+    <ProjectReference Include="..\WindowsService\WindowsService.csproj" />
   </ItemGroup>
 </Project>
