@@ -48,7 +48,7 @@ xcrun stapler staple build/Llamapool.dmg
 A Windows tray companion lives under `desktop/windows/`. It polls `http://127.0.0.1:4555/status` every two seconds to display worker status.
 The tray can start or stop the local `llamapool` Windows service, toggle whether it launches automatically with Windows, edit worker connection settings, open the config and logs folders, view live logs, and collect diagnostics to the Desktop. When the worker exposes lifecycle control endpoints, the tray also provides **Drain**, **Undrain**, and **Shutdown after drain** actions.
 
-The Windows service runs `llamapool-worker` with the `--reconnect` flag and will shut down if the worker process exits, preventing orphaned workers.
+The Windows service runs `llamapool-worker` with the `--reconnect` flag and shuts down if the worker process exits, preventing orphaned workers. The worker is attached to a job object so it also terminates if the service process is killed.
 
 ### Key features
 - **Dynamic worker discovery** – Workers can connect and disconnect at any time; the server updates the available model list in real-time.
