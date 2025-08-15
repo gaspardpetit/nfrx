@@ -54,10 +54,10 @@ jobs:
         run: |
           New-Item -ItemType Directory -Path build | Out-Null
           wix build desktop/windows/Installer/Product.wxs `
-            -dWorkerExe="cmd\llamapool-worker\llamapool-worker.exe" `
-            -dServiceExe="desktop\windows\WindowsService\bin\Release\net8.0-windows\WindowsService.exe" `
-            -dTrayExe="desktop\windows\TrayApp\bin\Release\net8.0-windows\TrayApp.exe" `
-            -dDefaultConfig="desktop\windows\Installer\worker.yaml" `
+            -d:WorkerExe="cmd\llamapool-worker\llamapool-worker.exe" `
+            -d:ServiceExe="desktop\windows\WindowsService\bin\Release\net8.0-windows\WindowsService.exe" `
+            -d:TrayExe="desktop\windows\TrayApp\bin\Release\net8.0-windows\TrayApp.exe" `
+            -d:DefaultConfig="desktop\windows\Installer\worker.yaml" `
             -out build\llamapool.msi
 
       - name: Restore PFX from secret
