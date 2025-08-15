@@ -10,6 +10,9 @@ type RegisterMessage struct {
 	Token          string   `json:"token,omitempty"`
 	Models         []string `json:"models"`
 	MaxConcurrency int      `json:"max_concurrency"`
+	Version        string   `json:"version,omitempty"`
+	BuildSHA       string   `json:"build_sha,omitempty"`
+	BuildDate      string   `json:"build_date,omitempty"`
 }
 
 type HeartbeatMessage struct {

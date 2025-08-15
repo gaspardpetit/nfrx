@@ -15,7 +15,8 @@ func TestEmbeddings(t *testing.T) {
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
 	wk := &ctrl.Worker{ID: "w1", Models: map[string]bool{"m": true}, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
 	reg.Add(wk)
-	h := EmbeddingsHandler(reg, sched)
+	metricsReg := ctrl.NewMetricsRegistry("", "", "")
+	h := EmbeddingsHandler(reg, sched, metricsReg)
 
 	go func() {
 		msg := <-wk.Send
@@ -43,7 +44,8 @@ func TestEmbeddingsEarlyError(t *testing.T) {
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
 	wk := &ctrl.Worker{ID: "w1", Models: map[string]bool{"m": true}, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
 	reg.Add(wk)
-	h := EmbeddingsHandler(reg, sched)
+	metricsReg := ctrl.NewMetricsRegistry("", "", "")
+	h := EmbeddingsHandler(reg, sched, metricsReg)
 
 	go func() {
 		msg := <-wk.Send

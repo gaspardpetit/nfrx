@@ -106,7 +106,18 @@ func connectAndServe(ctx context.Context, cfg config.WorkerConfig, client *ollam
 		}
 	}()
 
-	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: cfg.WorkerID, WorkerName: cfg.WorkerName, WorkerKey: cfg.WorkerKey, Models: GetState().Models, MaxConcurrency: cfg.MaxConcurrency}
+	vi := GetVersionInfo()
+	regMsg := ctrl.RegisterMessage{
+		Type:           "register",
+		WorkerID:       cfg.WorkerID,
+		WorkerName:     cfg.WorkerName,
+		WorkerKey:      cfg.WorkerKey,
+		Models:         GetState().Models,
+		MaxConcurrency: cfg.MaxConcurrency,
+		Version:        vi.Version,
+		BuildSHA:       vi.BuildSHA,
+		BuildDate:      vi.BuildDate,
+	}
 	b, _ := json.Marshal(regMsg)
 	sendCh <- b
 
