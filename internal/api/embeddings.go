@@ -12,10 +12,11 @@ import (
 
 	"github.com/gaspardpetit/llamapool/internal/ctrl"
 	"github.com/gaspardpetit/llamapool/internal/logx"
+	"github.com/gaspardpetit/llamapool/internal/metrics"
 )
 
 // EmbeddingsHandler handles POST /v1/embeddings as a pass-through.
-func EmbeddingsHandler(reg *ctrl.Registry, sched ctrl.Scheduler) http.HandlerFunc {
+func EmbeddingsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg *ctrl.MetricsRegistry) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Body == nil {
 			http.Error(w, "bad request", http.StatusBadRequest)
@@ -89,6 +90,8 @@ func EmbeddingsHandler(reg *ctrl.Registry, sched ctrl.Scheduler) http.HandlerFun
 		}
 		select {
 		case worker.Send <- msg:
+			metricsReg.RecordJobStart(worker.ID)
+			metricsReg.SetWorkerStatus(worker.ID, ctrl.StatusWorking)
 		default:
 			logx.Log.Warn().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", meta.Model).Msg("worker busy")
 			w.Header().Set("Content-Type", "application/json")
@@ -104,6 +107,16 @@ func EmbeddingsHandler(reg *ctrl.Registry, sched ctrl.Scheduler) http.HandlerFun
 		start := time.Now()
 		headersSent := false
 		bytesSent := false
+		success := false
+		var errMsg string
+
+		defer func() {
+			dur := time.Since(start)
+			metricsReg.RecordJobEnd(worker.ID, meta.Model, dur, 0, 0, success, errMsg)
+			metricsReg.SetWorkerStatus(worker.ID, ctrl.StatusIdle)
+			metrics.ObserveRequestDuration(worker.ID, meta.Model, dur)
+			metrics.RecordModelRequest(meta.Model, success)
+		}()
 		for {
 			select {
 			case <-ctx.Done():
@@ -121,6 +134,7 @@ func EmbeddingsHandler(reg *ctrl.Registry, sched ctrl.Scheduler) http.HandlerFun
 							logx.Log.Error().Err(err).Msg("write upstream error")
 						}
 					}
+					errMsg = "closed"
 					return
 				}
 				switch m := msg.(type) {
@@ -159,6 +173,9 @@ func EmbeddingsHandler(reg *ctrl.Registry, sched ctrl.Scheduler) http.HandlerFun
 						if _, err := w.Write([]byte(`{"error":"upstream_error"}`)); err != nil {
 							logx.Log.Error().Err(err).Msg("write upstream error")
 						}
+						errMsg = m.Error.Message
+					} else {
+						success = true
 					}
 					logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", meta.Model).Dur("duration", time.Since(start)).Msg("complete")
 					return
