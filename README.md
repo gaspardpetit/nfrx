@@ -16,7 +16,7 @@
 **llamapool** is a lightweight, distributed worker pool that exposes an OpenAI-compatible `chat/completions` API, forwarding requests to one or more connected **LLM workers**.
 It sits in front of existing LLM runtimes such as [Ollama](https://github.com/ollama/ollama), [vLLM](https://github.com/vllm-project/vllm), or [Open-WebUI](https://github.com/open-webui/open-webui), allowing you to scale, load-balance, and securely access them from anywhere.
 
-In addition to LLM workers, llamapool now supports relaying [Model Context Protocol](https://github.com/modelcontextprotocol) calls. The new `llamapool-mcp` binary connects a private MCP provider to the public `llamapool-server`, allowing clients to invoke MCP methods via `POST /mcp/{client_id}`. The broker enforces request/response size limits, per-client concurrency caps, and 30s call timeouts; cancellation is not yet implemented.
+In addition to LLM workers, llamapool now supports relaying [Model Context Protocol](https://github.com/modelcontextprotocol) calls. The new `llamapool-mcp` binary connects a private MCP provider to the public `llamapool-server`, allowing clients to invoke MCP methods via `POST /mcp/{client_id}`. The broker enforces request/response size limits, per-client concurrency caps, and 30s call timeouts; cancellation is not yet implemented. The client negotiates protocol versions and server capabilities, and exposes tunables such as `MCP_PROTOCOL_VERSION`, `MCP_HTTP_TIMEOUT`, and `MCP_MAX_INFLIGHT` for advanced deployments.
 
 A typical deployment looks like this:
 

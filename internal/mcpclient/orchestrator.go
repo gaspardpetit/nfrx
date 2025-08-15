@@ -53,10 +53,14 @@ func (o *Orchestrator) Connect(ctx context.Context) (Connector, error) {
 			timeout = backoff(timeout)
 			continue
 		}
+		version := o.cfg.ProtocolVersion
+		if version == "" {
+			version = mcp.LATEST_PROTOCOL_VERSION
+		}
 		initReq := mcp.InitializeRequest{
 			Request: mcp.Request{Method: string(mcp.MethodInitialize)},
 			Params: mcp.InitializeParams{
-				ProtocolVersion: mcp.LATEST_PROTOCOL_VERSION,
+				ProtocolVersion: version,
 				Capabilities:    mcp.ClientCapabilities{},
 				ClientInfo:      mcp.Implementation{Name: "llamapool-mcp", Version: "dev"},
 			},
@@ -69,6 +73,9 @@ func (o *Orchestrator) Connect(ctx context.Context) (Connector, error) {
 			continue
 		}
 		cancel()
+		if conn.Protocol() != version {
+			o.log.Warn().Str("transport", name).Str("server_protocol", conn.Protocol()).Str("client_protocol", version).Msg("protocol downgraded")
+		}
 		o.log.Info().Str("transport", name).Msg("connected")
 		return conn, nil
 	}

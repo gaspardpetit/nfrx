@@ -51,13 +51,13 @@ func TestOrchestratorFallback(t *testing.T) {
 	o := NewOrchestrator(cfg)
 	var calls []string
 	o.factories["stdio"] = func(Config) (*transportConnector, error) {
-		return newTransportConnector(&fakeTransport{name: "stdio", calls: &calls, startErr: errors.New("boom")}), nil
+		return newTransportConnector(&fakeTransport{name: "stdio", calls: &calls, startErr: errors.New("boom")}, 0), nil
 	}
 	o.factories["http"] = func(Config) (*transportConnector, error) {
-		return newTransportConnector(&fakeTransport{name: "http", calls: &calls, initErr: errors.New("init")}), nil
+		return newTransportConnector(&fakeTransport{name: "http", calls: &calls, initErr: errors.New("init")}, 0), nil
 	}
 	o.factories["oauth"] = func(Config) (*transportConnector, error) {
-		return newTransportConnector(&fakeTransport{name: "oauth", calls: &calls}), nil
+		return newTransportConnector(&fakeTransport{name: "oauth", calls: &calls}, 0), nil
 	}
 	conn, err := o.Connect(context.Background())
 	if err != nil {

@@ -3,6 +3,7 @@ package mcpclient
 import (
 	"flag"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -15,6 +16,12 @@ type Config struct {
 
 	// InitTimeout caps the time allowed for each transport to start and initialize.
 	InitTimeout time.Duration
+
+	// ProtocolVersion is the preferred MCP protocol version to negotiate.
+	ProtocolVersion string
+
+	// MaxInFlight bounds concurrent RPC requests. Zero disables the limit.
+	MaxInFlight int
 
 	// Stdio holds settings for the stdio transport.
 	Stdio StdioConfig
@@ -39,6 +46,12 @@ type StdioConfig struct {
 // HTTPConfig describes a remote HTTP MCP server.
 type HTTPConfig struct {
 	URL string
+
+	// Timeout controls connect/read/write timeouts for the HTTP client.
+	Timeout time.Duration
+
+	// EnablePush opens a background SSE channel when supported.
+	EnablePush bool
 }
 
 // OAuthConfig contains optional OAuth parameters.
@@ -55,12 +68,16 @@ func (c *Config) BindFlags() {
 	order := getEnv("MCP_TRANSPORT_ORDER", "stdio,http,oauth")
 	c.Order = splitComma(order)
 	c.InitTimeout = parseDuration(getEnv("MCP_INIT_TIMEOUT", "5s"))
+	c.ProtocolVersion = getEnv("MCP_PROTOCOL_VERSION", "")
+	c.MaxInFlight = parseInt(getEnv("MCP_MAX_INFLIGHT", "0"))
 
 	c.Stdio.Command = getEnv("MCP_STDIO_COMMAND", "")
 	c.Stdio.Args = splitComma(getEnv("MCP_STDIO_ARGS", ""))
 	c.Stdio.Env = splitComma(getEnv("MCP_STDIO_ENV", ""))
 
 	c.HTTP.URL = getEnv("MCP_HTTP_URL", "")
+	c.HTTP.Timeout = parseDuration(getEnv("MCP_HTTP_TIMEOUT", "30s"))
+	c.HTTP.EnablePush = getEnv("MCP_HTTP_ENABLE_PUSH", "false") == "true"
 
 	c.OAuth.Enabled = getEnv("MCP_OAUTH_ENABLED", "false") == "true"
 	c.OAuth.TokenURL = getEnv("MCP_OAUTH_TOKEN_URL", "")
@@ -72,10 +89,14 @@ func (c *Config) BindFlags() {
 
 	flag.Func("mcp-transport-order", "comma separated transport order", func(v string) error { c.Order = splitComma(v); return nil })
 	flag.DurationVar(&c.InitTimeout, "mcp-init-timeout", c.InitTimeout, "timeout for transport startup and initialization")
+	flag.StringVar(&c.ProtocolVersion, "mcp-protocol-version", c.ProtocolVersion, "preferred MCP protocol version")
+	flag.IntVar(&c.MaxInFlight, "mcp-max-inflight", c.MaxInFlight, "maximum concurrent MCP RPCs")
 	flag.StringVar(&c.Stdio.Command, "mcp-stdio-command", c.Stdio.Command, "command for stdio transport")
 	flag.Var(newCSVValue(c.Stdio.Args, &c.Stdio.Args), "mcp-stdio-args", "stdio command arguments")
 	flag.Var(newCSVValue(c.Stdio.Env, &c.Stdio.Env), "mcp-stdio-env", "stdio environment variables")
 	flag.StringVar(&c.HTTP.URL, "mcp-http-url", c.HTTP.URL, "HTTP MCP server base URL")
+	flag.DurationVar(&c.HTTP.Timeout, "mcp-http-timeout", c.HTTP.Timeout, "HTTP client timeout")
+	flag.BoolVar(&c.HTTP.EnablePush, "mcp-http-enable-push", c.HTTP.EnablePush, "enable server-push SSE channel")
 	flag.BoolVar(&c.OAuth.Enabled, "mcp-oauth-enabled", c.OAuth.Enabled, "enable OAuth for HTTP transport")
 	flag.StringVar(&c.OAuth.TokenURL, "mcp-oauth-token-url", c.OAuth.TokenURL, "OAuth token endpoint")
 	flag.StringVar(&c.OAuth.ClientID, "mcp-oauth-client-id", c.OAuth.ClientID, "OAuth client id")
@@ -98,6 +119,11 @@ func splitComma(v string) []string {
 func parseDuration(v string) time.Duration {
 	d, _ := time.ParseDuration(v)
 	return d
+}
+
+func parseInt(v string) int {
+	i, _ := strconv.Atoi(v)
+	return i
 }
 
 // helper for flag CSV values
