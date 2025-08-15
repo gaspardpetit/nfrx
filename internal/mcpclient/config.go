@@ -48,6 +48,8 @@ type StdioConfig struct {
 	Args    []string `yaml:"args"`
 	Env     []string `yaml:"env"`
 	WorkDir string   `yaml:"workDir"`
+	// AllowRelative permits non-absolute command paths when true.
+	AllowRelative bool `yaml:"allowRelative"`
 }
 
 // HTTPConfig describes a remote HTTP MCP server.
@@ -59,6 +61,8 @@ type HTTPConfig struct {
 
 	// EnablePush opens a background SSE channel when supported.
 	EnablePush bool
+	// InsecureSkipVerify disables TLS certificate verification when true.
+	InsecureSkipVerify bool `yaml:"insecureSkipVerify"`
 }
 
 // OAuthConfig contains optional OAuth parameters.
@@ -69,6 +73,8 @@ type OAuthConfig struct {
 	ClientSecret string
 	Scopes       []string
 	TokenStore   transport.TokenStore
+	// TokenFile optionally caches OAuth tokens on disk with 0600 permissions.
+	TokenFile string `yaml:"tokenFile"`
 }
 
 // BindFlags populates the config using environment variables and binds CLI flags.
@@ -92,11 +98,17 @@ func (c *Config) BindFlags() {
 	c.Stdio.Args = splitComma(getEnv("MCP_STDIO_ARGS", strings.Join(c.Stdio.Args, ",")))
 	c.Stdio.Env = splitComma(getEnv("MCP_STDIO_ENV", strings.Join(c.Stdio.Env, ",")))
 	c.Stdio.WorkDir = getEnv("MCP_STDIO_WORKDIR", c.Stdio.WorkDir)
+	if getEnv("MCP_STDIO_ALLOW_RELATIVE", "") != "" {
+		c.Stdio.AllowRelative = getEnv("MCP_STDIO_ALLOW_RELATIVE", "") == "true"
+	}
 
 	c.HTTP.URL = getEnv("MCP_HTTP_URL", c.HTTP.URL)
 	c.HTTP.Timeout = parseDuration(getEnv("MCP_HTTP_TIMEOUT", c.HTTP.Timeout.String()))
 	if getEnv("MCP_HTTP_ENABLE_PUSH", "") != "" {
 		c.HTTP.EnablePush = getEnv("MCP_HTTP_ENABLE_PUSH", "") == "true"
+	}
+	if getEnv("MCP_HTTP_INSECURE_SKIP_VERIFY", "") != "" {
+		c.HTTP.InsecureSkipVerify = getEnv("MCP_HTTP_INSECURE_SKIP_VERIFY", "") == "true"
 	}
 
 	if getEnv("MCP_OAUTH_ENABLED", "") != "" {
@@ -106,6 +118,7 @@ func (c *Config) BindFlags() {
 	c.OAuth.ClientID = getEnv("MCP_OAUTH_CLIENT_ID", c.OAuth.ClientID)
 	c.OAuth.ClientSecret = getEnv("MCP_OAUTH_CLIENT_SECRET", c.OAuth.ClientSecret)
 	c.OAuth.Scopes = splitComma(getEnv("MCP_OAUTH_SCOPES", strings.Join(c.OAuth.Scopes, ",")))
+	c.OAuth.TokenFile = getEnv("MCP_OAUTH_TOKEN_FILE", c.OAuth.TokenFile)
 
 	if getEnv("MCP_ENABLE_LEGACY_SSE", "") != "" {
 		c.EnableLegacySSE = getEnv("MCP_ENABLE_LEGACY_SSE", "") == "true"
@@ -120,14 +133,17 @@ func (c *Config) BindFlags() {
 	flag.Var(newCSVValue(c.Stdio.Args, &c.Stdio.Args), "mcp-stdio-args", "stdio command arguments")
 	flag.Var(newCSVValue(c.Stdio.Env, &c.Stdio.Env), "mcp-stdio-env", "stdio environment variables")
 	flag.StringVar(&c.Stdio.WorkDir, "mcp-stdio-workdir", c.Stdio.WorkDir, "stdio working directory")
+	flag.BoolVar(&c.Stdio.AllowRelative, "mcp-stdio-allow-relative", c.Stdio.AllowRelative, "allow relative stdio command path")
 	flag.StringVar(&c.HTTP.URL, "mcp-http-url", c.HTTP.URL, "HTTP MCP server base URL")
 	flag.DurationVar(&c.HTTP.Timeout, "mcp-http-timeout", c.HTTP.Timeout, "HTTP client timeout")
 	flag.BoolVar(&c.HTTP.EnablePush, "mcp-http-enable-push", c.HTTP.EnablePush, "enable server-push SSE channel")
+	flag.BoolVar(&c.HTTP.InsecureSkipVerify, "mcp-http-insecure-skip-verify", c.HTTP.InsecureSkipVerify, "skip TLS certificate verification (insecure)")
 	flag.BoolVar(&c.OAuth.Enabled, "mcp-oauth-enabled", c.OAuth.Enabled, "enable OAuth for HTTP transport")
 	flag.StringVar(&c.OAuth.TokenURL, "mcp-oauth-token-url", c.OAuth.TokenURL, "OAuth token endpoint")
 	flag.StringVar(&c.OAuth.ClientID, "mcp-oauth-client-id", c.OAuth.ClientID, "OAuth client id")
 	flag.StringVar(&c.OAuth.ClientSecret, "mcp-oauth-client-secret", c.OAuth.ClientSecret, "OAuth client secret")
 	flag.Var(newCSVValue(c.OAuth.Scopes, &c.OAuth.Scopes), "mcp-oauth-scopes", "OAuth scopes")
+	flag.StringVar(&c.OAuth.TokenFile, "mcp-oauth-token-file", c.OAuth.TokenFile, "path to OAuth token cache file")
 	flag.BoolVar(&c.EnableLegacySSE, "mcp-enable-legacy-sse", c.EnableLegacySSE, "enable legacy SSE transport")
 }
 
@@ -179,6 +195,9 @@ func mergeConfig(dst *Config, src *Config) {
 	if src.Stdio.WorkDir != "" {
 		dst.Stdio.WorkDir = src.Stdio.WorkDir
 	}
+	if src.Stdio.AllowRelative {
+		dst.Stdio.AllowRelative = true
+	}
 	if src.HTTP.URL != "" {
 		dst.HTTP.URL = src.HTTP.URL
 	}
@@ -187,6 +206,9 @@ func mergeConfig(dst *Config, src *Config) {
 	}
 	if src.HTTP.EnablePush {
 		dst.HTTP.EnablePush = true
+	}
+	if src.HTTP.InsecureSkipVerify {
+		dst.HTTP.InsecureSkipVerify = true
 	}
 	if src.OAuth.Enabled {
 		dst.OAuth.Enabled = true
@@ -205,6 +227,9 @@ func mergeConfig(dst *Config, src *Config) {
 	}
 	if src.OAuth.TokenStore != nil {
 		dst.OAuth.TokenStore = src.OAuth.TokenStore
+	}
+	if src.OAuth.TokenFile != "" {
+		dst.OAuth.TokenFile = src.OAuth.TokenFile
 	}
 	if src.EnableLegacySSE {
 		dst.EnableLegacySSE = true

@@ -3,6 +3,7 @@ package mcpclient
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/mark3labs/mcp-go/client/transport"
@@ -48,5 +49,31 @@ func TestFeatureDerivation(t *testing.T) {
 	}
 	if _, ok := feats.Experimental["progress"]; !ok {
 		t.Fatalf("experimental progress not recorded")
+	}
+}
+
+func TestStdioCommandSecurity(t *testing.T) {
+	cfg := Config{Stdio: StdioConfig{Command: "relative"}}
+	if _, err := newStdioConnector(cfg); err == nil {
+		t.Fatalf("expected error for relative command")
+	}
+	cfg.Stdio.AllowRelative = true
+	if _, err := newStdioConnector(cfg); err != nil {
+		t.Fatalf("allow relative: %v", err)
+	}
+}
+
+func TestBuildEnv(t *testing.T) {
+	t.Setenv("FOO", "bar")
+	env := buildEnv([]string{"FOO", "BAR=baz", "MISSING"})
+	want := map[string]string{"FOO": "bar", "BAR": "baz"}
+	if len(env) != 2 {
+		t.Fatalf("got %d env vars", len(env))
+	}
+	for _, kv := range env {
+		parts := strings.SplitN(kv, "=", 2)
+		if want[parts[0]] != parts[1] {
+			t.Fatalf("unexpected %s", kv)
+		}
 	}
 }
