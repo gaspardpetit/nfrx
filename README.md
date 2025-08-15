@@ -24,6 +24,21 @@ A typical deployment looks like this:
 
 An early-stage macOS menu bar companion lives under `desktop/macos/llamapool/`. It polls `http://127.0.0.1:4555/status` every two seconds to display live worker status and can manage a per-user LaunchAgent to start or stop a local `llamapool-worker` and toggle launching at login. A simple preferences window lets you edit worker connection settings which are written to `~/Library/Application Support/Llamapool/worker.yaml`, and the menu offers quick links to open the config and logs folders, view live logs, copy diagnostics to the Desktop, and check for updates via Sparkle.
 
+### Packaging
+
+The macOS app can be distributed as a signed and notarized DMG. After building the `Llamapool` scheme in Release, create the disk image and submit it for notarization:
+
+```bash
+# Create a DMG with an /Applications symlink
+ci/create-dmg.sh path/to/Llamapool.app build/Llamapool.dmg
+
+# Notarize (requires AC_API_KEY_ID, AC_API_ISSUER_ID and AC_API_P8)
+ci/notarize.sh build/Llamapool.dmg
+xcrun stapler staple build/Llamapool.dmg
+```
+
+`AC_API_P8` must contain a base64-encoded App Store Connect API key. Once notarization completes, the DMG can be distributed and will pass Gatekeeper on clean systems.
+
 ## Windows Tray App
 
 A Windows tray companion lives under `desktop/windows/`. It polls `http://127.0.0.1:4555/status` every two seconds to display worker status.
