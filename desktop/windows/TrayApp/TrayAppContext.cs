@@ -16,12 +16,17 @@ public class TrayAppContext : ApplicationContext
     private readonly ToolStripMenuItem _detailsItem;
     private readonly ToolStripMenuItem _startStopItem;
     private readonly ToolStripMenuItem _startWithWindowsItem;
+    private readonly ToolStripMenuItem _drainItem;
+    private readonly ToolStripMenuItem _undrainItem;
+    private readonly ToolStripMenuItem _shutdownItem;
 
     private StatusClient _statusClient;
+    private ControlClient _controlClient;
     private readonly Timer _statusTimer;
     private WorkerStatus? _currentStatus;
     private string? _lastError;
     private WorkerConfig _config;
+    private bool _controlsAvailable;
 
     private const string ServiceName = "llamapool";
 
@@ -45,6 +50,19 @@ public class TrayAppContext : ApplicationContext
         };
         _startWithWindowsItem.Click += OnStartWithWindowsClicked;
 
+        _drainItem = new ToolStripMenuItem("Drain", null, OnDrainClicked)
+        {
+            Enabled = false
+        };
+        _undrainItem = new ToolStripMenuItem("Undrain", null, OnUndrainClicked)
+        {
+            Enabled = false
+        };
+        _shutdownItem = new ToolStripMenuItem("Shutdown after drain", null, OnShutdownClicked)
+        {
+            Enabled = false
+        };
+
         var contextMenu = new ContextMenuStrip();
         contextMenu.Items.AddRange(new ToolStripItem[]
         {
@@ -52,6 +70,9 @@ public class TrayAppContext : ApplicationContext
             _detailsItem,
             new ToolStripSeparator(),
             _startStopItem,
+            _drainItem,
+            _undrainItem,
+            _shutdownItem,
             new ToolStripMenuItem("Preferences...", null, OnPreferencesClicked),
             new ToolStripMenuItem("Open Config Folder", null, OnOpenConfigFolderClicked),
             new ToolStripMenuItem("Open Logs Folder", null, OnOpenLogsFolderClicked),
@@ -70,9 +91,13 @@ public class TrayAppContext : ApplicationContext
 
         _config = WorkerConfig.Load(Paths.ConfigPath);
         _statusClient = new StatusClient(_config.StatusPort);
+        _controlClient = new ControlClient(_config.StatusPort);
         _statusTimer = new Timer { Interval = 2000 };
         _statusTimer.Tick += async (_, _) => await RefreshStatusAsync();
         _statusTimer.Start();
+
+        _controlsAvailable = false;
+        _ = ProbeControlEndpointsAsync();
 
         RefreshServiceState();
     }
@@ -119,6 +144,9 @@ public class TrayAppContext : ApplicationContext
             form.Config.Save(Paths.ConfigPath);
             _config = form.Config;
             _statusClient = new StatusClient(_config.StatusPort);
+            _controlClient = new ControlClient(_config.StatusPort);
+            _controlsAvailable = false;
+            _ = ProbeControlEndpointsAsync();
             if (running)
             {
                 var res = MessageBox.Show("Restart worker service now?", "llamapool", MessageBoxButtons.YesNo);
@@ -164,6 +192,37 @@ public class TrayAppContext : ApplicationContext
         catch (Exception ex)
         {
             MessageBox.Show($"Failed to open logs folder: {ex.Message}");
+        }
+    }
+
+    private async void OnDrainClicked(object? sender, EventArgs e)
+    {
+        await SendControlAsync("drain");
+    }
+
+    private async void OnUndrainClicked(object? sender, EventArgs e)
+    {
+        await SendControlAsync("undrain");
+    }
+
+    private async void OnShutdownClicked(object? sender, EventArgs e)
+    {
+        await SendControlAsync("shutdown");
+    }
+
+    private async Task SendControlAsync(string command)
+    {
+        try
+        {
+            await _controlClient.SendCommandAsync(command);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed to send '{command}': {ex.Message}");
+        }
+        finally
+        {
+            await RefreshStatusAsync();
         }
     }
 
@@ -227,6 +286,8 @@ public class TrayAppContext : ApplicationContext
             _notifyIcon.Text = "llamapool - Error";
             _detailsItem.Enabled = true;
         }
+
+        UpdateControlMenuItems();
     }
 
     private void OnDetailsClicked(object? sender, EventArgs e)
@@ -259,6 +320,28 @@ public class TrayAppContext : ApplicationContext
         WorkerState.Error => "Error",
         _ => "Unknown"
     };
+
+    private void UpdateControlMenuItems()
+    {
+        if (!_controlsAvailable)
+        {
+            _drainItem.Enabled = false;
+            _undrainItem.Enabled = false;
+            _shutdownItem.Enabled = false;
+            return;
+        }
+
+        var state = _currentStatus?.State;
+        _drainItem.Enabled = state != null && state != WorkerState.Draining && state != WorkerState.Terminating;
+        _undrainItem.Enabled = state == WorkerState.Draining;
+        _shutdownItem.Enabled = state != null && state != WorkerState.Terminating;
+    }
+
+    private async Task ProbeControlEndpointsAsync()
+    {
+        _controlsAvailable = await _controlClient.ProbeAsync();
+        UpdateControlMenuItems();
+    }
 
     private void RefreshServiceState()
     {
