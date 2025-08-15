@@ -22,7 +22,7 @@ A typical deployment looks like this:
 
 ## macOS Menu Bar App
 
-An early-stage macOS menu bar companion lives under `desktop/macos/llamapool/`. It polls `http://127.0.0.1:4555/status` every two seconds to display live worker status and can manage a per-user LaunchAgent to start or stop a local `llamapool-worker` and toggle launching at login. A simple preferences window lets you edit worker connection settings which are written to `~/Library/Application Support/Llamapool/worker.yaml`, and the menu offers quick links to open the config and logs folders.
+An early-stage macOS menu bar companion lives under `desktop/macos/llamapool/`. It polls `http://127.0.0.1:4555/status` every two seconds to display live worker status and can manage a per-user LaunchAgent to start or stop a local `llamapool-worker` and toggle launching at login. A simple preferences window lets you edit worker connection settings which are written to `~/Library/Application Support/Llamapool/worker.yaml`, and the menu offers quick links to open the config and logs folders, view live logs, and copy diagnostics to the Desktop.
 
 ## Windows Tray App
 

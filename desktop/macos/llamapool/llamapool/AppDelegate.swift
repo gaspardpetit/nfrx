@@ -13,6 +13,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var controlClient: ControlClient?
     var loginItem: NSMenuItem!
     var preferencesWindow: PreferencesWindowController?
+    var logsWindow: LogsWindowController?
     var startWorkerItem: NSMenuItem!
     var stopWorkerItem: NSMenuItem!
     var drainItem: NSMenuItem!
@@ -59,6 +60,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(shutdownItem)
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "Preferences…", action: #selector(openPreferences), keyEquivalent: ","))
+        menu.addItem(NSMenuItem(title: "Logs…", action: #selector(openLogs), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Copy Diagnostics", action: #selector(copyDiagnostics), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Open Config Folder", action: #selector(openConfigFolder), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Open Logs Folder", action: #selector(openLogsFolder), keyEquivalent: ""))
         loginItem = NSMenuItem(title: "Start at Login", action: #selector(toggleStartAtLogin), keyEquivalent: "")
@@ -178,6 +181,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc func openLogsFolder(_ sender: Any?) {
         ConfigManager.shared.openLogsFolder()
+    }
+
+    @objc func openLogs(_ sender: Any?) {
+        if logsWindow == nil {
+            logsWindow = LogsWindowController()
+        }
+        logsWindow?.showWindow(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    @objc func copyDiagnostics(_ sender: Any?) {
+        do {
+            let url = try ConfigManager.shared.copyDiagnostics()
+            let alert = NSAlert()
+            alert.messageText = "Diagnostics copied to Desktop"
+            alert.informativeText = url.path
+            alert.runModal()
+        } catch {
+            let alert = NSAlert(error: error)
+            alert.runModal()
+        }
     }
 
     @objc func toggleStartAtLogin(_ sender: NSMenuItem) {

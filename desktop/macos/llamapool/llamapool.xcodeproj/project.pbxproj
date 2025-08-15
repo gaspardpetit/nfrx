@@ -16,6 +16,7 @@
     C3D4E5F60708A9B0C1D2E3F4 /* ConfigManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E5F60708A9B0C1D2E3F4A5 /* ConfigManager.swift */; };
     D5E6F708A9B0C1D2E3F4A5B6 /* PreferencesWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5F708A9B0C1D2E3F4A5B6C7 /* PreferencesWindowController.swift */; };
     F6A7B8C9D0E1F2A3B4C5D6E7 /* ConfigTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B8C9D0E1F2A3B4C5D6E7F8 /* ConfigTests.swift */; };
+    F87D63A5663A4EE58D6FCAF1B3361D33 /* LogsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 971B6CAEA8F64FC59C9EB4D41F6B6685 /* LogsWindowController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -32,6 +33,7 @@
     D4E5F60708A9B0C1D2E3F4A5 /* ConfigManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigManager.swift; sourceTree = "<group>"; };
     E5F708A9B0C1D2E3F4A5B6C7 /* PreferencesWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesWindowController.swift; sourceTree = "<group>"; };
     A7B8C9D0E1F2A3B4C5D6E7F8 /* ConfigTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigTests.swift; sourceTree = "<group>"; };
+    971B6CAEA8F64FC59C9EB4D41F6B6685 /* LogsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogsWindowController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -58,6 +60,7 @@
         B1C2D3E4F5A60708B9C0D1E2 /* WorkerConfig.swift */,
         D4E5F60708A9B0C1D2E3F4A5 /* ConfigManager.swift */,
         E5F708A9B0C1D2E3F4A5B6C7 /* PreferencesWindowController.swift */,
+        971B6CAEA8F64FC59C9EB4D41F6B6685 /* LogsWindowController.swift */,
         DB20D9050486454BA6F1464F12F231D1 /* Assets.xcassets */,
         24B6B6BC5ECD4E9CA7C7F7E8086B9FA5 /* Info.plist */,
         B3A7F042CB5C4B0891846F5A8C13A01F /* Resources */,
@@ -194,6 +197,7 @@
         A1B2C3D4E5F60708A9B0C1D2 /* WorkerConfig.swift in Sources */,
         C3D4E5F60708A9B0C1D2E3F4 /* ConfigManager.swift in Sources */,
         D5E6F708A9B0C1D2E3F4A5B6 /* PreferencesWindowController.swift in Sources */,
+        F87D63A5663A4EE58D6FCAF1B3361D33 /* LogsWindowController.swift in Sources */,
       );
       runOnlyForDeploymentPostprocessing = 0;
     };
