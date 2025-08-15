@@ -17,6 +17,7 @@
     D5E6F708A9B0C1D2E3F4A5B6 /* PreferencesWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5F708A9B0C1D2E3F4A5B6C7 /* PreferencesWindowController.swift */; };
     F6A7B8C9D0E1F2A3B4C5D6E7 /* ConfigTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B8C9D0E1F2A3B4C5D6E7F8 /* ConfigTests.swift */; };
     F87D63A5663A4EE58D6FCAF1B3361D33 /* LogsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 971B6CAEA8F64FC59C9EB4D41F6B6685 /* LogsWindowController.swift */; };
+    0F1D8737149CFCAC86539DB412907003 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A63B552BD1AE32A6791879F1AB6A515D /* Sparkle */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -37,7 +38,9 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-    0A44A43592684603805C437737106041 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+    0A44A43592684603805C437737106041 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (
+        0F1D8737149CFCAC86539DB412907003 /* Sparkle in Frameworks */,
+    ); runOnlyForDeploymentPostprocessing = 0; };
     AA1F75C905AB4286842F4F6B /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXFrameworksBuildPhase section */
 
@@ -109,6 +112,9 @@
       );
       dependencies = (
       );
+      packageProductDependencies = (
+        A63B552BD1AE32A6791879F1AB6A515D /* Sparkle */,
+      );
       name = llamapool;
       productName = llamapool;
       productReference = E9B117E139B24CC89E7EDB0E95964914 /* llamapool.app */;
@@ -167,6 +173,9 @@
       productRefGroup = 44CFCA963667432983C404F9C521016F /* Products */;
       projectDirPath = "";
       projectRoot = "";
+      packageReferences = (
+        F8A7376F2B4AD1463FE6939D1CCEF583 /* XCRemoteSwiftPackageReference "Sparkle" */,
+      );
       targets = (
         7E40A3A7183646E390A7675E6A480D3A /* llamapool */,
         EBE90F3B7CBB4F6FA4A5E2D1 /* llamapoolTests */,
@@ -211,6 +220,25 @@
       runOnlyForDeploymentPostprocessing = 0;
     };
 /* End PBXSourcesBuildPhase section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+    F8A7376F2B4AD1463FE6939D1CCEF583 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+      isa = XCRemoteSwiftPackageReference;
+      repositoryURL = "https://github.com/sparkle-project/Sparkle";
+      requirement = {
+        kind = upToNextMajorVersion;
+        minimumVersion = 2.6.0;
+      };
+    };
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+    A63B552BD1AE32A6791879F1AB6A515D /* Sparkle */ = {
+      isa = XCSwiftPackageProductDependency;
+      package = F8A7376F2B4AD1463FE6939D1CCEF583 /* XCRemoteSwiftPackageReference "Sparkle" */;
+      productName = Sparkle;
+    };
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCBuildConfiguration section */
     D9CBDBA712C2439483B0194F53AD3372 /* Debug */ = {
