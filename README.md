@@ -27,7 +27,7 @@ An early-stage macOS menu bar companion lives under `desktop/macos/llamapool/`. 
 ## Windows Tray App
 
 A Windows tray companion lives under `desktop/windows/`. It polls `http://127.0.0.1:4555/status` every two seconds to display worker status.
-The tray can start or stop the local `llamapool` Windows service, toggle whether it launches automatically with Windows, edit worker connection settings, and open the config and logs folders. When the worker exposes lifecycle control endpoints, the tray also provides **Drain**, **Undrain**, and **Shutdown after drain** actions.
+The tray can start or stop the local `llamapool` Windows service, toggle whether it launches automatically with Windows, edit worker connection settings, open the config and logs folders, view live logs, and collect diagnostics to the Desktop. When the worker exposes lifecycle control endpoints, the tray also provides **Drain**, **Undrain**, and **Shutdown after drain** actions.
 
 ### Key features
 - **Dynamic worker discovery** – Workers can connect and disconnect at any time; the server updates the available model list in real-time.
@@ -403,7 +403,7 @@ The service wrapper launches `llamapool-worker.exe` installed at
 `%ProgramData%\llamapool\Logs\worker.log`. The service is registered as
 `llamapool` with delayed automatic start. The tray app now polls the local worker
 every two seconds and updates its menu and tooltip to reflect the current status.
-A details dialog shows connection information, job counts, and any last error. A preferences window can edit the worker configuration and write it back to the YAML file, and the menu offers quick links to open the config and logs folders.
+A details dialog shows connection information, job counts, and any last error. A preferences window can edit the worker configuration and write it back to the YAML file, and the menu offers quick links to open the config and logs folders, view live logs, and collect diagnostics.
 
 ## Currently Supported
 

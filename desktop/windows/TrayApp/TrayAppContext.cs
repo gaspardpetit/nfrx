@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Net.Http;
 using System.IO;
+using System.IO.Compression;
 using System.ServiceProcess;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -74,9 +75,11 @@ public class TrayAppContext : ApplicationContext
             _undrainItem,
             _shutdownItem,
             new ToolStripMenuItem("Preferences...", null, OnPreferencesClicked),
+            new ToolStripMenuItem("Logs...", null, OnLogsClicked),
             new ToolStripMenuItem("Open Config Folder", null, OnOpenConfigFolderClicked),
             new ToolStripMenuItem("Open Logs Folder", null, OnOpenLogsFolderClicked),
             _startWithWindowsItem,
+            new ToolStripMenuItem("Collect Diagnostics", null, OnCollectDiagnosticsClicked),
             new ToolStripMenuItem("Check for Updates", null, OnCheckForUpdatesClicked),
             new ToolStripMenuItem("Exit", null, OnExitClicked)
         });
@@ -192,6 +195,74 @@ public class TrayAppContext : ApplicationContext
         catch (Exception ex)
         {
             MessageBox.Show($"Failed to open logs folder: {ex.Message}");
+        }
+    }
+
+    private void OnLogsClicked(object? sender, EventArgs e)
+    {
+        try
+        {
+            using var form = new LogsForm(Paths.LogPath);
+            form.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed to open logs: {ex.Message}");
+        }
+    }
+
+    private void OnCollectDiagnosticsClicked(object? sender, EventArgs e)
+    {
+        try
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), $"llamapool-diagnostics-{Guid.NewGuid()}");
+            Directory.CreateDirectory(tempDir);
+
+            if (File.Exists(Paths.ConfigPath))
+            {
+                File.Copy(Paths.ConfigPath, Path.Combine(tempDir, "worker.yaml"), true);
+            }
+
+            if (File.Exists(Paths.LogPath))
+            {
+                Directory.CreateDirectory(Path.Combine(tempDir, "Logs"));
+                File.Copy(Paths.LogPath, Path.Combine(tempDir, "Logs", "worker.log"), true);
+            }
+
+            File.WriteAllText(Path.Combine(tempDir, "sc_qc.txt"), RunProcessCapture("sc.exe", $"qc {ServiceName}"));
+            File.WriteAllText(Path.Combine(tempDir, "sc_query.txt"), RunProcessCapture("sc.exe", $"query {ServiceName}"));
+
+            var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            var zipPath = Path.Combine(desktop, $"llamapool-diagnostics-{DateTime.Now:yyyyMMddHHmmss}.zip");
+            ZipFile.CreateFromDirectory(tempDir, zipPath);
+
+            MessageBox.Show($"Diagnostics collected to {zipPath}");
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed to collect diagnostics: {ex.Message}");
+        }
+    }
+
+    private static string RunProcessCapture(string fileName, string arguments)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo(fileName, arguments)
+            {
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            using var proc = Process.Start(psi);
+            if (proc == null) return string.Empty;
+            var output = proc.StandardOutput.ReadToEnd();
+            proc.WaitForExit();
+            return output;
+        }
+        catch
+        {
+            return string.Empty;
         }
     }
 
