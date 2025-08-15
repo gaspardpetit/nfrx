@@ -38,7 +38,18 @@ func (r *RelayClient) Run(ctx context.Context) error {
 		case "rpc":
 			resp, err := r.callProvider(ctx, f.Payload)
 			if err != nil {
-				resp = []byte(`{"jsonrpc":"2.0","id":null,"error":{"code":-32000,"message":"provider error"}}`)
+				errObj := map[string]any{
+					"jsonrpc": "2.0",
+					"id":      nil,
+					"error": map[string]any{
+						"code":    -32000,
+						"message": "Provider error",
+						"data": map[string]any{
+							"mcp": "MCP_UPSTREAM_ERROR",
+						},
+					},
+				}
+				resp, _ = json.Marshal(errObj)
 			}
 			_ = r.send(ctx, Frame{T: "rpc", SID: f.SID, Payload: resp})
 			_ = r.send(ctx, Frame{T: "close", SID: f.SID, Msg: "done"})
@@ -57,6 +68,10 @@ func (r *RelayClient) send(ctx context.Context, f Frame) error {
 }
 
 func (r *RelayClient) callProvider(ctx context.Context, payload []byte) ([]byte, error) {
+	var env struct {
+		ID any `json:"id"`
+	}
+	_ = json.Unmarshal(payload, &env)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, r.providerURL, bytes.NewReader(payload))
 	if err != nil {
 		return nil, err
@@ -67,5 +82,25 @@ func (r *RelayClient) callProvider(ctx context.Context, payload []byte) ([]byte,
 		return nil, err
 	}
 	defer func() { _ = resp.Body.Close() }()
-	return io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		errObj := map[string]any{
+			"jsonrpc": "2.0",
+			"id":      env.ID,
+			"error": map[string]any{
+				"code":    -32000,
+				"message": "Provider error",
+				"data": map[string]any{
+					"mcp":    "MCP_UPSTREAM_ERROR",
+					"status": resp.StatusCode,
+				},
+			},
+		}
+		b, _ := json.Marshal(errObj)
+		return b, nil
+	}
+	return body, nil
 }
