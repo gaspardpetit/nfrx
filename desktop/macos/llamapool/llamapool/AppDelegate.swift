@@ -1,4 +1,5 @@
 import Cocoa
+import Sparkle
 
 @main
 class AppDelegate: NSObject, NSApplicationDelegate {
@@ -19,6 +20,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var drainItem: NSMenuItem!
     var undrainItem: NSMenuItem!
     var shutdownItem: NSMenuItem!
+    let updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -71,6 +73,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q"))
         statusItem.menu = menu
+
+        updaterController.checkForUpdatesInBackground()
 
         statusClient = StatusClient()
         statusClient?.onUpdate = { [weak self] result in
@@ -215,7 +219,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func checkForUpdates(_ sender: Any?) {
-        print("Check for Updates clicked")
+        updaterController.checkForUpdates()
     }
 
     @objc func quit(_ sender: Any?) {
