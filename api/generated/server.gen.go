@@ -29,6 +29,9 @@ type ServerInterface interface {
 	// Chat completions (proxy)
 	// (POST /v1/chat/completions)
 	PostV1ChatCompletions(w http.ResponseWriter, r *http.Request)
+	// Embeddings (proxy)
+	// (POST /v1/embeddings)
+	PostV1Embeddings(w http.ResponseWriter, r *http.Request)
 	// List models
 	// (GET /v1/models)
 	GetV1Models(w http.ResponseWriter, r *http.Request)
@@ -68,6 +71,12 @@ func (_ Unimplemented) GetHealthz(w http.ResponseWriter, r *http.Request) {
 // Chat completions (proxy)
 // (POST /v1/chat/completions)
 func (_ Unimplemented) PostV1ChatCompletions(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Embeddings (proxy)
+// (POST /v1/embeddings)
+func (_ Unimplemented) PostV1Embeddings(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -171,6 +180,26 @@ func (siw *ServerInterfaceWrapper) PostV1ChatCompletions(w http.ResponseWriter, 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.PostV1ChatCompletions(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PostV1Embeddings operation middleware
+func (siw *ServerInterfaceWrapper) PostV1Embeddings(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PostV1Embeddings(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -358,6 +387,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/v1/chat/completions", wrapper.PostV1ChatCompletions)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/v1/embeddings", wrapper.PostV1Embeddings)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/models", wrapper.GetV1Models)

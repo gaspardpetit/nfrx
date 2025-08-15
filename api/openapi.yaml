@@ -108,6 +108,25 @@ paths:
             text/event-stream:
               schema:
                 type: string
+  /v1/embeddings:
+    post:
+      security: [ { BearerAuth: [] } ]
+      summary: Embeddings (proxy)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
   /api/state:
     get:
       security: [ { BearerAuth: [] } ]
