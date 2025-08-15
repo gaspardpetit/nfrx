@@ -43,6 +43,7 @@ func GetModelHandler(reg *ctrl.Registry) http.HandlerFunc {
 		m, ok := reg.AggregatedModel(id)
 		w.Header().Set("Content-Type", "application/json")
 		if !ok {
+			logx.Log.Warn().Str("model", id).Msg("model not found")
 			w.WriteHeader(http.StatusNotFound)
 			if err := json.NewEncoder(w).Encode(map[string]string{"error": "model_not_found"}); err != nil {
 				logx.Log.Error().Err(err).Msg("encode model not found")

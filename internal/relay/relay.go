@@ -37,7 +37,7 @@ func RelayGenerateStream(ctx context.Context, reg *ctrl.Registry, metricsReg *ct
 	}
 	if len(exact) == 0 {
 		if key, ok := ctrl.AliasKey(req.Model); ok {
-			logx.Log.Info().Str("event", "alias_fallback").Str("requested_id", req.Model).Str("alias_key", key).Str("worker_id", worker.ID).Msg("alias fallback")
+			logx.Log.Info().Str("event", "alias_fallback").Str("requested_id", req.Model).Str("alias_key", key).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Msg("alias fallback")
 		}
 	}
 	reg.IncInFlight(worker.ID)
@@ -45,7 +45,7 @@ func RelayGenerateStream(ctx context.Context, reg *ctrl.Registry, metricsReg *ct
 
 	jobID := uuid.NewString()
 	reqID := chiMiddleware.GetReqID(ctx)
-	logx.Log.Info().Str("request_id", reqID).Str("job_id", jobID).Str("worker_id", worker.ID).Msg("dispatch")
+	logx.Log.Info().Str("request_id", reqID).Str("job_id", jobID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Msg("dispatch")
 	ch := make(chan interface{}, 16)
 	worker.AddJob(jobID, ch)
 	defer func() {
@@ -124,7 +124,7 @@ func RelayGenerateStream(ctx context.Context, reg *ctrl.Registry, metricsReg *ct
 				if err := enc.Encode(map[string]any{"done": true}); err != nil {
 					return err
 				}
-				logx.Log.Info().Str("request_id", reqID).Str("job_id", jobID).Str("worker_id", worker.ID).Msg("error")
+				logx.Log.Warn().Str("request_id", reqID).Str("job_id", jobID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Msg("error")
 				return ErrWorkerFailed
 			case ctrl.JobResultMessage:
 				var data map[string]interface{}
@@ -143,7 +143,7 @@ func RelayGenerateStream(ctx context.Context, reg *ctrl.Registry, metricsReg *ct
 					flusher.Flush()
 				}
 				success = true
-				logx.Log.Info().Str("request_id", reqID).Str("job_id", jobID).Str("worker_id", worker.ID).Msg("complete")
+				logx.Log.Info().Str("request_id", reqID).Str("job_id", jobID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Msg("complete")
 				if done, ok := data["done"].(bool); ok && done {
 				} else {
 					if err := enc.Encode(map[string]any{"done": true}); err != nil {
@@ -168,7 +168,7 @@ func RelayGenerateOnce(ctx context.Context, reg *ctrl.Registry, metricsReg *ctrl
 	}
 	if len(exact) == 0 {
 		if key, ok := ctrl.AliasKey(req.Model); ok {
-			logx.Log.Info().Str("event", "alias_fallback").Str("requested_id", req.Model).Str("alias_key", key).Str("worker_id", worker.ID).Msg("alias fallback")
+			logx.Log.Info().Str("event", "alias_fallback").Str("requested_id", req.Model).Str("alias_key", key).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Msg("alias fallback")
 		}
 	}
 	reg.IncInFlight(worker.ID)
@@ -176,7 +176,7 @@ func RelayGenerateOnce(ctx context.Context, reg *ctrl.Registry, metricsReg *ctrl
 
 	jobID := uuid.NewString()
 	reqID := chiMiddleware.GetReqID(ctx)
-	logx.Log.Info().Str("request_id", reqID).Str("job_id", jobID).Str("worker_id", worker.ID).Msg("dispatch")
+	logx.Log.Info().Str("request_id", reqID).Str("job_id", jobID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Msg("dispatch")
 	ch := make(chan interface{}, 16)
 	worker.AddJob(jobID, ch)
 	defer func() {
@@ -236,11 +236,11 @@ func RelayGenerateOnce(ctx context.Context, reg *ctrl.Registry, metricsReg *ctrl
 					tokensOut = uint64(val)
 				}
 				success = true
-				logx.Log.Info().Str("request_id", reqID).Str("job_id", jobID).Str("worker_id", worker.ID).Msg("complete")
+				logx.Log.Info().Str("request_id", reqID).Str("job_id", jobID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Msg("complete")
 				return v, nil
 			case ctrl.JobErrorMessage:
 				errMsg = m.Message
-				logx.Log.Info().Str("request_id", reqID).Str("job_id", jobID).Str("worker_id", worker.ID).Msg("error")
+				logx.Log.Warn().Str("request_id", reqID).Str("job_id", jobID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Msg("error")
 				return nil, ErrWorkerFailed
 			case ctrl.JobChunkMessage:
 				var v map[string]interface{}
@@ -254,7 +254,7 @@ func RelayGenerateOnce(ctx context.Context, reg *ctrl.Registry, metricsReg *ctrl
 					tokensOut = uint64(val)
 				}
 				success = true
-				logx.Log.Info().Str("request_id", reqID).Str("job_id", jobID).Str("worker_id", worker.ID).Msg("complete")
+				logx.Log.Info().Str("request_id", reqID).Str("job_id", jobID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Msg("complete")
 				return v, nil
 			}
 		}

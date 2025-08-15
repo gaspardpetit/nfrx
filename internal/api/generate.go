@@ -45,16 +45,20 @@ func GenerateHandler(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ct
 func handleRelayErr(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, relay.ErrNoWorker):
+		logx.Log.Warn().Err(err).Msg("no worker")
 		http.Error(w, "no worker", http.StatusNotFound)
 	case errors.Is(err, relay.ErrWorkerBusy):
+		logx.Log.Warn().Err(err).Msg("worker busy")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusServiceUnavailable)
 		if err := json.NewEncoder(w).Encode(map[string]string{"error": "worker_busy"}); err != nil {
 			logx.Log.Error().Err(err).Msg("encode worker busy")
 		}
 	case errors.Is(err, context.DeadlineExceeded):
+		logx.Log.Warn().Err(err).Msg("timeout")
 		http.Error(w, "timeout", http.StatusGatewayTimeout)
 	default:
+		logx.Log.Error().Err(err).Msg("worker failure")
 		http.Error(w, "worker failure", http.StatusBadGateway)
 	}
 }
