@@ -14,7 +14,7 @@ import (
 func TestAPIKeyEnforcement(t *testing.T) {
 	reg := ctrl.NewRegistry()
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	cfg := config.ServerConfig{APIKey: "test123", WSPath: "/workers/connect", RequestTimeout: 5 * time.Second}
+	cfg := config.ServerConfig{APIKey: "test123", RequestTimeout: 5 * time.Second}
 	metricsReg := ctrl.NewMetricsRegistry("test", "", "")
 	handler := server.New(reg, metricsReg, sched, cfg)
 	srv := httptest.NewServer(handler)

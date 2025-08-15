@@ -21,7 +21,7 @@ import (
 func TestE2EChatCompletionsProxy(t *testing.T) {
 	reg := ctrl.NewRegistry()
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	cfg := config.ServerConfig{WorkerKey: "secret", APIKey: "apikey", WSPath: "/workers/connect", RequestTimeout: 5 * time.Second}
+	cfg := config.ServerConfig{WorkerKey: "secret", APIKey: "apikey", RequestTimeout: 5 * time.Second}
 	metricsReg := ctrl.NewMetricsRegistry("test", "", "")
 	handler := server.New(reg, metricsReg, sched, cfg)
 	srv := httptest.NewServer(handler)
@@ -61,7 +61,7 @@ func TestE2EChatCompletionsProxy(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/workers/connect"
+	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/api/workers/connect"
 	go func() {
 		_ = worker.Run(ctx, config.WorkerConfig{ServerURL: wsURL, WorkerKey: "secret", OllamaBaseURL: ollama.URL, OllamaAPIKey: "secret-123", WorkerID: "w1", WorkerName: "w1", MaxConcurrency: 2})
 	}()

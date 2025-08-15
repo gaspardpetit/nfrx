@@ -21,7 +21,7 @@ func TestGetState(t *testing.T) {
 	metricsReg.RecordJobEnd("w1", "m", 50*time.Millisecond, 5, 7, true, "")
 
 	h := &StateHandler{Metrics: metricsReg}
-	r := httptest.NewRequest(http.MethodGet, "/v1/state", nil)
+	r := httptest.NewRequest(http.MethodGet, "/api/state", nil)
 	w := httptest.NewRecorder()
 	h.GetState(w, r)
 	var resp ctrl.StateResponse
@@ -38,11 +38,11 @@ func TestGetStateStream(t *testing.T) {
 	h := &StateHandler{Metrics: metricsReg}
 
 	r := chi.NewRouter()
-	r.Get("/v1/state/stream", h.GetStateStream)
+	r.Get("/api/state/stream", h.GetStateStream)
 	srv := httptest.NewServer(r)
 	defer srv.Close()
 
-	resp, err := http.Get(srv.URL + "/v1/state/stream")
+	resp, err := http.Get(srv.URL + "/api/state/stream")
 	if err != nil {
 		t.Fatalf("get: %v", err)
 	}

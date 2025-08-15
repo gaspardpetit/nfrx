@@ -18,14 +18,14 @@ import (
 func TestHeartbeatPrune(t *testing.T) {
 	reg := ctrl.NewRegistry()
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	cfg := config.ServerConfig{WorkerKey: "secret", WSPath: "/workers/connect", RequestTimeout: 5 * time.Second}
+	cfg := config.ServerConfig{WorkerKey: "secret", RequestTimeout: 5 * time.Second}
 	metricsReg := ctrl.NewMetricsRegistry("test", "", "")
 	handler := server.New(reg, metricsReg, sched, cfg)
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
 	ctx := context.Background()
-	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/workers/connect"
+	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/api/workers/connect"
 	conn, _, err := websocket.Dial(ctx, wsURL, nil)
 	if err != nil {
 		t.Fatalf("dial: %v", err)
