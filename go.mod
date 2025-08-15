@@ -1,4 +1,4 @@
-module github.com/you/llamapool
+module github.com/gaspardpetit/llamapool
 
 go 1.23.0
 

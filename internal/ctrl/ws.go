@@ -9,7 +9,7 @@ import (
 
 	"github.com/coder/websocket"
 
-	"github.com/you/llamapool/internal/logx"
+	"github.com/gaspardpetit/llamapool/internal/logx"
 )
 
 // WSHandler handles incoming worker websocket connections.

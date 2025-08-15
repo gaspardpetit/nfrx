@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/you/llamapool/internal/ctrl"
-	"github.com/you/llamapool/internal/logx"
+	"github.com/gaspardpetit/llamapool/internal/ctrl"
+	"github.com/gaspardpetit/llamapool/internal/logx"
 )
 
 // StateHandler serves state snapshots and streams.

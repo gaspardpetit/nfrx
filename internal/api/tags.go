@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/you/llamapool/internal/ctrl"
-	"github.com/you/llamapool/internal/logx"
+	"github.com/gaspardpetit/llamapool/internal/ctrl"
+	"github.com/gaspardpetit/llamapool/internal/logx"
 )
 
 // TagsHandler handles GET /api/tags.
