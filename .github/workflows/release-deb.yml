@@ -112,9 +112,11 @@ jobs:
         run: |
           lintian out/*.deb || true
 
+
       - name: Upload .deb to Release
         uses: softprops/action-gh-release@v2
         with:
           files: out/*.deb
+          tag_name: ${{ github.event.release.tag_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
