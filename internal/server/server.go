@@ -7,40 +7,44 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	"github.com/you/llamapool/api/generated"
 	"github.com/you/llamapool/internal/api"
 	"github.com/you/llamapool/internal/config"
 	"github.com/you/llamapool/internal/ctrl"
-	"github.com/you/llamapool/internal/logx"
 )
 
 // New constructs the HTTP handler for the server.
 func New(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler, cfg config.ServerConfig) http.Handler {
 	r := chi.NewRouter()
-	r.Route("/api", func(r chi.Router) {
-		if cfg.APIKey != "" {
-			r.Use(api.APIKeyMiddleware(cfg.APIKey))
-		}
-		r.Route("/client", func(r chi.Router) {
-			r.Get("/openapi.json", api.OpenAPIHandler())
-			r.Get("/*", api.SwaggerHandler())
-		})
-		r.Mount("/", api.NewRouter(reg, metrics, sched, cfg.RequestTimeout))
+	for _, m := range api.MiddlewareChain() {
+		r.Use(m)
+	}
+
+	impl := &api.API{Reg: reg, Metrics: metrics, Sched: sched, Timeout: cfg.RequestTimeout}
+	wrapper := generated.ServerInterfaceWrapper{Handler: impl}
+
+	r.Route("/api/client", func(r chi.Router) {
+		r.Get("/openapi.json", api.OpenAPIHandler())
+		r.Get("/*", api.SwaggerHandler())
 	})
-	r.Route("/v1", func(r chi.Router) {
+
+	r.Group(func(public chi.Router) {
+		public.Post("/api/generate", wrapper.PostApiGenerate)
+		public.Get("/api/tags", wrapper.GetApiTags)
+		public.Get("/healthz", wrapper.GetHealthz)
+	})
+
+	r.Group(func(v1 chi.Router) {
 		if cfg.APIKey != "" {
-			r.Use(api.APIKeyMiddleware(cfg.APIKey))
+			v1.Use(api.APIKeyMiddleware(cfg.APIKey))
 		}
-		r.Get("/models", api.ListModelsHandler(reg))
-		r.Get("/models/{id}", api.GetModelHandler(reg))
-		r.Post("/chat/completions", api.ChatCompletionsHandler(reg, sched))
+		v1.Post("/v1/chat/completions", wrapper.PostV1ChatCompletions)
+		v1.Get("/v1/models", wrapper.GetV1Models)
+		v1.Get("/v1/models/{id}", wrapper.GetV1ModelsId)
+		v1.Get("/v1/state", wrapper.GetV1State)
+		v1.Get("/v1/state/stream", wrapper.GetV1StateStream)
 	})
 	r.Handle(cfg.WSPath, ctrl.WSHandler(reg, metrics, cfg.WorkerKey))
-	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		if _, err := w.Write([]byte(`{"status":"ok"}`)); err != nil {
-			logx.Log.Error().Err(err).Msg("write healthz")
-		}
-	})
 	metricsPort := cfg.MetricsPort
 	if metricsPort == 0 {
 		metricsPort = cfg.Port

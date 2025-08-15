@@ -9,7 +9,7 @@ import (
 )
 
 func TestRequestIDMiddleware(t *testing.T) {
-	chain := middlewareChain()
+	chain := MiddlewareChain()
 	var captured string
 	var h http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		captured = chiMiddleware.GetReqID(r.Context())
