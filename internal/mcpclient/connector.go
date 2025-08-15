@@ -2,16 +2,22 @@ package mcpclient
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"slices"
+	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/mark3labs/mcp-go/client/transport"
 	"github.com/mark3labs/mcp-go/mcp"
+
+	"github.com/gaspardpetit/llamapool/internal/logx"
 )
 
 // Connector is a transport-agnostic MCP client connection.
@@ -108,7 +114,14 @@ func newStdioConnector(cfg Config) (*transportConnector, error) {
 	if cfg.Stdio.Command == "" {
 		return nil, fmt.Errorf("stdio command not configured")
 	}
-	t := transport.NewStdio(cfg.Stdio.Command, cfg.Stdio.Env, cfg.Stdio.Args...)
+	if !filepath.IsAbs(cfg.Stdio.Command) {
+		if !cfg.Stdio.AllowRelative {
+			return nil, fmt.Errorf("stdio command must be absolute")
+		}
+		logx.Log.Warn().Str("command", cfg.Stdio.Command).Msg("allowing relative stdio command path")
+	}
+	env := buildEnv(cfg.Stdio.Env)
+	t := transport.NewStdio(cfg.Stdio.Command, env, cfg.Stdio.Args...)
 	return newTransportConnector(t, cfg.MaxInFlight), nil
 }
 
@@ -116,7 +129,12 @@ func newHTTPConnector(cfg Config) (*transportConnector, error) {
 	if cfg.HTTP.URL == "" {
 		return nil, fmt.Errorf("http url not configured")
 	}
-	client := &http.Client{Timeout: cfg.HTTP.Timeout, Transport: &http.Transport{MaxIdleConns: 100, MaxIdleConnsPerHost: 10, IdleConnTimeout: 90 * time.Second}}
+	tlsCfg := &tls.Config{}
+	if cfg.HTTP.InsecureSkipVerify {
+		tlsCfg.InsecureSkipVerify = true
+		logx.Log.Warn().Str("url", cfg.HTTP.URL).Msg("TLS verification disabled")
+	}
+	client := &http.Client{Timeout: cfg.HTTP.Timeout, Transport: &http.Transport{MaxIdleConns: 100, MaxIdleConnsPerHost: 10, IdleConnTimeout: 90 * time.Second, TLSClientConfig: tlsCfg}}
 	opts := []transport.StreamableHTTPCOption{transport.WithHTTPBasicClient(client), transport.WithHTTPTimeout(cfg.HTTP.Timeout)}
 	if cfg.HTTP.EnablePush {
 		opts = append(opts, transport.WithContinuousListening())
@@ -132,7 +150,15 @@ func newOAuthHTTPConnector(cfg Config) (*transportConnector, error) {
 	if !cfg.OAuth.Enabled {
 		return nil, fmt.Errorf("oauth disabled")
 	}
-	client := &http.Client{Timeout: cfg.HTTP.Timeout, Transport: &http.Transport{MaxIdleConns: 100, MaxIdleConnsPerHost: 10, IdleConnTimeout: 90 * time.Second}}
+	if cfg.OAuth.TokenStore == nil && cfg.OAuth.TokenFile != "" {
+		cfg.OAuth.TokenStore = NewFileTokenStore(cfg.OAuth.TokenFile)
+	}
+	tlsCfg := &tls.Config{}
+	if cfg.HTTP.InsecureSkipVerify {
+		tlsCfg.InsecureSkipVerify = true
+		logx.Log.Warn().Str("url", cfg.HTTP.URL).Msg("TLS verification disabled")
+	}
+	client := &http.Client{Timeout: cfg.HTTP.Timeout, Transport: &http.Transport{MaxIdleConns: 100, MaxIdleConnsPerHost: 10, IdleConnTimeout: 90 * time.Second, TLSClientConfig: tlsCfg}}
 	opts := []transport.StreamableHTTPCOption{transport.WithHTTPBasicClient(client), transport.WithHTTPTimeout(cfg.HTTP.Timeout), transport.WithHTTPOAuth(transport.OAuthConfig{
 		ClientID:              cfg.OAuth.ClientID,
 		ClientSecret:          cfg.OAuth.ClientSecret,
@@ -162,6 +188,24 @@ func newLegacySSEConnector(cfg Config) (*transportConnector, error) {
 		return nil, err
 	}
 	return newTransportConnector(t, cfg.MaxInFlight), nil
+}
+
+// buildEnv constructs a limited environment from allowlisted variables.
+// Each entry may be either "KEY" to copy from the current process env or
+// "KEY=value" to set an explicit value. Variables not present in the current
+// environment are skipped.
+func buildEnv(vars []string) []string {
+	var out []string
+	for _, v := range vars {
+		if strings.Contains(v, "=") {
+			out = append(out, v)
+			continue
+		}
+		if val, ok := os.LookupEnv(v); ok {
+			out = append(out, fmt.Sprintf("%s=%s", v, val))
+		}
+	}
+	return out
 }
 
 // Features describes server-supported capabilities for gating behavior.
