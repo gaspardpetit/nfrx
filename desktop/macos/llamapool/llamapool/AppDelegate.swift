@@ -74,7 +74,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q"))
         statusItem.menu = menu
 
-        updaterController.checkForUpdatesInBackground()
+        updaterController.updater.checkForUpdatesInBackground()
 
         statusClient = StatusClient()
         statusClient?.onUpdate = { [weak self] result in
@@ -219,7 +219,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func checkForUpdates(_ sender: Any?) {
-        updaterController.checkForUpdates()
+        updaterController.checkForUpdates(sender)
     }
 
     @objc func quit(_ sender: Any?) {
