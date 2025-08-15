@@ -56,7 +56,7 @@ func EmbeddingsHandler(reg *ctrl.Registry, sched ctrl.Scheduler) http.HandlerFun
 		worker.AddJob(reqID, ch)
 		defer func() {
 			worker.RemoveJob(reqID)
-			defer func() { recover() }()
+			_ = recover()
 			close(ch)
 		}()
 
