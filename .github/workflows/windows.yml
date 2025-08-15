@@ -5,9 +5,16 @@ on:
   release:
     types: [ published ]
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   build:
     runs-on: windows-latest
+    env:
+      PFX_B64: ${{ secrets.WIN_CODE_SIGN_PFX_B64 }}   # <- expose once at job level
+      PFX_PASS: ${{ secrets.WIN_CODE_SIGN_PFX_PASS }}
     steps:
       - uses: actions/checkout@v4
       - name: Compute version metadata
@@ -45,21 +52,62 @@ jobs:
           New-Item -ItemType Directory -Path build | Out-Null
           candle.exe desktop/windows/Installer/Product.wxs -dWorkerExe="cmd\llamapool-worker\llamapool-worker.exe" -dServiceExe="desktop\windows\WindowsService\bin\Release\net8.0-windows\WindowsService.exe" -dTrayExe="desktop\windows\TrayApp\bin\Release\net8.0-windows\TrayApp.exe" -dDefaultConfig="desktop\windows\Installer\worker.yaml" -out build\
           light.exe build\Product.wixobj -out build\llamapool.msi
-      - name: Code Sign (EXEs & MSI)
-        if: ${{ secrets.WIN_CODE_SIGN_PFX_B64 != '' }}
-        shell: cmd
-        env:
-          PFX_B64: ${{ secrets.WIN_CODE_SIGN_PFX_B64 }}
-          PFX_PASS: ${{ secrets.WIN_CODE_SIGN_PFX_PASS }}
+
+      - name: Restore PFX from secret
+        if: ${{ env.PFX_B64 != '' && github.event_name != 'pull_request' }}
+        shell: pwsh
         run: |
-          echo %PFX_B64% > build\cert.b64
-          certutil -decode build\cert.b64 build\codesign.pfx
+          New-Item -ItemType Directory -Path build -ErrorAction SilentlyContinue | Out-Null
+          [IO.File]::WriteAllBytes("build/codesign.pfx", [Convert]::FromBase64String($env:PFX_B64))
+
+      - name: Code Sign (EXEs & MSI)
+        if: ${{ env.PFX_B64 != '' && github.event_name != 'pull_request' }}
+        shell: cmd
+        run: |
           signtool sign /f build\codesign.pfx /p %PFX_PASS% /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 desktop\windows\TrayApp\bin\Release\net8.0-windows\TrayApp.exe
           signtool sign /f build\codesign.pfx /p %PFX_PASS% /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 desktop\windows\WindowsService\bin\Release\net8.0-windows\WindowsService.exe
           signtool sign /f build\codesign.pfx /p %PFX_PASS% /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 cmd\llamapool-worker\llamapool-worker.exe
           signtool sign /f build\codesign.pfx /p %PFX_PASS% /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 build\llamapool.msi
+      
+      - name: Install cosign
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: sigstore/cosign-installer@59acb6260d9c0ba8f4a2f9d9b48431a222b68e20 # v3.5.0
+        with:
+          cosign-release: 'v2.2.4'
+      
+      - name: Cosign sign artifacts (keyless)
+        if: ${{ github.event_name != 'pull_request' }}
+        shell: pwsh
+        env:
+          COSIGN_YES: "true"   # auto-approve keyless flow
+        run: |
+          $files = @(
+            "build/llamapool.msi",
+            "desktop/windows/TrayApp/bin/Release/net8.0-windows/TrayApp.exe",
+            "desktop/windows/WindowsService/bin/Release/net8.0-windows/WindowsService.exe",
+            "cmd/llamapool-worker/llamapool-worker.exe"
+          )
+          foreach ($f in $files) {
+            if (Test-Path $f) {
+              cosign sign-blob $f --output-signature "$f.sig" --output-certificate "$f.pem"
+            }
+          }
+
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: llamapool-Windows
-          path: build\llamapool.msi
+          path: |
+            build\llamapool.msi
+            build\llamapool.msi.sig
+            build\llamapool.msi.pem
+            desktop\windows\TrayApp\bin\Release\net8.0-windows\TrayApp.exe
+            desktop\windows\TrayApp\bin\Release\net8.0-windows\TrayApp.exe.sig
+            desktop\windows\TrayApp\bin\Release\net8.0-windows\TrayApp.exe.pem
+            desktop\windows\WindowsService\bin\Release\net8.0-windows\WindowsService.exe
+            desktop\windows\WindowsService\bin\Release\net8.0-windows\WindowsService.exe.sig
+            desktop\windows\WindowsService\bin\Release\net8.0-windows\WindowsService.exe.pem
+            cmd\llamapool-worker\llamapool-worker.exe
+            cmd\llamapool-worker\llamapool-worker.exe.sig
+            cmd\llamapool-worker\llamapool-worker.exe.pem

@@ -1,10 +1,12 @@
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Json;
 using System.ServiceProcess;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using Squirrel;
 using Timer = System.Windows.Forms.Timer;
 
 namespace TrayApp;
@@ -13,6 +15,7 @@ public class TrayAppContext : ApplicationContext
 {
     private readonly NotifyIcon _notifyIcon;
     private readonly ToolStripMenuItem _statusItem;
+    private readonly ToolStripMenuItem _versionItem;
     private readonly ToolStripMenuItem _detailsItem;
     private readonly ToolStripMenuItem _startStopItem;
     private readonly ToolStripMenuItem _startWithWindowsItem;
@@ -23,17 +26,28 @@ public class TrayAppContext : ApplicationContext
     private StatusClient _statusClient;
     private ControlClient _controlClient;
     private readonly Timer _statusTimer;
+    private readonly Timer _updateTimer;
+    private readonly HttpClient _updateClient = new();
     private WorkerStatus? _currentStatus;
+    private string? _currentVersion;
+    private string? _latestVersion;
+    private string? _notifiedVersion;
     private string? _lastError;
     private WorkerConfig _config;
     private bool _controlsAvailable;
-    private const string UpdateRepo = "gaspardpetit/llamapool";
+    private const string ReleaseApi = "https://api.github.com/repos/gaspardpetit/llamapool/releases/latest";
+    private const string ReleasePage = "https://github.com/gaspardpetit/llamapool/releases";
 
     private const string ServiceName = "llamapool";
 
     public TrayAppContext()
     {
         _statusItem = new ToolStripMenuItem("Status: Unknown")
+        {
+            Enabled = false
+        };
+
+        _versionItem = new ToolStripMenuItem("Version: Unknown")
         {
             Enabled = false
         };
@@ -68,6 +82,7 @@ public class TrayAppContext : ApplicationContext
         contextMenu.Items.AddRange(new ToolStripItem[]
         {
             _statusItem,
+            _versionItem,
             _detailsItem,
             new ToolStripSeparator(),
             _startStopItem,
@@ -98,6 +113,11 @@ public class TrayAppContext : ApplicationContext
         _statusTimer = new System.Windows.Forms.Timer { Interval = 2000 };
         _statusTimer.Tick += async (_, _) => await RefreshStatusAsync();
         _statusTimer.Start();
+
+        _updateTimer = new System.Windows.Forms.Timer { Interval = 24 * 60 * 60 * 1000 };
+        _updateTimer.Tick += async (_, _) => await CheckForUpdatesAsync();
+        _updateTimer.Start();
+        _updateClient.DefaultRequestHeaders.UserAgent.ParseAdd("llamapool-trayapp");
 
         _controlsAvailable = false;
         _ = ProbeControlEndpointsAsync();
@@ -323,14 +343,53 @@ public class TrayAppContext : ApplicationContext
     {
         try
         {
-            using var mgr = await UpdateManager.GitHubUpdateManager(UpdateRepo);
-            var updates = await mgr.CheckForUpdate();
-            if (updates.ReleasesToApply.Any())
+            var rel = await _updateClient.GetFromJsonAsync<GithubRelease>(ReleaseApi);
+            if (rel == null || string.IsNullOrEmpty(rel.TagName))
             {
-                await mgr.UpdateApp();
+                return;
+            }
+
+            _latestVersion = rel.TagName;
+            UpdateVersionItem();
+
+            if (_currentVersion == null)
+            {
+                try
+                {
+                    var status = await _statusClient.FetchStatusAsync();
+                    _currentStatus = status;
+                    _currentVersion = status.Version;
+                }
+                catch
+                {
+                    // ignore
+                }
+            }
+
+            var current = _currentVersion;
+            if (!string.IsNullOrEmpty(current) && _latestVersion != current && _latestVersion != _notifiedVersion)
+            {
+                _notifiedVersion = _latestVersion;
                 if (userInitiated)
                 {
-                    MessageBox.Show("Update installed. Please restart the application.", "Update", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    var res = MessageBox.Show($"Version {_latestVersion} is available. Open release page?", "Update", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+                    if (res == DialogResult.Yes)
+                    {
+                        Process.Start("explorer.exe", ReleasePage);
+                    }
+                }
+                else
+                {
+                    _notifyIcon.BalloonTipTitle = "llamapool";
+                    _notifyIcon.BalloonTipText = $"Version {_latestVersion} is available (current {current}).";
+                    EventHandler? handler = null;
+                    handler = (_, _) =>
+                    {
+                        Process.Start("explorer.exe", ReleasePage);
+                        _notifyIcon.BalloonTipClicked -= handler;
+                    };
+                    _notifyIcon.BalloonTipClicked += handler;
+                    _notifyIcon.ShowBalloonTip(10000);
                 }
             }
             else if (userInitiated)
@@ -347,6 +406,21 @@ public class TrayAppContext : ApplicationContext
         }
     }
 
+    private void UpdateVersionItem()
+    {
+        var current = _currentVersion ?? "unknown";
+        if (!string.IsNullOrEmpty(_latestVersion) && _latestVersion != current)
+        {
+            _versionItem.Text = $"Version: {current} (latest {_latestVersion})";
+        }
+        else
+        {
+            _versionItem.Text = $"Version: {current}";
+        }
+    }
+
+    private record GithubRelease([property: JsonPropertyName("tag_name")] string TagName);
+
     private void OnExitClicked(object? sender, EventArgs e)
     {
         _statusTimer.Stop();
@@ -362,12 +436,14 @@ public class TrayAppContext : ApplicationContext
         {
             var status = await _statusClient.FetchStatusAsync();
             _currentStatus = status;
+            _currentVersion = status.Version;
             _lastError = string.IsNullOrEmpty(status.LastError) ? null : status.LastError;
 
             var text = TextForState(status.State);
             _statusItem.Text = $"Status: {text}";
             _notifyIcon.Text = $"llamapool - {text}";
             _detailsItem.Enabled = true;
+            UpdateVersionItem();
         }
         catch (HttpRequestException ex)
         {
