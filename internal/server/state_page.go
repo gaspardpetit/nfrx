@@ -5,13 +5,13 @@ import (
 	"net/http"
 )
 
-//go:embed status.html
-var statusHTML string
+//go:embed state.html
+var stateHTML string
 
-// StatusHandler serves the embedded status page.
-func StatusHandler() http.HandlerFunc {
+// StateHandler serves the embedded state page.
+func StateHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = w.Write([]byte(statusHTML))
+		_, _ = w.Write([]byte(stateHTML))
 	}
 }

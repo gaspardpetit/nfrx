@@ -121,7 +121,7 @@ The tray can start or stop the local `llamapool` Windows service, toggle whether
   - Swagger UI: `GET /api/client/`
   - OpenAPI schema: `GET /api/client/openapi.json`
   - Update schema: edit `api/openapi.yaml` then run `make generate`
-- Web dashboard: `GET /status` (real-time view of workers)
+- Web dashboard: `GET /state` (real-time view of workers)
 
 
 ## Security
@@ -158,7 +158,7 @@ The tray can start or stop the local `llamapool` Windows service, toggle whether
   - per-worker totals (processed, inflight, failures, avg duration)
   - per-model availability (how many workers support each model)
   - versions/build info for server & workers
-- **Web status page** (`/status`): lightweight dashboard powered by the state stream
+- **Web state page** (`/state`): lightweight dashboard powered by the state stream
 - **Logs**:
   - `Info` — lifecycle details like connections, disconnections, draining, and job dispatch/completion.
   - `Warn` — expected failures such as missing models or no available workers.
@@ -218,6 +218,8 @@ PORT=8080 WORKER_KEY=secret API_KEY=test123 go run ./cmd/llamapool-server
 # or to expose metrics on a different port:
 # PORT=8080 METRICS_PORT=9090 WORKER_KEY=secret API_KEY=test123 go run ./cmd/llamapool-server
 ```
+
+Workers register with the server at `/api/workers/connect`.
 
 On Windows (CMD)
 
@@ -457,5 +459,5 @@ For manual end-to-end verification on a clean VM, see [desktop/windows/ACCEPTANC
 | Draining | ✅ | Workers can be configured to drain before exiting to avoid interrupting an ongoing request with `--drain-timeout` |
 | Linux Deamons | ✅ | Debian packages are provided to install the worker and server as daemons |
 | Desktop Trays | In Progress | Windows and macOS tray applications to launch, configure and monitor the worker |
-| Server dashboard | ✅ | `/status` HTML page visualizes workers via SSE |
+| Server dashboard | ✅ | `/state` HTML page visualizes workers via SSE |
 | Private MCP Endpoints | ✅ | Allow clients to expose an ephemeral MCP server through the `llamapool-mcp` relay |
