@@ -15,6 +15,8 @@ public static class Paths
 
     public static readonly string ConfigPath = Path.Combine(ProgramDataDir, "worker.yaml");
 
+    public static readonly string TokenPath = Path.Combine(ProgramDataDir, "token");
+
     public static readonly string LogPath = Path.Combine(LogsDir, "worker.log");
 
     public static readonly string BinaryPath = Path.Combine(

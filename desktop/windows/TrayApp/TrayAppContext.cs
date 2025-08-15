@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Net.Http;
 using System.IO;
+using System.IO.Compression;
 using System.ServiceProcess;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -16,12 +17,17 @@ public class TrayAppContext : ApplicationContext
     private readonly ToolStripMenuItem _detailsItem;
     private readonly ToolStripMenuItem _startStopItem;
     private readonly ToolStripMenuItem _startWithWindowsItem;
+    private readonly ToolStripMenuItem _drainItem;
+    private readonly ToolStripMenuItem _undrainItem;
+    private readonly ToolStripMenuItem _shutdownItem;
 
     private StatusClient _statusClient;
+    private ControlClient _controlClient;
     private readonly Timer _statusTimer;
     private WorkerStatus? _currentStatus;
     private string? _lastError;
     private WorkerConfig _config;
+    private bool _controlsAvailable;
 
     private const string ServiceName = "llamapool";
 
@@ -45,6 +51,19 @@ public class TrayAppContext : ApplicationContext
         };
         _startWithWindowsItem.Click += OnStartWithWindowsClicked;
 
+        _drainItem = new ToolStripMenuItem("Drain", null, OnDrainClicked)
+        {
+            Enabled = false
+        };
+        _undrainItem = new ToolStripMenuItem("Undrain", null, OnUndrainClicked)
+        {
+            Enabled = false
+        };
+        _shutdownItem = new ToolStripMenuItem("Shutdown after drain", null, OnShutdownClicked)
+        {
+            Enabled = false
+        };
+
         var contextMenu = new ContextMenuStrip();
         contextMenu.Items.AddRange(new ToolStripItem[]
         {
@@ -52,10 +71,15 @@ public class TrayAppContext : ApplicationContext
             _detailsItem,
             new ToolStripSeparator(),
             _startStopItem,
+            _drainItem,
+            _undrainItem,
+            _shutdownItem,
             new ToolStripMenuItem("Preferences...", null, OnPreferencesClicked),
+            new ToolStripMenuItem("Logs...", null, OnLogsClicked),
             new ToolStripMenuItem("Open Config Folder", null, OnOpenConfigFolderClicked),
             new ToolStripMenuItem("Open Logs Folder", null, OnOpenLogsFolderClicked),
             _startWithWindowsItem,
+            new ToolStripMenuItem("Collect Diagnostics", null, OnCollectDiagnosticsClicked),
             new ToolStripMenuItem("Check for Updates", null, OnCheckForUpdatesClicked),
             new ToolStripMenuItem("Exit", null, OnExitClicked)
         });
@@ -70,9 +94,13 @@ public class TrayAppContext : ApplicationContext
 
         _config = WorkerConfig.Load(Paths.ConfigPath);
         _statusClient = new StatusClient(_config.StatusPort);
+        _controlClient = new ControlClient(_config.StatusPort);
         _statusTimer = new Timer { Interval = 2000 };
         _statusTimer.Tick += async (_, _) => await RefreshStatusAsync();
         _statusTimer.Start();
+
+        _controlsAvailable = false;
+        _ = ProbeControlEndpointsAsync();
 
         RefreshServiceState();
     }
@@ -119,6 +147,9 @@ public class TrayAppContext : ApplicationContext
             form.Config.Save(Paths.ConfigPath);
             _config = form.Config;
             _statusClient = new StatusClient(_config.StatusPort);
+            _controlClient = new ControlClient(_config.StatusPort);
+            _controlsAvailable = false;
+            _ = ProbeControlEndpointsAsync();
             if (running)
             {
                 var res = MessageBox.Show("Restart worker service now?", "llamapool", MessageBoxButtons.YesNo);
@@ -164,6 +195,105 @@ public class TrayAppContext : ApplicationContext
         catch (Exception ex)
         {
             MessageBox.Show($"Failed to open logs folder: {ex.Message}");
+        }
+    }
+
+    private void OnLogsClicked(object? sender, EventArgs e)
+    {
+        try
+        {
+            using var form = new LogsForm(Paths.LogPath);
+            form.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed to open logs: {ex.Message}");
+        }
+    }
+
+    private void OnCollectDiagnosticsClicked(object? sender, EventArgs e)
+    {
+        try
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), $"llamapool-diagnostics-{Guid.NewGuid()}");
+            Directory.CreateDirectory(tempDir);
+
+            if (File.Exists(Paths.ConfigPath))
+            {
+                File.Copy(Paths.ConfigPath, Path.Combine(tempDir, "worker.yaml"), true);
+            }
+
+            if (File.Exists(Paths.LogPath))
+            {
+                Directory.CreateDirectory(Path.Combine(tempDir, "Logs"));
+                File.Copy(Paths.LogPath, Path.Combine(tempDir, "Logs", "worker.log"), true);
+            }
+
+            File.WriteAllText(Path.Combine(tempDir, "sc_qc.txt"), RunProcessCapture("sc.exe", $"qc {ServiceName}"));
+            File.WriteAllText(Path.Combine(tempDir, "sc_query.txt"), RunProcessCapture("sc.exe", $"query {ServiceName}"));
+
+            var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            var zipPath = Path.Combine(desktop, $"llamapool-diagnostics-{DateTime.Now:yyyyMMddHHmmss}.zip");
+            ZipFile.CreateFromDirectory(tempDir, zipPath);
+
+            MessageBox.Show($"Diagnostics collected to {zipPath}");
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed to collect diagnostics: {ex.Message}");
+        }
+    }
+
+    private static string RunProcessCapture(string fileName, string arguments)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo(fileName, arguments)
+            {
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            using var proc = Process.Start(psi);
+            if (proc == null) return string.Empty;
+            var output = proc.StandardOutput.ReadToEnd();
+            proc.WaitForExit();
+            return output;
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    private async void OnDrainClicked(object? sender, EventArgs e)
+    {
+        await SendControlAsync("drain");
+    }
+
+    private async void OnUndrainClicked(object? sender, EventArgs e)
+    {
+        await SendControlAsync("undrain");
+    }
+
+    private async void OnShutdownClicked(object? sender, EventArgs e)
+    {
+        await SendControlAsync("shutdown");
+    }
+
+    private async Task SendControlAsync(string command)
+    {
+        try
+        {
+            await _controlClient.SendCommandAsync(command);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed to send '{command}': {ex.Message}");
+        }
+        finally
+        {
+            await RefreshStatusAsync();
         }
     }
 
@@ -227,6 +357,8 @@ public class TrayAppContext : ApplicationContext
             _notifyIcon.Text = "llamapool - Error";
             _detailsItem.Enabled = true;
         }
+
+        UpdateControlMenuItems();
     }
 
     private void OnDetailsClicked(object? sender, EventArgs e)
@@ -259,6 +391,28 @@ public class TrayAppContext : ApplicationContext
         WorkerState.Error => "Error",
         _ => "Unknown"
     };
+
+    private void UpdateControlMenuItems()
+    {
+        if (!_controlsAvailable)
+        {
+            _drainItem.Enabled = false;
+            _undrainItem.Enabled = false;
+            _shutdownItem.Enabled = false;
+            return;
+        }
+
+        var state = _currentStatus?.State;
+        _drainItem.Enabled = state != null && state != WorkerState.Draining && state != WorkerState.Terminating;
+        _undrainItem.Enabled = state == WorkerState.Draining;
+        _shutdownItem.Enabled = state != null && state != WorkerState.Terminating;
+    }
+
+    private async Task ProbeControlEndpointsAsync()
+    {
+        _controlsAvailable = await _controlClient.ProbeAsync();
+        UpdateControlMenuItems();
+    }
 
     private void RefreshServiceState()
     {

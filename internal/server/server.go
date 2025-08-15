@@ -32,6 +32,7 @@ func New(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler
 		public.Post("/api/generate", wrapper.PostApiGenerate)
 		public.Get("/api/tags", wrapper.GetApiTags)
 		public.Get("/healthz", wrapper.GetHealthz)
+  	public.Get("/status", StatusHandler())
 	})
 
 	r.Group(func(v1 chi.Router) {

@@ -22,12 +22,12 @@ A typical deployment looks like this:
 
 ## macOS Menu Bar App
 
-An early-stage macOS menu bar companion lives under `desktop/macos/llamapool/`. It polls `http://127.0.0.1:4555/status` every two seconds to display live worker status and can manage a per-user LaunchAgent to start or stop a local `llamapool-worker` and toggle launching at login. A simple preferences window lets you edit worker connection settings which are written to `~/Library/Application Support/Llamapool/worker.yaml`, and the menu offers quick links to open the config and logs folders.
+An early-stage macOS menu bar companion lives under `desktop/macos/llamapool/`. It polls `http://127.0.0.1:4555/status` every two seconds to display live worker status and can manage a per-user LaunchAgent to start or stop a local `llamapool-worker` and toggle launching at login. A simple preferences window lets you edit worker connection settings which are written to `~/Library/Application Support/Llamapool/worker.yaml`, and the menu offers quick links to open the config and logs folders, view live logs, copy diagnostics to the Desktop, and check for updates via Sparkle.
 
 ## Windows Tray App
 
 A Windows tray companion lives under `desktop/windows/`. It polls `http://127.0.0.1:4555/status` every two seconds to display worker status.
-The tray can start or stop the local `llamapool` Windows service, toggle whether it launches automatically with Windows, edit worker connection settings, and open the config and logs folders.
+The tray can start or stop the local `llamapool` Windows service, toggle whether it launches automatically with Windows, edit worker connection settings, open the config and logs folders, view live logs, and collect diagnostics to the Desktop. When the worker exposes lifecycle control endpoints, the tray also provides **Drain**, **Undrain**, and **Shutdown after drain** actions.
 
 ### Key features
 - **Dynamic worker discovery** – Workers can connect and disconnect at any time; the server updates the available model list in real-time.
@@ -100,6 +100,7 @@ The tray can start or stop the local `llamapool` Windows service, toggle whether
   - Swagger UI: `GET /api/client/`
   - OpenAPI schema: `GET /api/client/openapi.json`
   - Update schema: edit `api/openapi.yaml` then run `make generate`
+- Web dashboard: `GET /status` (real-time view of workers)
 
 
 ## Security
@@ -136,6 +137,7 @@ The tray can start or stop the local `llamapool` Windows service, toggle whether
   - per-worker totals (processed, inflight, failures, avg duration)
   - per-model availability (how many workers support each model)
   - versions/build info for server & workers
+- **Web status page** (`/status`): lightweight dashboard powered by the state stream
 - **Logs**:
   - `Info` — lifecycle details like connections, disconnections, draining, and job dispatch/completion.
   - `Warn` — expected failures such as missing models or no available workers.
@@ -407,7 +409,7 @@ The service wrapper launches `llamapool-worker.exe` installed at
 `%ProgramData%\llamapool\Logs\worker.log`. The service is registered as
 `llamapool` with delayed automatic start. The tray app now polls the local worker
 every two seconds and updates its menu and tooltip to reflect the current status.
-A details dialog shows connection information, job counts, and any last error. A preferences window can edit the worker configuration and write it back to the YAML file, and the menu offers quick links to open the config and logs folders.
+A details dialog shows connection information, job counts, and any last error. A preferences window can edit the worker configuration and write it back to the YAML file, and the menu offers quick links to open the config and logs folders, view live logs, and collect diagnostics.
 
 ## Currently Supported
 
@@ -430,5 +432,5 @@ A details dialog shows connection information, job counts, and any last error. A
 | Draining | ✅ | Workers can be configured to drain before exiting to avoid interrupting an ongoing request with `--drain-timeout` |
 | Linux Deamons | ✅ | Debian packages are provided to install the worker and server as daemons |
 | Desktop Trays | In Progress | Windows and macOS tray applications to launch, configure and monitor the worker |
-| Server dashboard | Planned | Graphically display the state of the the pool for quick troubleshooting |
+| Server dashboard | ✅ | `/status` HTML page visualizes workers via SSE |
 | Private MCP Endpoints | Planned | Allow clients to expose an ephemeral MCP server through the llamapool-server |
