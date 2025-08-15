@@ -1,12 +1,7 @@
-using System;
 using System.Diagnostics;
-using System.Drawing;
-using System.Net.Http;
-using System.IO;
 using System.IO.Compression;
 using System.ServiceProcess;
-using System.Threading.Tasks;
-using System.Windows.Forms;
+using Timer = System.Windows.Forms.Timer;
 
 namespace TrayApp;
 
@@ -95,7 +90,7 @@ public class TrayAppContext : ApplicationContext
         _config = WorkerConfig.Load(Paths.ConfigPath);
         _statusClient = new StatusClient(_config.StatusPort);
         _controlClient = new ControlClient(_config.StatusPort);
-        _statusTimer = new Timer { Interval = 2000 };
+        _statusTimer = new System.Windows.Forms.Timer { Interval = 2000 };
         _statusTimer.Tick += async (_, _) => await RefreshStatusAsync();
         _statusTimer.Start();
 

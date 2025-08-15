@@ -1,8 +1,5 @@
-using System;
-using System.IO;
-using System.Windows.Forms;
-using System.Threading.Tasks;
-using System.Drawing;
+
+using Timer = System.Windows.Forms.Timer;
 
 namespace TrayApp;
 
