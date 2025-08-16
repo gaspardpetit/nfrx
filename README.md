@@ -24,6 +24,8 @@ The new `llamapool-mcp` binary connects a private MCP provider to the public `ll
 
 `llamapool-mcp` reads configuration from a YAML file when `MCP_CONFIG_FILE` is set. Values in the file—such as transport order, protocol version preference, or stdio working directory—are used as defaults and can be overridden by environment variables or CLI flags (e.g. `--mcp-http-url`, `--mcp-stdio-workdir`).
 
+For transport configuration, common errors, and developer guidance see [doc/mcpclient.md](doc/mcpclient.md).
+
 A typical deployment looks like this:
 
 - **`llamapool-server`** is deployed to a public or semi-public location (e.g., Azure, GCP, AWS, or a self-hosted server with dynamic DNS).
