@@ -26,12 +26,17 @@ type Proxy struct {
 	conn     wsConn
 	factory  ConnectorFactory
 	mu       sync.Mutex
-	sessions map[string]Connector
+	sessions map[string]*sessionState
+}
+
+type sessionState struct {
+	conn    Connector
+	handler func(mcp.JSONRPCNotification)
 }
 
 // NewProxy constructs a Proxy using the given websocket connection and factory.
 func NewProxy(conn wsConn, factory ConnectorFactory) *Proxy {
-	return &Proxy{conn: conn, factory: factory, sessions: map[string]Connector{}}
+	return &Proxy{conn: conn, factory: factory, sessions: map[string]*sessionState{}}
 }
 
 // Run processes frames until the connection errors.
@@ -52,18 +57,26 @@ func (p *Proxy) Run(ctx context.Context) error {
 }
 
 func (p *Proxy) handleFrame(ctx context.Context, f mcpbridge.Frame) error {
-	conn, err := p.getSession(ctx, f.SessionID)
+	sess, err := p.getSession(ctx, f.SessionID)
 	if err != nil {
 		return err
 	}
-	t := conn.Transport()
+	t := sess.conn.Transport()
 	switch f.Type {
 	case mcpbridge.TypeRequest:
 		var req transport.JSONRPCRequest
 		if err := json.Unmarshal(f.Payload, &req); err != nil {
 			return err
 		}
+		orig := sess.handler
+		t.SetNotificationHandler(func(n mcp.JSONRPCNotification) {
+			b, _ := json.Marshal(n)
+			out := mcpbridge.Frame{Type: mcpbridge.TypeStreamEvent, ID: f.ID, SessionID: f.SessionID, Payload: b}
+			ob, _ := json.Marshal(out)
+			_ = p.conn.Write(context.Background(), websocket.MessageText, ob)
+		})
 		resp, err := t.SendRequest(ctx, req)
+		t.SetNotificationHandler(orig)
 		if err != nil {
 			return err
 		}
@@ -81,12 +94,12 @@ func (p *Proxy) handleFrame(ctx context.Context, f mcpbridge.Frame) error {
 	return nil
 }
 
-func (p *Proxy) getSession(ctx context.Context, id string) (Connector, error) {
+func (p *Proxy) getSession(ctx context.Context, id string) (*sessionState, error) {
 	p.mu.Lock()
-	conn := p.sessions[id]
+	sess := p.sessions[id]
 	p.mu.Unlock()
-	if conn != nil {
-		return conn, nil
+	if sess != nil {
+		return sess, nil
 	}
 	if p.factory == nil {
 		return nil, context.Canceled
@@ -96,14 +109,15 @@ func (p *Proxy) getSession(ctx context.Context, id string) (Connector, error) {
 		return nil, err
 	}
 	t := c.Transport()
-	t.SetNotificationHandler(func(n mcp.JSONRPCNotification) {
+	handler := func(n mcp.JSONRPCNotification) {
 		b, _ := json.Marshal(n)
 		f := mcpbridge.Frame{Type: mcpbridge.TypeNotification, SessionID: id, Payload: b}
 		ob, _ := json.Marshal(f)
 		_ = p.conn.Write(context.Background(), websocket.MessageText, ob)
-	})
+	}
+	t.SetNotificationHandler(handler)
 	p.mu.Lock()
-	p.sessions[id] = c
+	p.sessions[id] = &sessionState{conn: c, handler: handler}
 	p.mu.Unlock()
-	return c, nil
+	return p.sessions[id], nil
 }
