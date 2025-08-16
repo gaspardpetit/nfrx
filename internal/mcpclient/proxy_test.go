@@ -48,6 +48,13 @@ func (f *proxyTransport) SetNotificationHandler(h func(mcp.JSONRPCNotification))
 func (f *proxyTransport) Close() error                                                    { return nil }
 func (f *proxyTransport) GetSessionId() string                                            { return "" }
 
+type bidirTransport struct {
+	proxyTransport
+	reqHandler transport.RequestHandler
+}
+
+func (b *bidirTransport) SetRequestHandler(h transport.RequestHandler) { b.reqHandler = h }
+
 func TestProxyHandleRequest(t *testing.T) {
 	reqJSON := []byte(`{"jsonrpc":"2.0","id":1,"method":"test","params":{"a":1}}`)
 	resp := transport.JSONRPCResponse{JSONRPC: "2.0", ID: mcp.NewRequestId(1), Result: json.RawMessage(`{"ok":true}`)}
@@ -117,5 +124,45 @@ func TestProxyHandleStream(t *testing.T) {
 	}
 	if respFrame.Type != mcpbridge.TypeResponse {
 		t.Fatalf("expected response frame got %s", respFrame.Type)
+	}
+}
+
+func TestProxyServerRequest(t *testing.T) {
+	ws := &fakeWSConn{writeCh: make(chan []byte, 1)}
+	bt := &bidirTransport{}
+	conn := newTransportConnector(bt, 0)
+	p := NewProxy(ws, func(ctx context.Context, id string) (Connector, error) { return conn, nil })
+	if _, err := p.getSession(context.Background(), "sess"); err != nil {
+		t.Fatalf("getSession: %v", err)
+	}
+
+	req := transport.JSONRPCRequest{JSONRPC: "2.0", ID: mcp.NewRequestId(1), Method: "ping"}
+	if bt.reqHandler == nil {
+		t.Fatalf("request handler not set")
+	}
+	var resp *transport.JSONRPCResponse
+	done := make(chan struct{})
+	go func() {
+		resp, _ = bt.reqHandler(context.Background(), req)
+		close(done)
+	}()
+
+	out := <-ws.writeCh
+	var f mcpbridge.Frame
+	if err := json.Unmarshal(out, &f); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if f.Type != mcpbridge.TypeServerRequest {
+		t.Fatalf("expected server_request got %s", f.Type)
+	}
+	respPayload := transport.JSONRPCResponse{JSONRPC: "2.0", ID: mcp.NewRequestId(1)}
+	b, _ := json.Marshal(respPayload)
+	frame := mcpbridge.Frame{Type: mcpbridge.TypeServerResponse, ID: f.ID, SessionID: "sess", Payload: b}
+	if err := p.handleFrame(context.Background(), frame); err != nil {
+		t.Fatalf("handleFrame: %v", err)
+	}
+	<-done
+	if resp == nil {
+		t.Fatalf("no response")
 	}
 }
