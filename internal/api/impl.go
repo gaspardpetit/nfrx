@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -8,18 +9,30 @@ import (
 	"github.com/gaspardpetit/llamapool/internal/ctrl"
 )
 
+type HealthChecker interface {
+	Healthy() bool
+}
+
 type API struct {
 	Reg     *ctrl.Registry
 	Metrics *ctrl.MetricsRegistry
 	Sched   ctrl.Scheduler
 	Timeout time.Duration
+	Health  HealthChecker
 }
 
 var _ generated.ServerInterface = (*API)(nil)
 
 func (a *API) GetHealthz(w http.ResponseWriter, r *http.Request) {
+	status := "ok"
+	code := http.StatusOK
+	if a.Health != nil && !a.Health.Healthy() {
+		status = "unavailable"
+		code = http.StatusServiceUnavailable
+	}
 	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write([]byte(`{"status":"ok"}`))
+	w.WriteHeader(code)
+	_, _ = fmt.Fprintf(w, `{"status":"%s"}`, status)
 }
 
 func (a *API) PostV1ChatCompletions(w http.ResponseWriter, r *http.Request) {

@@ -32,6 +32,11 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	interval := cfg.ModelPollInterval
+	if interval <= 0 {
+		interval = time.Minute
+	}
+
 	statusUpdates := make(chan ctrl.StatusUpdateMessage, 16)
 	startOllamaMonitor(ctx, cfg, client, statusUpdates, 20*time.Second)
 
@@ -50,6 +55,7 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 	for {
 		SetState("connecting")
 		SetConnectedToServer(false)
+
 		connected, err := connectAndServe(ctx, cancel, cfg, client, statusUpdates)
 		if err == nil || !cfg.Reconnect {
 			return err
@@ -316,29 +322,68 @@ func monitorOllama(ctx context.Context, cfg config.WorkerConfig, client healthCl
 	}
 }
 
+// probeOllama checks health, updates state, and (importantly) only emits a status
+// update when either (a) connectivity flips, or (b) the models list actually changes.
+// On error, it always emits a not_ready status update.
 func probeOllama(ctx context.Context, client healthClient, cfg config.WorkerConfig, ch chan<- ctrl.StatusUpdateMessage) error {
 	models, err := client.Health(ctx)
 	if err != nil {
+		wasConnected := GetState().ConnectedToOllama
 		SetConnectedToOllama(false)
 		SetWorkerInfo(cfg.WorkerID, cfg.WorkerName, 0, nil)
 		SetState("not_ready")
 		SetLastError(err.Error())
+
+		// Emit an update on error (always), but keep the channel non-blocking.
 		msg := ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: 0, Status: "not_ready"}
 		sendStatusUpdate(ch, msg)
+
+		// State changed from connected->disconnected; that's fine; test checks state, not channel.
+		_ = wasConnected
 		return err
 	}
+
+	prev := GetState()
+	prevConnected := prev.ConnectedToOllama
+	prevModels := append([]string(nil), prev.Models...)
+
 	SetConnectedToOllama(true)
 	SetWorkerInfo(cfg.WorkerID, cfg.WorkerName, cfg.MaxConcurrency, models)
 	if GetState().ConnectedToServer && !IsDraining() && GetState().CurrentJobs == 0 {
 		SetState("connected_idle")
 	}
 	SetLastError("")
-	msg := ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: cfg.MaxConcurrency, Models: models, Status: "idle"}
-	sendStatusUpdate(ch, msg)
+
+	// Determine if we should notify: connectivity flip or models changed.
+	changed := !prevConnected
+	if !changed {
+		if len(prevModels) != len(models) {
+			changed = true
+		} else {
+			for i := range models {
+				if models[i] != prevModels[i] {
+					changed = true
+					break
+				}
+			}
+		}
+	}
+	if changed {
+		msg := ctrl.StatusUpdateMessage{
+			Type:           "status_update",
+			MaxConcurrency: cfg.MaxConcurrency,
+			Models:         models,
+			Status:         "idle",
+		}
+		sendStatusUpdate(ch, msg)
+	}
 	return nil
 }
 
 func sendStatusUpdate(ch chan<- ctrl.StatusUpdateMessage, msg ctrl.StatusUpdateMessage) {
+	if ch == nil {
+		return
+	}
 	select {
 	case ch <- msg:
 	default:

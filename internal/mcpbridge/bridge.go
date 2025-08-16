@@ -72,6 +72,13 @@ func NewBridge(url string, maxInflight int) *Bridge {
 	return &Bridge{url: url, maxInflight: maxInflight, sessions: map[string]*session{}, serverReqCh: make(chan ServerRequest, maxInflight)}
 }
 
+// Healthy reports whether any sessions are active.
+func (b *Bridge) Healthy() bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return len(b.sessions) > 0
+}
+
 // Forward sends a JSON-RPC request payload over the bridge and waits for the response.
 func (b *Bridge) Forward(ctx context.Context, sessionID string, payload json.RawMessage, jsonID json.RawMessage, stream func(json.RawMessage)) (json.RawMessage, error) {
 	sess, err := b.getSession(ctx, sessionID)

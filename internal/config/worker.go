@@ -14,19 +14,20 @@ import (
 
 // WorkerConfig holds configuration for the worker agent.
 type WorkerConfig struct {
-	ServerURL      string
-	WorkerKey      string
-	OllamaBaseURL  string
-	OllamaAPIKey   string
-	MaxConcurrency int
-	WorkerID       string
-	WorkerName     string
-	StatusAddr     string
-	MetricsAddr    string
-	DrainTimeout   time.Duration
-	ConfigFile     string
-	LogDir         string
-	Reconnect      bool
+	ServerURL         string
+	WorkerKey         string
+	OllamaBaseURL     string
+	OllamaAPIKey      string
+	MaxConcurrency    int
+	WorkerID          string
+	WorkerName        string
+	StatusAddr        string
+	MetricsAddr       string
+	DrainTimeout      time.Duration
+	ModelPollInterval time.Duration
+	ConfigFile        string
+	LogDir            string
+	Reconnect         bool
 }
 
 func (c *WorkerConfig) BindFlags() {
@@ -53,6 +54,11 @@ func (c *WorkerConfig) BindFlags() {
 	} else {
 		c.DrainTimeout = time.Minute
 	}
+	if d, err := time.ParseDuration(getEnv("MODEL_POLL_INTERVAL", "1m")); err == nil {
+		c.ModelPollInterval = d
+	} else {
+		c.ModelPollInterval = time.Minute
+	}
 
 	host, err := os.Hostname()
 	if err != nil || host == "" {
@@ -75,6 +81,7 @@ func (c *WorkerConfig) BindFlags() {
 	flag.StringVar(&c.ConfigFile, "config", c.ConfigFile, "worker config file path")
 	flag.StringVar(&c.LogDir, "log-dir", c.LogDir, "directory for worker log files")
 	flag.DurationVar(&c.DrainTimeout, "drain-timeout", c.DrainTimeout, "time to wait for in-flight jobs on shutdown (-1 to wait indefinitely, 0 to exit immediately)")
+	flag.DurationVar(&c.ModelPollInterval, "model-poll-interval", c.ModelPollInterval, "interval for polling Ollama for model changes")
 	flag.BoolVar(&c.Reconnect, "reconnect", c.Reconnect, "reconnect to server on failure")
 	flag.BoolVar(&c.Reconnect, "r", c.Reconnect, "short for --reconnect")
 }

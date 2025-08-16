@@ -27,6 +27,11 @@ type HeartbeatMessage struct {
 	TS   int64  `json:"ts"`
 }
 
+type ModelsUpdateMessage struct {
+	Type   string   `json:"type"`
+	Models []string `json:"models"`
+}
+
 type JobChunkMessage struct {
 	Type  string          `json:"type"`
 	JobID string          `json:"job_id"`

@@ -53,6 +53,48 @@ func TestProbeOllamaUpdatesState(t *testing.T) {
 	}
 }
 
+func TestProbeOllamaSendsUpdates(t *testing.T) {
+	resetState()
+	SetModels([]string{"m1"})
+	cfg := config.WorkerConfig{WorkerID: "w1", WorkerName: "n", MaxConcurrency: 1}
+
+	// We now use the status update channel, and probeOllama only emits when something changes.
+	ch := make(chan ctrl.StatusUpdateMessage, 1)
+
+	// Same models: no update expected
+	if err := probeOllama(context.Background(), fakeHealthClient{models: []string{"m1"}}, cfg, ch); err != nil {
+		t.Fatalf("probe healthy(same models): %v", err)
+	}
+	select {
+	case <-ch:
+		t.Fatalf("unexpected update")
+	default:
+	}
+
+	// Models changed: one update expected, with the new models
+	if err := probeOllama(context.Background(), fakeHealthClient{models: []string{"m1", "m2"}}, cfg, ch); err != nil {
+		t.Fatalf("probe healthy(update models): %v", err)
+	}
+	select {
+	case m := <-ch:
+		if len(m.Models) != 2 || m.Models[1] != "m2" {
+			t.Fatalf("wrong models sent: %v", m.Models)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("expected update")
+	}
+
+	// Same models again: no new update expected
+	if err := probeOllama(context.Background(), fakeHealthClient{models: []string{"m1", "m2"}}, cfg, ch); err != nil {
+		t.Fatalf("probe healthy(no change): %v", err)
+	}
+	select {
+	case <-ch:
+		t.Fatalf("unexpected second update")
+	default:
+	}
+}
+
 func TestHealthProbeIntegration(t *testing.T) {
 	resetState()
 	var healthy atomic.Bool
@@ -81,6 +123,7 @@ func TestHealthProbeIntegration(t *testing.T) {
 	}
 	ch := make(chan ctrl.StatusUpdateMessage, 1)
 	startOllamaMonitor(ctx, cfg, client, ch, 50*time.Millisecond)
+
 	time.Sleep(80 * time.Millisecond)
 	resp, err := http.Get("http://" + addr + "/status")
 	if err != nil {

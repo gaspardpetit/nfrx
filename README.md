@@ -333,8 +333,11 @@ progress, the worker exits immediately; otherwise it waits up to
 Send `SIGTERM` again to terminate immediately. Set `--drain-timeout=0` to exit
 without waiting or `--drain-timeout=-1` to wait indefinitely.
 
-The worker periodically checks the local Ollama instance so that
+The worker polls the local Ollama instance (default every 1m) so that
 `connected_to_ollama` and `models` stay current in the `/status` output.
+If the model list changes, the worker proactively notifies the server so
+`/v1/models` reflects the latest information. Configure the poll interval
+with `MODEL_POLL_INTERVAL` or `--model-poll-interval`.
 
 Control endpoints require an `X-Auth-Token` header. The token is generated on
 first run and stored alongside the worker config as `worker.token`.
@@ -402,6 +405,8 @@ The server also exposes a basic health check:
 ```bash
 curl http://localhost:8080/healthz
 ```
+
+The endpoint reports `503 Service Unavailable` if no MCP session is ready.
 
 For server administration and monitoring:
 

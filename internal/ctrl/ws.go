@@ -121,23 +121,23 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, workerKey string) http.H
 			case "heartbeat":
 				reg.UpdateHeartbeat(wk.ID)
 				metrics.RecordHeartbeat(wk.ID)
-			case "status_update":
-				var m StatusUpdateMessage
-				if err := json.Unmarshal(msg, &m); err == nil {
-					wk.mu.Lock()
-					wk.MaxConcurrency = m.MaxConcurrency
-					if m.Models != nil {
-						wk.Models = map[string]bool{}
-						for _, mm := range m.Models {
-							wk.Models[mm] = true
-						}
-					}
-					wk.mu.Unlock()
-					metrics.UpdateWorker(wk.ID, m.MaxConcurrency, m.Models)
-					if m.Status != "" {
-						metrics.SetWorkerStatus(wk.ID, WorkerStatus(m.Status))
-					}
-				}
+      case "status_update":
+          var m StatusUpdateMessage
+          if err := json.Unmarshal(msg, &m); err == nil {
+              wk.mu.Lock()
+              wk.MaxConcurrency = m.MaxConcurrency
+              if m.Models != nil {
+                  wk.Models = map[string]bool{}
+                  for _, mm := range m.Models {
+                      wk.Models[mm] = true
+                  }
+              }
+              wk.mu.Unlock()
+              metrics.UpdateWorker(wk.ID, m.MaxConcurrency, m.Models)
+              if m.Status != "" {
+                  metrics.SetWorkerStatus(wk.ID, WorkerStatus(m.Status))
+              }
+          }
 			case "job_chunk":
 				var m JobChunkMessage
 				if err := json.Unmarshal(msg, &m); err == nil {

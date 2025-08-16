@@ -3,14 +3,20 @@ package mcpclient
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/mark3labs/mcp-go/client/transport"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-type fakeInitTransport struct{ res mcp.InitializeResult }
+type fakeInitTransport struct {
+	res       mcp.InitializeResult
+	sessionID string
+}
 
 func (f *fakeInitTransport) Start(context.Context) error { return nil }
 func (f *fakeInitTransport) SendRequest(ctx context.Context, req transport.JSONRPCRequest) (*transport.JSONRPCResponse, error) {
@@ -25,7 +31,7 @@ func (f *fakeInitTransport) SendNotification(context.Context, mcp.JSONRPCNotific
 }
 func (f *fakeInitTransport) SetNotificationHandler(func(mcp.JSONRPCNotification)) {}
 func (f *fakeInitTransport) Close() error                                         { return nil }
-func (f *fakeInitTransport) GetSessionId() string                                 { return "" }
+func (f *fakeInitTransport) GetSessionId() string                                 { return f.sessionID }
 
 func TestFeatureDerivation(t *testing.T) {
 	caps := mcp.ServerCapabilities{
@@ -34,11 +40,14 @@ func TestFeatureDerivation(t *testing.T) {
 		}{},
 		Experimental: map[string]any{"progress": true},
 	}
-	ft := &fakeInitTransport{res: mcp.InitializeResult{ProtocolVersion: mcp.LATEST_PROTOCOL_VERSION, Capabilities: caps}}
+	ft := &fakeInitTransport{res: mcp.InitializeResult{ProtocolVersion: mcp.LATEST_PROTOCOL_VERSION, Capabilities: caps}, sessionID: "sess"}
 	conn := newTransportConnector(ft, 0)
 	req := mcp.InitializeRequest{Params: mcp.InitializeParams{ProtocolVersion: mcp.LATEST_PROTOCOL_VERSION}}
 	if _, err := conn.Initialize(context.Background(), req); err != nil {
 		t.Fatalf("initialize: %v", err)
+	}
+	if conn.SessionID() != "sess" {
+		t.Fatalf("session id not captured")
 	}
 	feats := conn.Features()
 	if !feats.Tools {
@@ -74,6 +83,51 @@ func TestBuildEnv(t *testing.T) {
 		parts := strings.SplitN(kv, "=", 2)
 		if want[parts[0]] != parts[1] {
 			t.Fatalf("unexpected %s", kv)
+		}
+	}
+}
+
+type fakeCLTransport struct {
+	startCount atomic.Int64
+	handler    func(error)
+}
+
+func (f *fakeCLTransport) Start(context.Context) error {
+	f.startCount.Add(1)
+	return nil
+}
+
+func (f *fakeCLTransport) SendRequest(ctx context.Context, req transport.JSONRPCRequest) (*transport.JSONRPCResponse, error) {
+	return &transport.JSONRPCResponse{Result: json.RawMessage(`{}`)}, nil
+}
+
+func (f *fakeCLTransport) SendNotification(context.Context, mcp.JSONRPCNotification) error {
+	return nil
+}
+func (f *fakeCLTransport) SetNotificationHandler(func(mcp.JSONRPCNotification)) {}
+func (f *fakeCLTransport) Close() error                                         { return nil }
+func (f *fakeCLTransport) GetSessionId() string                                 { return "" }
+func (f *fakeCLTransport) SetConnectionLostHandler(h func(error))               { f.handler = h }
+
+func TestOnConnectionLostRestart(t *testing.T) {
+	ft := &fakeCLTransport{}
+	conn := newTransportConnector(ft, 0)
+	if err := conn.Start(context.Background()); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	if ft.handler == nil {
+		t.Fatalf("handler not set")
+	}
+	ft.handler(errors.New("lost"))
+	deadline := time.After(time.Second)
+	for {
+		if ft.startCount.Load() >= 2 {
+			return
+		}
+		select {
+		case <-deadline:
+			t.Fatalf("reconnect not triggered")
+		case <-time.After(10 * time.Millisecond):
 		}
 	}
 }
