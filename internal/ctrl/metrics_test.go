@@ -20,7 +20,7 @@ func TestSnapshotEmpty(t *testing.T) {
 
 func TestWorkerLifecycle(t *testing.T) {
 	reg := NewMetricsRegistry("v", "sha", "date")
-	reg.UpsertWorker("w1", "1.0", "a", "today", []string{"llama3:8b"})
+	reg.UpsertWorker("w1", "w1", "1.0", "a", "today", 1, []string{"llama3:8b"})
 	reg.SetWorkerStatus("w1", StatusConnected)
 	reg.RecordHeartbeat("w1")
 	reg.RecordJobStart("w1")
@@ -44,7 +44,7 @@ func TestWorkerLifecycle(t *testing.T) {
 
 func TestErrorPaths(t *testing.T) {
 	reg := NewMetricsRegistry("v", "sha", "date")
-	reg.UpsertWorker("w1", "1.0", "a", "today", nil)
+	reg.UpsertWorker("w1", "w1", "1.0", "a", "today", 1, nil)
 	reg.RecordJobStart("w1")
 	reg.RecordJobEnd("w1", "m", 0, 0, 0, false, "boom")
 
@@ -60,9 +60,9 @@ func TestErrorPaths(t *testing.T) {
 
 func TestWorkersSummaryAndModels(t *testing.T) {
 	reg := NewMetricsRegistry("v", "sha", "date")
-	reg.UpsertWorker("a", "1", "", "", []string{"m1", "m2"})
+	reg.UpsertWorker("a", "a", "1", "", "", 1, []string{"m1", "m2"})
 	reg.SetWorkerStatus("a", StatusConnected)
-	reg.UpsertWorker("b", "1", "", "", []string{"m2"})
+	reg.UpsertWorker("b", "b", "1", "", "", 1, []string{"m2"})
 	reg.SetWorkerStatus("b", StatusIdle)
 
 	snap := reg.Snapshot()
@@ -74,9 +74,30 @@ func TestWorkersSummaryAndModels(t *testing.T) {
 	}
 }
 
+func TestRemoveWorker(t *testing.T) {
+	reg := NewMetricsRegistry("v", "sha", "date")
+	reg.UpsertWorker("w1", "w1", "1", "", "", 1, nil)
+	reg.RemoveWorker("w1")
+	snap := reg.Snapshot()
+	if len(snap.Workers) != 0 {
+		t.Fatalf("expected no workers, got %d", len(snap.Workers))
+	}
+}
+
+func TestWorkersSortedByAge(t *testing.T) {
+	reg := NewMetricsRegistry("v", "sha", "date")
+	reg.UpsertWorker("old", "old", "1", "", "", 1, nil)
+	time.Sleep(10 * time.Millisecond)
+	reg.UpsertWorker("new", "new", "1", "", "", 1, nil)
+	snap := reg.Snapshot()
+	if len(snap.Workers) != 2 || snap.Workers[0].ID != "old" {
+		t.Fatalf("expected deterministic sort by age, got %+v", snap.Workers)
+	}
+}
+
 func TestRegistryRace(t *testing.T) {
 	reg := NewMetricsRegistry("v", "sha", "date")
-	reg.UpsertWorker("w", "1", "", "", []string{"m"})
+	reg.UpsertWorker("w", "w", "1", "", "", 1, []string{"m"})
 	var wg sync.WaitGroup
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
