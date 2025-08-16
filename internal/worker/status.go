@@ -37,9 +37,10 @@ var (
 
 func resetState() {
 	stateMu.Lock()
-	defer stateMu.Unlock()
 	stateData = State{State: "disconnected"}
+	stateMu.Unlock()
 	draining.Store(false)
+	setDrainCheck(nil)
 }
 
 func SetBuildInfo(v, sha, date string) {

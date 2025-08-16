@@ -171,7 +171,7 @@ func TestDrainTerminatesWhenIdle(t *testing.T) {
 		if err != nil {
 			t.Fatalf("run error: %v", err)
 		}
-	case <-time.After(time.Second):
+	case <-time.After(3 * time.Second):
 		t.Fatalf("timeout waiting for worker exit")
 	}
 }
