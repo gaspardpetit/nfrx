@@ -1,0 +1,219 @@
+package mcpbridge
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"sync"
+	"time"
+
+	"github.com/coder/websocket"
+)
+
+// ErrBackpressure indicates the session queue is full.
+var ErrBackpressure = errors.New("session backpressure")
+
+// Bridge manages per-session WebSocket connections and forwards JSON-RPC payloads.
+type Bridge struct {
+	url         string
+	maxInflight int
+
+	mu       sync.Mutex
+	sessions map[string]*session
+}
+
+// NewBridge constructs a new Bridge that dials the given WebSocket URL.
+func NewBridge(url string, maxInflight int) *Bridge {
+	if maxInflight <= 0 {
+		maxInflight = 16
+	}
+	return &Bridge{url: url, maxInflight: maxInflight, sessions: map[string]*session{}}
+}
+
+// Forward sends a JSON-RPC request payload over the bridge and waits for the response.
+func (b *Bridge) Forward(ctx context.Context, sessionID string, payload json.RawMessage, jsonID json.RawMessage) (json.RawMessage, error) {
+	sess, err := b.getSession(ctx, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	corrID := sess.idMap.Alloc(jsonID)
+	respCh := make(chan json.RawMessage, 1)
+	if !sess.register(corrID, respCh) {
+		return nil, ErrBackpressure
+	}
+	frame := Frame{Type: TypeRequest, ID: corrID, SessionID: sessionID, Payload: payload}
+	select {
+	case sess.send <- frame:
+	default:
+		sess.unregister(corrID)
+		return nil, ErrBackpressure
+	}
+	select {
+	case resp, ok := <-respCh:
+		sess.unregister(corrID)
+		sess.idMap.Resolve(corrID)
+		if !ok {
+			return nil, ErrSessionClosed
+		}
+		return resp, nil
+	case <-ctx.Done():
+		sess.unregister(corrID)
+		sess.idMap.Resolve(corrID)
+		return nil, ctx.Err()
+	}
+}
+
+// Close closes all active sessions.
+func (b *Bridge) Close() {
+	b.mu.Lock()
+	sessions := b.sessions
+	b.sessions = map[string]*session{}
+	b.mu.Unlock()
+	for _, s := range sessions {
+		_ = s.conn.Close(websocket.StatusNormalClosure, "shutdown")
+	}
+}
+
+// ErrSessionClosed indicates the session was closed while waiting for a response.
+var ErrSessionClosed = errors.New("session closed")
+
+type session struct {
+	id   string
+	conn *websocket.Conn
+	send chan Frame
+
+	idMap *IDMapper
+
+	mu          sync.Mutex
+	pending     map[string]chan json.RawMessage
+	maxInflight int
+
+	cancel context.CancelFunc
+}
+
+func newSession(ctx context.Context, url, id string, maxInflight int, onClose func()) (*session, error) {
+	conn, _, err := websocket.Dial(ctx, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	s := &session{
+		id:          id,
+		conn:        conn,
+		send:        make(chan Frame, maxInflight),
+		idMap:       NewIDMapper(),
+		pending:     map[string]chan json.RawMessage{},
+		maxInflight: maxInflight,
+		cancel:      cancel,
+	}
+	go s.readLoop(ctx, onClose)
+	go s.writeLoop()
+	go s.pingLoop(ctx)
+	return s, nil
+}
+
+func (b *Bridge) getSession(ctx context.Context, id string) (*session, error) {
+	b.mu.Lock()
+	s := b.sessions[id]
+	b.mu.Unlock()
+	if s != nil {
+		return s, nil
+	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	// double check
+	if s = b.sessions[id]; s != nil {
+		return s, nil
+	}
+	sess, err := newSession(ctx, b.url, id, b.maxInflight, func() {
+		b.mu.Lock()
+		delete(b.sessions, id)
+		b.mu.Unlock()
+	})
+	if err != nil {
+		return nil, err
+	}
+	b.sessions[id] = sess
+	return sess, nil
+}
+
+func (s *session) register(id string, ch chan json.RawMessage) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.pending) >= s.maxInflight {
+		return false
+	}
+	s.pending[id] = ch
+	return true
+}
+
+func (s *session) unregister(id string) {
+	s.mu.Lock()
+	ch := s.pending[id]
+	delete(s.pending, id)
+	s.mu.Unlock()
+	if ch != nil {
+		close(ch)
+	}
+}
+
+func (s *session) readLoop(ctx context.Context, onClose func()) {
+	defer func() {
+		onClose()
+		s.cancel()
+		_ = s.conn.Close(websocket.StatusNormalClosure, "closing")
+		s.mu.Lock()
+		for id, ch := range s.pending {
+			close(ch)
+			delete(s.pending, id)
+		}
+		s.mu.Unlock()
+	}()
+	for {
+		readCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
+		_, data, err := s.conn.Read(readCtx)
+		cancel()
+		if err != nil {
+			return
+		}
+		var f Frame
+		if json.Unmarshal(data, &f) != nil {
+			continue
+		}
+		if f.Type != TypeResponse {
+			continue
+		}
+		s.mu.Lock()
+		ch := s.pending[f.ID]
+		delete(s.pending, f.ID)
+		s.mu.Unlock()
+		if ch != nil {
+			ch <- f.Payload
+		}
+	}
+}
+
+func (s *session) writeLoop() {
+	for f := range s.send {
+		b, err := json.Marshal(f)
+		if err != nil {
+			continue
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		_ = s.conn.Write(ctx, websocket.MessageText, b)
+		cancel()
+	}
+}
+
+func (s *session) pingLoop(ctx context.Context) {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			_ = s.conn.Ping(ctx)
+		case <-ctx.Done():
+			return
+		}
+	}
+}
