@@ -133,7 +133,7 @@ The Windows service runs `llamapool-worker` with the `--reconnect` flag and shut
   - Swagger UI: `GET /api/client/`
   - OpenAPI schema: `GET /api/client/openapi.json`
   - Update schema: edit `api/openapi.yaml` then run `make generate`
-- Web dashboard: `GET /state` (real-time view of workers)
+- Web dashboard: `GET /state` (real-time view of workers with names, status indicators and sortable columns)
 
 
 ## Security
