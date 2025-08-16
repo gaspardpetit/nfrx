@@ -143,6 +143,7 @@ The Windows service runs `llamapool-worker` with the `--reconnect` flag and shut
 - **Client authentication**: `API_KEY` required for `/api` and `/v1` routes via `Authorization: Bearer <API_KEY>`.
 - **Worker authentication**: `WORKER_KEY` required for worker WebSocket registration.
 - **Transport**: run behind TLS (HTTPS/WSS) via reverse proxy or terminate TLS in-process.
+- **CORS**: cross-origin requests are denied unless explicitly allowed via `ALLOWED_ORIGINS` (comma separated) or the `--allowed-origins` flag.
 
 - **Service isolation**: Debian packages run the daemons as the dedicated `llamapool` user with systemd-managed directories
   (`/var/lib/llamapool`, `/var/cache/llamapool`, `/run/llamapool`) and hardening flags like `NoNewPrivileges=true` and
