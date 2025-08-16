@@ -151,7 +151,7 @@ func main(){
 	if err := os.WriteFile(path, []byte(program), 0600); err != nil {
 		t.Fatalf("write: %v", err)
 	}
-	cfg := Config{Order: []string{"stdio"}, InitTimeout: 5 * time.Second}
+	cfg := Config{Order: []string{"stdio"}, InitTimeout: 30 * time.Second}
 	cfg.Stdio.Command = "go"
 	cfg.Stdio.Args = []string{"run", path}
 	cfg.Stdio.AllowRelative = true

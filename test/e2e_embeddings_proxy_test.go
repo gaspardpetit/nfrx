@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
-	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -27,8 +27,7 @@ func TestE2EEmbeddingsProxy(t *testing.T) {
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
-	var gotAuth string
-	var mu sync.Mutex
+	var gotAuth atomic.Value
 	ollama := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/api/tags":
@@ -37,9 +36,7 @@ func TestE2EEmbeddingsProxy(t *testing.T) {
 				t.Fatalf("write tags: %v", err)
 			}
 		case "/v1/embeddings":
-			mu.Lock()
-			gotAuth = r.Header.Get("Authorization")
-			mu.Unlock()
+			gotAuth.Store(r.Header.Get("Authorization"))
 			w.Header().Set("Content-Type", "application/json")
 			if _, err := w.Write([]byte(`{"data":[{"embedding":[1,2,3],"index":0}],"model":"llama3","usage":{"prompt_tokens":1,"total_tokens":1}}`)); err != nil {
 				t.Fatalf("write embeddings: %v", err)
@@ -98,9 +95,7 @@ func TestE2EEmbeddingsProxy(t *testing.T) {
 	if !strings.Contains(string(b), "embedding") {
 		t.Fatalf("body %q", string(b))
 	}
-	mu.Lock()
-	auth := gotAuth
-	mu.Unlock()
+	auth := gotAuth.Load().(string)
 	if auth != "Bearer secret-123" {
 		t.Fatalf("auth %q", auth)
 	}

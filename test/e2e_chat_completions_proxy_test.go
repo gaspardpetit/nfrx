@@ -16,6 +16,7 @@ import (
 	"github.com/gaspardpetit/llamapool/internal/ctrl"
 	"github.com/gaspardpetit/llamapool/internal/server"
 	"github.com/gaspardpetit/llamapool/internal/worker"
+	"sync/atomic"
 )
 
 func TestE2EChatCompletionsProxy(t *testing.T) {
@@ -27,7 +28,7 @@ func TestE2EChatCompletionsProxy(t *testing.T) {
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
-	var gotAuth string
+	var gotAuth atomic.Value
 	ollama := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.URL.Path == "/api/tags":
@@ -36,7 +37,7 @@ func TestE2EChatCompletionsProxy(t *testing.T) {
 				t.Fatalf("write tags: %v", err)
 			}
 		case r.URL.Path == "/v1/chat/completions" && r.URL.Query().Get("stream") == "true":
-			gotAuth = r.Header.Get("Authorization")
+			gotAuth.Store(r.Header.Get("Authorization"))
 			w.Header().Set("Content-Type", "text/event-stream")
 			w.Header().Set("Cache-Control", "no-store")
 			fl := w.(http.Flusher)
@@ -114,7 +115,8 @@ func TestE2EChatCompletionsProxy(t *testing.T) {
 	if string(b) != expected {
 		t.Fatalf("body %q", string(b))
 	}
-	if gotAuth != "Bearer secret-123" {
-		t.Fatalf("auth %q", gotAuth)
+	auth := gotAuth.Load().(string)
+	if auth != "Bearer secret-123" {
+		t.Fatalf("auth %q", auth)
 	}
 }

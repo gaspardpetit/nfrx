@@ -49,11 +49,14 @@ func (r *Registry) Remove(id string) {
 	r.mu.Lock()
 	if w, ok := r.workers[id]; ok {
 		delete(r.workers, id)
-		for _, ch := range w.Jobs {
+		w.mu.Lock()
+		for id, ch := range w.Jobs {
 			if ch != nil {
 				close(ch)
 			}
+			delete(w.Jobs, id)
 		}
+		w.mu.Unlock()
 		if w.Send != nil {
 			close(w.Send)
 		}
@@ -88,9 +91,11 @@ func (r *Registry) WorkersForModel(model string) []*Worker {
 	defer r.mu.RUnlock()
 	var res []*Worker
 	for _, w := range r.workers {
-		if w.Models[model] {
+		w.mu.Lock()
+		if w.Models[model] && w.InFlight < w.MaxConcurrency {
 			res = append(res, w)
 		}
+		w.mu.Unlock()
 	}
 	return res
 }
@@ -106,12 +111,14 @@ func (r *Registry) WorkersForAlias(requested string) []*Worker {
 
 	var res []*Worker
 	for _, w := range r.workers {
+		w.mu.Lock()
 		for m := range w.Models {
-			if ak, ok := AliasKey(m); ok && ak == key {
+			if ak, ok := AliasKey(m); ok && ak == key && w.InFlight < w.MaxConcurrency {
 				res = append(res, w)
 				break
 			}
 		}
+		w.mu.Unlock()
 	}
 	return res
 }
@@ -137,9 +144,11 @@ func (r *Registry) Models() []string {
 	defer r.mu.RUnlock()
 	set := make(map[string]struct{})
 	for _, w := range r.workers {
+		w.mu.Lock()
 		for m := range w.Models {
 			set[m] = struct{}{}
 		}
+		w.mu.Unlock()
 	}
 	var models []string
 	for m := range set {
@@ -153,9 +162,14 @@ func (r *Registry) PruneExpired(maxAge time.Duration) {
 	for id, w := range r.workers {
 		if time.Since(w.LastHeartbeat) > maxAge {
 			delete(r.workers, id)
-			for _, ch := range w.Jobs {
-				close(ch)
+			w.mu.Lock()
+			for jobID, ch := range w.Jobs {
+				if ch != nil {
+					close(ch)
+				}
+				delete(w.Jobs, jobID)
 			}
+			w.mu.Unlock()
 			close(w.Send)
 			logx.Log.Info().Str("worker_id", id).Str("reason", "heartbeat_expired").Msg("evicted")
 		}
@@ -171,6 +185,11 @@ func (w *Worker) AddJob(id string, ch chan interface{}) {
 
 func (w *Worker) RemoveJob(id string) {
 	w.mu.Lock()
-	delete(w.Jobs, id)
+	if ch, ok := w.Jobs[id]; ok {
+		delete(w.Jobs, id)
+		if ch != nil {
+			close(ch)
+		}
+	}
 	w.mu.Unlock()
 }

@@ -70,18 +70,24 @@ func TestWorkerModelRefresh(t *testing.T) {
 		t.Fatalf("models not updated")
 	}
 
+	sm := ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: 1, Models: []string{"m1"}, Status: "idle"}
+	b, _ = json.Marshal(sm)
+	if err := conn.Write(ctx, websocket.MessageText, b); err != nil {
+		t.Fatalf("write status: %v", err)
+	}
+
 	waitForModels(1, "m1")
 
-	um := ctrl.ModelsUpdateMessage{Type: "models_update", Models: []string{"m1", "m2"}}
-	b, _ = json.Marshal(um)
+	sm = ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: 1, Models: []string{"m1", "m2"}, Status: "idle"}
+	b, _ = json.Marshal(sm)
 	if err := conn.Write(ctx, websocket.MessageText, b); err != nil {
 		t.Fatalf("write update: %v", err)
 	}
 
 	waitForModels(2, "m2")
 
-	um = ctrl.ModelsUpdateMessage{Type: "models_update", Models: []string{"m2"}}
-	b, _ = json.Marshal(um)
+	sm = ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: 1, Models: []string{"m2"}, Status: "idle"}
+	b, _ = json.Marshal(sm)
 	if err := conn.Write(ctx, websocket.MessageText, b); err != nil {
 		t.Fatalf("write update2: %v", err)
 	}

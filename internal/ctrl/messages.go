@@ -15,6 +15,13 @@ type RegisterMessage struct {
 	BuildDate      string   `json:"build_date,omitempty"`
 }
 
+type StatusUpdateMessage struct {
+	Type           string   `json:"type"`
+	MaxConcurrency int      `json:"max_concurrency"`
+	Models         []string `json:"models,omitempty"`
+	Status         string   `json:"status,omitempty"`
+}
+
 type HeartbeatMessage struct {
 	Type string `json:"type"`
 	TS   int64  `json:"ts"`
