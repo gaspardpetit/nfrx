@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"reflect"
 	"sync"
 	"time"
 
@@ -23,24 +22,18 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 	if cfg.WorkerID == "" {
 		cfg.WorkerID = uuid.NewString()
 	}
-	SetWorkerInfo(cfg.WorkerID, cfg.WorkerName, cfg.MaxConcurrency, nil)
-	SetState("connecting")
+	SetWorkerInfo(cfg.WorkerID, cfg.WorkerName, 0, nil)
+	SetState("not_ready")
 	SetConnectedToServer(false)
 	SetConnectedToOllama(false)
 
 	client := ollama.New(cfg.OllamaBaseURL)
-	models, err := client.Tags(ctx)
-	if err != nil {
-		SetLastError(err.Error())
-		return err
-	}
-	SetModels(models)
-	SetConnectedToOllama(true)
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	go startHealthProbe(ctx, client, 20*time.Second)
+	statusUpdates := make(chan ctrl.StatusUpdateMessage, 16)
+	startOllamaMonitor(ctx, cfg, client, statusUpdates, 20*time.Second)
 
 	if cfg.StatusAddr != "" {
 		if _, err := StartStatusServer(ctx, cfg.StatusAddr, cfg.ConfigFile, cfg.DrainTimeout, cancel); err != nil {
@@ -57,7 +50,7 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 	for {
 		SetState("connecting")
 		SetConnectedToServer(false)
-		connected, err := connectAndServe(ctx, cfg, client)
+		connected, err := connectAndServe(ctx, cfg, client, statusUpdates)
 		if err == nil || !cfg.Reconnect {
 			return err
 		}
@@ -75,7 +68,7 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 	}
 }
 
-func connectAndServe(ctx context.Context, cfg config.WorkerConfig, client *ollama.Client) (bool, error) {
+func connectAndServe(ctx context.Context, cfg config.WorkerConfig, client *ollama.Client, statusUpdates <-chan ctrl.StatusUpdateMessage) (bool, error) {
 	connCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	ws, _, err := websocket.Dial(connCtx, cfg.ServerURL, nil)
@@ -90,8 +83,32 @@ func connectAndServe(ctx context.Context, cfg config.WorkerConfig, client *ollam
 
 	logx.Log.Info().Str("server", cfg.ServerURL).Msg("connected to server")
 	SetConnectedToServer(true)
-	SetState("connected_idle")
+	if GetState().ConnectedToOllama {
+		SetState("connected_idle")
+	} else {
+		SetState("not_ready")
+	}
 	SetLastError("")
+
+	_ = probeOllama(connCtx, client, cfg, nil)
+	vi := GetVersionInfo()
+	regMsg := ctrl.RegisterMessage{
+		Type:           "register",
+		WorkerID:       cfg.WorkerID,
+		WorkerName:     cfg.WorkerName,
+		WorkerKey:      cfg.WorkerKey,
+		Models:         GetState().Models,
+		MaxConcurrency: GetState().MaxConcurrency,
+		Version:        vi.Version,
+		BuildSHA:       vi.BuildSHA,
+		BuildDate:      vi.BuildDate,
+	}
+	b, _ := json.Marshal(regMsg)
+	if err := ws.Write(connCtx, websocket.MessageText, b); err != nil {
+		SetLastError(err.Error())
+		SetState("error")
+		return false, err
+	}
 
 	sendCh := make(chan []byte, 16)
 	defer close(sendCh)
@@ -105,21 +122,29 @@ func connectAndServe(ctx context.Context, cfg config.WorkerConfig, client *ollam
 			}
 		}
 	}()
-
-	vi := GetVersionInfo()
-	regMsg := ctrl.RegisterMessage{
-		Type:           "register",
-		WorkerID:       cfg.WorkerID,
-		WorkerName:     cfg.WorkerName,
-		WorkerKey:      cfg.WorkerKey,
-		Models:         GetState().Models,
-		MaxConcurrency: cfg.MaxConcurrency,
-		Version:        vi.Version,
-		BuildSHA:       vi.BuildSHA,
-		BuildDate:      vi.BuildDate,
+	go func() {
+		for {
+			select {
+			case su := <-statusUpdates:
+				mb, _ := json.Marshal(su)
+				select {
+				case sendCh <- mb:
+				case <-connCtx.Done():
+					return
+				}
+			case <-connCtx.Done():
+				return
+			}
+		}
+	}()
+	st := ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: GetState().MaxConcurrency, Models: GetState().Models}
+	if GetState().ConnectedToOllama {
+		st.Status = "idle"
+	} else {
+		st.Status = "not_ready"
 	}
-	b, _ := json.Marshal(regMsg)
-	sendCh <- b
+	sb, _ := json.Marshal(st)
+	sendCh <- sb
 
 	go func() {
 		ticker := time.NewTicker(5 * time.Second)
@@ -245,33 +270,63 @@ type healthClient interface {
 	Health(context.Context) ([]string, error)
 }
 
-func startHealthProbe(ctx context.Context, client healthClient, interval time.Duration) {
-	ticker := time.NewTicker(interval)
-	go func() {
-		defer ticker.Stop()
-		for {
+func startOllamaMonitor(ctx context.Context, cfg config.WorkerConfig, client healthClient, ch chan<- ctrl.StatusUpdateMessage, interval time.Duration) {
+	go monitorOllama(ctx, cfg, client, ch, interval)
+}
+
+func monitorOllama(ctx context.Context, cfg config.WorkerConfig, client healthClient, ch chan<- ctrl.StatusUpdateMessage, interval time.Duration) {
+	attempt := 0
+	for {
+		err := probeOllama(ctx, client, cfg, ch)
+		if err != nil {
+			if !cfg.Reconnect {
+				return
+			}
+			delay := reconnectDelay(attempt)
+			attempt++
 			select {
 			case <-ctx.Done():
 				return
-			case <-ticker.C:
-				probeOllama(ctx, client)
+			case <-time.After(delay):
+			}
+		} else {
+			attempt = 0
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(interval):
 			}
 		}
-	}()
+	}
 }
 
-func probeOllama(ctx context.Context, client healthClient) {
+func probeOllama(ctx context.Context, client healthClient, cfg config.WorkerConfig, ch chan<- ctrl.StatusUpdateMessage) error {
 	models, err := client.Health(ctx)
 	if err != nil {
 		SetConnectedToOllama(false)
+		SetWorkerInfo(cfg.WorkerID, cfg.WorkerName, 0, nil)
+		SetState("not_ready")
 		SetLastError(err.Error())
-		return
+		msg := ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: 0, Status: "not_ready"}
+		sendStatusUpdate(ch, msg)
+		return err
 	}
 	SetConnectedToOllama(true)
-	if !reflect.DeepEqual(models, GetState().Models) {
-		SetModels(models)
+	SetWorkerInfo(cfg.WorkerID, cfg.WorkerName, cfg.MaxConcurrency, models)
+	if GetState().ConnectedToServer && !IsDraining() && GetState().CurrentJobs == 0 {
+		SetState("connected_idle")
 	}
 	SetLastError("")
+	msg := ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: cfg.MaxConcurrency, Models: models, Status: "idle"}
+	sendStatusUpdate(ch, msg)
+	return nil
+}
+
+func sendStatusUpdate(ch chan<- ctrl.StatusUpdateMessage, msg ctrl.StatusUpdateMessage) {
+	select {
+	case ch <- msg:
+	default:
+	}
 }
 
 func handleGenerate(ctx context.Context, client *ollama.Client, sendCh chan []byte, jr ctrl.JobRequestMessage, cancels map[string]context.CancelFunc, mu *sync.Mutex, onDone func()) {

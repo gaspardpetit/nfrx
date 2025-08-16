@@ -4,8 +4,8 @@ import "testing"
 
 func TestLeastBusyScheduler(t *testing.T) {
 	reg := NewRegistry()
-	w1 := &Worker{ID: "w1", Models: map[string]bool{"m": true}, InFlight: 1}
-	w2 := &Worker{ID: "w2", Models: map[string]bool{"m": true}, InFlight: 0}
+	w1 := &Worker{ID: "w1", Models: map[string]bool{"m": true}, InFlight: 1, MaxConcurrency: 2}
+	w2 := &Worker{ID: "w2", Models: map[string]bool{"m": true}, InFlight: 0, MaxConcurrency: 1}
 	reg.Add(w1)
 	reg.Add(w2)
 	sched := &LeastBusyScheduler{Reg: reg}
@@ -20,8 +20,8 @@ func TestLeastBusyScheduler(t *testing.T) {
 
 func TestLeastBusySchedulerExactMatchWins(t *testing.T) {
 	reg := NewRegistry()
-	exact := &Worker{ID: "exact", Models: map[string]bool{"llama2:7b-q4_0": true}, InFlight: 10}
-	alias := &Worker{ID: "alias", Models: map[string]bool{"llama2:7b-fp16": true}, InFlight: 0}
+	exact := &Worker{ID: "exact", Models: map[string]bool{"llama2:7b-q4_0": true}, InFlight: 10, MaxConcurrency: 20}
+	alias := &Worker{ID: "alias", Models: map[string]bool{"llama2:7b-fp16": true}, InFlight: 0, MaxConcurrency: 1}
 	reg.Add(exact)
 	reg.Add(alias)
 	sched := &LeastBusyScheduler{Reg: reg}
@@ -36,7 +36,7 @@ func TestLeastBusySchedulerExactMatchWins(t *testing.T) {
 
 func TestLeastBusySchedulerAliasFallback(t *testing.T) {
 	reg := NewRegistry()
-	alias := &Worker{ID: "alias", Models: map[string]bool{"llama2:7b-fp16": true}}
+	alias := &Worker{ID: "alias", Models: map[string]bool{"llama2:7b-fp16": true}, MaxConcurrency: 1}
 	reg.Add(alias)
 	sched := &LeastBusyScheduler{Reg: reg}
 	w, err := sched.PickWorker("llama2:7b-q4_0")
@@ -50,7 +50,7 @@ func TestLeastBusySchedulerAliasFallback(t *testing.T) {
 
 func TestLeastBusySchedulerNoAliasCandidates(t *testing.T) {
 	reg := NewRegistry()
-	reg.Add(&Worker{ID: "w1", Models: map[string]bool{"mistral:7b-q4_0": true}})
+	reg.Add(&Worker{ID: "w1", Models: map[string]bool{"mistral:7b-q4_0": true}, MaxConcurrency: 1})
 	sched := &LeastBusyScheduler{Reg: reg}
 	if _, err := sched.PickWorker("llama2:7b-q4_0"); err == nil {
 		t.Fatalf("expected error")
@@ -59,7 +59,7 @@ func TestLeastBusySchedulerNoAliasCandidates(t *testing.T) {
 
 func TestLeastBusySchedulerNoDashAlias(t *testing.T) {
 	reg := NewRegistry()
-	w := &Worker{ID: "w1", Models: map[string]bool{"mistral:7b-fp16": true}}
+	w := &Worker{ID: "w1", Models: map[string]bool{"mistral:7b-fp16": true}, MaxConcurrency: 1}
 	reg.Add(w)
 	sched := &LeastBusyScheduler{Reg: reg}
 	wkr, err := sched.PickWorker("mistral:7b")
@@ -73,8 +73,8 @@ func TestLeastBusySchedulerNoDashAlias(t *testing.T) {
 
 func TestLeastBusySchedulerAliasLeastBusy(t *testing.T) {
 	reg := NewRegistry()
-	w1 := &Worker{ID: "w1", Models: map[string]bool{"llama2:7b-q4_0": true}, InFlight: 2}
-	w2 := &Worker{ID: "w2", Models: map[string]bool{"llama2:7b-fp16": true}, InFlight: 1}
+	w1 := &Worker{ID: "w1", Models: map[string]bool{"llama2:7b-q4_0": true}, InFlight: 2, MaxConcurrency: 3}
+	w2 := &Worker{ID: "w2", Models: map[string]bool{"llama2:7b-fp16": true}, InFlight: 1, MaxConcurrency: 3}
 	reg.Add(w1)
 	reg.Add(w2)
 	sched := &LeastBusyScheduler{Reg: reg}

@@ -13,7 +13,7 @@ import (
 
 func TestRelayGenerateStream(t *testing.T) {
 	reg := ctrl.NewRegistry()
-	worker := &ctrl.Worker{ID: "w1", Models: map[string]bool{"m": true}, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
+	worker := &ctrl.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
 	reg.Add(worker)
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
 	metricsReg := ctrl.NewMetricsRegistry("test", "", "")
@@ -39,7 +39,7 @@ func TestRelayGenerateStream(t *testing.T) {
 
 func TestRelayGenerateBusy(t *testing.T) {
 	reg := ctrl.NewRegistry()
-	worker := &ctrl.Worker{ID: "w1", Models: map[string]bool{"m": true}, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
+	worker := &ctrl.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
 	worker.Send <- struct{}{}
 	reg.Add(worker)
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}

@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"sync/atomic"
 
+	"github.com/gaspardpetit/llamapool/internal/config"
+	"github.com/gaspardpetit/llamapool/internal/ctrl"
 	"github.com/gaspardpetit/llamapool/internal/ollama"
 )
 
@@ -27,17 +29,24 @@ func (f fakeHealthClient) Health(ctx context.Context) ([]string, error) {
 
 func TestProbeOllamaUpdatesState(t *testing.T) {
 	resetState()
-	probeOllama(context.Background(), fakeHealthClient{models: []string{"m1"}})
+	cfg := config.WorkerConfig{WorkerID: "w1", WorkerName: "n", MaxConcurrency: 1}
+	if err := probeOllama(context.Background(), fakeHealthClient{models: []string{"m1"}}, cfg, nil); err != nil {
+		t.Fatalf("probe healthy: %v", err)
+	}
 	s := GetState()
 	if !s.ConnectedToOllama || len(s.Models) != 1 || s.LastError != "" {
 		t.Fatalf("expected healthy state, got %+v", s)
 	}
-	probeOllama(context.Background(), fakeHealthClient{models: []string{"m1", "m2"}})
+	if err := probeOllama(context.Background(), fakeHealthClient{models: []string{"m1", "m2"}}, cfg, nil); err != nil {
+		t.Fatalf("probe update: %v", err)
+	}
 	s = GetState()
 	if len(s.Models) != 2 || s.Models[1] != "m2" {
 		t.Fatalf("models not updated: %+v", s.Models)
 	}
-	probeOllama(context.Background(), fakeHealthClient{err: errors.New("down")})
+	if err := probeOllama(context.Background(), fakeHealthClient{err: errors.New("down")}, cfg, nil); err == nil {
+		t.Fatalf("expected error")
+	}
 	s = GetState()
 	if s.ConnectedToOllama || s.LastError == "" {
 		t.Fatalf("expected failure state, got %+v", s)
@@ -65,11 +74,13 @@ func TestHealthProbeIntegration(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	cfgFile := filepath.Join(t.TempDir(), "worker.yaml")
+	cfg := config.WorkerConfig{WorkerID: "w1", WorkerName: "n", MaxConcurrency: 1}
 	addr, err := StartStatusServer(ctx, "127.0.0.1:0", cfgFile, time.Second, cancel)
 	if err != nil {
 		t.Fatalf("start status server: %v", err)
 	}
-	startHealthProbe(ctx, client, 50*time.Millisecond)
+	ch := make(chan ctrl.StatusUpdateMessage, 1)
+	startOllamaMonitor(ctx, cfg, client, ch, 50*time.Millisecond)
 	time.Sleep(80 * time.Millisecond)
 	resp, err := http.Get("http://" + addr + "/status")
 	if err != nil {

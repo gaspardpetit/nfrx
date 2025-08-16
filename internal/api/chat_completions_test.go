@@ -20,7 +20,7 @@ func (f *flushRecorder) Flush() { f.flushed = true }
 func TestChatCompletionsHeaders(t *testing.T) {
 	reg := ctrl.NewRegistry()
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	wk := &ctrl.Worker{ID: "w1", Models: map[string]bool{"m": true}, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
+	wk := &ctrl.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
 	reg.Add(wk)
 	metricsReg := ctrl.NewMetricsRegistry("", "", "")
 	h := ChatCompletionsHandler(reg, sched, metricsReg)
@@ -56,7 +56,7 @@ func TestChatCompletionsHeaders(t *testing.T) {
 func TestChatCompletionsOpaque(t *testing.T) {
 	reg := ctrl.NewRegistry()
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	wk := &ctrl.Worker{ID: "w1", Models: map[string]bool{"m": true}, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
+	wk := &ctrl.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
 	reg.Add(wk)
 	metricsReg := ctrl.NewMetricsRegistry("", "", "")
 	h := ChatCompletionsHandler(reg, sched, metricsReg)
@@ -83,7 +83,7 @@ func TestChatCompletionsOpaque(t *testing.T) {
 func TestChatCompletionsEarlyError(t *testing.T) {
 	reg := ctrl.NewRegistry()
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	wk := &ctrl.Worker{ID: "w1", Models: map[string]bool{"m": true}, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
+	wk := &ctrl.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
 	reg.Add(wk)
 	metricsReg := ctrl.NewMetricsRegistry("", "", "")
 	h := ChatCompletionsHandler(reg, sched, metricsReg)

@@ -13,6 +13,7 @@ const (
 	StatusConnected WorkerStatus = "connected"
 	StatusWorking   WorkerStatus = "working"
 	StatusIdle      WorkerStatus = "idle"
+	StatusNotReady  WorkerStatus = "not_ready"
 	StatusGone      WorkerStatus = "gone"
 )
 
@@ -66,6 +67,7 @@ type WorkersSummary struct {
 	Connected int `json:"connected"`
 	Working   int `json:"working"`
 	Idle      int `json:"idle"`
+	NotReady  int `json:"not_ready"`
 	Gone      int `json:"gone"`
 }
 
@@ -169,6 +171,18 @@ func (m *MetricsRegistry) SetWorkerStatus(id string, status WorkerStatus) {
 	m.mu.Lock()
 	if w, ok := m.workers[id]; ok {
 		w.status = status
+	}
+	m.mu.Unlock()
+}
+
+// UpdateWorker updates a worker's models and max concurrency.
+func (m *MetricsRegistry) UpdateWorker(id string, maxConcurrency int, models []string) {
+	m.mu.Lock()
+	if w, ok := m.workers[id]; ok {
+		w.maxConcurrency = maxConcurrency
+		if models != nil {
+			w.modelsSupported = models
+		}
 	}
 	m.mu.Unlock()
 }
@@ -305,6 +319,8 @@ func (m *MetricsRegistry) Snapshot() StateResponse {
 			resp.WorkersSummary.Working++
 		case StatusIdle:
 			resp.WorkersSummary.Idle++
+		case StatusNotReady:
+			resp.WorkersSummary.NotReady++
 		}
 		for _, mname := range w.modelsSupported {
 			modelWorkers[mname]++

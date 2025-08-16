@@ -74,7 +74,7 @@ func (r *Registry) WorkersForModel(model string) []*Worker {
 	defer r.mu.RUnlock()
 	var res []*Worker
 	for _, w := range r.workers {
-		if w.Models[model] {
+		if w.Models[model] && w.InFlight < w.MaxConcurrency {
 			res = append(res, w)
 		}
 	}
@@ -93,7 +93,7 @@ func (r *Registry) WorkersForAlias(requested string) []*Worker {
 	var res []*Worker
 	for _, w := range r.workers {
 		for m := range w.Models {
-			if ak, ok := AliasKey(m); ok && ak == key {
+			if ak, ok := AliasKey(m); ok && ak == key && w.InFlight < w.MaxConcurrency {
 				res = append(res, w)
 				break
 			}
