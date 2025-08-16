@@ -45,7 +45,7 @@ func handleHTTPProxy(ctx context.Context, cfg config.WorkerConfig, sendCh chan [
 	}
 	httpReq, err := http.NewRequestWithContext(reqCtx, req.Method, url, bytes.NewReader(req.Body))
 	if err != nil {
-		sendProxyError(req.RequestID, sendCh, err)
+		sendProxyError(reqCtx, req.RequestID, sendCh, err)
 		return
 	}
 	for k, v := range req.Headers {
@@ -62,7 +62,7 @@ func handleHTTPProxy(ctx context.Context, cfg config.WorkerConfig, sendCh chan [
 	client := &http.Client{}
 	resp, err := client.Do(httpReq)
 	if err != nil {
-		sendProxyError(req.RequestID, sendCh, err)
+		sendProxyError(reqCtx, req.RequestID, sendCh, err)
 		return
 	}
 	defer func() { _ = resp.Body.Close() }()
@@ -73,7 +73,7 @@ func handleHTTPProxy(ctx context.Context, cfg config.WorkerConfig, sendCh chan [
 	}
 	hmsg := ctrl.HTTPProxyResponseHeadersMessage{Type: "http_proxy_response_headers", RequestID: req.RequestID, Status: resp.StatusCode, Headers: hdrs}
 	b, _ := json.Marshal(hmsg)
-	sendCh <- b
+	sendMsg(reqCtx, sendCh, b)
 
 	buf := make([]byte, 32*1024)
 	for {
@@ -81,17 +81,17 @@ func handleHTTPProxy(ctx context.Context, cfg config.WorkerConfig, sendCh chan [
 		if n > 0 {
 			cmsg := ctrl.HTTPProxyResponseChunkMessage{Type: "http_proxy_response_chunk", RequestID: req.RequestID, Data: append([]byte(nil), buf[:n]...)}
 			bb, _ := json.Marshal(cmsg)
-			sendCh <- bb
+			sendMsg(reqCtx, sendCh, bb)
 		}
 		if err != nil {
 			if err == io.EOF {
 				end := ctrl.HTTPProxyResponseEndMessage{Type: "http_proxy_response_end", RequestID: req.RequestID}
 				eb, _ := json.Marshal(end)
-				sendCh <- eb
+				sendMsg(reqCtx, sendCh, eb)
 			} else {
 				end := ctrl.HTTPProxyResponseEndMessage{Type: "http_proxy_response_end", RequestID: req.RequestID, Error: &ctrl.HTTPProxyError{Code: "upstream_error", Message: err.Error()}}
 				eb, _ := json.Marshal(end)
-				sendCh <- eb
+				sendMsg(reqCtx, sendCh, eb)
 			}
 			break
 		}
@@ -100,16 +100,16 @@ func handleHTTPProxy(ctx context.Context, cfg config.WorkerConfig, sendCh chan [
 	logx.Log.Info().Str("request_id", req.RequestID).Msg("proxy end")
 }
 
-func sendProxyError(id string, sendCh chan []byte, err error) {
+func sendProxyError(ctx context.Context, id string, sendCh chan []byte, err error) {
 	h := ctrl.HTTPProxyResponseHeadersMessage{Type: "http_proxy_response_headers", RequestID: id, Status: 502, Headers: map[string]string{"Content-Type": "application/json"}}
 	hb, _ := json.Marshal(h)
-	sendCh <- hb
+	sendMsg(ctx, sendCh, hb)
 	body := ctrl.HTTPProxyResponseChunkMessage{Type: "http_proxy_response_chunk", RequestID: id, Data: []byte(`{"error":"` + err.Error() + `"}`)}
 	bb, _ := json.Marshal(body)
-	sendCh <- bb
+	sendMsg(ctx, sendCh, bb)
 	end := ctrl.HTTPProxyResponseEndMessage{Type: "http_proxy_response_end", RequestID: id, Error: &ctrl.HTTPProxyError{Code: "upstream_error", Message: err.Error()}}
 	eb, _ := json.Marshal(end)
-	sendCh <- eb
+	sendMsg(ctx, sendCh, eb)
 	logx.Log.Error().Str("request_id", id).Err(err).Msg("proxy error")
 	SetLastError(err.Error())
 }
