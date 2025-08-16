@@ -405,6 +405,8 @@ The server also exposes a basic health check:
 curl http://localhost:8080/healthz
 ```
 
+The endpoint reports `503 Service Unavailable` if no MCP session is ready.
+
 For server administration and monitoring:
 
 ```bash
