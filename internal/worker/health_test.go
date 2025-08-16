@@ -55,7 +55,8 @@ func TestProbeOllamaUpdatesState(t *testing.T) {
 
 func TestProbeOllamaSendsUpdates(t *testing.T) {
 	resetState()
-	SetModels([]string{"m1"})
+	SetWorkerInfo("w1", "n", 1, []string{"m1"})
+	SetConnectedToOllama(true)
 	cfg := config.WorkerConfig{WorkerID: "w1", WorkerName: "n", MaxConcurrency: 1}
 
 	// We now use the status update channel, and probeOllama only emits when something changes.
