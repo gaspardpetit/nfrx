@@ -27,20 +27,47 @@ func (f fakeHealthClient) Health(ctx context.Context) ([]string, error) {
 
 func TestProbeOllamaUpdatesState(t *testing.T) {
 	resetState()
-	probeOllama(context.Background(), fakeHealthClient{models: []string{"m1"}})
+	probeOllama(context.Background(), fakeHealthClient{models: []string{"m1"}}, nil)
 	s := GetState()
 	if !s.ConnectedToOllama || len(s.Models) != 1 || s.LastError != "" {
 		t.Fatalf("expected healthy state, got %+v", s)
 	}
-	probeOllama(context.Background(), fakeHealthClient{models: []string{"m1", "m2"}})
+	probeOllama(context.Background(), fakeHealthClient{models: []string{"m1", "m2"}}, nil)
 	s = GetState()
 	if len(s.Models) != 2 || s.Models[1] != "m2" {
 		t.Fatalf("models not updated: %+v", s.Models)
 	}
-	probeOllama(context.Background(), fakeHealthClient{err: errors.New("down")})
+	probeOllama(context.Background(), fakeHealthClient{err: errors.New("down")}, nil)
 	s = GetState()
 	if s.ConnectedToOllama || s.LastError == "" {
 		t.Fatalf("expected failure state, got %+v", s)
+	}
+}
+
+func TestProbeOllamaSendsUpdates(t *testing.T) {
+	resetState()
+	SetModels([]string{"m1"})
+	ch := make(chan []string, 1)
+	probeOllama(context.Background(), fakeHealthClient{models: []string{"m1"}}, ch)
+	select {
+	case <-ch:
+		t.Fatalf("unexpected update")
+	default:
+	}
+	probeOllama(context.Background(), fakeHealthClient{models: []string{"m1", "m2"}}, ch)
+	select {
+	case m := <-ch:
+		if len(m) != 2 || m[1] != "m2" {
+			t.Fatalf("wrong models sent: %v", m)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("expected update")
+	}
+	probeOllama(context.Background(), fakeHealthClient{models: []string{"m1", "m2"}}, ch)
+	select {
+	case <-ch:
+		t.Fatalf("unexpected second update")
+	default:
 	}
 }
 
@@ -69,7 +96,7 @@ func TestHealthProbeIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("start status server: %v", err)
 	}
-	startHealthProbe(ctx, client, 50*time.Millisecond)
+	startHealthProbe(ctx, client, 50*time.Millisecond, nil)
 	time.Sleep(80 * time.Millisecond)
 	resp, err := http.Get("http://" + addr + "/status")
 	if err != nil {

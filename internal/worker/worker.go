@@ -40,7 +40,12 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	go startHealthProbe(ctx, client, 20*time.Second)
+	interval := cfg.ModelPollInterval
+	if interval <= 0 {
+		interval = time.Minute
+	}
+	modelsCh := make(chan []string, 1)
+	go startHealthProbe(ctx, client, interval, modelsCh)
 
 	if cfg.StatusAddr != "" {
 		if _, err := StartStatusServer(ctx, cfg.StatusAddr, cfg.ConfigFile, cfg.DrainTimeout, cancel); err != nil {
@@ -57,7 +62,7 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 	for {
 		SetState("connecting")
 		SetConnectedToServer(false)
-		connected, err := connectAndServe(ctx, cfg, client)
+		connected, err := connectAndServe(ctx, cfg, client, modelsCh)
 		if err == nil || !cfg.Reconnect {
 			return err
 		}
@@ -75,7 +80,7 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 	}
 }
 
-func connectAndServe(ctx context.Context, cfg config.WorkerConfig, client *ollama.Client) (bool, error) {
+func connectAndServe(ctx context.Context, cfg config.WorkerConfig, client *ollama.Client, modelsCh <-chan []string) (bool, error) {
 	connCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	ws, _, err := websocket.Dial(connCtx, cfg.ServerURL, nil)
@@ -133,6 +138,10 @@ func connectAndServe(ctx context.Context, cfg config.WorkerConfig, client *ollam
 				bb, _ := json.Marshal(hb)
 				sendCh <- bb
 				SetLastHeartbeat(t)
+			case models := <-modelsCh:
+				msg := ctrl.ModelsUpdateMessage{Type: "models_update", Models: models}
+				bb, _ := json.Marshal(msg)
+				sendCh <- bb
 			}
 		}
 	}()
@@ -245,7 +254,7 @@ type healthClient interface {
 	Health(context.Context) ([]string, error)
 }
 
-func startHealthProbe(ctx context.Context, client healthClient, interval time.Duration) {
+func startHealthProbe(ctx context.Context, client healthClient, interval time.Duration, ch chan []string) {
 	ticker := time.NewTicker(interval)
 	go func() {
 		defer ticker.Stop()
@@ -254,13 +263,13 @@ func startHealthProbe(ctx context.Context, client healthClient, interval time.Du
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				probeOllama(ctx, client)
+				probeOllama(ctx, client, ch)
 			}
 		}
 	}()
 }
 
-func probeOllama(ctx context.Context, client healthClient) {
+func probeOllama(ctx context.Context, client healthClient, ch chan []string) {
 	models, err := client.Health(ctx)
 	if err != nil {
 		SetConnectedToOllama(false)
@@ -270,6 +279,14 @@ func probeOllama(ctx context.Context, client healthClient) {
 	SetConnectedToOllama(true)
 	if !reflect.DeepEqual(models, GetState().Models) {
 		SetModels(models)
+		if ch != nil {
+			select {
+			case ch <- models:
+			default:
+				<-ch
+				ch <- models
+			}
+		}
 	}
 	SetLastError("")
 }

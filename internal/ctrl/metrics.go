@@ -182,6 +182,14 @@ func (m *MetricsRegistry) RecordHeartbeat(id string) {
 	m.mu.Unlock()
 }
 
+func (m *MetricsRegistry) UpdateWorkerModels(id string, models []string) {
+	m.mu.Lock()
+	if w, ok := m.workers[id]; ok {
+		w.modelsSupported = models
+	}
+	m.mu.Unlock()
+}
+
 // RecordJobStart increments inflight counters.
 func (m *MetricsRegistry) RecordJobStart(id string) {
 	m.mu.Lock()
