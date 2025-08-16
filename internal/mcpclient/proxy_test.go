@@ -29,15 +29,22 @@ func (f *fakeWSConn) Write(ctx context.Context, typ websocket.MessageType, data 
 type proxyTransport struct {
 	lastReq transport.JSONRPCRequest
 	resp    transport.JSONRPCResponse
+	handler func(mcp.JSONRPCNotification)
+	stream  []mcp.JSONRPCNotification
 }
 
 func (f *proxyTransport) Start(context.Context) error { return nil }
 func (f *proxyTransport) SendRequest(ctx context.Context, req transport.JSONRPCRequest) (*transport.JSONRPCResponse, error) {
 	f.lastReq = req
+	for _, n := range f.stream {
+		if f.handler != nil {
+			f.handler(n)
+		}
+	}
 	return &f.resp, nil
 }
 func (f *proxyTransport) SendNotification(context.Context, mcp.JSONRPCNotification) error { return nil }
-func (f *proxyTransport) SetNotificationHandler(func(mcp.JSONRPCNotification))            {}
+func (f *proxyTransport) SetNotificationHandler(h func(mcp.JSONRPCNotification))          { f.handler = h }
 func (f *proxyTransport) Close() error                                                    { return nil }
 func (f *proxyTransport) GetSessionId() string                                            { return "" }
 
@@ -47,7 +54,7 @@ func TestProxyHandleRequest(t *testing.T) {
 	ft := &proxyTransport{resp: resp}
 	conn := newTransportConnector(ft, 0)
 	ws := &fakeWSConn{writeCh: make(chan []byte, 1)}
-	p := &Proxy{conn: ws, sessions: map[string]Connector{"sess": conn}}
+	p := &Proxy{conn: ws, sessions: map[string]*sessionState{"sess": {conn: conn}}}
 
 	frame := mcpbridge.Frame{Type: mcpbridge.TypeRequest, ID: "corr", SessionID: "sess", Payload: reqJSON}
 	if err := p.handleFrame(context.Background(), frame); err != nil {
@@ -74,5 +81,41 @@ func TestProxyHandleRequest(t *testing.T) {
 	_ = json.Unmarshal(respBytes, &wantResp)
 	if !reflect.DeepEqual(gotResp, wantResp) {
 		t.Fatalf("response mismatch: %v vs %v", gotResp, wantResp)
+	}
+}
+
+func TestProxyHandleStream(t *testing.T) {
+	reqJSON := []byte(`{"jsonrpc":"2.0","id":1,"method":"test"}`)
+	resp := transport.JSONRPCResponse{JSONRPC: "2.0", ID: mcp.NewRequestId(1)}
+	stream := []mcp.JSONRPCNotification{
+		{JSONRPC: "2.0", Notification: mcp.Notification{Method: "note", Params: mcp.NotificationParams{AdditionalFields: map[string]any{"i": 1}}}},
+		{JSONRPC: "2.0", Notification: mcp.Notification{Method: "note", Params: mcp.NotificationParams{AdditionalFields: map[string]any{"i": 2}}}},
+	}
+	ft := &proxyTransport{resp: resp, stream: stream}
+	conn := newTransportConnector(ft, 0)
+	ws := &fakeWSConn{writeCh: make(chan []byte, 3)}
+	p := &Proxy{conn: ws, sessions: map[string]*sessionState{"sess": {conn: conn}}}
+
+	frame := mcpbridge.Frame{Type: mcpbridge.TypeRequest, ID: "corr", SessionID: "sess", Payload: reqJSON}
+	if err := p.handleFrame(context.Background(), frame); err != nil {
+		t.Fatalf("handle: %v", err)
+	}
+	for i := 0; i < 2; i++ {
+		outBytes := <-ws.writeCh
+		var f mcpbridge.Frame
+		if err := json.Unmarshal(outBytes, &f); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if f.Type != mcpbridge.TypeStreamEvent || f.ID != "corr" {
+			t.Fatalf("unexpected frame: %+v", f)
+		}
+	}
+	respBytes := <-ws.writeCh
+	var respFrame mcpbridge.Frame
+	if err := json.Unmarshal(respBytes, &respFrame); err != nil {
+		t.Fatalf("unmarshal resp: %v", err)
+	}
+	if respFrame.Type != mcpbridge.TypeResponse {
+		t.Fatalf("expected response frame got %s", respFrame.Type)
 	}
 }

@@ -31,14 +31,14 @@ func NewBridge(url string, maxInflight int) *Bridge {
 }
 
 // Forward sends a JSON-RPC request payload over the bridge and waits for the response.
-func (b *Bridge) Forward(ctx context.Context, sessionID string, payload json.RawMessage, jsonID json.RawMessage) (json.RawMessage, error) {
+func (b *Bridge) Forward(ctx context.Context, sessionID string, payload json.RawMessage, jsonID json.RawMessage, stream func(json.RawMessage)) (json.RawMessage, error) {
 	sess, err := b.getSession(ctx, sessionID)
 	if err != nil {
 		return nil, err
 	}
 	corrID := sess.idMap.Alloc(jsonID)
 	respCh := make(chan json.RawMessage, 1)
-	if !sess.register(corrID, respCh) {
+	if !sess.register(corrID, respCh, stream) {
 		return nil, ErrBackpressure
 	}
 	frame := Frame{Type: TypeRequest, ID: corrID, SessionID: sessionID, Payload: payload}
@@ -85,10 +85,15 @@ type session struct {
 	idMap *IDMapper
 
 	mu          sync.Mutex
-	pending     map[string]chan json.RawMessage
+	pending     map[string]pendingReq
 	maxInflight int
 
 	cancel context.CancelFunc
+}
+
+type pendingReq struct {
+	ch     chan json.RawMessage
+	stream func(json.RawMessage)
 }
 
 func newSession(ctx context.Context, url, id string, maxInflight int, onClose func()) (*session, error) {
@@ -102,7 +107,7 @@ func newSession(ctx context.Context, url, id string, maxInflight int, onClose fu
 		conn:        conn,
 		send:        make(chan Frame, maxInflight),
 		idMap:       NewIDMapper(),
-		pending:     map[string]chan json.RawMessage{},
+		pending:     map[string]pendingReq{},
 		maxInflight: maxInflight,
 		cancel:      cancel,
 	}
@@ -137,23 +142,23 @@ func (b *Bridge) getSession(ctx context.Context, id string) (*session, error) {
 	return sess, nil
 }
 
-func (s *session) register(id string, ch chan json.RawMessage) bool {
+func (s *session) register(id string, ch chan json.RawMessage, stream func(json.RawMessage)) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if len(s.pending) >= s.maxInflight {
 		return false
 	}
-	s.pending[id] = ch
+	s.pending[id] = pendingReq{ch: ch, stream: stream}
 	return true
 }
 
 func (s *session) unregister(id string) {
 	s.mu.Lock()
-	ch := s.pending[id]
+	p := s.pending[id]
 	delete(s.pending, id)
 	s.mu.Unlock()
-	if ch != nil {
-		close(ch)
+	if p.ch != nil {
+		close(p.ch)
 	}
 }
 
@@ -163,8 +168,10 @@ func (s *session) readLoop(ctx context.Context, onClose func()) {
 		s.cancel()
 		_ = s.conn.Close(websocket.StatusNormalClosure, "closing")
 		s.mu.Lock()
-		for id, ch := range s.pending {
-			close(ch)
+		for id, p := range s.pending {
+			if p.ch != nil {
+				close(p.ch)
+			}
 			delete(s.pending, id)
 		}
 		s.mu.Unlock()
@@ -180,15 +187,22 @@ func (s *session) readLoop(ctx context.Context, onClose func()) {
 		if json.Unmarshal(data, &f) != nil {
 			continue
 		}
-		if f.Type != TypeResponse {
-			continue
-		}
-		s.mu.Lock()
-		ch := s.pending[f.ID]
-		delete(s.pending, f.ID)
-		s.mu.Unlock()
-		if ch != nil {
-			ch <- f.Payload
+		switch f.Type {
+		case TypeResponse:
+			s.mu.Lock()
+			p := s.pending[f.ID]
+			delete(s.pending, f.ID)
+			s.mu.Unlock()
+			if p.ch != nil {
+				p.ch <- f.Payload
+			}
+		case TypeStreamEvent:
+			s.mu.Lock()
+			p := s.pending[f.ID]
+			s.mu.Unlock()
+			if p.stream != nil {
+				p.stream(f.Payload)
+			}
 		}
 	}
 }
