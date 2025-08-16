@@ -3,7 +3,9 @@ package mcpclient
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sync"
+	"sync/atomic"
 
 	"github.com/coder/websocket"
 	"github.com/mark3labs/mcp-go/client/transport"
@@ -32,6 +34,10 @@ type Proxy struct {
 type sessionState struct {
 	conn    Connector
 	handler func(mcp.JSONRPCNotification)
+
+	mu      sync.Mutex
+	pending map[string]chan json.RawMessage
+	nextID  atomic.Int64
 }
 
 // NewProxy constructs a Proxy using the given websocket connection and factory.
@@ -90,6 +96,16 @@ func (p *Proxy) handleFrame(ctx context.Context, f mcpbridge.Frame) error {
 			return err
 		}
 		return t.SendNotification(ctx, n)
+	case mcpbridge.TypeServerResponse:
+		sess.mu.Lock()
+		ch := sess.pending[f.ID]
+		if ch != nil {
+			delete(sess.pending, f.ID)
+		}
+		sess.mu.Unlock()
+		if ch != nil {
+			ch <- f.Payload
+		}
 	}
 	return nil
 }
@@ -116,8 +132,44 @@ func (p *Proxy) getSession(ctx context.Context, id string) (*sessionState, error
 		_ = p.conn.Write(context.Background(), websocket.MessageText, ob)
 	}
 	t.SetNotificationHandler(handler)
+
+	st := &sessionState{conn: c, handler: handler, pending: map[string]chan json.RawMessage{}}
+
+	if bidir, ok := t.(transport.BidirectionalInterface); ok {
+		bidir.SetRequestHandler(func(ctx context.Context, req transport.JSONRPCRequest) (*transport.JSONRPCResponse, error) {
+			b, _ := json.Marshal(req)
+			idNum := st.nextID.Add(1)
+			corrID := fmt.Sprintf("srv-%d", idNum)
+			ch := make(chan json.RawMessage, 1)
+			st.mu.Lock()
+			st.pending[corrID] = ch
+			st.mu.Unlock()
+			frame := mcpbridge.Frame{Type: mcpbridge.TypeServerRequest, ID: corrID, SessionID: id, Payload: b}
+			ob, _ := json.Marshal(frame)
+			if err := p.conn.Write(context.Background(), websocket.MessageText, ob); err != nil {
+				st.mu.Lock()
+				delete(st.pending, corrID)
+				st.mu.Unlock()
+				return nil, err
+			}
+			select {
+			case respBytes := <-ch:
+				var resp transport.JSONRPCResponse
+				if err := json.Unmarshal(respBytes, &resp); err != nil {
+					return nil, err
+				}
+				return &resp, nil
+			case <-ctx.Done():
+				st.mu.Lock()
+				delete(st.pending, corrID)
+				st.mu.Unlock()
+				return nil, ctx.Err()
+			}
+		})
+	}
+
 	p.mu.Lock()
-	p.sessions[id] = &sessionState{conn: c, handler: handler}
+	p.sessions[id] = st
 	p.mu.Unlock()
-	return p.sessions[id], nil
+	return st, nil
 }

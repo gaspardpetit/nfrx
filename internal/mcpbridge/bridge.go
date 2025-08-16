@@ -20,6 +20,48 @@ type Bridge struct {
 
 	mu       sync.Mutex
 	sessions map[string]*session
+
+	serverReqCh chan ServerRequest
+}
+
+// ServerRequest represents a request initiated by the downstream MCP server.
+type ServerRequest struct {
+	ID        string
+	SessionID string
+	Payload   json.RawMessage
+}
+
+// ServerRequests returns a channel of incoming server-initiated requests.
+func (b *Bridge) ServerRequests() <-chan ServerRequest { return b.serverReqCh }
+
+// ServerRespond sends a response payload back to the downstream server for the given correlation ID.
+func (b *Bridge) ServerRespond(ctx context.Context, sessionID, id string, payload json.RawMessage) error {
+	sess, err := b.getSession(ctx, sessionID)
+	if err != nil {
+		return err
+	}
+	frame := Frame{Type: TypeServerResponse, ID: id, SessionID: sessionID, Payload: payload}
+	select {
+	case sess.send <- frame:
+		return nil
+	default:
+		return ErrBackpressure
+	}
+}
+
+// ServerStream forwards a stream event for a server-initiated request.
+func (b *Bridge) ServerStream(ctx context.Context, sessionID, id string, payload json.RawMessage) error {
+	sess, err := b.getSession(ctx, sessionID)
+	if err != nil {
+		return err
+	}
+	frame := Frame{Type: TypeStreamEvent, ID: id, SessionID: sessionID, Payload: payload}
+	select {
+	case sess.send <- frame:
+		return nil
+	default:
+		return ErrBackpressure
+	}
 }
 
 // NewBridge constructs a new Bridge that dials the given WebSocket URL.
@@ -27,7 +69,7 @@ func NewBridge(url string, maxInflight int) *Bridge {
 	if maxInflight <= 0 {
 		maxInflight = 16
 	}
-	return &Bridge{url: url, maxInflight: maxInflight, sessions: map[string]*session{}}
+	return &Bridge{url: url, maxInflight: maxInflight, sessions: map[string]*session{}, serverReqCh: make(chan ServerRequest, maxInflight)}
 }
 
 // Forward sends a JSON-RPC request payload over the bridge and waits for the response.
@@ -72,6 +114,7 @@ func (b *Bridge) Close() {
 	for _, s := range sessions {
 		_ = s.conn.Close(websocket.StatusNormalClosure, "shutdown")
 	}
+	close(b.serverReqCh)
 }
 
 // ErrSessionClosed indicates the session was closed while waiting for a response.
@@ -89,6 +132,8 @@ type session struct {
 	maxInflight int
 
 	cancel context.CancelFunc
+
+	serverReqCh chan<- ServerRequest
 }
 
 type pendingReq struct {
@@ -96,7 +141,7 @@ type pendingReq struct {
 	stream func(json.RawMessage)
 }
 
-func newSession(ctx context.Context, url, id string, maxInflight int, onClose func()) (*session, error) {
+func newSession(ctx context.Context, url, id string, maxInflight int, onClose func(), reqCh chan<- ServerRequest) (*session, error) {
 	conn, _, err := websocket.Dial(ctx, url, nil)
 	if err != nil {
 		return nil, err
@@ -110,6 +155,7 @@ func newSession(ctx context.Context, url, id string, maxInflight int, onClose fu
 		pending:     map[string]pendingReq{},
 		maxInflight: maxInflight,
 		cancel:      cancel,
+		serverReqCh: reqCh,
 	}
 	go s.readLoop(ctx, onClose)
 	go s.writeLoop()
@@ -134,7 +180,7 @@ func (b *Bridge) getSession(ctx context.Context, id string) (*session, error) {
 		b.mu.Lock()
 		delete(b.sessions, id)
 		b.mu.Unlock()
-	})
+	}, b.serverReqCh)
 	if err != nil {
 		return nil, err
 	}
@@ -202,6 +248,10 @@ func (s *session) readLoop(ctx context.Context, onClose func()) {
 			s.mu.Unlock()
 			if p.stream != nil {
 				p.stream(f.Payload)
+			}
+		case TypeServerRequest:
+			if s.serverReqCh != nil {
+				s.serverReqCh <- ServerRequest{ID: f.ID, SessionID: f.SessionID, Payload: f.Payload}
 			}
 		}
 	}

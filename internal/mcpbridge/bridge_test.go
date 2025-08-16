@@ -130,3 +130,68 @@ func TestBridgeStreamEvents(t *testing.T) {
 	}
 	br.Close()
 }
+
+func TestBridgeServerRequest(t *testing.T) {
+	reqPayload := json.RawMessage(`{"jsonrpc":"2.0","id":1,"method":"foo"}`)
+	respPayload := json.RawMessage(`{"jsonrpc":"2.0","id":1,"result":{}}`)
+	streamPayload := json.RawMessage(`{"delta":1}`)
+	recv := make(chan Frame, 2)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c, err := websocket.Accept(w, r, nil)
+		if err != nil {
+			t.Fatalf("accept: %v", err)
+		}
+		go func() {
+			ctx := context.Background()
+			// respond to initial dummy request
+			_, data, _ := c.Read(ctx)
+			var f Frame
+			_ = json.Unmarshal(data, &f)
+			resp := Frame{Type: TypeResponse, ID: f.ID, SessionID: f.SessionID, Payload: f.Payload}
+			b, _ := json.Marshal(resp)
+			_ = c.Write(ctx, websocket.MessageText, b)
+
+			// send server_request
+			sr := Frame{Type: TypeServerRequest, ID: "srv1", SessionID: f.SessionID, Payload: reqPayload}
+			sb, _ := json.Marshal(sr)
+			_ = c.Write(ctx, websocket.MessageText, sb)
+
+			for i := 0; i < 2; i++ {
+				_, data, err := c.Read(ctx)
+				if err != nil {
+					return
+				}
+				var rf Frame
+				_ = json.Unmarshal(data, &rf)
+				recv <- rf
+			}
+		}()
+	}))
+	defer srv.Close()
+	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http")
+	br := NewBridge(wsURL, 4)
+	ctx := context.Background()
+	// establish session via dummy request
+	go func() {
+		_, _ = br.Forward(ctx, "s1", json.RawMessage(`{"jsonrpc":"2.0","id":1,"method":"ping"}`), json.RawMessage(`1`), nil)
+	}()
+	sr := <-br.ServerRequests()
+	if sr.ID != "srv1" || sr.SessionID != "s1" {
+		t.Fatalf("unexpected server request: %+v", sr)
+	}
+	if err := br.ServerStream(ctx, sr.SessionID, sr.ID, streamPayload); err != nil {
+		t.Fatalf("stream: %v", err)
+	}
+	if err := br.ServerRespond(ctx, sr.SessionID, sr.ID, respPayload); err != nil {
+		t.Fatalf("respond: %v", err)
+	}
+	se := <-recv
+	if se.Type != TypeStreamEvent || se.ID != sr.ID || string(se.Payload) != string(streamPayload) {
+		t.Fatalf("bad stream event: %+v", se)
+	}
+	rf := <-recv
+	if rf.Type != TypeServerResponse || rf.ID != sr.ID || string(rf.Payload) != string(respPayload) {
+		t.Fatalf("bad server response: %+v", rf)
+	}
+	br.Close()
+}
