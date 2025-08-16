@@ -54,6 +54,19 @@ func newTransportConnector(t transport.Interface, maxInFlight int) *transportCon
 	return &transportConnector{t: t, sem: sem}
 }
 
+var reconnectSchedule = []time.Duration{
+	time.Second, time.Second, time.Second,
+	5 * time.Second, 5 * time.Second, 5 * time.Second,
+	15 * time.Second, 15 * time.Second, 15 * time.Second,
+}
+
+func reconnectDelay(attempt int) time.Duration {
+	if attempt < len(reconnectSchedule) {
+		return reconnectSchedule[attempt]
+	}
+	return 30 * time.Second
+}
+
 func (c *transportConnector) Start(ctx context.Context) error {
 	if err := c.t.Start(ctx); err != nil {
 		return err
@@ -63,8 +76,20 @@ func (c *transportConnector) Start(ctx context.Context) error {
 		setter.SetConnectionLostHandler(func(err error) {
 			logx.Log.Warn().Err(err).Msg("downstream connection lost")
 			go func() {
-				if err := c.t.Start(context.Background()); err != nil {
-					logx.Log.Error().Err(err).Msg("reconnect failed")
+				attempt := 0
+				for {
+					delay := reconnectDelay(attempt)
+					attempt++
+					if attempt > 1 {
+						logx.Log.Warn().Dur("backoff", delay).Msg("reconnecting downstream")
+					}
+					time.Sleep(delay)
+					if err := c.t.Start(context.Background()); err != nil {
+						logx.Log.Error().Err(err).Msg("reconnect failed")
+						continue
+					}
+					logx.Log.Info().Msg("downstream reconnected")
+					return
 				}
 			}()
 		})

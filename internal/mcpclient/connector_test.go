@@ -110,6 +110,9 @@ func (f *fakeCLTransport) GetSessionId() string                                 
 func (f *fakeCLTransport) SetConnectionLostHandler(h func(error))               { f.handler = h }
 
 func TestOnConnectionLostRestart(t *testing.T) {
+	prev := reconnectSchedule
+	reconnectSchedule = []time.Duration{time.Millisecond}
+	defer func() { reconnectSchedule = prev }()
 	ft := &fakeCLTransport{}
 	conn := newTransportConnector(ft, 0)
 	if err := conn.Start(context.Background()); err != nil {
@@ -129,5 +132,52 @@ func TestOnConnectionLostRestart(t *testing.T) {
 			t.Fatalf("reconnect not triggered")
 		case <-time.After(10 * time.Millisecond):
 		}
+	}
+}
+
+type fakeRetryTransport struct {
+	startCount atomic.Int32
+	handler    func(error)
+}
+
+func (f *fakeRetryTransport) Start(context.Context) error {
+	n := f.startCount.Add(1)
+	if n == 1 {
+		return nil
+	}
+	if n <= 3 {
+		return errors.New("fail")
+	}
+	return nil
+}
+
+func (f *fakeRetryTransport) SendRequest(context.Context, transport.JSONRPCRequest) (*transport.JSONRPCResponse, error) {
+	return nil, nil
+}
+
+func (f *fakeRetryTransport) SendNotification(context.Context, mcp.JSONRPCNotification) error {
+	return nil
+}
+func (f *fakeRetryTransport) SetNotificationHandler(func(mcp.JSONRPCNotification)) {}
+func (f *fakeRetryTransport) Close() error                                         { return nil }
+func (f *fakeRetryTransport) GetSessionId() string                                 { return "" }
+func (f *fakeRetryTransport) SetConnectionLostHandler(h func(error))               { f.handler = h }
+
+func TestReconnectBackoff(t *testing.T) {
+	prev := reconnectSchedule
+	reconnectSchedule = []time.Duration{time.Millisecond, time.Millisecond, time.Millisecond}
+	defer func() { reconnectSchedule = prev }()
+	ft := &fakeRetryTransport{}
+	conn := newTransportConnector(ft, 0)
+	if err := conn.Start(context.Background()); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	if ft.handler == nil {
+		t.Fatalf("handler not set")
+	}
+	ft.handler(errors.New("lost"))
+	time.Sleep(10 * time.Millisecond)
+	if ft.startCount.Load() < 4 {
+		t.Fatalf("expected multiple restart attempts, got %d", ft.startCount.Load())
 	}
 }

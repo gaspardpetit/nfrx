@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/coder/websocket"
 	"github.com/mark3labs/mcp-go/client/transport"
 	"github.com/mark3labs/mcp-go/mcp"
 
+	"github.com/gaspardpetit/llamapool/internal/logx"
 	"github.com/gaspardpetit/llamapool/internal/mcpbridge"
 )
 
@@ -70,12 +72,15 @@ func (p *Proxy) handleFrame(ctx context.Context, f mcpbridge.Frame) error {
 	t := sess.conn.Transport()
 	switch f.Type {
 	case mcpbridge.TypeRequest:
+		start := time.Now()
 		var req transport.JSONRPCRequest
 		if err := json.Unmarshal(f.Payload, &req); err != nil {
 			return err
 		}
+		streamCount := 0
 		orig := sess.handler
 		t.SetNotificationHandler(func(n mcp.JSONRPCNotification) {
+			streamCount++
 			b, _ := json.Marshal(n)
 			out := mcpbridge.Frame{Type: mcpbridge.TypeStreamEvent, ID: f.ID, SessionID: f.SessionID, Payload: b}
 			ob, _ := json.Marshal(out)
@@ -87,6 +92,7 @@ func (p *Proxy) handleFrame(ctx context.Context, f mcpbridge.Frame) error {
 			return err
 		}
 		b, _ := json.Marshal(resp)
+		logx.Log.Info().Str("session", f.SessionID).Int("req_bytes", len(f.Payload)).Int("resp_bytes", len(b)).Int("stream_events", streamCount).Dur("duration", time.Since(start)).Msg("mcp request")
 		out := mcpbridge.Frame{Type: mcpbridge.TypeResponse, ID: f.ID, SessionID: f.SessionID, Payload: b}
 		ob, _ := json.Marshal(out)
 		return p.conn.Write(ctx, websocket.MessageText, ob)
@@ -134,6 +140,8 @@ func (p *Proxy) getSession(ctx context.Context, id string) (*sessionState, error
 	t.SetNotificationHandler(handler)
 
 	st := &sessionState{conn: c, handler: handler, pending: map[string]chan json.RawMessage{}}
+
+	logx.Log.Info().Str("session", id).Str("transport", c.Protocol()).Msg("downstream connected")
 
 	if bidir, ok := t.(transport.BidirectionalInterface); ok {
 		bidir.SetRequestHandler(func(ctx context.Context, req transport.JSONRPCRequest) (*transport.JSONRPCResponse, error) {
