@@ -50,7 +50,7 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 	for {
 		SetState("connecting")
 		SetConnectedToServer(false)
-		connected, err := connectAndServe(ctx, cfg, client, statusUpdates)
+		connected, err := connectAndServe(ctx, cancel, cfg, client, statusUpdates)
 		if err == nil || !cfg.Reconnect {
 			return err
 		}
@@ -68,11 +68,11 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 	}
 }
 
-func connectAndServe(ctx context.Context, cfg config.WorkerConfig, client *ollama.Client, statusUpdates <-chan ctrl.StatusUpdateMessage) (bool, error) {
-	connCtx, cancel := context.WithCancel(ctx)
+func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg config.WorkerConfig, client *ollama.Client, statusUpdates <-chan ctrl.StatusUpdateMessage) (bool, error) {
+	connCtx, cancelConn := context.WithCancel(ctx)
 	ws, _, err := websocket.Dial(connCtx, cfg.ServerURL, nil)
 	if err != nil {
-		cancel()
+		cancelConn()
 		SetLastError(err.Error())
 		SetState("error")
 		return false, err
@@ -105,7 +105,7 @@ func connectAndServe(ctx context.Context, cfg config.WorkerConfig, client *ollam
 	}
 	b, _ := json.Marshal(regMsg)
 	if err := ws.Write(connCtx, websocket.MessageText, b); err != nil {
-		cancel()
+		cancelConn()
 		SetLastError(err.Error())
 		SetState("error")
 		return false, err
@@ -118,11 +118,11 @@ func connectAndServe(ctx context.Context, cfg config.WorkerConfig, client *ollam
 		senderWG.Wait()
 		close(sendCh)
 	}()
-	defer cancel()
+	defer cancelConn()
 	reqCancels := make(map[string]context.CancelFunc)
 	var jobMu sync.Mutex
 	go func() {
-		defer cancel()
+		defer cancelConn()
 		for {
 			select {
 			case msg, ok := <-sendCh:
@@ -181,7 +181,8 @@ func connectAndServe(ctx context.Context, cfg config.WorkerConfig, client *ollam
 		if IsDraining() && GetState().CurrentJobs == 0 {
 			SetState("terminating")
 			go func() { _ = ws.Close(websocket.StatusNormalClosure, "drained") }()
-			cancel()
+			cancelConn()
+			cancelAll()
 		}
 	}
 	setDrainCheck(checkDrain)
