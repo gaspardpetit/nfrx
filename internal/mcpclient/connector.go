@@ -29,6 +29,9 @@ type Connector interface {
 	Protocol() string
 	Features() Features
 	Close() error
+	// Transport returns the underlying transport.Interface.
+	// It enables low-level JSON-RPC forwarding without interpretation.
+	Transport() transport.Interface
 }
 
 // transportConnector wraps a transport.Interface to satisfy Connector.
@@ -107,6 +110,7 @@ func (c *transportConnector) DoRPC(ctx context.Context, method string, params an
 func (c *transportConnector) Capabilities() mcp.ServerCapabilities { return c.serverCaps }
 func (c *transportConnector) Protocol() string                     { return c.protocol }
 func (c *transportConnector) Features() Features                   { return c.features }
+func (c *transportConnector) Transport() transport.Interface       { return c.t }
 
 // Constructors for specific transports
 
