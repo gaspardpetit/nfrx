@@ -195,3 +195,10 @@ func TestBridgeServerRequest(t *testing.T) {
 	}
 	br.Close()
 }
+
+func TestBridgeHealthy(t *testing.T) {
+	br := NewBridge("ws://example", 1)
+	if br.Healthy() {
+		t.Fatalf("expected unhealthy")
+	}
+}
