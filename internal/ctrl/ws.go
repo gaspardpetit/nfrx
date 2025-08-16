@@ -117,6 +117,13 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, workerKey string) http.H
 			case "heartbeat":
 				reg.UpdateHeartbeat(wk.ID)
 				metrics.RecordHeartbeat(wk.ID)
+			case "models_update":
+				var m ModelsUpdateMessage
+				if err := json.Unmarshal(msg, &m); err == nil {
+					reg.UpdateModels(wk.ID, m.Models)
+					metrics.UpdateWorkerModels(wk.ID, m.Models)
+					logx.Log.Info().Str("worker_id", wk.ID).Int("model_count", len(m.Models)).Msg("models updated")
+				}
 			case "job_chunk":
 				var m JobChunkMessage
 				if err := json.Unmarshal(msg, &m); err == nil {

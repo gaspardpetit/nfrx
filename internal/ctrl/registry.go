@@ -69,6 +69,20 @@ func (r *Registry) UpdateHeartbeat(id string) {
 	r.mu.Unlock()
 }
 
+func (r *Registry) UpdateModels(id string, models []string) {
+	r.mu.Lock()
+	if w, ok := r.workers[id]; ok {
+		w.Models = make(map[string]bool)
+		for _, m := range models {
+			w.Models[m] = true
+			if _, ok := r.modelFirstSeen[m]; !ok {
+				r.modelFirstSeen[m] = time.Now().Unix()
+			}
+		}
+	}
+	r.mu.Unlock()
+}
+
 func (r *Registry) WorkersForModel(model string) []*Worker {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
