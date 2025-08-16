@@ -55,11 +55,7 @@ func EmbeddingsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg *ctr
 		logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", meta.Model).Msg("dispatch")
 		ch := make(chan interface{}, 16)
 		worker.AddJob(reqID, ch)
-		defer func() {
-			worker.RemoveJob(reqID)
-			_ = recover()
-			close(ch)
-		}()
+		defer worker.RemoveJob(reqID)
 
 		headers := map[string]string{}
 		headers["Content-Type"] = r.Header.Get("Content-Type")

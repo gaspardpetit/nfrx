@@ -56,10 +56,7 @@ func ChatCompletionsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg
 		logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", meta.Model).Bool("stream", meta.Stream).Msg("dispatch")
 		ch := make(chan interface{}, 16)
 		worker.AddJob(reqID, ch)
-		defer func() {
-			worker.RemoveJob(reqID)
-			close(ch)
-		}()
+		defer worker.RemoveJob(reqID)
 
 		headers := map[string]string{}
 		headers["Content-Type"] = r.Header.Get("Content-Type")
