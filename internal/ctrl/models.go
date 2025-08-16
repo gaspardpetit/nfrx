@@ -17,6 +17,7 @@ func (r *Registry) AggregatedModels() []ModelInfo {
 	defer r.mu.RUnlock()
 	m := make(map[string]*ModelInfo)
 	for _, w := range r.workers {
+		w.mu.Lock()
 		for id := range w.Models {
 			info, ok := m[id]
 			if !ok {
@@ -25,6 +26,7 @@ func (r *Registry) AggregatedModels() []ModelInfo {
 			}
 			info.Owners = append(info.Owners, w.Name)
 		}
+		w.mu.Unlock()
 	}
 	var res []ModelInfo
 	for _, info := range m {
@@ -41,9 +43,11 @@ func (r *Registry) AggregatedModel(id string) (ModelInfo, bool) {
 	defer r.mu.RUnlock()
 	var owners []string
 	for _, w := range r.workers {
+		w.mu.Lock()
 		if w.Models[id] {
 			owners = append(owners, w.Name)
 		}
+		w.mu.Unlock()
 	}
 	if len(owners) == 0 {
 		return ModelInfo{}, false

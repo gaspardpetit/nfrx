@@ -34,11 +34,11 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 
 	interval := cfg.ModelPollInterval
 	if interval <= 0 {
-		interval = time.Minute
+		interval = 20 * time.Second
 	}
 
 	statusUpdates := make(chan ctrl.StatusUpdateMessage, 16)
-	startOllamaMonitor(ctx, cfg, client, statusUpdates, 20*time.Second)
+	startOllamaMonitor(ctx, cfg, client, statusUpdates, interval)
 
 	if cfg.StatusAddr != "" {
 		if _, err := StartStatusServer(ctx, cfg.StatusAddr, cfg.ConfigFile, cfg.DrainTimeout, cancel); err != nil {

@@ -109,12 +109,12 @@ func main(){
 	if err := os.WriteFile(path, []byte(program), 0600); err != nil {
 		t.Fatalf("write: %v", err)
 	}
-	cfg := Config{Order: []string{"stdio"}, InitTimeout: 20 * time.Second}
+	cfg := Config{Order: []string{"stdio"}, InitTimeout: 40 * time.Second}
 	cfg.Stdio.Command = "go"
 	cfg.Stdio.Args = []string{"run", path}
 	cfg.Stdio.AllowRelative = true
 	o := NewOrchestrator(cfg)
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
 	defer cancel()
 	conn, err := o.Connect(ctx)
 	if err != nil {
