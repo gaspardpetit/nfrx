@@ -35,3 +35,4 @@ go.work.sum
 desktop/windows/**/bin/
 desktop/windows/**/obj/
 **/.vs/
+.DS_Store
