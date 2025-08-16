@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	sdkserver "github.com/mark3labs/mcp-go/server"
 )
 
 func TestInitialize(t *testing.T) {
@@ -65,4 +67,33 @@ func TestListenSSE(t *testing.T) {
 		t.Fatalf("expected sse, got %s", ct)
 	}
 	_ = resp2.Body.Close()
+}
+
+func TestInitializeStateless(t *testing.T) {
+	srv := sdkserver.NewMCPServer("test", "1.0", sdkserver.WithToolCapabilities(false))
+	handler := sdkserver.NewStreamableHTTPServer(srv, sdkserver.WithStateLess(true))
+	mux := http.NewServeMux()
+	mux.Handle("/mcp", handler)
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+
+	reqBody := []byte(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"1.0"}}`)
+	resp, err := http.Post(ts.URL+"/mcp", "application/json", bytes.NewReader(reqBody))
+	if err != nil {
+		t.Fatalf("post: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status %d", resp.StatusCode)
+	}
+	if sid := resp.Header.Get("Mcp-Session-Id"); sid != "" {
+		t.Fatalf("unexpected session id %q", sid)
+	}
+	var js map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&js); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if js["result"] == nil {
+		t.Fatalf("missing result")
+	}
 }

@@ -84,6 +84,27 @@ func TestCompatibility_StreamableHTTP_SSE(t *testing.T) {
 	}
 }
 
+// TestCompatibility_StreamableHTTP_Stateless works with stateless servers.
+func TestCompatibility_StreamableHTTP_Stateless(t *testing.T) {
+	mcpServer := server.NewMCPServer("test", "1.0", server.WithToolCapabilities(false))
+	httpServer := server.NewTestStreamableHTTPServer(mcpServer, server.WithStateLess(true))
+	defer httpServer.Close()
+
+	cfg := Config{Order: []string{"http"}, InitTimeout: 5 * time.Second}
+	cfg.HTTP.URL = httpServer.URL
+
+	conn, err := NewOrchestrator(cfg).Connect(context.Background())
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	defer func() { _ = conn.Close() }()
+
+	var res mcp.ListToolsResult
+	if err := conn.DoRPC(context.Background(), string(mcp.MethodToolsList), mcp.ListToolsRequest{}, &res); err != nil {
+		t.Fatalf("list tools: %v", err)
+	}
+}
+
 // TestCompatibility_ServerPush verifies push notifications over SSE GET.
 func TestCompatibility_ServerPush(t *testing.T) {
 	t.Skip("server push scenario not yet implemented")
