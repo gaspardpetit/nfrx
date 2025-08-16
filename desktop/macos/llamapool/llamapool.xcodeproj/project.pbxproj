@@ -291,7 +291,7 @@
 		D9CBDBA712C2439483B0194F53AD3372 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Distribution";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = 4L476C5647;
 				INFOPLIST_FILE = llamapool/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -308,7 +308,7 @@
 		ECD3E064191B426EAC726FEBF5103A6B /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Distribution";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = 4L476C5647;
 				INFOPLIST_FILE = llamapool/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
