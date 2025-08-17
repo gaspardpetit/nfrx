@@ -7,6 +7,7 @@ import (
 
 	"github.com/gaspardpetit/llamapool/api/generated"
 	"github.com/gaspardpetit/llamapool/internal/ctrl"
+	"github.com/gaspardpetit/llamapool/internal/mcp"
 )
 
 type HealthChecker interface {
@@ -16,6 +17,7 @@ type HealthChecker interface {
 type API struct {
 	Reg     *ctrl.Registry
 	Metrics *ctrl.MetricsRegistry
+	MCP     *mcp.Registry
 	Sched   ctrl.Scheduler
 	Timeout time.Duration
 	Health  HealthChecker
@@ -52,11 +54,11 @@ func (a *API) GetV1ModelsId(w http.ResponseWriter, r *http.Request, id string) {
 }
 
 func (a *API) GetApiState(w http.ResponseWriter, r *http.Request) {
-	(&StateHandler{Metrics: a.Metrics}).GetState(w, r)
+	(&StateHandler{Metrics: a.Metrics, MCP: a.MCP}).GetState(w, r)
 }
 
 func (a *API) GetApiStateStream(w http.ResponseWriter, r *http.Request) {
-	(&StateHandler{Metrics: a.Metrics}).GetStateStream(w, r)
+	(&StateHandler{Metrics: a.Metrics, MCP: a.MCP}).GetStateStream(w, r)
 }
 
 func (a *API) GetApiWorkersConnect(w http.ResponseWriter, r *http.Request) {

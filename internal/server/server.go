@@ -12,11 +12,12 @@ import (
 	"github.com/gaspardpetit/llamapool/internal/api"
 	"github.com/gaspardpetit/llamapool/internal/config"
 	"github.com/gaspardpetit/llamapool/internal/ctrl"
+	"github.com/gaspardpetit/llamapool/internal/mcp"
 	"github.com/gaspardpetit/llamapool/internal/mcpserver"
 )
 
 // New constructs the HTTP handler for the server.
-func New(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler, cfg config.ServerConfig) http.Handler {
+func New(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler, mcpReg *mcp.Registry, cfg config.ServerConfig) http.Handler {
 	r := chi.NewRouter()
 	if len(cfg.AllowedOrigins) > 0 {
 		r.Use(cors.Handler(cors.Options{
@@ -29,7 +30,7 @@ func New(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler
 		r.Use(m)
 	}
 
-	impl := &api.API{Reg: reg, Metrics: metrics, Sched: sched, Timeout: cfg.RequestTimeout}
+	impl := &api.API{Reg: reg, Metrics: metrics, MCP: mcpReg, Sched: sched, Timeout: cfg.RequestTimeout}
 	wrapper := generated.ServerInterfaceWrapper{Handler: impl}
 
 	r.Route("/api/client", func(r chi.Router) {
@@ -55,6 +56,10 @@ func New(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler
 		apiGroup.Get("/state", wrapper.GetApiState)
 		apiGroup.Get("/state/stream", wrapper.GetApiStateStream)
 	})
+	if mcpReg != nil {
+		r.Post("/mcp/{client_id}", mcpReg.HTTPHandler())
+		r.Handle("/ws/relay", mcpReg.WSHandler())
+	}
 	r.Mount("/mcp", mcpserver.NewHandler())
 	r.Handle("/api/workers/connect", ctrl.WSHandler(reg, metrics, cfg.WorkerKey))
 

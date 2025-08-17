@@ -17,6 +17,7 @@ import (
 	"github.com/gaspardpetit/llamapool/internal/config"
 	"github.com/gaspardpetit/llamapool/internal/ctrl"
 	"github.com/gaspardpetit/llamapool/internal/logx"
+	"github.com/gaspardpetit/llamapool/internal/mcp"
 	"github.com/gaspardpetit/llamapool/internal/metrics"
 	"github.com/gaspardpetit/llamapool/internal/server"
 )
@@ -54,7 +55,8 @@ func main() {
 	metrics.Register(prometheus.DefaultRegisterer)
 	metrics.SetServerBuildInfo(version, buildSHA, buildDate)
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	handler := server.New(reg, metricsReg, sched, cfg)
+	mcpReg := mcp.NewRegistry()
+	handler := server.New(reg, metricsReg, sched, mcpReg, cfg)
 	srv := &http.Server{Addr: fmt.Sprintf(":%d", cfg.Port), Handler: handler}
 	var metricsSrv *http.Server
 	if cfg.MetricsPort != cfg.Port {

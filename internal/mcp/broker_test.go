@@ -42,7 +42,7 @@ func TestHTTPHandlerConcurrencyLimit(t *testing.T) {
 	reg := NewRegistry()
 	reg.allowed = map[string]bool{"client": true}
 	reg.maxConc = 1
-	reg.relays["client"] = &Relay{pending: map[string]chan Frame{}, inflight: 1}
+	reg.relays["client"] = &Relay{pending: map[string]chan Frame{}, inflight: 1, methods: map[string]int{}, sessions: map[string]sessionInfo{}}
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/mcp/client", bytes.NewReader([]byte(`{"jsonrpc":"2.0","id":1,"method":"initialize"}`)))
 	rctx := chi.NewRouteContext()

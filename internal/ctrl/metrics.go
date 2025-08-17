@@ -77,12 +77,36 @@ type ModelCount struct {
 	Workers int    `json:"workers"`
 }
 
+// MCPClientSnapshot represents a connected MCP relay client.
+type MCPClientSnapshot struct {
+	ID        string         `json:"id"`
+	Status    string         `json:"status"`
+	Inflight  int            `json:"inflight"`
+	Functions map[string]int `json:"functions"`
+}
+
+// MCPSessionSnapshot describes an active MCP session.
+type MCPSessionSnapshot struct {
+	ID         string    `json:"id"`
+	ClientID   string    `json:"client_id"`
+	Method     string    `json:"method"`
+	StartedAt  time.Time `json:"started_at"`
+	DurationMs uint64    `json:"duration_ms"`
+}
+
+// MCPState aggregates MCP relay and session information.
+type MCPState struct {
+	Clients  []MCPClientSnapshot  `json:"clients"`
+	Sessions []MCPSessionSnapshot `json:"sessions"`
+}
+
 // StateResponse is the top-level snapshot returned to clients.
 type StateResponse struct {
 	Server         ServerSnapshot   `json:"server"`
 	WorkersSummary WorkersSummary   `json:"workers_summary"`
 	Models         []ModelCount     `json:"models"`
 	Workers        []WorkerSnapshot `json:"workers"`
+	MCP            MCPState         `json:"mcp"`
 }
 
 // MetricsRegistry maintains metrics about the server and workers.
