@@ -12,6 +12,7 @@ import (
 	"github.com/gaspardpetit/llamapool/internal/api"
 	"github.com/gaspardpetit/llamapool/internal/config"
 	"github.com/gaspardpetit/llamapool/internal/ctrl"
+	"github.com/gaspardpetit/llamapool/internal/mcp"
 	"github.com/gaspardpetit/llamapool/internal/mcpserver"
 )
 
@@ -55,6 +56,9 @@ func New(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler
 		apiGroup.Get("/state", wrapper.GetApiState)
 		apiGroup.Get("/state/stream", wrapper.GetApiStateStream)
 	})
+	broker := mcp.NewRegistry()
+	r.Handle("/ws/relay", broker.WSHandler())
+	r.Handle("/mcp/{client_id}", broker.HTTPHandler())
 	r.Mount("/mcp", mcpserver.NewHandler())
 	r.Handle("/api/workers/connect", ctrl.WSHandler(reg, metrics, cfg.WorkerKey))
 
