@@ -116,7 +116,7 @@ func (r *Registry) WSHandler() http.HandlerFunc {
 		r.mu.Lock()
 		r.relays[clientID] = relay
 		r.mu.Unlock()
-		ctx := req.Context()
+		ctx := context.Background()
 		go r.readPump(ctx, clientID, relay)
 		go r.pingLoop(ctx, clientID, relay)
 	}
