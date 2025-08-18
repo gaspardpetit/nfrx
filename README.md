@@ -20,9 +20,13 @@ In addition to LLM workers, llamapool now supports relaying [Model Context Proto
 
 The server exposes a Streamable HTTP MCP endpoint at `POST /mcp` and forwards requests verbatim over WebSocket to a connected `llamapool-mcp` process. The legacy broker endpoint `POST /mcp/{client_id}` remains available. The broker enforces request/response size limits, per-client concurrency caps, and 30s call timeouts; cancellation is not yet implemented. The client negotiates protocol versions and server capabilities, and exposes tunables such as `MCP_PROTOCOL_VERSION`, `MCP_HTTP_TIMEOUT`, and `MCP_MAX_INFLIGHT` for advanced deployments.
 
+Server-initiated JSON-RPC requests (for example sampling calls) are forwarded across the WebSocket bridge and relayed back to clients, preserving full protocol semantics.
+
 The new `llamapool-mcp` binary connects a private MCP provider to the public `llamapool-server`, allowing clients to invoke MCP methods via `POST /mcp/{client_id}`. The broker enforces request/response size limits, per-client concurrency caps, and 30s call timeouts; cancellation is not yet implemented. The client negotiates protocol versions and server capabilities, and exposes tunables such as `MCP_PROTOCOL_VERSION`, `MCP_HTTP_TIMEOUT`, and `MCP_MAX_INFLIGHT` for advanced deployments. By default `llamapool-mcp` requires absolute stdio commands and verifies TLS certificates; set `MCP_STDIO_ALLOW_RELATIVE=true` or `MCP_HTTP_INSECURE_SKIP_VERIFY=true` to relax these checks, and `MCP_OAUTH_TOKEN_FILE` to securely cache OAuth tokens on disk.
 
 `llamapool-mcp` reads configuration from a YAML file when `MCP_CONFIG_FILE` is set. Values in the file—such as transport order, protocol version preference, or stdio working directory—are used as defaults and can be overridden by environment variables or CLI flags (e.g. `--mcp-http-url`, `--mcp-stdio-workdir`).
+
+For transport configuration, common errors, and developer guidance see [doc/mcpclient.md](doc/mcpclient.md).
 
 A typical deployment looks like this:
 
@@ -131,7 +135,7 @@ The Windows service runs `llamapool-worker` with the `--reconnect` flag and shut
   - Swagger UI: `GET /api/client/`
   - OpenAPI schema: `GET /api/client/openapi.json`
   - Update schema: edit `api/openapi.yaml` then run `make generate`
-- Web dashboard: `GET /state` (real-time view of workers)
+- Web dashboard: `GET /state` (real-time view of workers with names, status indicators and sortable columns)
 
 
 ## Security
@@ -139,6 +143,7 @@ The Windows service runs `llamapool-worker` with the `--reconnect` flag and shut
 - **Client authentication**: `API_KEY` required for `/api` and `/v1` routes via `Authorization: Bearer <API_KEY>`.
 - **Worker authentication**: `WORKER_KEY` required for worker WebSocket registration.
 - **Transport**: run behind TLS (HTTPS/WSS) via reverse proxy or terminate TLS in-process.
+- **CORS**: cross-origin requests are denied unless explicitly allowed via `ALLOWED_ORIGINS` (comma separated) or the `--allowed-origins` flag.
 
 - **Service isolation**: Debian packages run the daemons as the dedicated `llamapool` user with systemd-managed directories
   (`/var/lib/llamapool`, `/var/cache/llamapool`, `/run/llamapool`) and hardening flags like `NoNewPrivileges=true` and
@@ -285,6 +290,7 @@ go run .\cmd\llamapool-worker
 ```
 
 By default the worker exits if the server is unavailable. Add `-r` or `--reconnect` to keep retrying with backoff (1s×3, 5s×3, 15s×3, then every 30s).
+When enabled, the worker also retries its Ollama backend and remains connected to the server in a `not_ready` state with zero concurrency until the backend becomes available.
 
 
 
@@ -328,8 +334,11 @@ progress, the worker exits immediately; otherwise it waits up to
 Send `SIGTERM` again to terminate immediately. Set `--drain-timeout=0` to exit
 without waiting or `--drain-timeout=-1` to wait indefinitely.
 
-The worker periodically checks the local Ollama instance so that
+The worker polls the local Ollama instance (default every 1m) so that
 `connected_to_ollama` and `models` stay current in the `/status` output.
+If the model list changes, the worker proactively notifies the server so
+`/v1/models` reflects the latest information. Configure the poll interval
+with `MODEL_POLL_INTERVAL` or `--model-poll-interval`.
 
 Control endpoints require an `X-Auth-Token` header. The token is generated on
 first run and stored alongside the worker config as `worker.token`.
@@ -397,6 +406,8 @@ The server also exposes a basic health check:
 ```bash
 curl http://localhost:8080/healthz
 ```
+
+The endpoint reports `503 Service Unavailable` if no MCP session is ready.
 
 For server administration and monitoring:
 

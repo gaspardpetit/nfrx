@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/cors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/gaspardpetit/llamapool/api/generated"
@@ -17,6 +18,13 @@ import (
 // New constructs the HTTP handler for the server.
 func New(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler, cfg config.ServerConfig) http.Handler {
 	r := chi.NewRouter()
+	if len(cfg.AllowedOrigins) > 0 {
+		r.Use(cors.Handler(cors.Options{
+			AllowedOrigins: cfg.AllowedOrigins,
+			AllowedMethods: []string{"GET", "POST", "OPTIONS"},
+			AllowedHeaders: []string{"*"},
+		}))
+	}
 	for _, m := range api.MiddlewareChain() {
 		r.Use(m)
 	}

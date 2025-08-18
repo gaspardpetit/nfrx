@@ -68,3 +68,33 @@ func TestStatePage(t *testing.T) {
 		t.Fatalf("expected text/html content type, got %s", ct)
 	}
 }
+
+func TestCORSAllowedOrigins(t *testing.T) {
+	reg := ctrl.NewRegistry()
+	metricsReg := ctrl.NewMetricsRegistry("test", "", "")
+	sched := &ctrl.LeastBusyScheduler{Reg: reg}
+	cfg := config.ServerConfig{Port: 8080, RequestTimeout: time.Second, AllowedOrigins: []string{"https://example.com"}}
+	h := New(reg, metricsReg, sched, cfg)
+	ts := httptest.NewServer(h)
+	defer ts.Close()
+
+	req, _ := http.NewRequest("GET", ts.URL+"/healthz", nil)
+	req.Header.Set("Origin", "https://example.com")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("do request: %v", err)
+	}
+	if ao := resp.Header.Get("Access-Control-Allow-Origin"); ao != "https://example.com" {
+		t.Fatalf("expected allowed origin header, got %q", ao)
+	}
+
+	req2, _ := http.NewRequest("GET", ts.URL+"/healthz", nil)
+	req2.Header.Set("Origin", "https://evil.com")
+	resp2, err := http.DefaultClient.Do(req2)
+	if err != nil {
+		t.Fatalf("do request: %v", err)
+	}
+	if ao := resp2.Header.Get("Access-Control-Allow-Origin"); ao != "" {
+		t.Fatalf("expected no allowed origin header, got %q", ao)
+	}
+}

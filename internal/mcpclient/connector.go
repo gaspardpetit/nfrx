@@ -28,7 +28,11 @@ type Connector interface {
 	Capabilities() mcp.ServerCapabilities
 	Protocol() string
 	Features() Features
+	SessionID() string
 	Close() error
+	// Transport returns the underlying transport.Interface.
+	// It enables low-level JSON-RPC forwarding without interpretation.
+	Transport() transport.Interface
 }
 
 // transportConnector wraps a transport.Interface to satisfy Connector.
@@ -38,6 +42,7 @@ type transportConnector struct {
 	serverCaps mcp.ServerCapabilities
 	protocol   string
 	features   Features
+	sessionID  string
 	sem        chan struct{}
 }
 
@@ -49,8 +54,47 @@ func newTransportConnector(t transport.Interface, maxInFlight int) *transportCon
 	return &transportConnector{t: t, sem: sem}
 }
 
+var reconnectSchedule = []time.Duration{
+	time.Second, time.Second, time.Second,
+	5 * time.Second, 5 * time.Second, 5 * time.Second,
+	15 * time.Second, 15 * time.Second, 15 * time.Second,
+}
+
+func reconnectDelay(attempt int) time.Duration {
+	if attempt < len(reconnectSchedule) {
+		return reconnectSchedule[attempt]
+	}
+	return 30 * time.Second
+}
+
 func (c *transportConnector) Start(ctx context.Context) error {
-	return c.t.Start(ctx)
+	if err := c.t.Start(ctx); err != nil {
+		return err
+	}
+	type connectionLostSetter interface{ SetConnectionLostHandler(func(error)) }
+	if setter, ok := c.t.(connectionLostSetter); ok {
+		setter.SetConnectionLostHandler(func(err error) {
+			logx.Log.Warn().Err(err).Msg("downstream connection lost")
+			go func() {
+				attempt := 0
+				for {
+					delay := reconnectDelay(attempt)
+					attempt++
+					if attempt > 1 {
+						logx.Log.Warn().Dur("backoff", delay).Msg("reconnecting downstream")
+					}
+					time.Sleep(delay)
+					if err := c.t.Start(context.Background()); err != nil {
+						logx.Log.Error().Err(err).Msg("reconnect failed")
+						continue
+					}
+					logx.Log.Info().Msg("downstream reconnected")
+					return
+				}
+			}()
+		})
+	}
+	return nil
 }
 
 func (c *transportConnector) Close() error { return c.t.Close() }
@@ -75,6 +119,7 @@ func (c *transportConnector) Initialize(ctx context.Context, req mcp.InitializeR
 	c.serverCaps = res.Capabilities
 	c.protocol = res.ProtocolVersion
 	c.features = deriveFeatures(res.Capabilities)
+	c.sessionID = c.t.GetSessionId()
 	// best effort notification
 	_ = c.t.SendNotification(ctx, mcp.JSONRPCNotification{JSONRPC: mcp.JSONRPC_VERSION, Notification: mcp.Notification{Method: "notifications/initialized"}})
 	return &res, nil
@@ -107,6 +152,8 @@ func (c *transportConnector) DoRPC(ctx context.Context, method string, params an
 func (c *transportConnector) Capabilities() mcp.ServerCapabilities { return c.serverCaps }
 func (c *transportConnector) Protocol() string                     { return c.protocol }
 func (c *transportConnector) Features() Features                   { return c.features }
+func (c *transportConnector) SessionID() string                    { return c.sessionID }
+func (c *transportConnector) Transport() transport.Interface       { return c.t }
 
 // Constructors for specific transports
 

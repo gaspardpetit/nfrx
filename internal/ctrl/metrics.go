@@ -1,6 +1,7 @@
 package ctrl
 
 import (
+	"sort"
 	"sync"
 	"time"
 )
@@ -12,6 +13,7 @@ const (
 	StatusConnected WorkerStatus = "connected"
 	StatusWorking   WorkerStatus = "working"
 	StatusIdle      WorkerStatus = "idle"
+	StatusNotReady  WorkerStatus = "not_ready"
 	StatusGone      WorkerStatus = "gone"
 )
 
@@ -26,6 +28,7 @@ type PerModelStats struct {
 // WorkerSnapshot represents a snapshot of worker metrics.
 type WorkerSnapshot struct {
 	ID                string                   `json:"id"`
+	Name              string                   `json:"name"`
 	Status            WorkerStatus             `json:"status"`
 	ConnectedAt       time.Time                `json:"connected_at"`
 	LastHeartbeat     time.Time                `json:"last_heartbeat"`
@@ -33,6 +36,7 @@ type WorkerSnapshot struct {
 	BuildSHA          string                   `json:"build_sha,omitempty"`
 	BuildDate         string                   `json:"build_date,omitempty"`
 	ModelsSupported   []string                 `json:"models_supported"`
+	MaxConcurrency    int                      `json:"max_concurrency"`
 	ProcessedTotal    uint64                   `json:"processed_total"`
 	ProcessingMsTotal uint64                   `json:"processing_ms_total"`
 	AvgProcessingMs   float64                  `json:"avg_processing_ms"`
@@ -63,6 +67,7 @@ type WorkersSummary struct {
 	Connected int `json:"connected"`
 	Working   int `json:"working"`
 	Idle      int `json:"idle"`
+	NotReady  int `json:"not_ready"`
 	Gone      int `json:"gone"`
 }
 
@@ -99,6 +104,7 @@ type MetricsRegistry struct {
 
 type workerMetrics struct {
 	id              string
+	name            string
 	status          WorkerStatus
 	connectedAt     time.Time
 	lastHeartbeat   time.Time
@@ -106,6 +112,7 @@ type workerMetrics struct {
 	buildSHA        string
 	buildDate       string
 	modelsSupported []string
+	maxConcurrency  int
 
 	processedTotal    uint64
 	processingMsTotal uint64
@@ -132,7 +139,7 @@ func NewMetricsRegistry(serverVersion, serverSHA, serverDate string) *MetricsReg
 }
 
 // UpsertWorker registers or updates a worker.
-func (m *MetricsRegistry) UpsertWorker(id, version, buildSHA, buildDate string, models []string) {
+func (m *MetricsRegistry) UpsertWorker(id, name, version, buildSHA, buildDate string, maxConcurrency int, models []string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	w, ok := m.workers[id]
@@ -140,14 +147,23 @@ func (m *MetricsRegistry) UpsertWorker(id, version, buildSHA, buildDate string, 
 		w = &workerMetrics{id: id, connectedAt: time.Now(), perModel: make(map[string]*PerModelStats)}
 		m.workers[id] = w
 	}
+	w.name = name
 	w.version = version
 	w.buildSHA = buildSHA
 	w.buildDate = buildDate
 	w.modelsSupported = models
+	w.maxConcurrency = maxConcurrency
 	w.lastHeartbeat = time.Now()
 	if w.status == "" {
 		w.status = StatusConnected
 	}
+}
+
+// RemoveWorker deletes a worker from the registry.
+func (m *MetricsRegistry) RemoveWorker(id string) {
+	m.mu.Lock()
+	delete(m.workers, id)
+	m.mu.Unlock()
 }
 
 // SetWorkerStatus sets the status of a worker.
@@ -159,11 +175,31 @@ func (m *MetricsRegistry) SetWorkerStatus(id string, status WorkerStatus) {
 	m.mu.Unlock()
 }
 
+// UpdateWorker updates a worker's models and max concurrency.
+func (m *MetricsRegistry) UpdateWorker(id string, maxConcurrency int, models []string) {
+	m.mu.Lock()
+	if w, ok := m.workers[id]; ok {
+		w.maxConcurrency = maxConcurrency
+		if models != nil {
+			w.modelsSupported = models
+		}
+	}
+	m.mu.Unlock()
+}
+
 // RecordHeartbeat updates the last heartbeat time for a worker.
 func (m *MetricsRegistry) RecordHeartbeat(id string) {
 	m.mu.Lock()
 	if w, ok := m.workers[id]; ok {
 		w.lastHeartbeat = time.Now()
+	}
+	m.mu.Unlock()
+}
+
+func (m *MetricsRegistry) UpdateWorkerModels(id string, models []string) {
+	m.mu.Lock()
+	if w, ok := m.workers[id]; ok {
+		w.modelsSupported = models
 	}
 	m.mu.Unlock()
 }
@@ -276,7 +312,14 @@ func (m *MetricsRegistry) Snapshot() StateResponse {
 	}
 
 	modelWorkers := make(map[string]int)
+	workers := make([]*workerMetrics, 0, len(m.workers))
 	for _, w := range m.workers {
+		workers = append(workers, w)
+	}
+	sort.Slice(workers, func(i, j int) bool {
+		return workers[i].connectedAt.Before(workers[j].connectedAt)
+	})
+	for _, w := range workers {
 		switch w.status {
 		case StatusConnected:
 			resp.WorkersSummary.Connected++
@@ -284,8 +327,8 @@ func (m *MetricsRegistry) Snapshot() StateResponse {
 			resp.WorkersSummary.Working++
 		case StatusIdle:
 			resp.WorkersSummary.Idle++
-		case StatusGone:
-			resp.WorkersSummary.Gone++
+		case StatusNotReady:
+			resp.WorkersSummary.NotReady++
 		}
 		for _, mname := range w.modelsSupported {
 			modelWorkers[mname]++
@@ -300,6 +343,7 @@ func (m *MetricsRegistry) Snapshot() StateResponse {
 		}
 		snapshot := WorkerSnapshot{
 			ID:                w.id,
+			Name:              w.name,
 			Status:            w.status,
 			ConnectedAt:       w.connectedAt,
 			LastHeartbeat:     w.lastHeartbeat,
@@ -307,6 +351,7 @@ func (m *MetricsRegistry) Snapshot() StateResponse {
 			BuildSHA:          w.buildSHA,
 			BuildDate:         w.buildDate,
 			ModelsSupported:   append([]string(nil), w.modelsSupported...),
+			MaxConcurrency:    w.maxConcurrency,
 			ProcessedTotal:    w.processedTotal,
 			ProcessingMsTotal: w.processingMsTotal,
 			AvgProcessingMs:   avg,
@@ -321,8 +366,13 @@ func (m *MetricsRegistry) Snapshot() StateResponse {
 		resp.Workers = append(resp.Workers, snapshot)
 	}
 
-	for name, count := range modelWorkers {
-		resp.Models = append(resp.Models, ModelCount{Name: name, Workers: count})
+	modelNames := make([]string, 0, len(modelWorkers))
+	for name := range modelWorkers {
+		modelNames = append(modelNames, name)
+	}
+	sort.Strings(modelNames)
+	for _, name := range modelNames {
+		resp.Models = append(resp.Models, ModelCount{Name: name, Workers: modelWorkers[name]})
 	}
 
 	return resp

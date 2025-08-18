@@ -15,7 +15,7 @@ import (
 
 func TestGetState(t *testing.T) {
 	metricsReg := ctrl.NewMetricsRegistry("v", "sha", "date")
-	metricsReg.UpsertWorker("w1", "1", "a", "d", []string{"m"})
+	metricsReg.UpsertWorker("w1", "w1", "1", "a", "d", 1, []string{"m"})
 	metricsReg.SetWorkerStatus("w1", ctrl.StatusConnected)
 	metricsReg.RecordJobStart("w1")
 	metricsReg.RecordJobEnd("w1", "m", 50*time.Millisecond, 5, 7, true, "")
@@ -30,6 +30,9 @@ func TestGetState(t *testing.T) {
 	}
 	if len(resp.Workers) != 1 || resp.Server.JobsCompletedTotal != 1 {
 		t.Fatalf("bad response %+v", resp)
+	}
+	if resp.Workers[0].Name != "w1" {
+		t.Fatalf("expected worker name")
 	}
 }
 

@@ -48,10 +48,7 @@ func RelayGenerateStream(ctx context.Context, reg *ctrl.Registry, metricsReg *ct
 	logx.Log.Info().Str("request_id", reqID).Str("job_id", jobID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Msg("dispatch")
 	ch := make(chan interface{}, 16)
 	worker.AddJob(jobID, ch)
-	defer func() {
-		worker.RemoveJob(jobID)
-		close(ch)
-	}()
+	defer worker.RemoveJob(jobID)
 
 	select {
 	case worker.Send <- ctrl.JobRequestMessage{Type: "job_request", JobID: jobID, Endpoint: "generate", Payload: req}:
@@ -179,10 +176,7 @@ func RelayGenerateOnce(ctx context.Context, reg *ctrl.Registry, metricsReg *ctrl
 	logx.Log.Info().Str("request_id", reqID).Str("job_id", jobID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Msg("dispatch")
 	ch := make(chan interface{}, 16)
 	worker.AddJob(jobID, ch)
-	defer func() {
-		worker.RemoveJob(jobID)
-		close(ch)
-	}()
+	defer worker.RemoveJob(jobID)
 
 	select {
 	case worker.Send <- ctrl.JobRequestMessage{Type: "job_request", JobID: jobID, Endpoint: "generate", Payload: req}:

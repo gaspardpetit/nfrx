@@ -76,7 +76,12 @@ func (o *Orchestrator) Connect(ctx context.Context) (Connector, error) {
 		if conn.Protocol() != version {
 			o.log.Warn().Str("transport", name).Str("server_protocol", conn.Protocol()).Str("client_protocol", version).Msg("protocol downgraded")
 		}
-		o.log.Info().Str("transport", name).Msg("connected")
+		o.log.Info().
+			Str("transport", name).
+			Str("session", conn.SessionID()).
+			Str("protocol", conn.Protocol()).
+			Interface("capabilities", conn.Capabilities()).
+			Msg("connected")
 		return conn, nil
 	}
 	return nil, errors.Join(errs...)

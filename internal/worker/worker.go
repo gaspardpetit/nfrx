@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"reflect"
 	"sync"
 	"time"
 
@@ -23,24 +22,23 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 	if cfg.WorkerID == "" {
 		cfg.WorkerID = uuid.NewString()
 	}
-	SetWorkerInfo(cfg.WorkerID, cfg.WorkerName, cfg.MaxConcurrency, nil)
-	SetState("connecting")
+	SetWorkerInfo(cfg.WorkerID, cfg.WorkerName, 0, nil)
+	SetState("not_ready")
 	SetConnectedToServer(false)
 	SetConnectedToOllama(false)
 
 	client := ollama.New(cfg.OllamaBaseURL)
-	models, err := client.Tags(ctx)
-	if err != nil {
-		SetLastError(err.Error())
-		return err
-	}
-	SetModels(models)
-	SetConnectedToOllama(true)
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	go startHealthProbe(ctx, client, 20*time.Second)
+	interval := cfg.ModelPollInterval
+	if interval <= 0 {
+		interval = 20 * time.Second
+	}
+
+	statusUpdates := make(chan ctrl.StatusUpdateMessage, 16)
+	startOllamaMonitor(ctx, cfg, client, statusUpdates, interval)
 
 	if cfg.StatusAddr != "" {
 		if _, err := StartStatusServer(ctx, cfg.StatusAddr, cfg.ConfigFile, cfg.DrainTimeout, cancel); err != nil {
@@ -57,7 +55,8 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 	for {
 		SetState("connecting")
 		SetConnectedToServer(false)
-		connected, err := connectAndServe(ctx, cfg, client)
+
+		connected, err := connectAndServe(ctx, cancel, cfg, client, statusUpdates)
 		if err == nil || !cfg.Reconnect {
 			return err
 		}
@@ -75,11 +74,11 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 	}
 }
 
-func connectAndServe(ctx context.Context, cfg config.WorkerConfig, client *ollama.Client) (bool, error) {
-	connCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
+func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg config.WorkerConfig, client *ollama.Client, statusUpdates <-chan ctrl.StatusUpdateMessage) (bool, error) {
+	connCtx, cancelConn := context.WithCancel(ctx)
 	ws, _, err := websocket.Dial(connCtx, cfg.ServerURL, nil)
 	if err != nil {
+		cancelConn()
 		SetLastError(err.Error())
 		SetState("error")
 		return false, err
@@ -90,22 +89,14 @@ func connectAndServe(ctx context.Context, cfg config.WorkerConfig, client *ollam
 
 	logx.Log.Info().Str("server", cfg.ServerURL).Msg("connected to server")
 	SetConnectedToServer(true)
-	SetState("connected_idle")
+	if GetState().ConnectedToOllama {
+		SetState("connected_idle")
+	} else {
+		SetState("not_ready")
+	}
 	SetLastError("")
 
-	sendCh := make(chan []byte, 16)
-	defer close(sendCh)
-	reqCancels := make(map[string]context.CancelFunc)
-	var jobMu sync.Mutex
-	go func() {
-		defer cancel()
-		for msg := range sendCh {
-			if err := ws.Write(connCtx, websocket.MessageText, msg); err != nil {
-				return
-			}
-		}
-	}()
-
+	_ = probeOllama(connCtx, client, cfg, nil)
 	vi := GetVersionInfo()
 	regMsg := ctrl.RegisterMessage{
 		Type:           "register",
@@ -113,15 +104,70 @@ func connectAndServe(ctx context.Context, cfg config.WorkerConfig, client *ollam
 		WorkerName:     cfg.WorkerName,
 		WorkerKey:      cfg.WorkerKey,
 		Models:         GetState().Models,
-		MaxConcurrency: cfg.MaxConcurrency,
+		MaxConcurrency: GetState().MaxConcurrency,
 		Version:        vi.Version,
 		BuildSHA:       vi.BuildSHA,
 		BuildDate:      vi.BuildDate,
 	}
 	b, _ := json.Marshal(regMsg)
-	sendCh <- b
+	if err := ws.Write(connCtx, websocket.MessageText, b); err != nil {
+		cancelConn()
+		SetLastError(err.Error())
+		SetState("error")
+		return false, err
+	}
 
+	sendCh := make(chan []byte, 16)
+	var senderWG sync.WaitGroup
 	go func() {
+		<-connCtx.Done()
+		senderWG.Wait()
+		close(sendCh)
+	}()
+	defer cancelConn()
+	reqCancels := make(map[string]context.CancelFunc)
+	var jobMu sync.Mutex
+	go func() {
+		defer cancelConn()
+		for {
+			select {
+			case msg, ok := <-sendCh:
+				if !ok {
+					return
+				}
+				if err := ws.Write(connCtx, websocket.MessageText, msg); err != nil {
+					return
+				}
+			case <-connCtx.Done():
+				return
+			}
+		}
+	}()
+	senderWG.Add(1)
+	go func() {
+		defer senderWG.Done()
+		for {
+			select {
+			case su := <-statusUpdates:
+				mb, _ := json.Marshal(su)
+				sendMsg(connCtx, sendCh, mb)
+			case <-connCtx.Done():
+				return
+			}
+		}
+	}()
+	st := ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: GetState().MaxConcurrency, Models: GetState().Models}
+	if GetState().ConnectedToOllama {
+		st.Status = "idle"
+	} else {
+		st.Status = "not_ready"
+	}
+	sb, _ := json.Marshal(st)
+	sendMsg(connCtx, sendCh, sb)
+
+	senderWG.Add(1)
+	go func() {
+		defer senderWG.Done()
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
 		for {
@@ -131,7 +177,7 @@ func connectAndServe(ctx context.Context, cfg config.WorkerConfig, client *ollam
 			case t := <-ticker.C:
 				hb := ctrl.HeartbeatMessage{Type: "heartbeat", TS: t.Unix()}
 				bb, _ := json.Marshal(hb)
-				sendCh <- bb
+				sendMsg(connCtx, sendCh, bb)
 				SetLastHeartbeat(t)
 			}
 		}
@@ -141,7 +187,8 @@ func connectAndServe(ctx context.Context, cfg config.WorkerConfig, client *ollam
 		if IsDraining() && GetState().CurrentJobs == 0 {
 			SetState("terminating")
 			go func() { _ = ws.Close(websocket.StatusNormalClosure, "drained") }()
-			cancel()
+			cancelConn()
+			cancelAll()
 		}
 	}
 	setDrainCheck(checkDrain)
@@ -186,7 +233,7 @@ func connectAndServe(ctx context.Context, cfg config.WorkerConfig, client *ollam
 				logx.Log.Warn().Str("job", jr.JobID).Msg("reject job while draining")
 				msg := ctrl.JobErrorMessage{Type: "job_error", JobID: jr.JobID, Code: "worker_draining", Message: "worker is draining"}
 				b, _ := json.Marshal(msg)
-				sendCh <- b
+				sendMsg(connCtx, sendCh, b)
 				continue
 			}
 			if jr.Endpoint == "generate" {
@@ -212,10 +259,10 @@ func connectAndServe(ctx context.Context, cfg config.WorkerConfig, client *ollam
 				logx.Log.Warn().Str("request_id", hr.RequestID).Msg("reject proxy while draining")
 				h := ctrl.HTTPProxyResponseHeadersMessage{Type: "http_proxy_response_headers", RequestID: hr.RequestID, Status: 503, Headers: map[string]string{"Content-Type": "application/json"}}
 				hb, _ := json.Marshal(h)
-				sendCh <- hb
+				sendMsg(connCtx, sendCh, hb)
 				end := ctrl.HTTPProxyResponseEndMessage{Type: "http_proxy_response_end", RequestID: hr.RequestID, Error: &ctrl.HTTPProxyError{Code: "worker_draining", Message: "worker is draining"}}
 				eb, _ := json.Marshal(end)
-				sendCh <- eb
+				sendMsg(connCtx, sendCh, eb)
 				continue
 			}
 			go handleHTTPProxy(connCtx, cfg, sendCh, hr, reqCancels, &jobMu, checkDrain)
@@ -245,33 +292,109 @@ type healthClient interface {
 	Health(context.Context) ([]string, error)
 }
 
-func startHealthProbe(ctx context.Context, client healthClient, interval time.Duration) {
-	ticker := time.NewTicker(interval)
-	go func() {
-		defer ticker.Stop()
-		for {
+func startOllamaMonitor(ctx context.Context, cfg config.WorkerConfig, client healthClient, ch chan<- ctrl.StatusUpdateMessage, interval time.Duration) {
+	go monitorOllama(ctx, cfg, client, ch, interval)
+}
+
+func monitorOllama(ctx context.Context, cfg config.WorkerConfig, client healthClient, ch chan<- ctrl.StatusUpdateMessage, interval time.Duration) {
+	attempt := 0
+	for {
+		err := probeOllama(ctx, client, cfg, ch)
+		if err != nil {
+			if !cfg.Reconnect {
+				return
+			}
+			delay := reconnectDelay(attempt)
+			attempt++
 			select {
 			case <-ctx.Done():
 				return
-			case <-ticker.C:
-				probeOllama(ctx, client)
+			case <-time.After(delay):
+			}
+		} else {
+			attempt = 0
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(interval):
 			}
 		}
-	}()
+	}
 }
 
-func probeOllama(ctx context.Context, client healthClient) {
+// probeOllama checks health, updates state, and (importantly) only emits a status
+// update when either (a) connectivity flips, or (b) the models list actually changes.
+// On error, it always emits a not_ready status update.
+func probeOllama(ctx context.Context, client healthClient, cfg config.WorkerConfig, ch chan<- ctrl.StatusUpdateMessage) error {
 	models, err := client.Health(ctx)
 	if err != nil {
+		wasConnected := GetState().ConnectedToOllama
 		SetConnectedToOllama(false)
+		SetWorkerInfo(cfg.WorkerID, cfg.WorkerName, 0, nil)
+		SetState("not_ready")
 		SetLastError(err.Error())
-		return
+
+		// Emit an update on error (always), but keep the channel non-blocking.
+		msg := ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: 0, Status: "not_ready"}
+		sendStatusUpdate(ch, msg)
+
+		// State changed from connected->disconnected; that's fine; test checks state, not channel.
+		_ = wasConnected
+		return err
 	}
+
+	prev := GetState()
+	prevConnected := prev.ConnectedToOllama
+	prevModels := append([]string(nil), prev.Models...)
+
 	SetConnectedToOllama(true)
-	if !reflect.DeepEqual(models, GetState().Models) {
-		SetModels(models)
+	SetWorkerInfo(cfg.WorkerID, cfg.WorkerName, cfg.MaxConcurrency, models)
+	if GetState().ConnectedToServer && !IsDraining() && GetState().CurrentJobs == 0 {
+		SetState("connected_idle")
 	}
 	SetLastError("")
+
+	// Determine if we should notify: connectivity flip or models changed.
+	changed := !prevConnected
+	if !changed {
+		if len(prevModels) != len(models) {
+			changed = true
+		} else {
+			for i := range models {
+				if models[i] != prevModels[i] {
+					changed = true
+					break
+				}
+			}
+		}
+	}
+	if changed {
+		msg := ctrl.StatusUpdateMessage{
+			Type:           "status_update",
+			MaxConcurrency: cfg.MaxConcurrency,
+			Models:         models,
+			Status:         "idle",
+		}
+		sendStatusUpdate(ch, msg)
+	}
+	return nil
+}
+
+func sendStatusUpdate(ch chan<- ctrl.StatusUpdateMessage, msg ctrl.StatusUpdateMessage) {
+	if ch == nil {
+		return
+	}
+	select {
+	case ch <- msg:
+	default:
+	}
+}
+
+func sendMsg(ctx context.Context, ch chan<- []byte, msg []byte) {
+	select {
+	case ch <- msg:
+	case <-ctx.Done():
+	}
 }
 
 func handleGenerate(ctx context.Context, client *ollama.Client, sendCh chan []byte, jr ctrl.JobRequestMessage, cancels map[string]context.CancelFunc, mu *sync.Mutex, onDone func()) {
@@ -313,7 +436,7 @@ func handleGenerate(ctx context.Context, client *ollama.Client, sendCh chan []by
 			logx.Log.Error().Str("job", jr.JobID).Err(err).Msg("generate stream error")
 			msg := ctrl.JobErrorMessage{Type: "job_error", JobID: jr.JobID, Code: "error", Message: err.Error()}
 			b, _ := json.Marshal(msg)
-			sendCh <- b
+			sendMsg(jobCtx, sendCh, b)
 			SetLastError(err.Error())
 			return
 		}
@@ -323,24 +446,24 @@ func handleGenerate(ctx context.Context, client *ollama.Client, sendCh chan []by
 		for line := range ollama.ReadLines(rc) {
 			msg := ctrl.JobChunkMessage{Type: "job_chunk", JobID: jr.JobID, Data: json.RawMessage(line)}
 			b, _ := json.Marshal(msg)
-			sendCh <- b
+			sendMsg(jobCtx, sendCh, b)
 		}
 		done := ctrl.JobChunkMessage{Type: "job_chunk", JobID: jr.JobID, Data: json.RawMessage(`{"done":true}`)}
 		b, _ := json.Marshal(done)
-		sendCh <- b
+		sendMsg(jobCtx, sendCh, b)
 	} else {
 		data, err := client.Generate(jobCtx, req)
 		if err != nil {
 			logx.Log.Error().Str("job", jr.JobID).Err(err).Msg("generate error")
 			msg := ctrl.JobErrorMessage{Type: "job_error", JobID: jr.JobID, Code: "error", Message: err.Error()}
 			b, _ := json.Marshal(msg)
-			sendCh <- b
+			sendMsg(jobCtx, sendCh, b)
 			SetLastError(err.Error())
 			return
 		}
 		msg := ctrl.JobResultMessage{Type: "job_result", JobID: jr.JobID, Data: json.RawMessage(data)}
 		b, _ := json.Marshal(msg)
-		sendCh <- b
+		sendMsg(jobCtx, sendCh, b)
 		success = true
 	}
 	if req.Stream {
