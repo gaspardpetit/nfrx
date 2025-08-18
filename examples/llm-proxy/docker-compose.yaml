@@ -1,0 +1,37 @@
+x-env: &common_env
+  API_KEY: "test123"     # client API key for /v1 and /api
+  WORKER_KEY: "secret"   # worker registration key
+
+services:
+  ollama:
+    container_name: ollama
+    image: ollama/ollama:latest
+    volumes:
+      - ollama_data:/root/.ollama
+
+  server:
+    container_name: server
+    image: ghcr.io/gaspardpetit/llamapool-server:latest
+    environment:
+      <<: *common_env
+      PORT: "8080"
+      METRICS_PORT: "9090"
+    ports:
+      - "8080:8080"   # OpenAI-compatible API + state
+      - "9090:9090"   # Prometheus metrics
+
+  worker:
+    container_name: worker
+    image: ghcr.io/gaspardpetit/llamapool-worker:latest
+    environment:
+      <<: *common_env
+      SERVER_URL: "ws://server:8080/api/workers/connect"
+      OLLAMA_BASE_URL: "http://ollama:11434"
+      WORKER_NAME: "Alpha"
+      STATUS_ADDR: "0.0.0.0:4555"
+    ports:
+      - "4555:4555"
+    command: ["--reconnect","--status-addr","0.0.0.0:4555"]
+
+volumes:
+  ollama_data:
