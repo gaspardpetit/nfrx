@@ -14,6 +14,7 @@ import (
 
 	"github.com/gaspardpetit/llamapool/internal/config"
 	"github.com/gaspardpetit/llamapool/internal/ctrl"
+	"github.com/gaspardpetit/llamapool/internal/mcp"
 	"github.com/gaspardpetit/llamapool/internal/server"
 	"github.com/gaspardpetit/llamapool/internal/worker"
 	"sync/atomic"
@@ -24,7 +25,7 @@ func TestE2EChatCompletionsProxy(t *testing.T) {
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
 	cfg := config.ServerConfig{WorkerKey: "secret", APIKey: "apikey", RequestTimeout: 5 * time.Second}
 	metricsReg := ctrl.NewMetricsRegistry("test", "", "")
-	handler := server.New(reg, metricsReg, sched, cfg)
+	handler := server.New(reg, metricsReg, sched, mcp.NewRegistry(), cfg)
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
