@@ -96,6 +96,7 @@ h1 {
 <script>
 let workers = [];
 let sortBy = 'oldest';
+let token = null;
 
 function render() {
   const container = document.getElementById('workers');
@@ -172,15 +173,42 @@ document.getElementById('sort').addEventListener('change', (e) => {
   render();
 });
 
-const es = new EventSource('/api/state/stream');
-es.onmessage = (e) => {
+async function connect() {
+  const headers = token ? { 'Authorization': 'Bearer ' + token } : {};
   try {
-    const data = JSON.parse(e.data);
-    update(data);
+    const resp = await fetch('/api/state/stream', { headers });
+    if (resp.status === 401) {
+      token = prompt('Access token:');
+      if (token) connect();
+      return;
+    }
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      lines.forEach(line => {
+        if (line.startsWith('data:')) {
+          try {
+            const data = JSON.parse(line.slice(5));
+            update(data);
+          } catch (err) {
+            console.error('parse', err);
+          }
+        }
+      });
+    }
   } catch (err) {
-    console.error('parse', err);
+    console.error('stream', err);
   }
-};
+  setTimeout(connect, 1000);
+}
+
+connect();
 </script>
 </body>
 </html>
