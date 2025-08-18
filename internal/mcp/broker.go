@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
+	"github.com/gaspardpetit/llamapool/internal/ctrl"
 	"github.com/gaspardpetit/llamapool/internal/logx"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -35,6 +36,13 @@ type Relay struct {
 	pending  map[string]chan Frame
 	inflight int
 	lastSeen time.Time
+	methods  map[string]int
+	sessions map[string]sessionInfo
+}
+
+type sessionInfo struct {
+	method string
+	start  time.Time
 }
 
 // Registry stores active relays keyed by client ID.
@@ -104,11 +112,11 @@ func (r *Registry) WSHandler() http.HandlerFunc {
 		if err != nil {
 			return
 		}
-		relay := &Relay{conn: c, pending: map[string]chan Frame{}, lastSeen: time.Now()}
+		relay := &Relay{conn: c, pending: map[string]chan Frame{}, lastSeen: time.Now(), methods: map[string]int{}, sessions: map[string]sessionInfo{}}
 		r.mu.Lock()
 		r.relays[clientID] = relay
 		r.mu.Unlock()
-		ctx := req.Context()
+		ctx := context.Background()
 		go r.readPump(ctx, clientID, relay)
 		go r.pingLoop(ctx, clientID, relay)
 	}
@@ -172,6 +180,41 @@ func (r *Registry) getRelay(clientID string) *Relay {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.relays[clientID]
+}
+
+// Snapshot returns a snapshot of connected relays and active sessions.
+func (r *Registry) Snapshot() ctrl.MCPState {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	state := ctrl.MCPState{}
+	for id, rl := range r.relays {
+		rl.mu.Lock()
+		funcs := make(map[string]int, len(rl.methods))
+		for k, v := range rl.methods {
+			funcs[k] = v
+		}
+		status := "idle"
+		if rl.inflight > 0 {
+			status = "active"
+		}
+		state.Clients = append(state.Clients, ctrl.MCPClientSnapshot{
+			ID:        id,
+			Status:    status,
+			Inflight:  rl.inflight,
+			Functions: funcs,
+		})
+		for sid, s := range rl.sessions {
+			state.Sessions = append(state.Sessions, ctrl.MCPSessionSnapshot{
+				ID:         sid,
+				ClientID:   id,
+				Method:     s.method,
+				StartedAt:  s.start,
+				DurationMs: uint64(time.Since(s.start).Milliseconds()),
+			})
+		}
+		rl.mu.Unlock()
+	}
+	return state
 }
 
 func (rl *Relay) register(sid string) chan Frame {
@@ -245,13 +288,17 @@ func (r *Registry) HTTPHandler() http.HandlerFunc {
 			return
 		}
 		relay.inflight++
-		relay.mu.Unlock()
+		relay.methods[env.Method]++
 		sid := uuid.NewString()
+		relay.sessions[sid] = sessionInfo{method: env.Method, start: time.Now()}
+		relay.mu.Unlock()
 		ch := relay.register(sid)
 		defer func() {
 			relay.unregister(sid)
 			relay.mu.Lock()
 			relay.inflight--
+			relay.methods[env.Method]--
+			delete(relay.sessions, sid)
 			relay.mu.Unlock()
 		}()
 		ctx, cancel := context.WithTimeout(req.Context(), r.callTimeout)

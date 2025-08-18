@@ -7,14 +7,21 @@ import (
 
 	"github.com/gaspardpetit/llamapool/internal/ctrl"
 	"github.com/gaspardpetit/llamapool/internal/logx"
+	"github.com/gaspardpetit/llamapool/internal/mcp"
 )
 
 // StateHandler serves state snapshots and streams.
-type StateHandler struct{ Metrics *ctrl.MetricsRegistry }
+type StateHandler struct {
+	Metrics *ctrl.MetricsRegistry
+	MCP     *mcp.Registry
+}
 
 // GetState returns a JSON snapshot of metrics.
 func (h *StateHandler) GetState(w http.ResponseWriter, r *http.Request) {
 	state := h.Metrics.Snapshot()
+	if h.MCP != nil {
+		state.MCP = h.MCP.Snapshot()
+	}
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(state); err != nil {
 		// ignore write error but log
@@ -40,6 +47,9 @@ func (h *StateHandler) GetStateStream(w http.ResponseWriter, r *http.Request) {
 			return
 		case <-ticker.C:
 			state := h.Metrics.Snapshot()
+			if h.MCP != nil {
+				state.MCP = h.MCP.Snapshot()
+			}
 			b, _ := json.Marshal(state)
 			if _, err := w.Write([]byte("data: ")); err != nil {
 				return

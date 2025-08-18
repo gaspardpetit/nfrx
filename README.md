@@ -172,6 +172,7 @@ The Windows service runs `llamapool-worker` with the `--reconnect` flag and shut
   - worker list and status (connected/working/idle/gone)
   - per-worker totals (processed, inflight, failures, avg duration)
   - per-model availability (how many workers support each model)
+  - MCP relay clients and active sessions
   - versions/build info for server & workers
 - **Web state page** (`/state`): lightweight dashboard powered by the state stream
 - **Logs**:
