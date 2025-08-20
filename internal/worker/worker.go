@@ -14,6 +14,7 @@ import (
 	"github.com/gaspardpetit/llamapool/internal/ctrl"
 	"github.com/gaspardpetit/llamapool/internal/logx"
 	"github.com/gaspardpetit/llamapool/internal/ollama"
+	reconnect "github.com/gaspardpetit/llamapool/internal/reconnect"
 	"github.com/gaspardpetit/llamapool/internal/relay"
 )
 
@@ -63,7 +64,7 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 		if connected {
 			attempt = 0
 		}
-		delay := reconnectDelay(attempt)
+		delay := reconnect.Delay(attempt)
 		attempt++
 		logx.Log.Warn().Dur("backoff", delay).Err(err).Msg("connection to server lost; retrying")
 		select {
@@ -280,14 +281,6 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg conf
 	}
 }
 
-func reconnectDelay(attempt int) time.Duration {
-	schedule := []time.Duration{time.Second, time.Second, time.Second, 5 * time.Second, 5 * time.Second, 5 * time.Second, 15 * time.Second, 15 * time.Second, 15 * time.Second}
-	if attempt < len(schedule) {
-		return schedule[attempt]
-	}
-	return 30 * time.Second
-}
-
 type healthClient interface {
 	Health(context.Context) ([]string, error)
 }
@@ -304,7 +297,7 @@ func monitorOllama(ctx context.Context, cfg config.WorkerConfig, client healthCl
 			if !cfg.Reconnect {
 				return
 			}
-			delay := reconnectDelay(attempt)
+			delay := reconnect.Delay(attempt)
 			attempt++
 			select {
 			case <-ctx.Done():
