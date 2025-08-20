@@ -11,6 +11,8 @@ import (
 
 	"github.com/mark3labs/mcp-go/client/transport"
 	"github.com/mark3labs/mcp-go/mcp"
+
+	reconnect "github.com/gaspardpetit/llamapool/internal/reconnect"
 )
 
 type fakeInitTransport struct {
@@ -110,9 +112,9 @@ func (f *fakeCLTransport) GetSessionId() string                                 
 func (f *fakeCLTransport) SetConnectionLostHandler(h func(error))               { f.handler = h }
 
 func TestOnConnectionLostRestart(t *testing.T) {
-	prev := reconnectSchedule
-	reconnectSchedule = []time.Duration{time.Millisecond}
-	defer func() { reconnectSchedule = prev }()
+	prev := reconnect.Schedule
+	reconnect.Schedule = []time.Duration{time.Millisecond}
+	defer func() { reconnect.Schedule = prev }()
 	ft := &fakeCLTransport{}
 	conn := newTransportConnector(ft, 0)
 	if err := conn.Start(context.Background()); err != nil {
@@ -164,9 +166,9 @@ func (f *fakeRetryTransport) GetSessionId() string                              
 func (f *fakeRetryTransport) SetConnectionLostHandler(h func(error))               { f.handler = h }
 
 func TestReconnectBackoff(t *testing.T) {
-	prev := reconnectSchedule
-	reconnectSchedule = []time.Duration{time.Millisecond, time.Millisecond, time.Millisecond}
-	defer func() { reconnectSchedule = prev }()
+	prev := reconnect.Schedule
+	reconnect.Schedule = []time.Duration{time.Millisecond, time.Millisecond, time.Millisecond}
+	defer func() { reconnect.Schedule = prev }()
 	ft := &fakeRetryTransport{}
 	conn := newTransportConnector(ft, 0)
 	if err := conn.Start(context.Background()); err != nil {
