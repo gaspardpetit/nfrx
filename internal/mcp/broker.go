@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -49,8 +48,6 @@ type sessionInfo struct {
 type Registry struct {
 	mu           sync.RWMutex
 	relays       map[string]*Relay
-	allowed      map[string]bool
-	token        string
 	maxReqBytes  int64
 	maxRespBytes int64
 	callTimeout  time.Duration
@@ -61,20 +58,13 @@ type Registry struct {
 
 // NewRegistry constructs a Registry using environment variables for configuration.
 func NewRegistry() *Registry {
-	allowed := map[string]bool{}
-	for _, c := range strings.Split(getEnv("BROKER_ACCEPTED_CLIENTS", ""), ",") {
-		if c != "" {
-			allowed[strings.TrimSpace(c)] = true
-		}
-	}
-	token := getEnv("BROKER_RELAY_TOKEN", "")
 	maxReqBytes := int64(parseInt(getEnv("BROKER_MAX_REQ_BYTES", "10485760")))
 	maxRespBytes := int64(parseInt(getEnv("BROKER_MAX_RESP_BYTES", "10485760")))
 	callTimeout := time.Duration(parseInt(getEnv("BROKER_CALL_TIMEOUT_MS", "30000"))) * time.Millisecond
 	heartbeat := time.Duration(parseInt(getEnv("BROKER_WS_HEARTBEAT_MS", "15000"))) * time.Millisecond
 	deadAfter := time.Duration(parseInt(getEnv("BROKER_WS_DEAD_AFTER_MS", "45000"))) * time.Millisecond
 	maxConc := parseInt(getEnv("BROKER_MAX_CONCURRENCY_PER_CLIENT", "16"))
-	return &Registry{relays: map[string]*Relay{}, allowed: allowed, token: token, maxReqBytes: maxReqBytes, maxRespBytes: maxRespBytes, callTimeout: callTimeout, heartbeat: heartbeat, deadAfter: deadAfter, maxConc: maxConc}
+	return &Registry{relays: map[string]*Relay{}, maxReqBytes: maxReqBytes, maxRespBytes: maxRespBytes, callTimeout: callTimeout, heartbeat: heartbeat, deadAfter: deadAfter, maxConc: maxConc}
 }
 
 func parseInt(v string) int {
@@ -92,30 +82,40 @@ func getEnv(k, d string) string {
 // WSHandler handles relay websocket connections.
 func (r *Registry) WSHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		if r.token != "" {
-			auth := req.Header.Get("Authorization")
-			if !strings.HasPrefix(auth, "Bearer ") || strings.TrimPrefix(auth, "Bearer ") != r.token {
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
-				return
-			}
-		}
-		clientID := req.Header.Get("X-Client-Id")
-		if clientID == "" {
-			http.Error(w, "missing client id", http.StatusBadRequest)
-			return
-		}
-		if len(r.allowed) > 0 && !r.allowed[clientID] {
-			http.Error(w, "client not allowed", http.StatusForbidden)
-			return
-		}
 		c, err := websocket.Accept(w, req, nil)
 		if err != nil {
 			return
 		}
-		relay := &Relay{conn: c, pending: map[string]chan Frame{}, lastSeen: time.Now(), methods: map[string]int{}, sessions: map[string]sessionInfo{}}
+		reqCtx := req.Context()
+		_, data, err := c.Read(reqCtx)
+		if err != nil {
+			_ = c.Close(websocket.StatusPolicyViolation, "expected register")
+			return
+		}
+		var reg struct {
+			ID string `json:"id"`
+		}
+		if err := json.Unmarshal(data, &reg); err != nil {
+			_ = c.Close(websocket.StatusPolicyViolation, "invalid register")
+			return
+		}
+		clientID := reg.ID
+		if clientID == "" {
+			clientID = uuid.NewString()
+		}
 		r.mu.Lock()
+		if _, exists := r.relays[clientID]; exists {
+			r.mu.Unlock()
+			_ = c.Close(websocket.StatusPolicyViolation, "id in use")
+			return
+		}
+		relay := &Relay{conn: c, pending: map[string]chan Frame{}, lastSeen: time.Now(), methods: map[string]int{}, sessions: map[string]sessionInfo{}}
 		r.relays[clientID] = relay
 		r.mu.Unlock()
+
+		ack, _ := json.Marshal(map[string]string{"id": clientID})
+		_ = c.Write(reqCtx, websocket.MessageText, ack)
+
 		ctx := context.Background()
 		go r.readPump(ctx, clientID, relay)
 		go r.pingLoop(ctx, clientID, relay)
@@ -246,13 +246,8 @@ func (rl *Relay) write(ctx context.Context, f Frame) error {
 // HTTPHandler handles host JSON-RPC requests.
 func (r *Registry) HTTPHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		clientID := chi.URLParam(req, "client_id")
+		clientID := chi.URLParam(req, "id")
 		reqID := uuid.NewString()
-		if len(r.allowed) > 0 && !r.allowed[clientID] {
-			logx.Log.Warn().Str("component", "server.http").Str("client_id", clientID).Str("req_id", reqID).Str("error_code", "MCP_POLICY_DENIED").Msg("client not allowed")
-			writeRPCError(w, nil, http.StatusForbidden, "MCP_POLICY_DENIED", "client not allowed", reqID)
-			return
-		}
 		relay := r.getRelay(clientID)
 		if relay == nil {
 			logx.Log.Warn().Str("component", "server.http").Str("client_id", clientID).Str("req_id", reqID).Str("error_code", "MCP_PROVIDER_UNAVAILABLE").Msg("relay offline")

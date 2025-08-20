@@ -57,8 +57,8 @@ func New(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler
 		apiGroup.Get("/state/stream", wrapper.GetApiStateStream)
 	})
 	if mcpReg != nil {
-		r.Post("/mcp/{client_id}", mcpReg.HTTPHandler())
-		r.Handle("/ws/relay", mcpReg.WSHandler())
+		r.Post("/api/mcp/id/{id}", mcpReg.HTTPHandler())
+		r.Handle("/api/mcp/connect", mcpReg.WSHandler())
 	}
 	r.Mount("/mcp", mcpserver.NewHandler())
 	r.Handle("/api/workers/connect", ctrl.WSHandler(reg, metrics, cfg.WorkerKey))

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
@@ -92,18 +93,10 @@ func main() {
 		return
 	}
 
-	wsURL := getEnv("BROKER_WS_URL", "ws://localhost:8081/ws/relay")
+	wsURL := getEnv("SERVER_URL", "ws://localhost:8080/api/mcp/connect")
 	clientID := getEnv("CLIENT_ID", "")
 	providerURL := getEnv("PROVIDER_URL", "http://127.0.0.1:7777/")
-	token := getEnv("RELAY_AUTH_TOKEN", "")
-	if clientID == "" {
-		logx.Log.Fatal().Msg("CLIENT_ID required")
-	}
 	header := http.Header{}
-	header.Set("X-Client-Id", clientID)
-	if token != "" {
-		header.Set("Authorization", "Bearer "+token)
-	}
 
 	attempt := 0
 	for {
@@ -119,7 +112,25 @@ func main() {
 			time.Sleep(delay)
 			continue
 		}
-		logx.Log.Info().Str("server", wsURL).Msg("connected to server")
+		reg := map[string]string{"id": clientID}
+		b, _ := json.Marshal(reg)
+		if err := conn.Write(ctx, websocket.MessageText, b); err != nil {
+			_ = conn.Close(websocket.StatusInternalError, "closing")
+			logx.Log.Error().Err(err).Msg("register")
+			return
+		}
+		_, msg, err := conn.Read(ctx)
+		if err != nil {
+			_ = conn.Close(websocket.StatusInternalError, "closing")
+			logx.Log.Error().Err(err).Msg("register ack")
+			return
+		}
+		var ack struct {
+			ID string `json:"id"`
+		}
+		_ = json.Unmarshal(msg, &ack)
+		clientID = ack.ID
+		logx.Log.Info().Str("server", wsURL).Str("client_id", clientID).Msg("connected to server")
 		attempt = 0
 
 		runCtx, cancel := context.WithCancel(ctx)
