@@ -26,6 +26,8 @@ jobs:
         variant:
           - name: server
             dockerfile: deploy/Dockerfile.server
+          - name: mcp-worker
+            dockerfile: deploy/Dockerfile.mcp
           - name: worker
             dockerfile: deploy/Dockerfile.worker
 

@@ -5,6 +5,7 @@ This example shows how to bridge a Python [fastmcp](https://pypi.org/project/fas
 ## 1. Start the FastMCP provider
 
 ```bash
+pip install fastmcp
 python examples/mcp-proxy/time_server.py
 ```
 
