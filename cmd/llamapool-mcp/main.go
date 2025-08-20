@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
@@ -39,15 +40,26 @@ func getEnvBool(k string, d bool) bool {
 }
 
 func probeProvider(ctx context.Context, url string) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodHead, url, nil)
+	payload := map[string]any{
+		"jsonrpc": "2.0",
+		"id":      "1",
+		"method":  "tools/list",
+		"params":  map[string]any{},
+	}
+	body, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}
-	_ = resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode >= http.StatusBadRequest {
 		return fmt.Errorf("status %s", resp.Status)
 	}
