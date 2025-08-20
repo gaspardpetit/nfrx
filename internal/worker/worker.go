@@ -10,6 +10,7 @@ import (
 	"github.com/coder/websocket"
 	"github.com/google/uuid"
 
+	"github.com/gaspardpetit/llamapool/internal/agent"
 	"github.com/gaspardpetit/llamapool/internal/config"
 	"github.com/gaspardpetit/llamapool/internal/ctrl"
 	"github.com/gaspardpetit/llamapool/internal/logx"
@@ -52,27 +53,12 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 		}
 	}
 
-	attempt := 0
-	for {
+	connect := func(ctx context.Context) (bool, error) {
 		SetState("connecting")
 		SetConnectedToServer(false)
-
-		connected, err := connectAndServe(ctx, cancel, cfg, client, statusUpdates)
-		if err == nil || !cfg.Reconnect {
-			return err
-		}
-		if connected {
-			attempt = 0
-		}
-		delay := reconnect.Delay(attempt)
-		attempt++
-		logx.Log.Warn().Dur("backoff", delay).Err(err).Msg("connection to server lost; retrying")
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(delay):
-		}
+		return connectAndServe(ctx, cancel, cfg, client, statusUpdates)
 	}
+	return agent.RunWithReconnect(ctx, cfg.Reconnect, connect)
 }
 
 func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg config.WorkerConfig, client *ollama.Client, statusUpdates <-chan ctrl.StatusUpdateMessage) (bool, error) {

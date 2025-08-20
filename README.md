@@ -295,7 +295,16 @@ go run .\cmd\llamapool-worker
 By default the worker exits if the server is unavailable. Add `-r` or `--reconnect` to keep retrying with backoff (1s×3, 5s×3, 15s×3, then every 30s).
 When enabled, the worker also retries its Ollama backend and remains connected to the server in a `not_ready` state with zero concurrency until the backend becomes available.
 
+### MCP Relay
 
+On Linux:
+
+```bash
+SERVER_URL=ws://localhost:8080/api/mcp/connect PROVIDER_URL=http://127.0.0.1:7777/ go run ./cmd/llamapool-mcp
+```
+
+`CLIENT_ID` optionally sets a stable identifier; if empty the server assigns one.
+By default the MCP relay exits if the server or provider are unavailable. Add `-r` or `--reconnect` to keep retrying with backoff.
 
 ## Run with Docker
 
