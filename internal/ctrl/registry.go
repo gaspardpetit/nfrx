@@ -64,6 +64,12 @@ func (r *Registry) Remove(id string) {
 	r.mu.Unlock()
 }
 
+func (r *Registry) WorkerCount() int {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return len(r.workers)
+}
+
 func (r *Registry) UpdateHeartbeat(id string) {
 	r.mu.Lock()
 	if w, ok := r.workers[id]; ok {

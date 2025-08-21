@@ -4,6 +4,8 @@ import (
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/gaspardpetit/llamapool/internal/serverstate"
 )
 
 // WorkerStatus represents the current state of a worker.
@@ -14,6 +16,7 @@ const (
 	StatusWorking   WorkerStatus = "working"
 	StatusIdle      WorkerStatus = "idle"
 	StatusNotReady  WorkerStatus = "not_ready"
+	StatusDraining  WorkerStatus = "draining"
 	StatusGone      WorkerStatus = "gone"
 )
 
@@ -55,6 +58,7 @@ type ServerSnapshot struct {
 	Version            string    `json:"version"`
 	BuildSHA           string    `json:"build_sha,omitempty"`
 	BuildDate          string    `json:"build_date,omitempty"`
+	State              string    `json:"state"`
 	UptimeSeconds      uint64    `json:"uptime_s"`
 	JobsInflight       int       `json:"jobs_inflight_total"`
 	JobsCompletedTotal uint64    `json:"jobs_completed_total"`
@@ -325,6 +329,7 @@ func (m *MetricsRegistry) Snapshot() StateResponse {
 		Workers: []WorkerSnapshot{},
 	}
 	resp.Server = ServerSnapshot{
+		State:              serverstate.GetState(),
 		Now:                time.Now(),
 		Version:            m.serverVer,
 		BuildSHA:           m.serverSHA,

@@ -242,6 +242,8 @@ PORT=8080 CLIENT_KEY=secret API_KEY=test123 go run ./cmd/llamapool-server
 Workers register with the server at `/api/workers/connect`.
 `llamapool-mcp` connects to the server at `ws://<server>/api/mcp/connect` and receives a unique id which is used by clients when calling `POST /api/mcp/id/{id}`.
 
+Sending `SIGTERM` to the server stops acceptance of new worker, MCP, and inference requests while allowing in-flight work to complete. The server waits up to `--drain-timeout` (default 5m) before shutting down.
+
 On Windows (CMD)
 
 ```

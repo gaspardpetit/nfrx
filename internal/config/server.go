@@ -18,6 +18,7 @@ type ServerConfig struct {
 	APIKey         string
 	ClientKey      string
 	RequestTimeout time.Duration
+	DrainTimeout   time.Duration
 	AllowedOrigins []string
 	ConfigFile     string
 }
@@ -45,6 +46,11 @@ func (c *ServerConfig) BindFlags() {
 	} else {
 		c.RequestTimeout = 120 * time.Second
 	}
+	if d, err := time.ParseDuration(getEnv("DRAIN_TIMEOUT", "5m")); err == nil {
+		c.DrainTimeout = d
+	} else {
+		c.DrainTimeout = 5 * time.Minute
+	}
 	c.AllowedOrigins = splitComma(getEnv("ALLOWED_ORIGINS", strings.Join(c.AllowedOrigins, ",")))
 
 	flag.StringVar(&c.ConfigFile, "config", c.ConfigFile, "server config file path")
@@ -60,6 +66,7 @@ func (c *ServerConfig) BindFlags() {
 		c.RequestTimeout = time.Duration(f * float64(time.Second))
 		return nil
 	})
+	flag.DurationVar(&c.DrainTimeout, "drain-timeout", c.DrainTimeout, "time to wait for in-flight requests on shutdown (-1 to wait indefinitely, 0 to exit immediately)")
 	flag.Func("allowed-origins", "comma separated list of allowed CORS origins", func(v string) error {
 		c.AllowedOrigins = splitComma(v)
 		return nil
