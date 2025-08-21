@@ -49,9 +49,3 @@ Endpoints are grouped by functional area.
 - **Worker key** – WebSocket `register` message must include `worker_key` matching server configuration.
 - **MCP token** – Optional `Authorization: Bearer <AUTH_TOKEN>` forwarded to MCP relay; server does not validate.
 
-## Deprecated / Redundant Endpoints
-
-| Endpoint | Reason |
-| --- | --- |
-| `POST /mcp` | Early MCP streaming endpoint, replaced by `/api/mcp/id/{id}`. |
-| `GET /mcp` | Early MCP event stream (SSE), replaced by `/api/mcp/connect`. |

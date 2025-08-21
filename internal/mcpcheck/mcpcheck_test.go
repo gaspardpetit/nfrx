@@ -19,7 +19,7 @@ func startHTTPServer(t *testing.T) (*httptest.Server, string) {
 		return mcp.NewToolResultText("pong"), nil
 	})
 	srv := server.NewTestStreamableHTTPServer(s)
-	return srv, srv.URL + "/mcp"
+	return srv, srv.URL + "/api/mcp"
 }
 
 func startSSEServer(t *testing.T) (*httptest.Server, string) {
@@ -29,8 +29,8 @@ func startSSEServer(t *testing.T) (*httptest.Server, string) {
 		in, _ := req.RequireString("s")
 		return mcp.NewToolResultText(strings.ToUpper(in)), nil
 	})
-	srv := server.NewTestServer(s, server.WithStaticBasePath("/mcp"))
-	return srv, srv.URL + "/mcp/sse"
+	srv := server.NewTestServer(s, server.WithStaticBasePath("/api/mcp"))
+	return srv, srv.URL + "/api/mcp/sse"
 }
 
 func writeSTDIOProgram(t *testing.T, dir string) string {

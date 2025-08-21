@@ -13,7 +13,6 @@ import (
 	"github.com/gaspardpetit/llamapool/internal/config"
 	"github.com/gaspardpetit/llamapool/internal/ctrl"
 	"github.com/gaspardpetit/llamapool/internal/mcp"
-	"github.com/gaspardpetit/llamapool/internal/mcpserver"
 )
 
 // New constructs the HTTP handler for the server.
@@ -60,7 +59,6 @@ func New(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler
 		r.Post("/api/mcp/id/{id}", mcpReg.HTTPHandler())
 		r.Handle("/api/mcp/connect", mcpReg.WSHandler())
 	}
-	r.Mount("/mcp", mcpserver.NewHandler())
 	r.Handle("/api/workers/connect", ctrl.WSHandler(reg, metrics, cfg.WorkerKey))
 
 	metricsPort := cfg.MetricsPort
