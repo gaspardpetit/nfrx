@@ -29,6 +29,7 @@ type WorkerConfig struct {
 	ConfigFile        string
 	LogDir            string
 	Reconnect         bool
+	RequestTimeout    time.Duration
 }
 
 func (c *WorkerConfig) BindFlags() {
@@ -64,6 +65,11 @@ func (c *WorkerConfig) BindFlags() {
 	} else {
 		c.ModelPollInterval = time.Minute
 	}
+	if v, err := strconv.ParseFloat(getEnv("REQUEST_TIMEOUT", "300"), 64); err == nil {
+		c.RequestTimeout = time.Duration(v * float64(time.Second))
+	} else {
+		c.RequestTimeout = 5 * time.Minute
+	}
 
 	host, err := os.Hostname()
 	if err != nil || host == "" {
@@ -87,6 +93,14 @@ func (c *WorkerConfig) BindFlags() {
 	flag.StringVar(&c.LogDir, "log-dir", c.LogDir, "directory for worker log files")
 	flag.DurationVar(&c.DrainTimeout, "drain-timeout", c.DrainTimeout, "time to wait for in-flight jobs on shutdown (-1 to wait indefinitely, 0 to exit immediately)")
 	flag.DurationVar(&c.ModelPollInterval, "model-poll-interval", c.ModelPollInterval, "interval for polling backend for model changes")
+	flag.Func("request-timeout", "request timeout in seconds without backend feedback", func(v string) error {
+		f, err := strconv.ParseFloat(v, 64)
+		if err != nil {
+			return err
+		}
+		c.RequestTimeout = time.Duration(f * float64(time.Second))
+		return nil
+	})
 	flag.BoolVar(&c.Reconnect, "reconnect", c.Reconnect, "reconnect to server on failure")
 	flag.BoolVar(&c.Reconnect, "r", c.Reconnect, "short for --reconnect")
 }
