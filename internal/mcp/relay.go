@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
+	"sync"
 )
 
 // RelayClient is a minimal MCP relay.
@@ -17,11 +18,13 @@ type RelayClient struct {
 	providerURL    string
 	token          string
 	requestTimeout time.Duration
+	mu             sync.Mutex
+	cancels        map[string]context.CancelFunc
 }
 
 // NewRelayClient creates a new relay client.
 func NewRelayClient(conn *websocket.Conn, providerURL, token string, timeout time.Duration) *RelayClient {
-	return &RelayClient{conn: conn, providerURL: providerURL, token: token, requestTimeout: timeout}
+	return &RelayClient{conn: conn, providerURL: providerURL, token: token, requestTimeout: timeout, cancels: map[string]context.CancelFunc{}}
 }
 
 // Run processes frames until the context or connection ends.
@@ -45,6 +48,13 @@ func (r *RelayClient) Run(ctx context.Context) error {
 			_ = r.send(ctx, Frame{T: "open.ok", SID: f.SID})
 		case "rpc":
 			go r.handleRPC(ctx, f)
+		case "close":
+			r.mu.Lock()
+			if cancel, ok := r.cancels[f.SID]; ok {
+				cancel()
+				delete(r.cancels, f.SID)
+			}
+			r.mu.Unlock()
 		case "ping":
 			_ = r.send(ctx, Frame{T: "pong"})
 		case "pong":
@@ -58,10 +68,21 @@ func (r *RelayClient) handleRPC(ctx context.Context, f Frame) {
 	var cancel context.CancelFunc
 	if r.requestTimeout > 0 {
 		rpcCtx, cancel = context.WithTimeout(ctx, r.requestTimeout)
+	} else {
+		rpcCtx, cancel = context.WithCancel(ctx)
 	}
-	resp, err := r.callProvider(rpcCtx, f.Payload)
-	if cancel != nil {
+	r.mu.Lock()
+	r.cancels[f.SID] = cancel
+	r.mu.Unlock()
+	defer func() {
 		cancel()
+		r.mu.Lock()
+		delete(r.cancels, f.SID)
+		r.mu.Unlock()
+	}()
+	resp, err := r.callProvider(rpcCtx, f.Payload)
+	if rpcCtx.Err() != nil {
+		return
 	}
 	if err != nil {
 		errObj := map[string]any{

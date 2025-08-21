@@ -26,7 +26,7 @@ func TestCallProviderNon200(t *testing.T) {
 		Error struct {
 			Data struct {
 				MCP string `json:"mcp"`
-			}
+			} `json:"data"`
 		} `json:"error"`
 	}
 	if err := json.Unmarshal(resp, &msg); err != nil {
