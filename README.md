@@ -427,6 +427,8 @@ curl http://localhost:8080/metrics
 curl http://localhost:9090/metrics
 ```
 
+The HTML dashboard at `/state` visualizes workers and reports per-worker token totals and average token processing rates.
+
 The server also exposes OpenAI-style model listing endpoints:
 
 ```bash
@@ -483,7 +485,7 @@ For manual end-to-end verification on a clean VM, see [desktop/windows/ACCEPTANC
 | Prometheus metrics endpoint | ✅ | `/metrics`; includes build info, per-model counters, histograms; supports `METRICS_PORT`/`--metrics-port` |
 | Real-time state API (JSON) | ✅ | `GET /api/state` returns full server/worker snapshot |
 | Real-time state stream (SSE) | ✅ | `GET /api/state/stream` for dashboards |
-| Token usage tracking | ✅ | Per-model and per-worker token totals (in/out) |
+| Token usage tracking | ✅ | Per-model and per-worker token totals (in/out) with average rate on dashboard |
 | Per-model success/error rates | ✅ | `llamapool_model_requests_total{outcome=...}` |
 | Build info (server & worker) | ✅ | Server ldflags; worker-reported version/SHA/date reflected in state |
 | Draining | ✅ | Workers can be configured to drain before exiting to avoid interrupting an ongoing request with `--drain-timeout` |

@@ -43,11 +43,11 @@ func TestE2EChatCompletionsProxy(t *testing.T) {
 			w.Header().Set("Cache-Control", "no-store")
 			fl := w.(http.Flusher)
 			w.WriteHeader(200)
-			if _, err := w.Write([]byte("data: 1\n\n")); err != nil {
+			if _, err := w.Write([]byte("data: {\"choices\":[]}\n\n")); err != nil {
 				t.Fatalf("write chunk1: %v", err)
 			}
 			fl.Flush()
-			if _, err := w.Write([]byte("data: 2\n\n")); err != nil {
+			if _, err := w.Write([]byte("data: {\"usage\":{\"prompt_tokens\":1,\"completion_tokens\":2,\"total_tokens\":3}}\n\n")); err != nil {
 				t.Fatalf("write chunk2: %v", err)
 			}
 			fl.Flush()
@@ -112,12 +112,21 @@ func TestE2EChatCompletionsProxy(t *testing.T) {
 	if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) {
 		t.Fatalf("read body: %v", err)
 	}
-	expected := "data: 1\n\ndata: 2\n\ndata: [DONE]\n\n"
+	expected := "data: {\"choices\":[]}\n\ndata: {\"usage\":{\"prompt_tokens\":1,\"completion_tokens\":2,\"total_tokens\":3}}\n\ndata: [DONE]\n\n"
 	if string(b) != expected {
 		t.Fatalf("body %q", string(b))
 	}
 	auth := gotAuth.Load().(string)
 	if auth != "Bearer secret-123" {
 		t.Fatalf("auth %q", auth)
+	}
+
+	snap := metricsReg.Snapshot()
+	if len(snap.Workers) != 1 {
+		t.Fatalf("expected one worker")
+	}
+	wstats := snap.Workers[0]
+	if wstats.TokensInTotal != 1 || wstats.TokensOutTotal != 2 {
+		t.Fatalf("tokens %d %d", wstats.TokensInTotal, wstats.TokensOutTotal)
 	}
 }

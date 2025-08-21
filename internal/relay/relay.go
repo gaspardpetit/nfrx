@@ -66,12 +66,15 @@ func RelayGenerateStream(ctx context.Context, reg *ctrl.Registry, metricsReg *ct
 		metricsReg.RecordJobEnd(worker.ID, req.Model, dur, tokensIn, tokensOut, success, errMsg)
 		metricsReg.SetWorkerStatus(worker.ID, ctrl.StatusIdle)
 		metrics.ObserveRequestDuration(worker.ID, req.Model, dur)
+		metrics.RecordWorkerProcessingTime(worker.ID, dur)
 		metrics.RecordModelRequest(req.Model, success)
 		if tokensIn > 0 {
 			metrics.RecordModelTokens(req.Model, "in", tokensIn)
+			metrics.RecordWorkerTokens(worker.ID, "in", tokensIn)
 		}
 		if tokensOut > 0 {
 			metrics.RecordModelTokens(req.Model, "out", tokensOut)
+			metrics.RecordWorkerTokens(worker.ID, "out", tokensOut)
 		}
 	}()
 
@@ -194,12 +197,15 @@ func RelayGenerateOnce(ctx context.Context, reg *ctrl.Registry, metricsReg *ctrl
 		metricsReg.RecordJobEnd(worker.ID, req.Model, dur, tokensIn, tokensOut, success, errMsg)
 		metricsReg.SetWorkerStatus(worker.ID, ctrl.StatusIdle)
 		metrics.ObserveRequestDuration(worker.ID, req.Model, dur)
+		metrics.RecordWorkerProcessingTime(worker.ID, dur)
 		metrics.RecordModelRequest(req.Model, success)
 		if tokensIn > 0 {
 			metrics.RecordModelTokens(req.Model, "in", tokensIn)
+			metrics.RecordWorkerTokens(worker.ID, "in", tokensIn)
 		}
 		if tokensOut > 0 {
 			metrics.RecordModelTokens(req.Model, "out", tokensOut)
+			metrics.RecordWorkerTokens(worker.ID, "out", tokensOut)
 		}
 	}()
 
