@@ -28,6 +28,7 @@ By default the MCP relay exits if the server is unavailable. Add `-r` or `--reco
 `llamapool-mcp` reads configuration from a YAML file when `MCP_CONFIG_FILE` is set. Values in the file—such as transport order, protocol version preference, or stdio working directory—are used as defaults and can be overridden by environment variables or CLI flags (e.g. `--mcp-http-url`, `--mcp-stdio-workdir`).
 
 For transport configuration, common errors, and developer guidance see [doc/mcpclient.md](doc/mcpclient.md).
+For a comprehensive list of configuration options, see [docs/env.md](docs/env.md).
 
 A typical deployment looks like this:
 

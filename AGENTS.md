@@ -36,5 +36,8 @@ requests to local Ollama instances. The repository contains two binaries:
   docker build -f deploy/Dockerfile.worker .
   ```
 
+## Documentation
+- Keep `docs/env.md` updated whenever environment variables, command line flags, or configuration file options change.
+
 ## Further Reading
 - @README.md for project usage and examples

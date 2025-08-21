@@ -1,0 +1,104 @@
+# Configuration reference
+
+This document lists configuration options for the llamapool tools. Settings can be supplied via environment variables, command line flags, or (where supported) configuration files. `DEBUG` affects logging across all binaries.
+
+## Common
+
+| Variable | Config key | Purpose | Default | CLI flag |
+|----------|------------|---------|---------|----------|
+| `DEBUG` | — | enable verbose logging | info level when unset | — |
+
+## llamapool-server
+
+llamapool-server does not currently read from a configuration file; settings are provided via environment variables or CLI flags.
+
+| Variable | Config key | Purpose | Default | CLI flag |
+|----------|------------|---------|---------|----------|
+| `PORT` | — | HTTP listen port for the public API | `8080` | `--port` |
+| `METRICS_PORT` | — | Prometheus metrics listen port | same as `PORT` | `--metrics-port` |
+| `API_KEY` | — | client API key required for HTTP requests | unset (auth disabled) | `--api-key` |
+| `WORKER_KEY` | — | shared key workers must present when registering | unset | `--worker-key` |
+| `REQUEST_TIMEOUT` | — | maximum duration to process a client request | `60s` | `--request-timeout` |
+| `ALLOWED_ORIGINS` | — | comma separated list of allowed CORS origins | unset (deny all) | `--allowed-origins` |
+| `BROKER_MAX_REQ_BYTES` | — | maximum MCP request size in bytes | `10485760` | — |
+| `BROKER_MAX_RESP_BYTES` | — | maximum MCP response size in bytes | `10485760` | — |
+| `BROKER_CALL_TIMEOUT_MS` | — | MCP call timeout in milliseconds | `30000` | — |
+| `BROKER_WS_HEARTBEAT_MS` | — | MCP WebSocket heartbeat interval in milliseconds | `15000` | — |
+| `BROKER_WS_DEAD_AFTER_MS` | — | MCP WebSocket idle timeout in milliseconds | `45000` | — |
+| `BROKER_MAX_CONCURRENCY_PER_CLIENT` | — | maximum concurrent MCP sessions per client | `16` | — |
+
+## llamapool-worker
+
+The worker optionally reads settings from a YAML config file. Defaults:
+
+- macOS: `~/Library/Application Support/llamapool/worker.yaml`
+- Windows: `%ProgramData%\\llamapool\\worker.yaml`
+- Linux: none
+
+| Variable | Config key | Purpose | Default | CLI flag |
+|----------|------------|---------|---------|----------|
+| `CONFIG_FILE` | — | worker config file path | OS-specific (none on Linux) | `--config` |
+| `LOG_DIR` | — | directory for worker log files | OS-specific (none on Linux) | `--log-dir` |
+| `SERVER_URL` | `server_url` | server WebSocket URL for registration | `ws://localhost:8080/api/workers/connect` | `--server-url` |
+| `WORKER_KEY` | `worker_key` | shared secret for authenticating with the server | unset | `--worker-key` |
+| `OLLAMA_BASE_URL` | `ollama_base_url` | base URL of the local Ollama instance (`OLLAMA_URL` alias) | `http://127.0.0.1:11434` | `--ollama-base-url` |
+| `OLLAMA_URL` | `ollama_base_url` | legacy alias for `OLLAMA_BASE_URL` | same as above | — |
+| `OLLAMA_API_KEY` | — | API key for connecting to Ollama | unset | `--ollama-api-key` |
+| `MAX_CONCURRENCY` | `max_concurrency` | maximum number of jobs processed concurrently | `2` | `--max-concurrency` |
+| `WORKER_ID` | — | worker identifier (random if unset) | unset | `--worker-id` |
+| `STATUS_ADDR` | `status_addr` | local status HTTP listen address | unset (disabled) | `--status-addr` |
+| `METRICS_ADDR` | — | Prometheus metrics listen address | unset (disabled) | `--metrics-addr` |
+| `DRAIN_TIMEOUT` | — | time to wait for in-flight jobs on shutdown | `1m` | `--drain-timeout` |
+| `MODEL_POLL_INTERVAL` | — | interval for polling Ollama for model changes | `1m` | `--model-poll-interval` |
+| `WORKER_NAME` | — | worker display name | hostname (or random) | `--worker-name` |
+| `RECONNECT` | — | reconnect to server on failure | `false` | `--reconnect`, `-r` |
+
+Note: The YAML schema currently covers only a subset (`server_url`, `worker_key`, `ollama_base_url`, `max_concurrency`, `status_addr`).
+
+## llamapool-mcp
+
+`llamapool-mcp` reads additional settings from a YAML file when `MCP_CONFIG_FILE` is set.
+
+| Variable | Config key | Purpose | Default | CLI flag |
+|----------|------------|---------|---------|----------|
+| `RECONNECT` | — | reconnect to server on failure | `false` | `--reconnect`, `-r` |
+| `SERVER_URL` | — | broker WebSocket URL | `ws://localhost:8080/api/mcp/connect` | — |
+| `CLIENT_ID` | — | client identifier (assigned when empty) | unset | — |
+| `PROVIDER_URL` | — | MCP provider URL | `http://127.0.0.1:7777/` | — |
+| `AUTH_TOKEN` | — | authorization token for broker requests | unset | — |
+| `MCP_CONFIG_FILE` | — | path to YAML config file | unset | `--mcp-config` |
+| `MCP_TRANSPORT_ORDER` | `order` | comma separated transport order | `stdio,http,oauth` | `--mcp-transport-order` |
+| `MCP_INIT_TIMEOUT` | `initTimeout` | timeout for transport startup | `5s` | `--mcp-init-timeout` |
+| `MCP_PROTOCOL_VERSION` | `protocolVersion` | preferred MCP protocol version | negotiated automatically | `--mcp-protocol-version` |
+| `MCP_MAX_INFLIGHT` | `maxInFlight` | maximum concurrent MCP RPCs | `0` (unlimited) | `--mcp-max-inflight` |
+| `MCP_STDIO_COMMAND` | `stdio.command` | command for stdio transport | unset | `--mcp-stdio-command` |
+| `MCP_STDIO_ARGS` | `stdio.args` | stdio command arguments | unset | `--mcp-stdio-args` |
+| `MCP_STDIO_ENV` | `stdio.env` | stdio environment variables | unset | `--mcp-stdio-env` |
+| `MCP_STDIO_WORKDIR` | `stdio.workDir` | stdio working directory | unset | `--mcp-stdio-workdir` |
+| `MCP_STDIO_ALLOW_RELATIVE` | `stdio.allowRelative` | allow relative stdio command path | `false` | `--mcp-stdio-allow-relative` |
+| `MCP_HTTP_URL` | `http.url` | HTTP MCP server base URL | unset | `--mcp-http-url` |
+| `MCP_HTTP_TIMEOUT` | `http.timeout` | HTTP client timeout | `30s` | `--mcp-http-timeout` |
+| `MCP_HTTP_ENABLE_PUSH` | `http.enablePush` | enable server-push SSE channel | `false` | `--mcp-http-enable-push` |
+| `MCP_HTTP_INSECURE_SKIP_VERIFY` | `http.insecureSkipVerify` | skip TLS certificate verification | `false` | `--mcp-http-insecure-skip-verify` |
+| `MCP_OAUTH_ENABLED` | `oauth.enabled` | enable OAuth for HTTP transport | `false` | `--mcp-oauth-enabled` |
+| `MCP_OAUTH_TOKEN_URL` | `oauth.tokenURL` | OAuth token endpoint | unset | `--mcp-oauth-token-url` |
+| `MCP_OAUTH_CLIENT_ID` | `oauth.clientID` | OAuth client ID | unset | `--mcp-oauth-client-id` |
+| `MCP_OAUTH_CLIENT_SECRET` | `oauth.clientSecret` | OAuth client secret | unset | `--mcp-oauth-client-secret` |
+| `MCP_OAUTH_SCOPES` | `oauth.scopes` | OAuth scopes | unset | `--mcp-oauth-scopes` |
+| `MCP_OAUTH_TOKEN_FILE` | `oauth.tokenFile` | path to OAuth token cache file | unset | `--mcp-oauth-token-file` |
+| `MCP_ENABLE_LEGACY_SSE` | `enableLegacySSE` | enable legacy SSE transport | `false` | `--mcp-enable-legacy-sse` |
+
+### Consistency notes
+
+`SERVER_URL`, `WORKER_KEY`, and `RECONNECT` remain shared between tools, providing predictable behavior. Metrics configuration still mixes `METRICS_PORT` on the server with `METRICS_ADDR` on the worker, and timeout variables combine duration strings (`REQUEST_TIMEOUT`) with millisecond suffixes (`BROKER_CALL_TIMEOUT_MS`). The worker's YAML config covers only a subset of its available settings, leaving items like `METRICS_ADDR` or `DRAIN_TIMEOUT` without config-file equivalents.
+
+### Cleanup candidates
+
+| Option(s) | Issue | Recommendation |
+|-----------|-------|----------------|
+| `OLLAMA_URL` | legacy alias for `OLLAMA_BASE_URL` | consolidate on `OLLAMA_BASE_URL` |
+| `METRICS_PORT` / `METRICS_ADDR` | inconsistent metrics naming | standardize on a single form (e.g., address) |
+| `BROKER_CALL_TIMEOUT_MS` vs `REQUEST_TIMEOUT` | mixed units and naming for timeouts | use duration strings consistently |
+| `CONFIG_FILE` / `MCP_CONFIG_FILE` | inconsistent config file naming | adopt a consistent `*_CONFIG_FILE` pattern |
+| worker YAML coverage | config file omits many settings (metrics, timeouts, names) | expand or deprecate partial config schema |
+
