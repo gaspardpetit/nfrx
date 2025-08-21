@@ -18,7 +18,7 @@ It sits in front of existing LLM runtimes such as [Ollama](https://github.com/ol
 
 In addition to LLM workers, llamapool now supports relaying [Model Context Protocol](https://github.com/modelcontextprotocol) calls. 
 
-The server exposes a Streamable HTTP MCP endpoint at `POST /api/mcp/id/{id}` and forwards requests verbatim over WebSocket to a connected `llamapool-mcp` process. The broker enforces request/response size limits, per-client concurrency caps, and 30s call timeouts; cancellation is not yet implemented. The client negotiates protocol versions and server capabilities, and exposes tunables such as `MCP_PROTOCOL_VERSION`, `MCP_HTTP_TIMEOUT`, and `MCP_MAX_INFLIGHT` for advanced deployments.
+The server exposes a Streamable HTTP MCP endpoint at `POST /api/mcp/id/{id}` and forwards requests verbatim over WebSocket to a connected `llamapool-mcp` process. The broker enforces request/response size limits, per-client concurrency caps, and 30s call timeouts; cancellation is not yet implemented. When the relay is started with `AUTH_TOKEN`, clients must supply `Authorization: Bearer <token>` when calling this endpoint. The client negotiates protocol versions and server capabilities, and exposes tunables such as `MCP_PROTOCOL_VERSION`, `MCP_HTTP_TIMEOUT`, and `MCP_MAX_INFLIGHT` for advanced deployments.
 
 Server-initiated JSON-RPC requests (for example sampling calls) are forwarded across the WebSocket bridge and relayed back to clients, preserving full protocol semantics.
 
@@ -484,4 +484,5 @@ For manual end-to-end verification on a clean VM, see [desktop/windows/ACCEPTANC
 | Linux Deamons | ✅ | Debian packages are provided to install the worker and server as daemons |
 | Desktop Trays | In Progress | Windows and macOS tray applications to launch, configure and monitor the worker |
 | Server dashboard | ✅ | `/state` HTML page visualizes workers via SSE |
+| MCP endpoint bearer auth | ✅ | `llamapool-mcp` requires `Authorization: Bearer <AUTH_TOKEN>` when set |
 | Private MCP Endpoints | ✅ | Allow clients to expose an ephemeral MCP server through the `llamapool-mcp` relay |

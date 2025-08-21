@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -26,6 +27,7 @@ type Frame struct {
 	Payload json.RawMessage `json:"payload,omitempty"`
 	Code    string          `json:"code,omitempty"`
 	Msg     string          `json:"msg,omitempty"`
+	Auth    string          `json:"auth,omitempty"`
 }
 
 // Relay tracks a connected MCP relay.
@@ -296,9 +298,15 @@ func (r *Registry) HTTPHandler() http.HandlerFunc {
 			delete(relay.sessions, sid)
 			relay.mu.Unlock()
 		}()
+		auth := ""
+		if h := req.Header.Get("Authorization"); h != "" {
+			if strings.HasPrefix(strings.ToLower(h), "bearer ") {
+				auth = strings.TrimSpace(h[7:])
+			}
+		}
 		ctx, cancel := context.WithTimeout(req.Context(), r.callTimeout)
 		defer cancel()
-		if err := relay.write(ctx, Frame{T: "open", SID: sid, ReqID: reqID, Hint: env.Method}); err != nil {
+		if err := relay.write(ctx, Frame{T: "open", SID: sid, ReqID: reqID, Hint: env.Method, Auth: auth}); err != nil {
 			logx.Log.Warn().Str("component", "server.http").Str("client_id", clientID).Str("req_id", reqID).Str("error_code", "MCP_PROVIDER_UNAVAILABLE").Msg("relay write failed")
 			writeRPCError(w, env.ID, http.StatusServiceUnavailable, "MCP_PROVIDER_UNAVAILABLE", "relay write failed", reqID)
 			return
@@ -306,8 +314,14 @@ func (r *Registry) HTTPHandler() http.HandlerFunc {
 		select {
 		case f := <-ch:
 			if f.T != "open.ok" {
-				logx.Log.Warn().Str("component", "server.http").Str("client_id", clientID).Str("req_id", reqID).Str("error_code", "MCP_PROVIDER_UNAVAILABLE").Msg("open failed")
-				writeRPCError(w, env.ID, http.StatusServiceUnavailable, "MCP_PROVIDER_UNAVAILABLE", "open failed", reqID)
+				status := http.StatusServiceUnavailable
+				code := "MCP_PROVIDER_UNAVAILABLE"
+				if f.Code == "MCP_UNAUTHORIZED" {
+					status = http.StatusUnauthorized
+					code = f.Code
+				}
+				logx.Log.Warn().Str("component", "server.http").Str("client_id", clientID).Str("req_id", reqID).Str("error_code", code).Msg("open failed")
+				writeRPCError(w, env.ID, status, code, "open failed", reqID)
 				return
 			}
 		case <-ctx.Done():

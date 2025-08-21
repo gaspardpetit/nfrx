@@ -17,13 +17,12 @@ In separate terminals:
 
 ```bash
 # Start the public server
-env BROKER_ACCEPTED_CLIENTS=time-client BROKER_RELAY_TOKEN=secret API_KEY=test123 ./llamapool-server
+API_KEY=test123 ./llamapool-server
 
-# Connect the MCP relay
-env BROKER_WS_URL=ws://localhost:8080/ws/relay \
-    CLIENT_ID=time-client \
+# Connect the MCP relay requiring a bearer token
+SERVER_URL=ws://localhost:8080/api/mcp/connect \
     PROVIDER_URL=http://127.0.0.1:7777/mcp \
-    RELAY_AUTH_TOKEN=secret \
+    AUTH_TOKEN=secret \
     ./llamapool-mcp
 ```
 
@@ -32,17 +31,19 @@ env BROKER_WS_URL=ws://localhost:8080/ws/relay \
 Initialize the MCP session:
 
 ```bash
-curl -s -X POST http://localhost:8080/mcp/time-client \
+curl -s -X POST http://localhost:8080/api/mcp/id/time-client \
   -H 'Content-Type: application/json' \
   -H 'Accept: application/json, text/event-stream' \
+  -H 'Authorization: Bearer secret' \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"demo","version":"0.0.0"}}}'
 ```
 
 Then invoke the tool:
 
 ```bash
-curl -s -X POST http://localhost:8080/mcp/time-client \
+curl -s -X POST http://localhost:8080/api/mcp/id/time-client \
   -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer secret' \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"time/now","arguments":{}}}'
 ```
 
