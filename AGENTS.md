@@ -24,6 +24,10 @@ requests to local Ollama instances. The repository contains two binaries:
 - `Warn` logs report expected failures (e.g., model not found, no worker available, worker busy, draining rejections).
 - `Error` logs report unexpected failures that require investigation (e.g., socket errors, serialization failures).
 - `Fatal` logs are reserved for unrecoverable errors that terminate the service.
+- Classify failures by impact:
+  - Business-case issues (e.g., invalid model requests) should log at **Warn**.
+  - Unexpected failures outside normal flow (e.g., backend timeouts or authentication rejections) should log at **Error**.
+  - Failures that will terminate or corrupt the service (e.g., OOM) should log at **Fatal**.
 
 ## Testing Guidelines
 - Unit tests live alongside the code using `*_test.go` files
