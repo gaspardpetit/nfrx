@@ -75,6 +75,14 @@ func handleHTTPProxy(ctx context.Context, cfg config.WorkerConfig, sendCh chan [
 	b, _ := json.Marshal(hmsg)
 	sendMsg(reqCtx, sendCh, b)
 
+	if resp.StatusCode >= http.StatusBadRequest {
+		lvl := logx.Log.Warn()
+		if resp.StatusCode >= http.StatusInternalServerError || resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+			lvl = logx.Log.Error()
+		}
+		lvl.Str("request_id", req.RequestID).Int("status", resp.StatusCode).Msg("proxy response")
+	}
+
 	buf := make([]byte, 32*1024)
 	for {
 		n, err := resp.Body.Read(buf)
