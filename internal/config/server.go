@@ -40,8 +40,11 @@ func (c *ServerConfig) BindFlags() {
 	}
 	c.APIKey = getEnv("API_KEY", "")
 	c.ClientKey = getEnv("CLIENT_KEY", "")
-	rt, _ := time.ParseDuration(getEnv("REQUEST_TIMEOUT", "60s"))
-	c.RequestTimeout = rt
+	if v, err := strconv.ParseFloat(getEnv("REQUEST_TIMEOUT", "120"), 64); err == nil {
+		c.RequestTimeout = time.Duration(v * float64(time.Second))
+	} else {
+		c.RequestTimeout = 120 * time.Second
+	}
 	c.AllowedOrigins = splitComma(getEnv("ALLOWED_ORIGINS", strings.Join(c.AllowedOrigins, ",")))
 
 	flag.StringVar(&c.ConfigFile, "config", c.ConfigFile, "server config file path")
@@ -49,7 +52,14 @@ func (c *ServerConfig) BindFlags() {
 	flag.StringVar(&c.MetricsAddr, "metrics-port", c.MetricsAddr, "Prometheus metrics listen address or port; defaults to the value of --port")
 	flag.StringVar(&c.APIKey, "api-key", c.APIKey, "client API key required for HTTP requests; leave empty to disable auth")
 	flag.StringVar(&c.ClientKey, "client-key", c.ClientKey, "shared key clients must present when registering")
-	flag.DurationVar(&c.RequestTimeout, "request-timeout", c.RequestTimeout, "maximum duration to process a client request")
+	flag.Func("request-timeout", "request timeout in seconds without worker activity", func(v string) error {
+		f, err := strconv.ParseFloat(v, 64)
+		if err != nil {
+			return err
+		}
+		c.RequestTimeout = time.Duration(f * float64(time.Second))
+		return nil
+	})
 	flag.Func("allowed-origins", "comma separated list of allowed CORS origins", func(v string) error {
 		c.AllowedOrigins = splitComma(v)
 		return nil

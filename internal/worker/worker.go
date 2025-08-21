@@ -239,7 +239,7 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg conf
 				continue
 			}
 			if jr.Endpoint == "generate" {
-				go handleGenerate(connCtx, client, sendCh, jr, reqCancels, &jobMu, checkDrain)
+				go handleGenerate(connCtx, client, cfg.RequestTimeout, sendCh, jr, reqCancels, &jobMu, checkDrain)
 			}
 		case "cancel_job":
 			var cj ctrl.CancelJobMessage
@@ -391,7 +391,7 @@ func sendMsg(ctx context.Context, ch chan<- []byte, msg []byte) {
 	}
 }
 
-func handleGenerate(ctx context.Context, client *ollama.Client, sendCh chan []byte, jr ctrl.JobRequestMessage, cancels map[string]context.CancelFunc, mu *sync.Mutex, onDone func()) {
+func handleGenerate(ctx context.Context, client *ollama.Client, timeout time.Duration, sendCh chan []byte, jr ctrl.JobRequestMessage, cancels map[string]context.CancelFunc, mu *sync.Mutex, onDone func()) {
 	logx.Log.Info().Str("job", jr.JobID).Msg("generate start")
 	raw, _ := json.Marshal(jr.Payload)
 	var req relay.GenerateRequest
@@ -437,7 +437,22 @@ func handleGenerate(ctx context.Context, client *ollama.Client, sendCh chan []by
 		defer func() {
 			_ = rc.Close()
 		}()
+		var idle *time.Timer
+		if timeout > 0 {
+			idle = time.NewTimer(timeout)
+			go func() {
+				<-idle.C
+				cancel()
+			}()
+			defer idle.Stop()
+		}
 		for line := range ollama.ReadLines(rc) {
+			if idle != nil {
+				if !idle.Stop() {
+					<-idle.C
+				}
+				idle.Reset(timeout)
+			}
 			msg := ctrl.JobChunkMessage{Type: "job_chunk", JobID: jr.JobID, Data: json.RawMessage(line)}
 			b, _ := json.Marshal(msg)
 			sendMsg(jobCtx, sendCh, b)
@@ -446,7 +461,15 @@ func handleGenerate(ctx context.Context, client *ollama.Client, sendCh chan []by
 		b, _ := json.Marshal(done)
 		sendMsg(jobCtx, sendCh, b)
 	} else {
-		data, err := client.Generate(jobCtx, req)
+		reqCtx := jobCtx
+		var cancelTO context.CancelFunc
+		if timeout > 0 {
+			reqCtx, cancelTO = context.WithTimeout(jobCtx, timeout)
+		}
+		data, err := client.Generate(reqCtx, req)
+		if cancelTO != nil {
+			cancelTO()
+		}
 		if err != nil {
 			logx.Log.Error().Str("job", jr.JobID).Err(err).Msg("generate error")
 			msg := ctrl.JobErrorMessage{Type: "job_error", JobID: jr.JobID, Code: "error", Message: err.Error()}

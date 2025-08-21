@@ -23,11 +23,10 @@ The server optionally reads settings from a YAML config file. Defaults:
 | `METRICS_PORT` | — | Prometheus metrics listen address or port | same as `PORT` | `--metrics-port` |
 | `API_KEY` | — | client API key required for HTTP requests | unset (auth disabled) | `--api-key` |
 | `CLIENT_KEY` | — | shared key clients must present when registering | unset | `--client-key` |
-| `REQUEST_TIMEOUT` | — | maximum duration to process a client request | `60s` | `--request-timeout` |
+| `REQUEST_TIMEOUT` | — | seconds without worker or MCP activity before timing out a request | `120` | `--request-timeout` |
 | `ALLOWED_ORIGINS` | — | comma separated list of allowed CORS origins | unset (deny all) | `--allowed-origins` |
 | `BROKER_MAX_REQ_BYTES` | — | maximum MCP request size in bytes | `10485760` | — |
 | `BROKER_MAX_RESP_BYTES` | — | maximum MCP response size in bytes | `10485760` | — |
-| `BROKER_CALL_TIMEOUT_MS` | — | MCP call timeout in milliseconds | `30000` | — |
 | `BROKER_WS_HEARTBEAT_MS` | — | MCP WebSocket heartbeat interval in milliseconds | `15000` | — |
 | `BROKER_WS_DEAD_AFTER_MS` | — | MCP WebSocket idle timeout in milliseconds | `45000` | — |
 | `BROKER_MAX_CONCURRENCY_PER_CLIENT` | — | maximum concurrent MCP sessions per client | `16` | — |
@@ -56,6 +55,7 @@ The worker optionally reads settings from a YAML config file. Defaults:
 | `MODEL_POLL_INTERVAL` | — | interval for polling Ollama for model changes | `1m` | `--model-poll-interval` |
 | `WORKER_NAME` | — | worker display name | hostname (or random) | `--worker-name` |
 | `RECONNECT` | — | reconnect to server on failure | `false` | `--reconnect`, `-r` |
+| `REQUEST_TIMEOUT` | — | seconds without backend feedback before failing a job | `300` | `--request-timeout` |
 
 Note: The YAML schema currently covers only a subset (`server_url`, `client_key`, `completion_base_url`, `max_concurrency`, `status_addr`).
 
@@ -77,6 +77,7 @@ Note: The YAML schema currently covers only a subset (`server_url`, `client_key`
 | `CLIENT_KEY` | — | shared secret for authenticating with the server | unset | `--client-key` |
 | `CONFIG_FILE` | — | path to YAML config file | OS-specific | `--config` |
 | `METRICS_PORT` | — | Prometheus metrics listen address or port | unset (disabled) | `--metrics-port` |
+| `REQUEST_TIMEOUT` | — | seconds to wait for MCP provider responses | `300` | `--request-timeout` |
 | `MCP_TRANSPORT_ORDER` | `order` | comma separated transport order | `stdio,http,oauth` | `--mcp-transport-order` |
 | `MCP_INIT_TIMEOUT` | `initTimeout` | timeout for transport startup | `5s` | `--mcp-init-timeout` |
 | `MCP_PROTOCOL_VERSION` | `protocolVersion` | preferred MCP protocol version | negotiated automatically | `--mcp-protocol-version` |
@@ -100,12 +101,11 @@ Note: The YAML schema currently covers only a subset (`server_url`, `client_key`
 
 ### Consistency notes
 
-`SERVER_URL`, `CLIENT_KEY`, and `RECONNECT` remain shared between tools, providing predictable behavior. Timeout variables still mix duration strings (`REQUEST_TIMEOUT`) with millisecond suffixes (`BROKER_CALL_TIMEOUT_MS`). The worker's YAML config covers only a subset of its available settings, leaving items like `METRICS_PORT` or `DRAIN_TIMEOUT` without config-file equivalents.
+`SERVER_URL`, `CLIENT_KEY`, and `RECONNECT` remain shared between tools, providing predictable behavior. The worker's YAML config covers only a subset of its available settings, leaving items like `METRICS_PORT` or `DRAIN_TIMEOUT` without config-file equivalents.
 
 ### Cleanup candidates
 
 | Option(s) | Issue | Recommendation |
 |-----------|-------|----------------|
-| `BROKER_CALL_TIMEOUT_MS` vs `REQUEST_TIMEOUT` | mixed units and naming for timeouts | use duration strings consistently |
 | worker YAML coverage | config file omits many settings (metrics, timeouts, names) | expand or deprecate partial config schema |
 

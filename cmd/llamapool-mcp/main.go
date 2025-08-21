@@ -110,6 +110,8 @@ func main() {
 	flag.StringVar(&clientKey, "client-key", clientKey, "shared secret for authenticating with the server")
 	metricsAddr := getEnv("METRICS_PORT", "")
 	flag.StringVar(&metricsAddr, "metrics-port", metricsAddr, "Prometheus metrics listen address or port (disabled when empty; e.g. 127.0.0.1:9090 or 9090)")
+	rtVal, _ := strconv.ParseFloat(getEnv("REQUEST_TIMEOUT", "300"), 64)
+	flag.Float64Var(&rtVal, "request-timeout", rtVal, "request timeout in seconds for provider responses")
 	flag.Parse()
 	if *showVersion {
 		fmt.Printf("llamapool-mcp version=%s sha=%s date=%s\n", version, buildSHA, buildDate)
@@ -132,6 +134,7 @@ func main() {
 	providerURL := getEnv("PROVIDER_URL", "http://127.0.0.1:7777/")
 	authToken := getEnv("AUTH_TOKEN", "")
 	header := http.Header{}
+	requestTimeout := time.Duration(rtVal * float64(time.Second))
 
 	if metricsAddr != "" {
 		if !strings.Contains(metricsAddr, ":") {
@@ -184,7 +187,7 @@ func main() {
 		runCtx, cancel := context.WithCancel(ctx)
 		go monitorProvider(runCtx, providerURL, reconnectFlag)
 
-		relay := mcp.NewRelayClient(conn, providerURL, authToken)
+		relay := mcp.NewRelayClient(conn, providerURL, authToken, requestTimeout)
 		if err := relay.Run(runCtx); err != nil {
 			cancel()
 			_ = conn.Close(websocket.StatusInternalError, "closing")

@@ -62,7 +62,7 @@ func main() {
 	metrics.Register(prometheus.DefaultRegisterer)
 	metrics.SetServerBuildInfo(version, buildSHA, buildDate)
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	mcpReg := mcp.NewRegistry()
+	mcpReg := mcp.NewRegistry(cfg.RequestTimeout)
 	handler := server.New(reg, metricsReg, sched, mcpReg, cfg)
 	srv := &http.Server{Addr: fmt.Sprintf(":%d", cfg.Port), Handler: handler}
 	var metricsSrv *http.Server
