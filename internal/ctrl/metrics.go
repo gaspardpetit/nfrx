@@ -80,6 +80,7 @@ type ModelCount struct {
 // MCPClientSnapshot represents a connected MCP relay client.
 type MCPClientSnapshot struct {
 	ID        string         `json:"id"`
+	Name      string         `json:"name"`
 	Status    string         `json:"status"`
 	Inflight  int            `json:"inflight"`
 	Functions map[string]int `json:"functions"`

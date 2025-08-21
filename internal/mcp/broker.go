@@ -39,6 +39,7 @@ type Relay struct {
 	lastSeen time.Time
 	methods  map[string]int
 	sessions map[string]sessionInfo
+	name     string
 }
 
 type sessionInfo struct {
@@ -95,19 +96,15 @@ func (r *Registry) WSHandler(clientKey string) http.HandlerFunc {
 			return
 		}
 		var reg struct {
-			ID        string `json:"id"`
-			ClientKey string `json:"client_key"`
-			WorkerKey string `json:"worker_key"`
+			ID         string `json:"id"`
+			ClientName string `json:"client_name"`
+			ClientKey  string `json:"client_key"`
 		}
 		if err := json.Unmarshal(data, &reg); err != nil {
 			_ = c.Close(websocket.StatusPolicyViolation, "invalid register")
 			return
 		}
 		key := reg.ClientKey
-		if key == "" && reg.WorkerKey != "" {
-			logx.Log.Warn().Msg("register message 'worker_key' field is deprecated; use 'client_key'")
-			key = reg.WorkerKey
-		}
 		if clientKey == "" && key != "" {
 			_ = c.Close(websocket.StatusPolicyViolation, "unauthorized")
 			return
@@ -126,12 +123,13 @@ func (r *Registry) WSHandler(clientKey string) http.HandlerFunc {
 			_ = c.Close(websocket.StatusPolicyViolation, "id in use")
 			return
 		}
-		relay := &Relay{conn: c, pending: map[string]chan Frame{}, lastSeen: time.Now(), methods: map[string]int{}, sessions: map[string]sessionInfo{}}
+		relay := &Relay{conn: c, pending: map[string]chan Frame{}, lastSeen: time.Now(), methods: map[string]int{}, sessions: map[string]sessionInfo{}, name: reg.ClientName}
 		r.relays[clientID] = relay
 		r.mu.Unlock()
 
 		ack, _ := json.Marshal(map[string]string{"id": clientID})
 		_ = c.Write(reqCtx, websocket.MessageText, ack)
+		logx.Log.Info().Str("client_id", clientID).Str("client_name", reg.ClientName).Msg("mcp relay registered")
 
 		ctx := context.Background()
 		go r.readPump(ctx, clientID, relay)
@@ -216,6 +214,7 @@ func (r *Registry) Snapshot() ctrl.MCPState {
 		}
 		state.Clients = append(state.Clients, ctrl.MCPClientSnapshot{
 			ID:        id,
+			Name:      rl.name,
 			Status:    status,
 			Inflight:  rl.inflight,
 			Functions: funcs,

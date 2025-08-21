@@ -42,7 +42,7 @@ Endpoints are grouped by functional area.
 
 | Verb & Endpoint | Parameters | Description | Auth |
 | --- | --- | --- | --- |
-| `GET /api/mcp/connect` (WS) | Initial message `{ id?: string, client_key?: string }` | MCP relay connects and receives an id. | Client key |
+| `GET /api/mcp/connect` (WS) | Initial message `{ id?: string, client_name?: string, client_key?: string }` | MCP relay connects and receives an id. | Client key |
 
 ### Client (LLM) Usage
 

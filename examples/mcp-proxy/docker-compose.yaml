@@ -44,7 +44,7 @@ services:
     environment:
       <<: *common_env
       SERVER_URL: "ws://server:8080/api/mcp/connect"
-      WORKER_NAME: "Alpha"
+      CLIENT_NAME: "Alpha"
       PROVIDER_URL: http://clock:7777/mcp/
     ports:
       - "4555:4555"

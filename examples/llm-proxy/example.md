@@ -29,7 +29,7 @@ services:
       <<: *common_env
       SERVER_URL: "ws://server:8080/api/workers/connect"
       COMPLETION_BASE_URL: "http://ollama:11434/v1"
-      WORKER_NAME: "Alpha"
+      CLIENT_NAME: "Alpha"
       STATUS_ADDR: "0.0.0.0:4555"
     ports:
       - "4555:4555"
