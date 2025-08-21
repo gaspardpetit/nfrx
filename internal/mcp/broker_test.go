@@ -70,7 +70,7 @@ func TestHTTPHandlerConcurrencyLimit(t *testing.T) {
 func TestHTTPHandlerUnauthorized(t *testing.T) {
 	reg := NewRegistry()
 	r := chi.NewRouter()
-	r.Handle("/api/mcp/connect", reg.WSHandler())
+	r.Handle("/api/mcp/connect", reg.WSHandler(""))
 	r.Post("/api/mcp/id/{id}", reg.HTTPHandler())
 	srv := httptest.NewServer(r)
 	defer srv.Close()

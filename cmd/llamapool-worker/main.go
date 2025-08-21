@@ -75,7 +75,7 @@ func main() {
 	}()
 
 	log := logx.Log.Info().Str("worker_name", cfg.WorkerName)
-	if cfg.WorkerKey != "" {
+	if cfg.ClientKey != "" {
 		log = log.Bool("auth", true)
 	}
 	log.Msg("worker starting")

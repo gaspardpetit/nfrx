@@ -1,6 +1,6 @@
 debug: false
 server_url: ""
-worker_key: ""
+client_key: ""
 ollama_base_url: "http://127.0.0.1:11434"
 max_concurrency: 1
 status_addr: "127.0.0.1:4555"

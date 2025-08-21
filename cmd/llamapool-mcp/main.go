@@ -100,6 +100,8 @@ func main() {
 	reconnectFlag := getEnvBool("RECONNECT", false)
 	flag.BoolVar(&reconnectFlag, "reconnect", reconnectFlag, "reconnect to server on failure")
 	flag.BoolVar(&reconnectFlag, "r", reconnectFlag, "short for --reconnect")
+	clientKey := getEnv("CLIENT_KEY", "")
+	flag.StringVar(&clientKey, "client-key", clientKey, "shared secret for authenticating with the server")
 	flag.Parse()
 	if *showVersion {
 		fmt.Printf("llamapool-mcp version=%s sha=%s date=%s\n", version, buildSHA, buildDate)
@@ -127,6 +129,9 @@ func main() {
 			continue
 		}
 		reg := map[string]string{"id": clientID}
+		if clientKey != "" {
+			reg["client_key"] = clientKey
+		}
 		b, _ := json.Marshal(reg)
 		if err := conn.Write(ctx, websocket.MessageText, b); err != nil {
 			_ = conn.Close(websocket.StatusInternalError, "closing")

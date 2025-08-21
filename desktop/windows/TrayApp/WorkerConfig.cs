@@ -7,7 +7,7 @@ namespace TrayApp;
 public class WorkerConfig
 {
     public string ServerUrl { get; set; } = "";
-    public string WorkerKey { get; set; } = "";
+    public string ClientKey { get; set; } = "";
     public string OllamaBaseUrl { get; set; } = "http://127.0.0.1:11434";
     public int MaxConcurrency { get; set; } = 2;
 

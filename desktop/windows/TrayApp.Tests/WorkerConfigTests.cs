@@ -10,7 +10,7 @@ public class WorkerConfigTests
         var cfg = new WorkerConfig
         {
             ServerUrl = "wss://example",
-            WorkerKey = "secret",
+            ClientKey = "secret",
             OllamaBaseUrl = "http://ollama",
             MaxConcurrency = 3,
             StatusPort = 5000
@@ -21,7 +21,7 @@ public class WorkerConfigTests
             cfg.Save(path);
             var loaded = WorkerConfig.Load(path);
             Assert.Equal(cfg.ServerUrl, loaded.ServerUrl);
-            Assert.Equal(cfg.WorkerKey, loaded.WorkerKey);
+            Assert.Equal(cfg.ClientKey, loaded.ClientKey);
             Assert.Equal(cfg.OllamaBaseUrl, loaded.OllamaBaseUrl);
             Assert.Equal(cfg.MaxConcurrency, loaded.MaxConcurrency);
             Assert.Equal(cfg.StatusPort, loaded.StatusPort);

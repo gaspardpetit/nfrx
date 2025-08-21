@@ -103,7 +103,7 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg conf
 		Type:           "register",
 		WorkerID:       cfg.WorkerID,
 		WorkerName:     cfg.WorkerName,
-		WorkerKey:      cfg.WorkerKey,
+		ClientKey:      cfg.ClientKey,
 		Models:         GetState().Models,
 		MaxConcurrency: GetState().MaxConcurrency,
 		Version:        vi.Version,

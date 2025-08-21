@@ -19,7 +19,7 @@ import (
 func TestHeartbeatPrune(t *testing.T) {
 	reg := ctrl.NewRegistry()
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	cfg := config.ServerConfig{WorkerKey: "secret", RequestTimeout: 5 * time.Second}
+	cfg := config.ServerConfig{ClientKey: "secret", RequestTimeout: 5 * time.Second}
 	metricsReg := ctrl.NewMetricsRegistry("test", "", "")
 	handler := server.New(reg, metricsReg, sched, mcp.NewRegistry(), cfg)
 	srv := httptest.NewServer(handler)
@@ -32,7 +32,7 @@ func TestHeartbeatPrune(t *testing.T) {
 		t.Fatalf("dial: %v", err)
 	}
 	defer func() { _ = conn.Close(websocket.StatusNormalClosure, "") }()
-	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w1", WorkerKey: "secret", Models: []string{"m"}, MaxConcurrency: 1}
+	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w1", ClientKey: "secret", Models: []string{"m"}, MaxConcurrency: 1}
 	b, _ := json.Marshal(regMsg)
 	if err := conn.Write(ctx, websocket.MessageText, b); err != nil {
 		t.Fatalf("write: %v", err)

@@ -15,7 +15,7 @@ import (
 // WorkerConfig holds configuration for the worker agent.
 type WorkerConfig struct {
 	ServerURL         string
-	WorkerKey         string
+	ClientKey         string
 	OllamaBaseURL     string
 	OllamaAPIKey      string
 	MaxConcurrency    int
@@ -36,7 +36,7 @@ func (c *WorkerConfig) BindFlags() {
 	c.LogDir = getEnv("LOG_DIR", logDir)
 
 	c.ServerURL = getEnv("SERVER_URL", "ws://localhost:8080/api/workers/connect")
-	c.WorkerKey = getEnv("WORKER_KEY", "")
+	c.ClientKey = getEnv("CLIENT_KEY", "")
 	base := getEnv("OLLAMA_BASE_URL", getEnv("OLLAMA_URL", "http://127.0.0.1:11434"))
 	c.OllamaBaseURL = base
 	c.OllamaAPIKey = getEnv("OLLAMA_API_KEY", "")
@@ -70,7 +70,7 @@ func (c *WorkerConfig) BindFlags() {
 	}
 
 	flag.StringVar(&c.ServerURL, "server-url", c.ServerURL, "server WebSocket URL for registration (e.g. ws://localhost:8080/api/workers/connect)")
-	flag.StringVar(&c.WorkerKey, "worker-key", c.WorkerKey, "shared secret for authenticating with the server")
+	flag.StringVar(&c.ClientKey, "client-key", c.ClientKey, "shared secret for authenticating with the server")
 	flag.StringVar(&c.OllamaBaseURL, "ollama-base-url", c.OllamaBaseURL, "base URL of the local Ollama instance (e.g. http://127.0.0.1:11434)")
 	flag.StringVar(&c.OllamaAPIKey, "ollama-api-key", c.OllamaAPIKey, "API key for connecting to Ollama; leave empty for no auth")
 	flag.IntVar(&c.MaxConcurrency, "max-concurrency", c.MaxConcurrency, "maximum number of jobs processed concurrently")

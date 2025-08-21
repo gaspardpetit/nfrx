@@ -157,7 +157,7 @@ public class TrayAppContext : ApplicationContext
         using var form = new PreferencesForm(new WorkerConfig
         {
             ServerUrl = _config.ServerUrl,
-            WorkerKey = _config.WorkerKey,
+            ClientKey = _config.ClientKey,
             OllamaBaseUrl = _config.OllamaBaseUrl,
             MaxConcurrency = _config.MaxConcurrency,
             StatusPort = _config.StatusPort

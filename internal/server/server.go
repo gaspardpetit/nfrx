@@ -57,9 +57,9 @@ func New(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler
 	})
 	if mcpReg != nil {
 		r.Post("/api/mcp/id/{id}", mcpReg.HTTPHandler())
-		r.Handle("/api/mcp/connect", mcpReg.WSHandler())
+		r.Handle("/api/mcp/connect", mcpReg.WSHandler(cfg.ClientKey))
 	}
-	r.Handle("/api/workers/connect", ctrl.WSHandler(reg, metrics, cfg.WorkerKey))
+	r.Handle("/api/workers/connect", ctrl.WSHandler(reg, metrics, cfg.ClientKey))
 
 	metricsPort := cfg.MetricsPort
 	if metricsPort == 0 {
