@@ -36,7 +36,7 @@ Endpoints are grouped by functional area.
 | `GET /api/v1/models` | – | List models. | API key |
 | `GET /api/v1/models/{id}` | Path `{id}` | Get model details. | API key |
 
-## MCP Endpoints
+## MCP API
 
 ### MCP Registration
 
