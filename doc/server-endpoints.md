@@ -19,6 +19,8 @@ Endpoints are grouped by functional area.
 | `GET /api/state` | – | Server state snapshot (JSON). | API key |
 | `GET /api/state/stream` | – | Server state stream (SSE). | API key |
 
+The JSON snapshot includes a top-level `state` field reporting `ready`, `not_ready`, or `draining`.
+
 ## Inference API
 
 ### Worker Registration

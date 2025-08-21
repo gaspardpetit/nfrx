@@ -9,6 +9,7 @@ import (
 
 	"github.com/gaspardpetit/llamapool/internal/config"
 	"github.com/gaspardpetit/llamapool/internal/ctrl"
+	"github.com/gaspardpetit/llamapool/internal/drain"
 	"github.com/gaspardpetit/llamapool/internal/mcp"
 )
 
@@ -97,5 +98,26 @@ func TestCORSAllowedOrigins(t *testing.T) {
 	}
 	if ao := resp2.Header.Get("Access-Control-Allow-Origin"); ao != "" {
 		t.Fatalf("expected no allowed origin header, got %q", ao)
+	}
+}
+
+func TestDrainingRejects(t *testing.T) {
+	reg := ctrl.NewRegistry()
+	metricsReg := ctrl.NewMetricsRegistry("test", "", "")
+	sched := &ctrl.LeastBusyScheduler{Reg: reg}
+	cfg := config.ServerConfig{Port: 8080, RequestTimeout: time.Second}
+	h := New(reg, metricsReg, sched, mcp.NewRegistry(), cfg)
+	ts := httptest.NewServer(h)
+	defer ts.Close()
+
+	drain.Start()
+	defer drain.Stop()
+
+	resp, err := http.Get(ts.URL + "/api/v1/models")
+	if err != nil {
+		t.Fatalf("GET: %v", err)
+	}
+	if resp.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503, got %d", resp.StatusCode)
 	}
 }

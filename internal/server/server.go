@@ -13,6 +13,7 @@ import (
 	"github.com/gaspardpetit/llamapool/internal/api"
 	"github.com/gaspardpetit/llamapool/internal/config"
 	"github.com/gaspardpetit/llamapool/internal/ctrl"
+	"github.com/gaspardpetit/llamapool/internal/drain"
 	"github.com/gaspardpetit/llamapool/internal/mcp"
 )
 
@@ -43,11 +44,22 @@ func New(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler
 		public.Get("/state", StateHandler())
 	})
 
+	reject := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if drain.IsDraining() {
+				http.Error(w, "server draining", http.StatusServiceUnavailable)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+
 	r.Route("/api", func(apiGroup chi.Router) {
 		if cfg.APIKey != "" {
 			apiGroup.Use(api.APIKeyMiddleware(cfg.APIKey))
 		}
 		apiGroup.Route("/v1", func(v1 chi.Router) {
+			v1.Use(reject)
 			v1.Post("/chat/completions", wrapper.PostApiV1ChatCompletions)
 			v1.Post("/embeddings", wrapper.PostApiV1Embeddings)
 			v1.Get("/models", wrapper.GetApiV1Models)
@@ -57,10 +69,10 @@ func New(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler
 		apiGroup.Get("/state/stream", wrapper.GetApiStateStream)
 	})
 	if mcpReg != nil {
-		r.Post("/api/mcp/id/{id}", mcpReg.HTTPHandler())
-		r.Handle("/api/mcp/connect", mcpReg.WSHandler(cfg.ClientKey))
+		r.With(reject).Post("/api/mcp/id/{id}", mcpReg.HTTPHandler())
+		r.With(reject).Handle("/api/mcp/connect", mcpReg.WSHandler(cfg.ClientKey))
 	}
-	r.Handle("/api/workers/connect", ctrl.WSHandler(reg, metrics, cfg.ClientKey))
+	r.With(reject).Handle("/api/workers/connect", ctrl.WSHandler(reg, metrics, cfg.ClientKey))
 
 	if cfg.MetricsAddr == fmt.Sprintf(":%d", cfg.Port) {
 		r.Handle("/metrics", promhttp.Handler())

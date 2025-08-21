@@ -31,6 +31,7 @@ The server optionally reads settings from a YAML config file. Defaults:
 | `BROKER_WS_HEARTBEAT_MS` | — | MCP WebSocket heartbeat interval in milliseconds | `15000` | — |
 | `BROKER_WS_DEAD_AFTER_MS` | — | MCP WebSocket idle timeout in milliseconds | `45000` | — |
 | `BROKER_MAX_CONCURRENCY_PER_CLIENT` | — | maximum concurrent MCP sessions per client | `16` | — |
+| `DRAIN_TIMEOUT` | — | time to wait for in-flight requests on shutdown | `5m` | `--drain-timeout` |
 
 ## llamapool-worker
 
@@ -98,6 +99,7 @@ Note: The YAML schema currently covers only a subset (`server_url`, `client_key`
 | `MCP_OAUTH_SCOPES` | `oauth.scopes` | OAuth scopes | unset | `--mcp-oauth-scopes` |
 | `MCP_OAUTH_TOKEN_FILE` | `oauth.tokenFile` | path to OAuth token cache file | unset | `--mcp-oauth-token-file` |
 | `MCP_ENABLE_LEGACY_SSE` | `enableLegacySSE` | enable legacy SSE transport | `false` | `--mcp-enable-legacy-sse` |
+| `DRAIN_TIMEOUT` | — | time to wait for in-flight calls on shutdown | `1m` | `--drain-timeout` |
 
 ### Consistency notes
 

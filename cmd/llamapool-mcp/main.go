@@ -9,12 +9,15 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/coder/websocket"
 	"github.com/gaspardpetit/llamapool/internal/config"
+	"github.com/gaspardpetit/llamapool/internal/drain"
 	"github.com/gaspardpetit/llamapool/internal/logx"
 	"github.com/gaspardpetit/llamapool/internal/mcp"
 	reconnect "github.com/gaspardpetit/llamapool/internal/reconnect"
@@ -115,6 +118,9 @@ func main() {
 	flag.StringVar(&clientKey, "client-key", clientKey, "shared secret for authenticating with the server")
 	metricsAddr := getEnv("METRICS_PORT", "")
 	flag.StringVar(&metricsAddr, "metrics-port", metricsAddr, "Prometheus metrics listen address or port (disabled when empty; e.g. 127.0.0.1:9090 or 9090)")
+	drainTimeoutEnv := getEnv("DRAIN_TIMEOUT", "1m")
+	drainTimeout, _ := time.ParseDuration(drainTimeoutEnv)
+	flag.DurationVar(&drainTimeout, "drain-timeout", drainTimeout, "time to wait for in-flight calls on shutdown")
 
 	wsURL := getEnv("SERVER_URL", "ws://localhost:8080/api/mcp/connect")
 	host, err := os.Hostname()
@@ -158,7 +164,31 @@ func main() {
 
 	attempt := 0
 	for {
-		ctx := context.Background()
+		ctx, cancel := context.WithCancel(context.Background())
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+		go func() {
+			for range sigCh {
+				if drain.IsDraining() || drainTimeout == 0 {
+					logx.Log.Warn().Msg("termination requested")
+					cancel()
+					return
+				}
+				drain.Start()
+				if drainTimeout > 0 {
+					logx.Log.Info().Dur("timeout", drainTimeout).Msg("draining; send SIGTERM again to terminate immediately")
+					go func(d time.Duration) {
+						time.Sleep(d)
+						if drain.IsDraining() {
+							logx.Log.Warn().Msg("drain timeout exceeded; terminating")
+							cancel()
+						}
+					}(drainTimeout)
+				} else {
+					logx.Log.Info().Msg("draining; send SIGTERM again to terminate immediately")
+				}
+			}
+		}()
 		conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: header})
 		if err != nil {
 			if !reconnectFlag {
@@ -194,12 +224,12 @@ func main() {
 		logx.Log.Info().Str("server", wsURL).Str("client_id", clientID).Str("client_name", clientName).Msg("connected to server")
 		attempt = 0
 
-		runCtx, cancel := context.WithCancel(ctx)
+		runCtx, runCancel := context.WithCancel(ctx)
 		go monitorProvider(runCtx, providerURL, reconnectFlag)
 
 		relay := mcp.NewRelayClient(conn, providerURL, authToken)
 		if err := relay.Run(runCtx); err != nil {
-			cancel()
+			runCancel()
 			_ = conn.Close(websocket.StatusInternalError, "closing")
 			if !reconnectFlag {
 				logx.Log.Error().Err(err).Msg("relay stopped")
@@ -211,7 +241,7 @@ func main() {
 			time.Sleep(delay)
 			continue
 		}
-		cancel()
+		runCancel()
 		_ = conn.Close(websocket.StatusNormalClosure, "closing")
 		return
 	}

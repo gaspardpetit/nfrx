@@ -11,12 +11,14 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/gaspardpetit/llamapool/internal/config"
 	"github.com/gaspardpetit/llamapool/internal/ctrl"
+	"github.com/gaspardpetit/llamapool/internal/drain"
 	"github.com/gaspardpetit/llamapool/internal/logx"
 	"github.com/gaspardpetit/llamapool/internal/mcp"
 	"github.com/gaspardpetit/llamapool/internal/metrics"
@@ -72,8 +74,46 @@ func main() {
 		metricsSrv = &http.Server{Addr: cfg.MetricsAddr, Handler: mux}
 	}
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
+	ctx, cancel := context.WithCancel(context.Background())
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		for range sigCh {
+			if drain.IsDraining() || cfg.DrainTimeout == 0 {
+				logx.Log.Warn().Msg("termination requested")
+				cancel()
+				return
+			}
+			drain.Start()
+			if cfg.DrainTimeout > 0 {
+				logx.Log.Info().Dur("timeout", cfg.DrainTimeout).Msg("draining; send SIGTERM again to terminate immediately")
+				go func(d time.Duration) {
+					ticker := time.NewTicker(500 * time.Millisecond)
+					defer ticker.Stop()
+					for {
+						if metricsReg.JobsInflight() == 0 {
+							cancel()
+							return
+						}
+						select {
+						case <-ticker.C:
+						case <-ctx.Done():
+							return
+						}
+					}
+				}(cfg.DrainTimeout)
+				go func(d time.Duration) {
+					time.Sleep(d)
+					if drain.IsDraining() {
+						logx.Log.Warn().Msg("drain timeout exceeded; terminating")
+						cancel()
+					}
+				}(cfg.DrainTimeout)
+			} else {
+				logx.Log.Info().Msg("draining; send SIGTERM again to terminate immediately")
+			}
+		}
+	}()
 	go func() {
 		<-ctx.Done()
 		if err := srv.Shutdown(context.Background()); err != nil {

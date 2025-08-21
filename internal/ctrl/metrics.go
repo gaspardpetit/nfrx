@@ -103,6 +103,7 @@ type MCPState struct {
 
 // StateResponse is the top-level snapshot returned to clients.
 type StateResponse struct {
+	State          string           `json:"state"`
 	Server         ServerSnapshot   `json:"server"`
 	WorkersSummary WorkersSummary   `json:"workers_summary"`
 	Models         []ModelCount     `json:"models"`
@@ -125,6 +126,13 @@ type MetricsRegistry struct {
 	schedulerQueueLen  int
 
 	workers map[string]*workerMetrics
+}
+
+// JobsInflight returns the number of jobs currently in flight.
+func (m *MetricsRegistry) JobsInflight() int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.jobsInflight
 }
 
 type workerMetrics struct {

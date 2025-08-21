@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gaspardpetit/llamapool/internal/ctrl"
+	"github.com/gaspardpetit/llamapool/internal/drain"
 	"github.com/gaspardpetit/llamapool/internal/logx"
 	"github.com/gaspardpetit/llamapool/internal/mcp"
 )
@@ -21,6 +22,13 @@ func (h *StateHandler) GetState(w http.ResponseWriter, r *http.Request) {
 	state := h.Metrics.Snapshot()
 	if h.MCP != nil {
 		state.MCP = h.MCP.Snapshot()
+	}
+	if drain.IsDraining() {
+		state.State = "draining"
+	} else if state.WorkersSummary.Connected+state.WorkersSummary.Working+state.WorkersSummary.Idle > 0 {
+		state.State = "ready"
+	} else {
+		state.State = "not_ready"
 	}
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(state); err != nil {
@@ -49,6 +57,13 @@ func (h *StateHandler) GetStateStream(w http.ResponseWriter, r *http.Request) {
 			state := h.Metrics.Snapshot()
 			if h.MCP != nil {
 				state.MCP = h.MCP.Snapshot()
+			}
+			if drain.IsDraining() {
+				state.State = "draining"
+			} else if state.WorkersSummary.Connected+state.WorkersSummary.Working+state.WorkersSummary.Idle > 0 {
+				state.State = "ready"
+			} else {
+				state.State = "not_ready"
 			}
 			b, _ := json.Marshal(state)
 			if _, err := w.Write([]byte("data: ")); err != nil {

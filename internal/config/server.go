@@ -20,6 +20,7 @@ type ServerConfig struct {
 	RequestTimeout time.Duration
 	AllowedOrigins []string
 	ConfigFile     string
+	DrainTimeout   time.Duration
 }
 
 // BindFlags populates the struct with defaults from environment variables and
@@ -42,6 +43,11 @@ func (c *ServerConfig) BindFlags() {
 	c.ClientKey = getEnv("CLIENT_KEY", "")
 	rt, _ := time.ParseDuration(getEnv("REQUEST_TIMEOUT", "60s"))
 	c.RequestTimeout = rt
+	if d, err := time.ParseDuration(getEnv("DRAIN_TIMEOUT", "5m")); err == nil {
+		c.DrainTimeout = d
+	} else {
+		c.DrainTimeout = 5 * time.Minute
+	}
 	c.AllowedOrigins = splitComma(getEnv("ALLOWED_ORIGINS", strings.Join(c.AllowedOrigins, ",")))
 
 	flag.StringVar(&c.ConfigFile, "config", c.ConfigFile, "server config file path")
@@ -50,6 +56,7 @@ func (c *ServerConfig) BindFlags() {
 	flag.StringVar(&c.APIKey, "api-key", c.APIKey, "client API key required for HTTP requests; leave empty to disable auth")
 	flag.StringVar(&c.ClientKey, "client-key", c.ClientKey, "shared key clients must present when registering")
 	flag.DurationVar(&c.RequestTimeout, "request-timeout", c.RequestTimeout, "maximum duration to process a client request")
+	flag.DurationVar(&c.DrainTimeout, "drain-timeout", c.DrainTimeout, "time to wait for in-flight requests on shutdown")
 	flag.Func("allowed-origins", "comma separated list of allowed CORS origins", func(v string) error {
 		c.AllowedOrigins = splitComma(v)
 		return nil

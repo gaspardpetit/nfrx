@@ -34,6 +34,9 @@ func TestGetState(t *testing.T) {
 	if resp.Workers[0].Name != "w1" {
 		t.Fatalf("expected worker name")
 	}
+	if resp.State != "ready" {
+		t.Fatalf("expected ready state, got %s", resp.State)
+	}
 }
 
 func TestGetStateStream(t *testing.T) {

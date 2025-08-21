@@ -340,6 +340,8 @@ progress, the worker exits immediately; otherwise it waits up to
 Send `SIGTERM` again to terminate immediately. Set `--drain-timeout=0` to exit
 without waiting or `--drain-timeout=-1` to wait indefinitely.
 
+The server and MCP relay also honor `DRAIN_TIMEOUT` (via env or `--drain-timeout`) to finish in-flight requests before shutting down. The server defaults to 5m while the MCP relay uses 1m.
+
 The worker polls the local Ollama instance (default every 1m) so that
 `connected_to_backend` and `models` stay current in the `/status` output.
 If the model list changes, the worker proactively notifies the server so
