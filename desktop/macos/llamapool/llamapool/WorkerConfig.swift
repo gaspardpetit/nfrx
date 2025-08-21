@@ -2,14 +2,14 @@ import Foundation
 
 struct WorkerConfig: Equatable {
     var serverURL: String
-    var workerKey: String
+    var clientKey: String
     var ollamaBaseURL: String
     var maxConcurrency: Int
     var statusPort: Int
 
-    init(serverURL: String = "", workerKey: String = "", ollamaBaseURL: String = "", maxConcurrency: Int = 1, statusPort: Int = 4555) {
+    init(serverURL: String = "", clientKey: String = "", ollamaBaseURL: String = "", maxConcurrency: Int = 1, statusPort: Int = 4555) {
         self.serverURL = serverURL
-        self.workerKey = workerKey
+        self.clientKey = clientKey
         self.ollamaBaseURL = ollamaBaseURL
         self.maxConcurrency = maxConcurrency
         self.statusPort = statusPort
@@ -18,7 +18,7 @@ struct WorkerConfig: Equatable {
     func toYAML() -> String {
         return """
 server_url: \(serverURL)
-worker_key: \(workerKey)
+client_key: \(clientKey)
 ollama_base_url: \(ollamaBaseURL)
 max_concurrency: \(maxConcurrency)
 status_port: \(statusPort)
@@ -34,11 +34,11 @@ status_port: \(statusPort)
             }
         }
         let serverURL = dict["server_url"] ?? ""
-        let workerKey = dict["worker_key"] ?? ""
+        let clientKey = dict["client_key"] ?? ""
         let ollamaBaseURL = dict["ollama_base_url"] ?? ""
         let maxConcurrency = Int(dict["max_concurrency"] ?? "1") ?? 1
         let statusPort = Int(dict["status_port"] ?? "4555") ?? 4555
-        return WorkerConfig(serverURL: serverURL, workerKey: workerKey, ollamaBaseURL: ollamaBaseURL, maxConcurrency: maxConcurrency, statusPort: statusPort)
+        return WorkerConfig(serverURL: serverURL, clientKey: clientKey, ollamaBaseURL: ollamaBaseURL, maxConcurrency: maxConcurrency, statusPort: statusPort)
     }
 
     func isValid() -> Bool {

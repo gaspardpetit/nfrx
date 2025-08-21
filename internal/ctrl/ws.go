@@ -12,8 +12,8 @@ import (
 	"github.com/gaspardpetit/llamapool/internal/logx"
 )
 
-// WSHandler handles incoming worker websocket connections.
-func WSHandler(reg *Registry, metrics *MetricsRegistry, workerKey string) http.HandlerFunc {
+// WSHandler handles incoming client websocket connections.
+func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		c, err := websocket.Accept(w, r, nil)
 		if err != nil {
@@ -39,12 +39,20 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, workerKey string) http.H
 		if err := json.Unmarshal(data, &rm); err != nil {
 			return
 		}
-		key := rm.WorkerKey
+		key := rm.ClientKey
+		if key == "" && rm.WorkerKey != "" {
+			logx.Log.Warn().Msg("register message 'worker_key' field is deprecated; use 'client_key'")
+			key = rm.WorkerKey
+		}
 		if key == "" && rm.Token != "" {
-			logx.Log.Warn().Msg("register message 'token' field is deprecated; use 'worker_key'")
+			logx.Log.Warn().Msg("register message 'token' field is deprecated; use 'client_key'")
 			key = rm.Token
 		}
-		if workerKey != "" && key != workerKey {
+		if clientKey == "" && key != "" {
+			_ = c.Close(websocket.StatusPolicyViolation, "unauthorized")
+			return
+		}
+		if clientKey != "" && key != clientKey {
 			_ = c.Close(websocket.StatusPolicyViolation, "unauthorized")
 			return
 		}
@@ -121,23 +129,23 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, workerKey string) http.H
 			case "heartbeat":
 				reg.UpdateHeartbeat(wk.ID)
 				metrics.RecordHeartbeat(wk.ID)
-      case "status_update":
-          var m StatusUpdateMessage
-          if err := json.Unmarshal(msg, &m); err == nil {
-              wk.mu.Lock()
-              wk.MaxConcurrency = m.MaxConcurrency
-              if m.Models != nil {
-                  wk.Models = map[string]bool{}
-                  for _, mm := range m.Models {
-                      wk.Models[mm] = true
-                  }
-              }
-              wk.mu.Unlock()
-              metrics.UpdateWorker(wk.ID, m.MaxConcurrency, m.Models)
-              if m.Status != "" {
-                  metrics.SetWorkerStatus(wk.ID, WorkerStatus(m.Status))
-              }
-          }
+			case "status_update":
+				var m StatusUpdateMessage
+				if err := json.Unmarshal(msg, &m); err == nil {
+					wk.mu.Lock()
+					wk.MaxConcurrency = m.MaxConcurrency
+					if m.Models != nil {
+						wk.Models = map[string]bool{}
+						for _, mm := range m.Models {
+							wk.Models[mm] = true
+						}
+					}
+					wk.mu.Unlock()
+					metrics.UpdateWorker(wk.ID, m.MaxConcurrency, m.Models)
+					if m.Status != "" {
+						metrics.SetWorkerStatus(wk.ID, WorkerStatus(m.Status))
+					}
+				}
 			case "job_chunk":
 				var m JobChunkMessage
 				if err := json.Unmarshal(msg, &m); err == nil {

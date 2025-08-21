@@ -12,7 +12,7 @@ type ServerConfig struct {
 	Port           int
 	MetricsPort    int
 	APIKey         string
-	WorkerKey      string
+	ClientKey      string
 	RequestTimeout time.Duration
 	AllowedOrigins []string
 }
@@ -25,7 +25,7 @@ func (c *ServerConfig) BindFlags() {
 	mp, _ := strconv.Atoi(getEnv("METRICS_PORT", strconv.Itoa(port)))
 	c.MetricsPort = mp
 	c.APIKey = getEnv("API_KEY", "")
-	c.WorkerKey = getEnv("WORKER_KEY", "")
+	c.ClientKey = getEnv("CLIENT_KEY", "")
 	rt, _ := time.ParseDuration(getEnv("REQUEST_TIMEOUT", "60s"))
 	c.RequestTimeout = rt
 	c.AllowedOrigins = splitComma(getEnv("ALLOWED_ORIGINS", strings.Join(c.AllowedOrigins, ",")))
@@ -33,7 +33,7 @@ func (c *ServerConfig) BindFlags() {
 	flag.IntVar(&c.Port, "port", c.Port, "HTTP listen port for the public API")
 	flag.IntVar(&c.MetricsPort, "metrics-port", c.MetricsPort, "Prometheus metrics listen port; defaults to the value of --port")
 	flag.StringVar(&c.APIKey, "api-key", c.APIKey, "client API key required for HTTP requests; leave empty to disable auth")
-	flag.StringVar(&c.WorkerKey, "worker-key", c.WorkerKey, "shared key workers must present when registering")
+	flag.StringVar(&c.ClientKey, "client-key", c.ClientKey, "shared key clients must present when registering")
 	flag.DurationVar(&c.RequestTimeout, "request-timeout", c.RequestTimeout, "maximum duration to process a client request")
 	flag.Func("allowed-origins", "comma separated list of allowed CORS origins", func(v string) error {
 		c.AllowedOrigins = splitComma(v)

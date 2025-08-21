@@ -85,8 +85,8 @@ func main() {
 	if cfg.APIKey != "" {
 		logx.Log.Info().Msg("API key auth enabled")
 	}
-	if cfg.WorkerKey != "" {
-		logx.Log.Info().Msg("Worker key required")
+	if cfg.ClientKey != "" {
+		logx.Log.Info().Msg("Client key required")
 	}
 	logx.Log.Info().Int("port", cfg.Port).Msg("server starting")
 	if metricsSrv != nil {

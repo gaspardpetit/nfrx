@@ -17,7 +17,7 @@ llamapool-server does not currently read from a configuration file; settings are
 | `PORT` | — | HTTP listen port for the public API | `8080` | `--port` |
 | `METRICS_PORT` | — | Prometheus metrics listen port | same as `PORT` | `--metrics-port` |
 | `API_KEY` | — | client API key required for HTTP requests | unset (auth disabled) | `--api-key` |
-| `WORKER_KEY` | — | shared key workers must present when registering | unset | `--worker-key` |
+| `CLIENT_KEY` | — | shared key clients must present when registering | unset | `--client-key` |
 | `REQUEST_TIMEOUT` | — | maximum duration to process a client request | `60s` | `--request-timeout` |
 | `ALLOWED_ORIGINS` | — | comma separated list of allowed CORS origins | unset (deny all) | `--allowed-origins` |
 | `BROKER_MAX_REQ_BYTES` | — | maximum MCP request size in bytes | `10485760` | — |
@@ -40,7 +40,7 @@ The worker optionally reads settings from a YAML config file. Defaults:
 | `CONFIG_FILE` | — | worker config file path | OS-specific (none on Linux) | `--config` |
 | `LOG_DIR` | — | directory for worker log files | OS-specific (none on Linux) | `--log-dir` |
 | `SERVER_URL` | `server_url` | server WebSocket URL for registration | `ws://localhost:8080/api/workers/connect` | `--server-url` |
-| `WORKER_KEY` | `worker_key` | shared secret for authenticating with the server | unset | `--worker-key` |
+| `CLIENT_KEY` | `client_key` | shared secret for authenticating with the server | unset | `--client-key` |
 | `OLLAMA_BASE_URL` | `ollama_base_url` | base URL of the local Ollama instance (`OLLAMA_URL` alias) | `http://127.0.0.1:11434` | `--ollama-base-url` |
 | `OLLAMA_URL` | `ollama_base_url` | legacy alias for `OLLAMA_BASE_URL` | same as above | — |
 | `OLLAMA_API_KEY` | — | API key for connecting to Ollama | unset | `--ollama-api-key` |
@@ -53,7 +53,7 @@ The worker optionally reads settings from a YAML config file. Defaults:
 | `WORKER_NAME` | — | worker display name | hostname (or random) | `--worker-name` |
 | `RECONNECT` | — | reconnect to server on failure | `false` | `--reconnect`, `-r` |
 
-Note: The YAML schema currently covers only a subset (`server_url`, `worker_key`, `ollama_base_url`, `max_concurrency`, `status_addr`).
+Note: The YAML schema currently covers only a subset (`server_url`, `client_key`, `ollama_base_url`, `max_concurrency`, `status_addr`).
 
 ## llamapool-mcp
 
@@ -66,6 +66,7 @@ Note: The YAML schema currently covers only a subset (`server_url`, `worker_key`
 | `CLIENT_ID` | — | client identifier (assigned when empty) | unset | — |
 | `PROVIDER_URL` | — | MCP provider URL | `http://127.0.0.1:7777/` | — |
 | `AUTH_TOKEN` | — | authorization token for broker requests | unset | — |
+| `CLIENT_KEY` | — | shared secret for authenticating with the server | unset | `--client-key` |
 | `MCP_CONFIG_FILE` | — | path to YAML config file | unset | `--mcp-config` |
 | `MCP_TRANSPORT_ORDER` | `order` | comma separated transport order | `stdio,http,oauth` | `--mcp-transport-order` |
 | `MCP_INIT_TIMEOUT` | `initTimeout` | timeout for transport startup | `5s` | `--mcp-init-timeout` |
@@ -90,7 +91,7 @@ Note: The YAML schema currently covers only a subset (`server_url`, `worker_key`
 
 ### Consistency notes
 
-`SERVER_URL`, `WORKER_KEY`, and `RECONNECT` remain shared between tools, providing predictable behavior. Metrics configuration still mixes `METRICS_PORT` on the server with `METRICS_ADDR` on the worker, and timeout variables combine duration strings (`REQUEST_TIMEOUT`) with millisecond suffixes (`BROKER_CALL_TIMEOUT_MS`). The worker's YAML config covers only a subset of its available settings, leaving items like `METRICS_ADDR` or `DRAIN_TIMEOUT` without config-file equivalents.
+`SERVER_URL`, `CLIENT_KEY`, and `RECONNECT` remain shared between tools, providing predictable behavior. Metrics configuration still mixes `METRICS_PORT` on the server with `METRICS_ADDR` on the worker, and timeout variables combine duration strings (`REQUEST_TIMEOUT`) with millisecond suffixes (`BROKER_CALL_TIMEOUT_MS`). The worker's YAML config covers only a subset of its available settings, leaving items like `METRICS_ADDR` or `DRAIN_TIMEOUT` without config-file equivalents.
 
 ### Cleanup candidates
 

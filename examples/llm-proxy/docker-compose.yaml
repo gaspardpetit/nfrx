@@ -1,6 +1,6 @@
 x-env: &common_env
   API_KEY: "test123"     # client API key for /api
-  WORKER_KEY: "secret"   # worker registration key
+  CLIENT_KEY: "secret"   # client registration key
 
 services:
   ollama:

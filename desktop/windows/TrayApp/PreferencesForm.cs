@@ -6,7 +6,7 @@ namespace TrayApp;
 public class PreferencesForm : Form
 {
     private readonly TextBox _serverUrl;
-    private readonly TextBox _workerKey;
+    private readonly TextBox _clientKey;
     private readonly TextBox _ollamaUrl;
     private readonly NumericUpDown _maxConcurrency;
     private readonly NumericUpDown _statusPort;
@@ -23,7 +23,7 @@ public class PreferencesForm : Form
         Config = config;
 
         _serverUrl = new TextBox { Dock = DockStyle.Fill, Text = config.ServerUrl };
-        _workerKey = new TextBox { Dock = DockStyle.Fill, Text = config.WorkerKey };
+        _clientKey = new TextBox { Dock = DockStyle.Fill, Text = config.ClientKey };
         _ollamaUrl = new TextBox { Dock = DockStyle.Fill, Text = config.OllamaBaseUrl };
         _maxConcurrency = new NumericUpDown { Dock = DockStyle.Fill, Minimum = 1, Maximum = 128, Value = config.MaxConcurrency };
         _statusPort = new NumericUpDown { Dock = DockStyle.Fill, Minimum = 1, Maximum = 65535, Value = config.StatusPort };
@@ -34,8 +34,8 @@ public class PreferencesForm : Form
 
         table.Controls.Add(new Label { Text = "Server URL", Anchor = AnchorStyles.Left, AutoSize = true }, 0, 0);
         table.Controls.Add(_serverUrl, 1, 0);
-        table.Controls.Add(new Label { Text = "Worker Key", Anchor = AnchorStyles.Left, AutoSize = true }, 0, 1);
-        table.Controls.Add(_workerKey, 1, 1);
+        table.Controls.Add(new Label { Text = "Client Key", Anchor = AnchorStyles.Left, AutoSize = true }, 0, 1);
+        table.Controls.Add(_clientKey, 1, 1);
         table.Controls.Add(new Label { Text = "Ollama Base URL", Anchor = AnchorStyles.Left, AutoSize = true }, 0, 2);
         table.Controls.Add(_ollamaUrl, 1, 2);
         table.Controls.Add(new Label { Text = "Max Concurrency", Anchor = AnchorStyles.Left, AutoSize = true }, 0, 3);
@@ -60,7 +60,7 @@ public class PreferencesForm : Form
     private void UpdateConfig()
     {
         Config.ServerUrl = _serverUrl.Text.Trim();
-        Config.WorkerKey = _workerKey.Text.Trim();
+        Config.ClientKey = _clientKey.Text.Trim();
         Config.OllamaBaseUrl = _ollamaUrl.Text.Trim();
         Config.MaxConcurrency = (int)_maxConcurrency.Value;
         Config.StatusPort = (int)_statusPort.Value;

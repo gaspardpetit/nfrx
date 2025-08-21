@@ -82,7 +82,7 @@ func getEnv(k, d string) string {
 }
 
 // WSHandler handles relay websocket connections.
-func (r *Registry) WSHandler() http.HandlerFunc {
+func (r *Registry) WSHandler(clientKey string) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		c, err := websocket.Accept(w, req, nil)
 		if err != nil {
@@ -95,10 +95,25 @@ func (r *Registry) WSHandler() http.HandlerFunc {
 			return
 		}
 		var reg struct {
-			ID string `json:"id"`
+			ID        string `json:"id"`
+			ClientKey string `json:"client_key"`
+			WorkerKey string `json:"worker_key"`
 		}
 		if err := json.Unmarshal(data, &reg); err != nil {
 			_ = c.Close(websocket.StatusPolicyViolation, "invalid register")
+			return
+		}
+		key := reg.ClientKey
+		if key == "" && reg.WorkerKey != "" {
+			logx.Log.Warn().Msg("register message 'worker_key' field is deprecated; use 'client_key'")
+			key = reg.WorkerKey
+		}
+		if clientKey == "" && key != "" {
+			_ = c.Close(websocket.StatusPolicyViolation, "unauthorized")
+			return
+		}
+		if clientKey != "" && key != clientKey {
+			_ = c.Close(websocket.StatusPolicyViolation, "unauthorized")
 			return
 		}
 		clientID := reg.ID

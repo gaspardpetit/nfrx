@@ -69,14 +69,14 @@ The Windows service runs `llamapool-worker` with the `--reconnect` flag and shut
 - **Least-busy routing** – If multiple workers support the same model, the server dispatches requests to the one with the lowest current load.
 - **Alias-based model fallback** – Requests for a missing quantization fall back to workers serving the same base model.
 - **Security by design** –
-  - Separate authentication keys for clients (`API_KEY`) and workers (`WORKER_KEY`).
-  - Workers typically run behind firewalls and connect outbound over HTTPS/WSS.  
+  - Separate authentication keys for API clients (`API_KEY`) and workers or MCP relays (`CLIENT_KEY`).
+  - Workers typically run behind firewalls and connect outbound over HTTPS/WSS.
   - All traffic is encrypted end-to-end.
 - **Protocol compatibility** – OpenAI-compatible endpoints are available under `/api/v1/*` without altering JSON payloads.
 
 ### How it works
 - The **server** accepts incoming HTTP requests from clients, authenticates them, and routes them to workers via WebSocket connections.
-- **Workers** authenticate using a shared `WORKER_KEY` and advertise the models they can serve.
+- **Workers** authenticate using a shared `CLIENT_KEY` and advertise the models they can serve.
 - Requests are proxied directly to the worker’s LLM backend, and the responses are returned unmodified to the client.
 
 ## Architecture
@@ -106,7 +106,7 @@ The Windows service runs `llamapool-worker` with the `--reconnect` flag and shut
 │                 │  WebSocket (WSS)                          |         │
 └────────────▲────|───────────────────────────────▲───────────|─────────┘
      CONNECT |    |                       CONNECT |           |  
-(WORKER_KEY) │    | REQUEST          (WORKER_KEY) │           | REQUEST
+(CLIENT_KEY) │    | REQUEST          (CLIENT_KEY) │           | REQUEST
      ┌───────┴────▼────────────┐           ┌──────┴───────────▼────────┐
      │      llamapool-worker   │           │      llamapool-worker    │
      │     (private/home lab)  │           │       (cloud/on-prem)    │
@@ -143,7 +143,7 @@ The Windows service runs `llamapool-worker` with the `--reconnect` flag and shut
 ## Security
 
 - **Client authentication**: `API_KEY` required for `/api` routes (including `/api/v1`) via `Authorization: Bearer <API_KEY>`.
-- **Worker authentication**: `WORKER_KEY` required for worker WebSocket registration.
+- **Client authentication**: `CLIENT_KEY` required for worker or MCP WebSocket registration.
 - **Transport**: run behind TLS (HTTPS/WSS) via reverse proxy or terminate TLS in-process.
 - **CORS**: cross-origin requests are denied unless explicitly allowed via `ALLOWED_ORIGINS` (comma separated) or the `--allowed-origins` flag.
 
@@ -232,9 +232,9 @@ The same version information appears at the top of `--help` output.
 On Linux:
 
 ```bash
-PORT=8080 WORKER_KEY=secret API_KEY=test123 go run ./cmd/llamapool-server
+PORT=8080 CLIENT_KEY=secret API_KEY=test123 go run ./cmd/llamapool-server
 # or to expose metrics on a different port:
-# PORT=8080 METRICS_PORT=9090 WORKER_KEY=secret API_KEY=test123 go run ./cmd/llamapool-server
+# PORT=8080 METRICS_PORT=9090 CLIENT_KEY=secret API_KEY=test123 go run ./cmd/llamapool-server
 ```
 
 Workers register with the server at `/api/workers/connect`.
@@ -244,7 +244,7 @@ On Windows (CMD)
 
 ```
 set PORT=8080
-set WORKER_KEY=secret
+set CLIENT_KEY=secret
 set API_KEY=test123
 go run .\cmd\llamapool-server
 REM or if you built:
@@ -254,7 +254,7 @@ REM or if you built:
 On Windows (Powershell)
 
 ```
-$env:PORT = "8080"; $env:WORKER_KEY = "secret"; $env:API_KEY = "test123"
+$env:PORT = "8080"; $env:CLIENT_KEY = "secret"; $env:API_KEY = "test123"
 go run .\cmd\llamapool-server
 # or if you built:
 .\bin\llamapool-server.exe
@@ -266,7 +266,7 @@ go run .\cmd\llamapool-server
 On Linux:
 
 ```bash
-SERVER_URL=ws://localhost:8080/api/workers/connect WORKER_KEY=secret OLLAMA_BASE_URL=http://127.0.0.1:11434 WORKER_NAME=Alpha go run ./cmd/llamapool-worker
+SERVER_URL=ws://localhost:8080/api/workers/connect CLIENT_KEY=secret OLLAMA_BASE_URL=http://127.0.0.1:11434 WORKER_NAME=Alpha go run ./cmd/llamapool-worker
 ```
 Optionally set `OLLAMA_API_KEY` to forward an API key to the local Ollama instance. The worker proxies requests to `${OLLAMA_BASE_URL}/v1/chat/completions`.
 
@@ -274,7 +274,7 @@ On Windows (CMD)
 
 ```
 set SERVER_URL=ws://localhost:8080/api/workers/connect
-set WORKER_KEY=secret
+set CLIENT_KEY=secret
 set OLLAMA_BASE_URL=http://127.0.0.1:11434
 go run .\cmd\llamapool-worker
 REM or if you built:
@@ -285,7 +285,7 @@ On Windows (Powershell)
 
 ```
 $env:SERVER_URL = "ws://localhost:8080/api/workers/connect"
-$env:WORKER_KEY = "secret"
+$env:CLIENT_KEY = "secret"
 $env:OLLAMA_BASE_URL = "http://127.0.0.1:11434"
 $env:WORKER_NAME = "Alpha"
 go run .\cmd\llamapool-worker
@@ -310,7 +310,7 @@ Tagged releases follow semantic versioning (e.g., `v1.2.3`, `v1.2`, `v1`, `lates
 ### Server
 
 ```bash
-docker run --rm -p 8080:8080 -e WORKER_KEY=secret -e API_KEY=test123 \
+docker run --rm -p 8080:8080 -e CLIENT_KEY=secret -e API_KEY=test123 \
   ghcr.io/gaspardpetit/llamapool-server:main
 ```
 
@@ -319,7 +319,7 @@ docker run --rm -p 8080:8080 -e WORKER_KEY=secret -e API_KEY=test123 \
 ```bash
 docker run --rm \
   -e SERVER_URL=ws://localhost:8080/api/workers/connect \
-  -e WORKER_KEY=secret \
+  -e CLIENT_KEY=secret \
   -e OLLAMA_BASE_URL=http://host.docker.internal:11434 \
   ghcr.io/gaspardpetit/llamapool-worker:main
 ```
@@ -357,7 +357,7 @@ Each file contains `KEY=value` pairs, for example:
 ```bash
 # /etc/llamapool/server.env
 # API_KEY=your_api_key
-# WORKER_KEY=secret
+# CLIENT_KEY=secret
 ```
 
 Commented example files are installed to `/etc/llamapool/`; edit these files to configure the services.
@@ -474,7 +474,7 @@ For manual end-to-end verification on a clean VM, see [desktop/windows/ACCEPTANC
 | Model-based routing (least-busy) | ✅ | `LeastBusyScheduler` selects worker by current load |
 | Model alias fallback | ✅ | Falls back to base model when exact quantization not available |
 | API key authentication for clients | ✅ | `Authorization: Bearer <API_KEY>` for `/api` (including `/api/v1`) |
-| Worker key authentication | ✅ | Workers authenticate over WebSocket using `WORKER_KEY` |
+| Client key authentication | ✅ | Workers authenticate over WebSocket using `CLIENT_KEY` |
 | Dynamic model discovery | ✅ | Workers advertise supported models; server aggregates |
 | HTTPS/WSS transport | ✅ | Use TLS terminator or run behind reverse proxy; WS path configurable |
 | Prometheus metrics endpoint | ✅ | `/metrics`; includes build info, per-model counters, histograms; supports `METRICS_PORT`/`--metrics-port` |

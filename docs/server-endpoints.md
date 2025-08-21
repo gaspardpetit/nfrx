@@ -25,7 +25,7 @@ Endpoints are grouped by functional area.
 
 | Verb & Endpoint | Parameters | Description | Auth |
 | --- | --- | --- | --- |
-| `GET /api/workers/connect` (WS) | Initial message `{ type: "register", worker_key: string, worker_id?: string, worker_name?: string, models?: [string], max_concurrency?: int }` | Worker connects to server. | Worker key |
+| `GET /api/workers/connect` (WS) | Initial message `{ type: "register", client_key?: string, worker_id?: string, worker_name?: string, models?: [string], max_concurrency?: int }` | Worker connects to server. | Client key |
 
 ### Client Usage
 
@@ -42,17 +42,17 @@ Endpoints are grouped by functional area.
 
 | Verb & Endpoint | Parameters | Description | Auth |
 | --- | --- | --- | --- |
-| `POST /api/mcp/id/{id}` | Path `{id}`; Body `{ jsonrpc: "2.0", id: number|string, method: string, params?: object }` | Forward MCP JSON-RPC request to relay. | MCP token |
+| `GET /api/mcp/connect` (WS) | Initial message `{ id?: string, client_key?: string }` | MCP relay connects and receives an id. | Client key |
 
 ### Client (LLM) Usage
 
 | Verb & Endpoint | Parameters | Description | Auth |
 | --- | --- | --- | --- |
-| `POST /api/mcp/id/{id}` | Path `{id}`; Body `{ jsonrpc: "2.0", id: number|string, method: string, params?: object }` | Forward MCP JSON-RPC request to relay. | MCP token |
+| `POST /api/mcp/id/{id}` | Path `{id}`; Body `{ jsonrpc: "2.0", id: number|string, method: string, params?: object }` | Forward MCP JSON-RPC request to relay. | MCP token (optional) |
 
 ### Authentication schemes
 - **Public** – No authentication required.
 - **API key** – `Authorization: Bearer <API_KEY>`.
-- **Worker key** – WebSocket `register` message must include `worker_key` matching server configuration.
-- **MCP token** – Optional `Authorization: Bearer <AUTH_TOKEN>` forwarded to MCP relay; server does not validate.
+- **Client key** – WebSocket `register` message must include `client_key` matching server configuration. Providing a key when the server is configured without one results in an immediate failure.
+- **MCP token** – Optional `Authorization: Bearer <AUTH_TOKEN>` forwarded to the MCP relay. The server neither validates nor requires this header; if the relay is configured with a token it will reject missing or invalid tokens. Future improvements may allow the relay to signal this requirement so the server can reject unauthenticated requests early.
 
