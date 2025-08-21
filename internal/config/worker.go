@@ -17,8 +17,8 @@ import (
 type WorkerConfig struct {
 	ServerURL         string
 	ClientKey         string
-	OllamaBaseURL     string
-	OllamaAPIKey      string
+	CompletionBaseURL string
+	CompletionAPIKey  string
 	MaxConcurrency    int
 	WorkerID          string
 	WorkerName        string
@@ -38,9 +38,9 @@ func (c *WorkerConfig) BindFlags() {
 
 	c.ServerURL = getEnv("SERVER_URL", "ws://localhost:8080/api/workers/connect")
 	c.ClientKey = getEnv("CLIENT_KEY", "")
-	base := getEnv("OLLAMA_BASE_URL", getEnv("OLLAMA_URL", "http://127.0.0.1:11434"))
-	c.OllamaBaseURL = base
-	c.OllamaAPIKey = getEnv("OLLAMA_API_KEY", "")
+	base := getEnv("COMPLETION_BASE_URL", getEnv("OLLAMA_BASE_URL", getEnv("OLLAMA_URL", "http://127.0.0.1:11434/v1")))
+	c.CompletionBaseURL = base
+	c.CompletionAPIKey = getEnv("COMPLETION_API_KEY", getEnv("OLLAMA_API_KEY", ""))
 	mc := getEnv("MAX_CONCURRENCY", "2")
 	if v, err := strconv.Atoi(mc); err == nil {
 		c.MaxConcurrency = v
@@ -76,8 +76,8 @@ func (c *WorkerConfig) BindFlags() {
 
 	flag.StringVar(&c.ServerURL, "server-url", c.ServerURL, "server WebSocket URL for registration (e.g. ws://localhost:8080/api/workers/connect)")
 	flag.StringVar(&c.ClientKey, "client-key", c.ClientKey, "shared secret for authenticating with the server")
-	flag.StringVar(&c.OllamaBaseURL, "ollama-base-url", c.OllamaBaseURL, "base URL of the local Ollama instance (e.g. http://127.0.0.1:11434)")
-	flag.StringVar(&c.OllamaAPIKey, "ollama-api-key", c.OllamaAPIKey, "API key for connecting to Ollama; leave empty for no auth")
+	flag.StringVar(&c.CompletionBaseURL, "completion-base-url", c.CompletionBaseURL, "base URL of the completion API (e.g. http://127.0.0.1:11434/v1)")
+	flag.StringVar(&c.CompletionAPIKey, "completion-api-key", c.CompletionAPIKey, "API key for the completion API; leave empty for no auth")
 	flag.IntVar(&c.MaxConcurrency, "max-concurrency", c.MaxConcurrency, "maximum number of jobs processed concurrently")
 	flag.StringVar(&c.WorkerID, "worker-id", c.WorkerID, "worker identifier; randomly generated if omitted")
 	flag.StringVar(&c.WorkerName, "worker-name", c.WorkerName, "worker display name shown in logs and status")
@@ -86,7 +86,7 @@ func (c *WorkerConfig) BindFlags() {
 	flag.StringVar(&c.ConfigFile, "config", c.ConfigFile, "worker config file path")
 	flag.StringVar(&c.LogDir, "log-dir", c.LogDir, "directory for worker log files")
 	flag.DurationVar(&c.DrainTimeout, "drain-timeout", c.DrainTimeout, "time to wait for in-flight jobs on shutdown (-1 to wait indefinitely, 0 to exit immediately)")
-	flag.DurationVar(&c.ModelPollInterval, "model-poll-interval", c.ModelPollInterval, "interval for polling Ollama for model changes")
+	flag.DurationVar(&c.ModelPollInterval, "model-poll-interval", c.ModelPollInterval, "interval for polling backend for model changes")
 	flag.BoolVar(&c.Reconnect, "reconnect", c.Reconnect, "reconnect to server on failure")
 	flag.BoolVar(&c.Reconnect, "r", c.Reconnect, "short for --reconnect")
 }

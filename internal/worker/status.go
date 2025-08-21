@@ -7,17 +7,17 @@ import (
 )
 
 type State struct {
-	State             string    `json:"state"`
-	ConnectedToServer bool      `json:"connected_to_server"`
-	ConnectedToOllama bool      `json:"connected_to_ollama"`
-	CurrentJobs       int       `json:"current_jobs"`
-	MaxConcurrency    int       `json:"max_concurrency"`
-	Models            []string  `json:"models"`
-	LastError         string    `json:"last_error"`
-	LastHeartbeat     time.Time `json:"last_heartbeat"`
-	WorkerID          string    `json:"worker_id"`
-	WorkerName        string    `json:"worker_name"`
-	Version           string    `json:"version"`
+	State              string    `json:"state"`
+	ConnectedToServer  bool      `json:"connected_to_server"`
+	ConnectedToBackend bool      `json:"connected_to_backend"`
+	CurrentJobs        int       `json:"current_jobs"`
+	MaxConcurrency     int       `json:"max_concurrency"`
+	Models             []string  `json:"models"`
+	LastError          string    `json:"last_error"`
+	LastHeartbeat      time.Time `json:"last_heartbeat"`
+	WorkerID           string    `json:"worker_id"`
+	WorkerName         string    `json:"worker_name"`
+	Version            string    `json:"version"`
 }
 
 type VersionInfo struct {
@@ -79,11 +79,11 @@ func SetConnectedToServer(v bool) {
 	setConnectedToServer(v)
 }
 
-func SetConnectedToOllama(v bool) {
+func SetConnectedToBackend(v bool) {
 	stateMu.Lock()
-	stateData.ConnectedToOllama = v
+	stateData.ConnectedToBackend = v
 	stateMu.Unlock()
-	setConnectedToOllama(v)
+	setConnectedToBackend(v)
 }
 
 func SetModels(models []string) {

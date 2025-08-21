@@ -8,7 +8,7 @@ public class WorkerStatusTests
     {
       "state": "connected_idle",
       "connected_to_server": true,
-      "connected_to_ollama": true,
+      "connected_to_backend": true,
       "current_jobs": 1,
       "max_concurrency": 2,
       "models": ["llama3"],

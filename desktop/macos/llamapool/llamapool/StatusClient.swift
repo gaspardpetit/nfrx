@@ -13,7 +13,7 @@ struct WorkerStatus: Codable {
 
     let state: State
     let connectedToServer: Bool
-    let connectedToOllama: Bool
+    let connectedToBackend: Bool
     let currentJobs: Int
     let maxConcurrency: Int
     let models: [String]
@@ -26,7 +26,7 @@ struct WorkerStatus: Codable {
     private enum CodingKeys: String, CodingKey {
         case state
         case connectedToServer = "connected_to_server"
-        case connectedToOllama = "connected_to_ollama"
+        case connectedToBackend = "connected_to_backend"
         case currentJobs = "current_jobs"
         case maxConcurrency = "max_concurrency"
         case models

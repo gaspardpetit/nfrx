@@ -162,7 +162,7 @@ The Windows service runs `llamapool-worker` with the `--reconnect` flag and shut
 - **Worker metrics** (`METRICS_PORT` or `--metrics-port`):
   - Exposes `llamapool_worker_*` series such as
     `llamapool_worker_connected_to_server`,
-    `llamapool_worker_connected_to_ollama`,
+    `llamapool_worker_connected_to_backend`,
     `llamapool_worker_current_jobs`,
     `llamapool_worker_max_concurrency`,
     `llamapool_worker_jobs_started_total`,
@@ -268,16 +268,16 @@ go run .\cmd\llamapool-server
 On Linux:
 
 ```bash
-SERVER_URL=ws://localhost:8080/api/workers/connect CLIENT_KEY=secret OLLAMA_BASE_URL=http://127.0.0.1:11434 WORKER_NAME=Alpha go run ./cmd/llamapool-worker
+SERVER_URL=ws://localhost:8080/api/workers/connect CLIENT_KEY=secret COMPLETION_BASE_URL=http://127.0.0.1:11434/v1 WORKER_NAME=Alpha go run ./cmd/llamapool-worker
 ```
-Optionally set `OLLAMA_API_KEY` to forward an API key to the local Ollama instance. The worker proxies requests to `${OLLAMA_BASE_URL}/v1/chat/completions`.
+Optionally set `COMPLETION_API_KEY` to forward an API key to the backend. The worker proxies requests to `${COMPLETION_BASE_URL}/chat/completions`.
 
 On Windows (CMD)
 
 ```
 set SERVER_URL=ws://localhost:8080/api/workers/connect
 set CLIENT_KEY=secret
-set OLLAMA_BASE_URL=http://127.0.0.1:11434
+set COMPLETION_BASE_URL=http://127.0.0.1:11434/v1
 go run .\cmd\llamapool-worker
 REM or if you built:
 .\bin\llamapool-worker.exe
@@ -288,7 +288,7 @@ On Windows (Powershell)
 ```
 $env:SERVER_URL = "ws://localhost:8080/api/workers/connect"
 $env:CLIENT_KEY = "secret"
-$env:OLLAMA_BASE_URL = "http://127.0.0.1:11434"
+$env:COMPLETION_BASE_URL = "http://127.0.0.1:11434/v1"
 $env:WORKER_NAME = "Alpha"
 go run .\cmd\llamapool-worker
 # or:
@@ -322,7 +322,7 @@ docker run --rm -p 8080:8080 -e CLIENT_KEY=secret -e API_KEY=test123 \
 docker run --rm \
   -e SERVER_URL=ws://localhost:8080/api/workers/connect \
   -e CLIENT_KEY=secret \
-  -e OLLAMA_BASE_URL=http://host.docker.internal:11434 \
+  -e COMPLETION_BASE_URL=http://host.docker.internal:11434/v1 \
   ghcr.io/gaspardpetit/llamapool-worker:main
 ```
 
@@ -341,7 +341,7 @@ Send `SIGTERM` again to terminate immediately. Set `--drain-timeout=0` to exit
 without waiting or `--drain-timeout=-1` to wait indefinitely.
 
 The worker polls the local Ollama instance (default every 1m) so that
-`connected_to_ollama` and `models` stay current in the `/status` output.
+`connected_to_backend` and `models` stay current in the `/status` output.
 If the model list changes, the worker proactively notifies the server so
 `/api/v1/models` reflects the latest information. Configure the poll interval
 with `MODEL_POLL_INTERVAL` or `--model-poll-interval`.

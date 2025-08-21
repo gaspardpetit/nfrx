@@ -45,11 +45,11 @@ func TestHandleHTTPProxyAuthAndStream(t *testing.T) {
 	}))
 	defer ollama.Close()
 
-	cfg := config.WorkerConfig{OllamaBaseURL: ollama.URL, OllamaAPIKey: "secret-123"}
+	cfg := config.WorkerConfig{CompletionBaseURL: ollama.URL + "/v1", CompletionAPIKey: "secret-123"}
 	sendCh := make(chan []byte, 16)
 	cancels := make(map[string]context.CancelFunc)
 	var mu sync.Mutex
-	req := ctrl.HTTPProxyRequestMessage{Type: "http_proxy_request", RequestID: "r1", Method: http.MethodPost, Path: "/v1/chat/completions", Headers: map[string]string{"Content-Type": "application/json"}, Stream: true, Body: []byte(`{}`)}
+	req := ctrl.HTTPProxyRequestMessage{Type: "http_proxy_request", RequestID: "r1", Method: http.MethodPost, Path: "/chat/completions", Headers: map[string]string{"Content-Type": "application/json"}, Stream: true, Body: []byte(`{}`)}
 	ctx := context.Background()
 	go handleHTTPProxy(ctx, cfg, sendCh, req, cancels, &mu, func() {})
 

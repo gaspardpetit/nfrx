@@ -54,7 +54,7 @@ func TestDrainAndTerminate(t *testing.T) {
 	statusAddr := ln.Addr().String()
 	_ = ln.Close()
 
-	cfg := config.WorkerConfig{ServerURL: wsURL, OllamaBaseURL: ollama.URL, MaxConcurrency: 1, StatusAddr: statusAddr, ConfigFile: filepath.Join(t.TempDir(), "worker.yaml")}
+	cfg := config.WorkerConfig{ServerURL: wsURL, CompletionBaseURL: ollama.URL + "/v1", MaxConcurrency: 1, StatusAddr: statusAddr, ConfigFile: filepath.Join(t.TempDir(), "worker.yaml")}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	errCh := make(chan error, 1)
@@ -151,7 +151,7 @@ func TestDrainTerminatesWhenIdle(t *testing.T) {
 	defer srv.Close()
 	wsURL := "ws://" + srv.Listener.Addr().String()
 
-	cfg := config.WorkerConfig{ServerURL: wsURL, OllamaBaseURL: ollama.URL, MaxConcurrency: 1}
+	cfg := config.WorkerConfig{ServerURL: wsURL, CompletionBaseURL: ollama.URL + "/v1", MaxConcurrency: 1}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	errCh := make(chan error, 1)

@@ -11,7 +11,7 @@ public class WorkerConfigTests
         {
             ServerUrl = "wss://example",
             ClientKey = "secret",
-            OllamaBaseUrl = "http://ollama",
+            CompletionBaseUrl = "http://ollama/v1",
             MaxConcurrency = 3,
             StatusPort = 5000
         };
@@ -22,7 +22,7 @@ public class WorkerConfigTests
             var loaded = WorkerConfig.Load(path);
             Assert.Equal(cfg.ServerUrl, loaded.ServerUrl);
             Assert.Equal(cfg.ClientKey, loaded.ClientKey);
-            Assert.Equal(cfg.OllamaBaseUrl, loaded.OllamaBaseUrl);
+            Assert.Equal(cfg.CompletionBaseUrl, loaded.CompletionBaseUrl);
             Assert.Equal(cfg.MaxConcurrency, loaded.MaxConcurrency);
             Assert.Equal(cfg.StatusPort, loaded.StatusPort);
         }
