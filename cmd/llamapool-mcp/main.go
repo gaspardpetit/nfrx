@@ -76,7 +76,11 @@ func monitorProvider(ctx context.Context, url string, shouldReconnect bool) {
 	for {
 		err := probeProvider(ctx, url)
 		if err != nil {
-			logx.Log.Warn().Err(err).Msg("mcp provider unavailable; not_ready")
+			lvl := logx.Log.Warn()
+			if strings.Contains(err.Error(), "status 401") || strings.Contains(err.Error(), "status 403") {
+				lvl = logx.Log.Error()
+			}
+			lvl.Err(err).Msg("mcp provider unavailable; not_ready")
 			if !shouldReconnect {
 				return
 			}
