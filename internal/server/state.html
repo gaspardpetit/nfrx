@@ -148,7 +148,8 @@ function update(data) {
   (data.mcp.clients || []).forEach(c => {
     const funcs = Object.entries(c.functions || {}).map(([k,v]) => `${k}:${v}`).join(', ');
     const div = document.createElement('div');
-    div.textContent = `${c.id} (${c.status}) ${funcs}`;
+    const name = c.name ? ` ${c.name}` : '';
+    div.textContent = `${c.id}${name} (${c.status}) ${funcs}`;
     clientsDiv.appendChild(div);
   });
 

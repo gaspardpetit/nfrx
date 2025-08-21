@@ -20,8 +20,8 @@ type WorkerConfig struct {
 	CompletionBaseURL string
 	CompletionAPIKey  string
 	MaxConcurrency    int
-	WorkerID          string
-	WorkerName        string
+	ClientID          string
+	ClientName        string
 	StatusAddr        string
 	MetricsAddr       string
 	DrainTimeout      time.Duration
@@ -48,7 +48,7 @@ func (c *WorkerConfig) BindFlags() {
 	} else {
 		c.MaxConcurrency = 2
 	}
-	c.WorkerID = getEnv("WORKER_ID", "")
+	c.ClientID = getEnv("CLIENT_ID", "")
 	c.StatusAddr = getEnv("STATUS_ADDR", "")
 	mp := getEnv("METRICS_PORT", "")
 	if mp != "" && !strings.Contains(mp, ":") {
@@ -75,7 +75,7 @@ func (c *WorkerConfig) BindFlags() {
 	if err != nil || host == "" {
 		host = "worker-" + uuid.NewString()[:8]
 	}
-	c.WorkerName = getEnv("WORKER_NAME", host)
+	c.ClientName = getEnv("CLIENT_NAME", host)
 	if b, err := strconv.ParseBool(getEnv("RECONNECT", "false")); err == nil {
 		c.Reconnect = b
 	}
@@ -85,8 +85,8 @@ func (c *WorkerConfig) BindFlags() {
 	flag.StringVar(&c.CompletionBaseURL, "completion-base-url", c.CompletionBaseURL, "base URL of the completion API (e.g. http://127.0.0.1:11434/v1)")
 	flag.StringVar(&c.CompletionAPIKey, "completion-api-key", c.CompletionAPIKey, "API key for the completion API; leave empty for no auth")
 	flag.IntVar(&c.MaxConcurrency, "max-concurrency", c.MaxConcurrency, "maximum number of jobs processed concurrently")
-	flag.StringVar(&c.WorkerID, "worker-id", c.WorkerID, "worker identifier; randomly generated if omitted")
-	flag.StringVar(&c.WorkerName, "worker-name", c.WorkerName, "worker display name shown in logs and status")
+	flag.StringVar(&c.ClientID, "client-id", c.ClientID, "client identifier; randomly generated if omitted")
+	flag.StringVar(&c.ClientName, "client-name", c.ClientName, "client display name shown in logs and status")
 	flag.StringVar(&c.StatusAddr, "status-addr", c.StatusAddr, "local status HTTP listen address (enables /status; e.g. 127.0.0.1:4555)")
 	flag.StringVar(&c.MetricsAddr, "metrics-port", c.MetricsAddr, "Prometheus metrics listen address or port (disabled when empty; e.g. 127.0.0.1:9090 or 9090)")
 	flag.StringVar(&c.ConfigFile, "config", c.ConfigFile, "worker config file path")

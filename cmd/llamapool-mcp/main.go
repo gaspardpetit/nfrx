@@ -18,6 +18,7 @@ import (
 	"github.com/gaspardpetit/llamapool/internal/logx"
 	"github.com/gaspardpetit/llamapool/internal/mcp"
 	reconnect "github.com/gaspardpetit/llamapool/internal/reconnect"
+	"github.com/google/uuid"
 	"gopkg.in/yaml.v3"
 )
 
@@ -76,7 +77,11 @@ func monitorProvider(ctx context.Context, url string, shouldReconnect bool) {
 	for {
 		err := probeProvider(ctx, url)
 		if err != nil {
-			logx.Log.Warn().Err(err).Msg("mcp provider unavailable; not_ready")
+			lvl := logx.Log.Warn()
+			if strings.Contains(err.Error(), "status 401") || strings.Contains(err.Error(), "status 403") {
+				lvl = logx.Log.Error()
+			}
+			lvl.Err(err).Msg("mcp provider unavailable; not_ready")
 			if !shouldReconnect {
 				return
 			}
@@ -112,6 +117,18 @@ func main() {
 	flag.StringVar(&metricsAddr, "metrics-port", metricsAddr, "Prometheus metrics listen address or port (disabled when empty; e.g. 127.0.0.1:9090 or 9090)")
 	rtVal, _ := strconv.ParseFloat(getEnv("REQUEST_TIMEOUT", "300"), 64)
 	flag.Float64Var(&rtVal, "request-timeout", rtVal, "request timeout in seconds for provider responses")
+
+	wsURL := getEnv("SERVER_URL", "ws://localhost:8080/api/mcp/connect")
+	host, err := os.Hostname()
+	if err != nil || host == "" {
+		host = "mcp-" + uuid.NewString()[:8]
+	}
+	clientName := getEnv("CLIENT_NAME", host)
+	clientID := getEnv("CLIENT_ID", "")
+	flag.StringVar(&clientID, "client-id", clientID, "client identifier; assigned when empty")
+	flag.StringVar(&clientName, "client-name", clientName, "client display name shown in logs and status")
+	providerURL := getEnv("PROVIDER_URL", "http://127.0.0.1:7777/")
+	authToken := getEnv("AUTH_TOKEN", "")
 	flag.Parse()
 	if *showVersion {
 		fmt.Printf("llamapool-mcp version=%s sha=%s date=%s\n", version, buildSHA, buildDate)
@@ -129,10 +146,6 @@ func main() {
 		}
 	}
 
-	wsURL := getEnv("SERVER_URL", "ws://localhost:8080/api/mcp/connect")
-	clientID := getEnv("CLIENT_ID", "")
-	providerURL := getEnv("PROVIDER_URL", "http://127.0.0.1:7777/")
-	authToken := getEnv("AUTH_TOKEN", "")
 	header := http.Header{}
 	requestTimeout := time.Duration(rtVal * float64(time.Second))
 
@@ -160,7 +173,7 @@ func main() {
 			time.Sleep(delay)
 			continue
 		}
-		reg := map[string]string{"id": clientID}
+		reg := map[string]string{"id": clientID, "client_name": clientName}
 		if clientKey != "" {
 			reg["client_key"] = clientKey
 		}
@@ -181,7 +194,7 @@ func main() {
 		}
 		_ = json.Unmarshal(msg, &ack)
 		clientID = ack.ID
-		logx.Log.Info().Str("server", wsURL).Str("client_id", clientID).Msg("connected to server")
+		logx.Log.Info().Str("server", wsURL).Str("client_id", clientID).Str("client_name", clientName).Msg("connected to server")
 		attempt = 0
 
 		runCtx, cancel := context.WithCancel(ctx)

@@ -17,7 +17,7 @@ class PreferencesWindowController: NSWindowController {
         super.init(window: window)
 
         serverEntry = form.addEntry("Server URL:")
-        keyEntry = form.addEntry("Worker Key:")
+        keyEntry = form.addEntry("Client Key:")
         completionEntry = form.addEntry("Completion Base URL:")
         concurrencyEntry = form.addEntry("Max Concurrency:")
         portEntry = form.addEntry("Status Port:")
@@ -32,7 +32,7 @@ class PreferencesWindowController: NSWindowController {
 
         let config = ConfigManager.shared.load()
         serverEntry.stringValue = config.serverURL
-        keyEntry.stringValue = config.workerKey
+        keyEntry.stringValue = config.clientKey
         completionEntry.stringValue = config.completionBaseURL
         concurrencyEntry.stringValue = String(config.maxConcurrency)
         portEntry.stringValue = String(config.statusPort)
@@ -52,7 +52,7 @@ class PreferencesWindowController: NSWindowController {
             return
         }
         let config = WorkerConfig(serverURL: serverEntry.stringValue,
-                                  workerKey: keyEntry.stringValue,
+                                  clientKey: keyEntry.stringValue,
                                   completionBaseURL: completionEntry.stringValue,
                                   maxConcurrency: maxConc,
                                   statusPort: port)

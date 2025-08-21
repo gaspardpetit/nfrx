@@ -40,10 +40,6 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string) http.H
 			return
 		}
 		key := rm.ClientKey
-		if key == "" && rm.WorkerKey != "" {
-			logx.Log.Warn().Msg("register message 'worker_key' field is deprecated; use 'client_key'")
-			key = rm.WorkerKey
-		}
 		if key == "" && rm.Token != "" {
 			logx.Log.Warn().Msg("register message 'token' field is deprecated; use 'client_key'")
 			key = rm.Token

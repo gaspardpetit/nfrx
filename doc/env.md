@@ -48,12 +48,12 @@ The worker optionally reads settings from a YAML config file. Defaults:
 | `COMPLETION_BASE_URL` | `completion_base_url` | base URL of the completion API | `http://127.0.0.1:11434/v1` | `--completion-base-url` |
 | `COMPLETION_API_KEY` | — | API key for the completion API | unset | `--completion-api-key` |
 | `MAX_CONCURRENCY` | `max_concurrency` | maximum number of jobs processed concurrently | `2` | `--max-concurrency` |
-| `WORKER_ID` | — | worker identifier (random if unset) | unset | `--worker-id` |
+| `CLIENT_ID` | — | client identifier (random if unset) | unset | `--client-id` |
 | `STATUS_ADDR` | `status_addr` | local status HTTP listen address | unset (disabled) | `--status-addr` |
 | `METRICS_PORT` | — | Prometheus metrics listen address or port | unset (disabled) | `--metrics-port` |
 | `DRAIN_TIMEOUT` | — | time to wait for in-flight jobs on shutdown | `1m` | `--drain-timeout` |
 | `MODEL_POLL_INTERVAL` | — | interval for polling Ollama for model changes | `1m` | `--model-poll-interval` |
-| `WORKER_NAME` | — | worker display name | hostname (or random) | `--worker-name` |
+| `CLIENT_NAME` | — | worker display name | hostname (or random) | `--client-name` |
 | `RECONNECT` | — | reconnect to server on failure | `false` | `--reconnect`, `-r` |
 | `REQUEST_TIMEOUT` | — | seconds without backend feedback before failing a job | `300` | `--request-timeout` |
 
@@ -71,7 +71,8 @@ Note: The YAML schema currently covers only a subset (`server_url`, `client_key`
 |----------|------------|---------|---------|----------|
 | `RECONNECT` | — | reconnect to server on failure | `false` | `--reconnect`, `-r` |
 | `SERVER_URL` | — | broker WebSocket URL | `ws://localhost:8080/api/mcp/connect` | — |
-| `CLIENT_ID` | — | client identifier (assigned when empty) | unset | — |
+| `CLIENT_ID` | — | client identifier (assigned when empty) | unset | `--client-id` |
+| `CLIENT_NAME` | — | client display name | hostname (or random) | `--client-name` |
 | `PROVIDER_URL` | — | MCP provider URL | `http://127.0.0.1:7777/` | — |
 | `AUTH_TOKEN` | — | authorization token for broker requests | unset | — |
 | `CLIENT_KEY` | — | shared secret for authenticating with the server | unset | `--client-key` |

@@ -181,6 +181,13 @@ func ChatCompletionsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg
 						w.Header().Set("Cache-Control", "no-store")
 					}
 					w.WriteHeader(m.Status)
+					if m.Status >= http.StatusBadRequest {
+						lvl := logx.Log.Warn()
+						if m.Status >= http.StatusInternalServerError || m.Status == http.StatusUnauthorized || m.Status == http.StatusForbidden {
+							lvl = logx.Log.Error()
+						}
+						lvl.Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", meta.Model).Int("status", m.Status).Msg("upstream response")
+					}
 					if flusher != nil {
 						flusher.Flush()
 					}
@@ -205,6 +212,7 @@ func ChatCompletionsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg
 							logx.Log.Error().Err(err).Msg("write upstream error")
 						}
 						errMsg = m.Error.Message
+						logx.Log.Error().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", meta.Model).Str("error_code", m.Error.Code).Str("error", m.Error.Message).Msg("upstream error")
 					} else {
 						success = true
 					}
