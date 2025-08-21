@@ -38,11 +38,11 @@ func (a *API) GetHealthz(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) PostApiV1ChatCompletions(w http.ResponseWriter, r *http.Request) {
-	ChatCompletionsHandler(a.Reg, a.Sched, a.Metrics)(w, r)
+	ChatCompletionsHandler(a.Reg, a.Sched, a.Metrics, a.Timeout)(w, r)
 }
 
 func (a *API) PostApiV1Embeddings(w http.ResponseWriter, r *http.Request) {
-	EmbeddingsHandler(a.Reg, a.Sched, a.Metrics)(w, r)
+	EmbeddingsHandler(a.Reg, a.Sched, a.Metrics, a.Timeout)(w, r)
 }
 
 func (a *API) GetApiV1Models(w http.ResponseWriter, r *http.Request) {

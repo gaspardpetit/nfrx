@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gaspardpetit/llamapool/internal/ctrl"
 )
@@ -16,7 +17,7 @@ func TestEmbeddings(t *testing.T) {
 	wk := &ctrl.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
 	reg.Add(wk)
 	metricsReg := ctrl.NewMetricsRegistry("", "", "")
-	h := EmbeddingsHandler(reg, sched, metricsReg)
+	h := EmbeddingsHandler(reg, sched, metricsReg, time.Second)
 
 	go func() {
 		msg := <-wk.Send
@@ -45,7 +46,7 @@ func TestEmbeddingsEarlyError(t *testing.T) {
 	wk := &ctrl.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
 	reg.Add(wk)
 	metricsReg := ctrl.NewMetricsRegistry("", "", "")
-	h := EmbeddingsHandler(reg, sched, metricsReg)
+	h := EmbeddingsHandler(reg, sched, metricsReg, time.Second)
 
 	go func() {
 		msg := <-wk.Send

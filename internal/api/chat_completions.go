@@ -16,7 +16,7 @@ import (
 )
 
 // ChatCompletionsHandler handles POST /api/v1/chat/completions as a pass-through.
-func ChatCompletionsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg *ctrl.MetricsRegistry) http.HandlerFunc {
+func ChatCompletionsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg *ctrl.MetricsRegistry, timeout time.Duration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Body == nil {
 			http.Error(w, "bad request", http.StatusBadRequest)
@@ -109,6 +109,13 @@ func ChatCompletionsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg
 		var tokensIn, tokensOut uint64
 		var sseBuf string
 		var bodyBuf []byte
+		var idle *time.Timer
+		var timeoutCh <-chan time.Time
+		if timeout > 0 {
+			idle = time.NewTimer(timeout)
+			timeoutCh = idle.C
+			defer idle.Stop()
+		}
 
 		defer func() {
 			dur := time.Since(start)
@@ -134,6 +141,26 @@ func ChatCompletionsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg
 				default:
 				}
 				return
+			case <-timeoutCh:
+				hb := worker.LastHeartbeat
+				since := time.Since(hb)
+				if since > timeout {
+					errMsg = "timeout"
+					select {
+					case worker.Send <- ctrl.HTTPProxyCancelMessage{Type: "http_proxy_cancel", RequestID: reqID}:
+					default:
+					}
+					if !headersSent {
+						w.Header().Set("Content-Type", "application/json")
+						w.WriteHeader(http.StatusGatewayTimeout)
+						_, _ = w.Write([]byte(`{"error":"timeout"}`))
+					}
+					return
+				}
+				if idle != nil {
+					idle.Reset(timeout - since)
+					timeoutCh = idle.C
+				}
 			case msg, ok := <-ch:
 				if !ok {
 					if !headersSent {
@@ -145,6 +172,13 @@ func ChatCompletionsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg
 					}
 					errMsg = "closed"
 					return
+				}
+				if idle != nil {
+					if !idle.Stop() {
+						<-timeoutCh
+					}
+					idle.Reset(timeout)
+					timeoutCh = idle.C
 				}
 				switch m := msg.(type) {
 				case ctrl.HTTPProxyResponseHeadersMessage:

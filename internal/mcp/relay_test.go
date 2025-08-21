@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestCallProviderNon200(t *testing.T) {
@@ -15,7 +16,7 @@ func TestCallProviderNon200(t *testing.T) {
 	}))
 	defer ts.Close()
 	// We don't need a real websocket connection for callProvider
-	rc := &RelayClient{providerURL: ts.URL}
+	rc := &RelayClient{providerURL: ts.URL, requestTimeout: time.Second}
 	payload := []byte(`{"jsonrpc":"2.0","id":1,"method":"initialize"}`)
 	resp, err := rc.callProvider(context.Background(), payload)
 	if err != nil {
