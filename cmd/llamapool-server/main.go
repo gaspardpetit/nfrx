@@ -59,10 +59,10 @@ func main() {
 	handler := server.New(reg, metricsReg, sched, mcpReg, cfg)
 	srv := &http.Server{Addr: fmt.Sprintf(":%d", cfg.Port), Handler: handler}
 	var metricsSrv *http.Server
-	if cfg.MetricsPort != cfg.Port {
+	if cfg.MetricsAddr != fmt.Sprintf(":%d", cfg.Port) {
 		mux := http.NewServeMux()
 		mux.Handle("/metrics", promhttp.Handler())
-		metricsSrv = &http.Server{Addr: fmt.Sprintf(":%d", cfg.MetricsPort), Handler: mux}
+		metricsSrv = &http.Server{Addr: cfg.MetricsAddr, Handler: mux}
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
@@ -91,7 +91,7 @@ func main() {
 	logx.Log.Info().Int("port", cfg.Port).Msg("server starting")
 	if metricsSrv != nil {
 		go func() {
-			logx.Log.Info().Int("port", cfg.MetricsPort).Msg("metrics server starting")
+			logx.Log.Info().Str("addr", cfg.MetricsAddr).Msg("metrics server starting")
 			if err := metricsSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 				logx.Log.Error().Err(err).Msg("metrics server error")
 			}

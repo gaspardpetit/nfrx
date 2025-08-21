@@ -7,7 +7,7 @@ Endpoints are grouped by functional area.
 | Verb & Endpoint | Parameters | Description | Auth |
 | --- | --- | --- | --- |
 | `GET /healthz` | – | Basic health check. | Public |
-| `GET /metrics` | – | Prometheus metrics (`METRICS_PORT` env or `--metrics-port` flag for separate port). | Public |
+| `GET /metrics` | – | Prometheus metrics (`METRICS_PORT` env or `--metrics-port` flag for separate address). | Public |
 | `GET /api/client/openapi.json` | – | OpenAPI schema. | Public |
 | `GET /api/client/*` | – | Swagger UI. | Public |
 

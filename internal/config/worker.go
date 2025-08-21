@@ -48,7 +48,11 @@ func (c *WorkerConfig) BindFlags() {
 	}
 	c.WorkerID = getEnv("WORKER_ID", "")
 	c.StatusAddr = getEnv("STATUS_ADDR", "")
-	c.MetricsAddr = getEnv("METRICS_ADDR", "")
+	mp := getEnv("METRICS_PORT", "")
+	if mp != "" && !strings.Contains(mp, ":") {
+		mp = ":" + mp
+	}
+	c.MetricsAddr = mp
 	if d, err := time.ParseDuration(getEnv("DRAIN_TIMEOUT", "1m")); err == nil {
 		c.DrainTimeout = d
 	} else {
@@ -77,7 +81,7 @@ func (c *WorkerConfig) BindFlags() {
 	flag.StringVar(&c.WorkerID, "worker-id", c.WorkerID, "worker identifier; randomly generated if omitted")
 	flag.StringVar(&c.WorkerName, "worker-name", c.WorkerName, "worker display name shown in logs and status")
 	flag.StringVar(&c.StatusAddr, "status-addr", c.StatusAddr, "local status HTTP listen address (enables /status; e.g. 127.0.0.1:4555)")
-	flag.StringVar(&c.MetricsAddr, "metrics-addr", c.MetricsAddr, "Prometheus metrics listen address (disabled when empty; e.g. 127.0.0.1:9090)")
+	flag.StringVar(&c.MetricsAddr, "metrics-port", c.MetricsAddr, "Prometheus metrics listen address or port (disabled when empty; e.g. 127.0.0.1:9090 or 9090)")
 	flag.StringVar(&c.ConfigFile, "config", c.ConfigFile, "worker config file path")
 	flag.StringVar(&c.LogDir, "log-dir", c.LogDir, "directory for worker log files")
 	flag.DurationVar(&c.DrainTimeout, "drain-timeout", c.DrainTimeout, "time to wait for in-flight jobs on shutdown (-1 to wait indefinitely, 0 to exit immediately)")

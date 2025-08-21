@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/coder/websocket"
@@ -102,6 +103,8 @@ func main() {
 	flag.BoolVar(&reconnectFlag, "r", reconnectFlag, "short for --reconnect")
 	clientKey := getEnv("CLIENT_KEY", "")
 	flag.StringVar(&clientKey, "client-key", clientKey, "shared secret for authenticating with the server")
+	metricsAddr := getEnv("METRICS_PORT", "")
+	flag.StringVar(&metricsAddr, "metrics-port", metricsAddr, "Prometheus metrics listen address or port (disabled when empty; e.g. 127.0.0.1:9090 or 9090)")
 	flag.Parse()
 	if *showVersion {
 		fmt.Printf("llamapool-mcp version=%s sha=%s date=%s\n", version, buildSHA, buildDate)
@@ -113,6 +116,16 @@ func main() {
 	providerURL := getEnv("PROVIDER_URL", "http://127.0.0.1:7777/")
 	authToken := getEnv("AUTH_TOKEN", "")
 	header := http.Header{}
+
+	if metricsAddr != "" {
+		if !strings.Contains(metricsAddr, ":") {
+			metricsAddr = ":" + metricsAddr
+		}
+		if _, err := mcp.StartMetricsServer(context.Background(), metricsAddr); err != nil {
+			logx.Log.Fatal().Err(err).Msg("metrics server")
+		}
+		logx.Log.Info().Str("addr", metricsAddr).Msg("metrics server started")
+	}
 
 	attempt := 0
 	for {
