@@ -72,7 +72,7 @@ The Windows service runs `llamapool-worker` with the `--reconnect` flag and shut
   - Separate authentication keys for clients (`API_KEY`) and workers (`WORKER_KEY`).
   - Workers typically run behind firewalls and connect outbound over HTTPS/WSS.  
   - All traffic is encrypted end-to-end.
-- **Protocol compatibility** – Accepts and forwards OpenAI-style `POST /v1/chat/completions` and `POST /v1/embeddings` without altering JSON payloads.
+- **Protocol compatibility** – Canonical endpoints are `/api/v1/*`, but the server also accepts OpenAI-style `POST /v1/chat/completions` and `POST /v1/embeddings` without altering JSON payloads.
 
 ### How it works
 - The **server** accepts incoming HTTP requests from clients, authenticates them, and routes them to workers via WebSocket connections.
@@ -93,9 +93,9 @@ The Windows service runs `llamapool-worker` with the `--reconnect` flag and shut
 │                                                                       │
 │  ┌──────────────────────────┐                     ┌───────────────┐   │
 │  │  OpenAI-compatible API   │                     │  Observability│   │
-│  │  /v1/chat/completions    │                     │  /metrics     │   │
-│  │  /v1/embeddings          │                     └───────────────┘   │
-│  │  /v1/models (+/{id})     │                                         │
+│  │  /api/v1/chat/completions│                     │  /metrics     │   │
+│  │  /api/v1/embeddings      │                     └───────────────┘   │
+│  │  /api/v1/models (+/{id}) │                                         │
 │  └──────────────┬────────── ┘                                         │
 │                 │                                                     │
 │          ┌──────▼──────────────────────────────────────────────────┐  │
@@ -125,14 +125,14 @@ The Windows service runs `llamapool-worker` with the `--reconnect` flag and shut
 
 - Health: `GET /healthz`
 - OpenAI Models:
-  - `GET /v1/models`
-  - `GET /v1/models/{id}`
-- OpenAI Chat Completions: `POST /v1/chat/completions`
-- OpenAI Embeddings: `POST /v1/embeddings`
+  - `GET /api/v1/models` (also `/v1/models`)
+  - `GET /api/v1/models/{id}` (also `/v1/models/{id}`)
+- OpenAI Chat Completions: `POST /api/v1/chat/completions` (also `/v1/chat/completions`)
+- OpenAI Embeddings: `POST /api/v1/embeddings` (also `/v1/embeddings`)
 - llamapool API:
   - **State (JSON):** `GET /api/state`
   - **State (SSE):** `GET /api/state/stream`
-- Prometheus metrics: `GET /metrics` (can run on a separate port via `--metrics-port`)
+- Prometheus metrics: `GET /metrics` (serve on separate port via `METRICS_PORT` or `--metrics-port`)
 - API docs:
   - Swagger UI: `GET /api/client/`
   - OpenAPI schema: `GET /api/client/openapi.json`
@@ -142,7 +142,7 @@ The Windows service runs `llamapool-worker` with the `--reconnect` flag and shut
 
 ## Security
 
-- **Client authentication**: `API_KEY` required for `/api` and `/v1` routes via `Authorization: Bearer <API_KEY>`.
+- **Client authentication**: `API_KEY` required for `/api` routes (including `/api/v1`) and legacy `/v1` paths via `Authorization: Bearer <API_KEY>`.
 - **Worker authentication**: `WORKER_KEY` required for worker WebSocket registration.
 - **Transport**: run behind TLS (HTTPS/WSS) via reverse proxy or terminate TLS in-process.
 - **CORS**: cross-origin requests are denied unless explicitly allowed via `ALLOWED_ORIGINS` (comma separated) or the `--allowed-origins` flag.
@@ -153,7 +153,7 @@ The Windows service runs `llamapool-worker` with the `--reconnect` flag and shut
 
 ## Monitoring & Observability
 
-- **Prometheus** (`/metrics`, configurable port via `--metrics-port`):
+- **Prometheus** (`/metrics`, configurable port via `METRICS_PORT` or `--metrics-port`):
   - `llamapool_build_info{component="server",version,sha,date}`
   - `llamapool_model_requests_total{model,outcome}`
   - `llamapool_model_tokens_total{model,kind}`
@@ -341,7 +341,7 @@ without waiting or `--drain-timeout=-1` to wait indefinitely.
 The worker polls the local Ollama instance (default every 1m) so that
 `connected_to_ollama` and `models` stay current in the `/status` output.
 If the model list changes, the worker proactively notifies the server so
-`/v1/models` reflects the latest information. Configure the poll interval
+`/api/v1/models` reflects the latest information. Configure the poll interval
 with `MODEL_POLL_INTERVAL` or `--model-poll-interval`.
 
 Control endpoints require an `X-Auth-Token` header. The token is generated on
@@ -381,7 +381,7 @@ Ollama instance. If the model is missing, the server responds with `no worker`.
 On Linux:
 
 ```bash
-curl -N -X POST http://localhost:8080/v1/chat/completions \
+curl -N -X POST http://localhost:8080/api/v1/chat/completions \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer test123' \
   -d '{"model":"llama3","messages":[{"role":"user","content":"Hello"}],"stream":true}'
@@ -390,7 +390,7 @@ curl -N -X POST http://localhost:8080/v1/chat/completions \
 On Windows (CMD):
 
 ```
-curl -N -X POST "http://localhost:8080/v1/chat/completions" ^
+curl -N -X POST "http://localhost:8080/api/v1/chat/completions" ^
   -H "Content-Type: application/json" ^
   -H "Authorization: Bearer test123" ^
   -d "{ \"model\": \"llama3\", \"messages\": [ { \"role\": \"user\", \"content\": \"Hello\" } ], \"stream\": true }"
@@ -399,7 +399,7 @@ curl -N -X POST "http://localhost:8080/v1/chat/completions" ^
 On Windows (Powershell):
 
 ```
-curl -N -X POST http://localhost:8080/v1/chat/completions `
+curl -N -X POST http://localhost:8080/api/v1/chat/completions `
   -H "Content-Type: application/json" `
   -H "Authorization: Bearer test123" `
   -d '{ "model": "llama3", "messages": [ { "role": "user", "content": "Hello" } ], "stream": true }'
@@ -420,16 +420,18 @@ curl -H "Authorization: Bearer test123" http://localhost:8080/api/state
 curl -H "Authorization: Bearer test123" http://localhost:8080/api/state/stream
 # Prometheus metrics
 curl http://localhost:8080/metrics
-# or if `--metrics-port` is set:
+# or if `METRICS_PORT`/`--metrics-port` is set:
 curl http://localhost:9090/metrics
 ```
 
 The server also exposes OpenAI-style model listing endpoints:
 
 ```bash
-curl -H "Authorization: Bearer test123" http://localhost:8080/v1/models
-curl -H "Authorization: Bearer test123" http://localhost:8080/v1/models/llama3:8b
+curl -H "Authorization: Bearer test123" http://localhost:8080/api/v1/models
+curl -H "Authorization: Bearer test123" http://localhost:8080/api/v1/models/llama3:8b
 ```
+
+For a full list of server endpoints, see [docs/server-endpoints.md](docs/server-endpoints.md).
 
 ## Testing
 
@@ -466,16 +468,16 @@ For manual end-to-end verification on a clean VM, see [desktop/windows/ACCEPTANC
 
 | Feature | Supported | Notes |
 | --- | --- | --- |
-| OpenAI-compatible `POST /v1/chat/completions` | ✅ | Proxied to workers without payload mutation |
-| OpenAI-compatible `POST /v1/embeddings` | ✅ | Proxied to workers without payload mutation |
+| OpenAI-compatible `POST /api/v1/chat/completions` | ✅ | Proxied to workers without payload mutation (also `/v1/chat/completions`) |
+| OpenAI-compatible `POST /api/v1/embeddings` | ✅ | Proxied to workers without payload mutation (also `/v1/embeddings`) |
 | Multiple worker registration | ✅ | Workers can join/leave dynamically; models registered on connect |
 | Model-based routing (least-busy) | ✅ | `LeastBusyScheduler` selects worker by current load |
 | Model alias fallback | ✅ | Falls back to base model when exact quantization not available |
-| API key authentication for clients | ✅ | `Authorization: Bearer <API_KEY>` for `/api` and `/v1` routes |
+| API key authentication for clients | ✅ | `Authorization: Bearer <API_KEY>` for `/api` (including `/api/v1`) and `/v1` routes |
 | Worker key authentication | ✅ | Workers authenticate over WebSocket using `WORKER_KEY` |
 | Dynamic model discovery | ✅ | Workers advertise supported models; server aggregates |
 | HTTPS/WSS transport | ✅ | Use TLS terminator or run behind reverse proxy; WS path configurable |
-| Prometheus metrics endpoint | ✅ | `/metrics`; includes build info, per-model counters, histograms; supports separate `--metrics-port` |
+| Prometheus metrics endpoint | ✅ | `/metrics`; includes build info, per-model counters, histograms; supports `METRICS_PORT`/`--metrics-port` |
 | Real-time state API (JSON) | ✅ | `GET /api/state` returns full server/worker snapshot |
 | Real-time state stream (SSE) | ✅ | `GET /api/state/stream` for dashboards |
 | Token usage tracking | ✅ | Per-model and per-worker token totals (in/out) |
