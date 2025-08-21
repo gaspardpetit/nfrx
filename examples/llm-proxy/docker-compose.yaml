@@ -11,7 +11,7 @@ services:
 
   server:
     container_name: server
-    image: ghcr.io/gaspardpetit/llamapool-server:latest
+    image: ghcr.io/gaspardpetit/llamapool-server:main
     environment:
       <<: *common_env
       PORT: "8080"
@@ -22,7 +22,7 @@ services:
 
   worker:
     container_name: worker
-    image: ghcr.io/gaspardpetit/llamapool-worker:latest
+    image: ghcr.io/gaspardpetit/llamapool-worker:main
     environment:
       <<: *common_env
       SERVER_URL: "ws://server:8080/api/workers/connect"

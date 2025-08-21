@@ -1,0 +1,51 @@
+x-env: &common_env
+  API_KEY: "test123"     # client API key for /v1 and /api
+  WORKER_KEY: "secret"   # worker registration key
+  CLIENT_ID: mcp-1234    # a unique identifier for this mcp server
+
+services:
+  clock:
+    image: python:3.12-slim
+    container_name: clock
+    command: |
+      sh -c "pip install --no-cache-dir fastmcp &&
+             echo '
+      from datetime import datetime
+      from fastmcp import FastMCP
+
+      app = FastMCP(\"clock\", stateless_http=True, json_response=True)
+
+      @app.tool(\"time/now\")
+      def now() -> str:
+          return datetime.now().isoformat()
+
+      if __name__ == \"__main__\":
+          app.run(\"http\", host=\"0.0.0.0\", port=7777)
+      ' > /app/app.py &&
+                  python /app/app.py"
+    working_dir: /app
+    ports:
+      - "7777:7777"
+    restart: unless-stopped
+  server:
+    container_name: server
+    image: ghcr.io/gaspardpetit/llamapool-server:main
+    environment:
+      <<: *common_env
+      PORT: "8080"
+      METRICS_PORT: "9090"
+    ports:
+      - "8080:8080"   # OpenAI-compatible API + state
+      - "9090:9090"   # Prometheus metrics
+
+  worker:
+    container_name: mcp
+    image: ghcr.io/gaspardpetit/llamapool-mcp-worker:main
+    environment:
+      <<: *common_env
+      SERVER_URL: "ws://server:8080/api/mcp/connect"
+      WORKER_NAME: "Alpha"
+      PROVIDER_URL: http://clock:7777/mcp/
+    ports:
+      - "4555:4555"
+    command: [--reconnect]
