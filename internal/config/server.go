@@ -2,6 +2,7 @@ package config
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -13,7 +14,7 @@ import (
 // ServerConfig holds configuration for the llamapool server.
 type ServerConfig struct {
 	Port           int
-	MetricsPort    int
+	MetricsAddr    string
 	APIKey         string
 	ClientKey      string
 	RequestTimeout time.Duration
@@ -29,8 +30,14 @@ func (c *ServerConfig) BindFlags() {
 
 	port, _ := strconv.Atoi(getEnv("PORT", "8080"))
 	c.Port = port
-	mp, _ := strconv.Atoi(getEnv("METRICS_PORT", strconv.Itoa(port)))
-	c.MetricsPort = mp
+	mp := getEnv("METRICS_PORT", "")
+	if mp == "" {
+		c.MetricsAddr = fmt.Sprintf(":%d", port)
+	} else if strings.Contains(mp, ":") {
+		c.MetricsAddr = mp
+	} else {
+		c.MetricsAddr = ":" + mp
+	}
 	c.APIKey = getEnv("API_KEY", "")
 	c.ClientKey = getEnv("CLIENT_KEY", "")
 	rt, _ := time.ParseDuration(getEnv("REQUEST_TIMEOUT", "60s"))
@@ -39,7 +46,7 @@ func (c *ServerConfig) BindFlags() {
 
 	flag.StringVar(&c.ConfigFile, "config", c.ConfigFile, "server config file path")
 	flag.IntVar(&c.Port, "port", c.Port, "HTTP listen port for the public API")
-	flag.IntVar(&c.MetricsPort, "metrics-port", c.MetricsPort, "Prometheus metrics listen port; defaults to the value of --port")
+	flag.StringVar(&c.MetricsAddr, "metrics-port", c.MetricsAddr, "Prometheus metrics listen address or port; defaults to the value of --port")
 	flag.StringVar(&c.APIKey, "api-key", c.APIKey, "client API key required for HTTP requests; leave empty to disable auth")
 	flag.StringVar(&c.ClientKey, "client-key", c.ClientKey, "shared key clients must present when registering")
 	flag.DurationVar(&c.RequestTimeout, "request-timeout", c.RequestTimeout, "maximum duration to process a client request")

@@ -20,7 +20,7 @@ The server optionally reads settings from a YAML config file. Defaults:
 |----------|------------|---------|---------|----------|
 | `CONFIG_FILE` | — | server config file path | OS-specific | `--config` |
 | `PORT` | — | HTTP listen port for the public API | `8080` | `--port` |
-| `METRICS_PORT` | — | Prometheus metrics listen port | same as `PORT` | `--metrics-port` |
+| `METRICS_PORT` | — | Prometheus metrics listen address or port | same as `PORT` | `--metrics-port` |
 | `API_KEY` | — | client API key required for HTTP requests | unset (auth disabled) | `--api-key` |
 | `CLIENT_KEY` | — | shared key clients must present when registering | unset | `--client-key` |
 | `REQUEST_TIMEOUT` | — | maximum duration to process a client request | `60s` | `--request-timeout` |
@@ -51,7 +51,7 @@ The worker optionally reads settings from a YAML config file. Defaults:
 | `MAX_CONCURRENCY` | `max_concurrency` | maximum number of jobs processed concurrently | `2` | `--max-concurrency` |
 | `WORKER_ID` | — | worker identifier (random if unset) | unset | `--worker-id` |
 | `STATUS_ADDR` | `status_addr` | local status HTTP listen address | unset (disabled) | `--status-addr` |
-| `METRICS_ADDR` | — | Prometheus metrics listen address | unset (disabled) | `--metrics-addr` |
+| `METRICS_PORT` | — | Prometheus metrics listen address or port | unset (disabled) | `--metrics-port` |
 | `DRAIN_TIMEOUT` | — | time to wait for in-flight jobs on shutdown | `1m` | `--drain-timeout` |
 | `MODEL_POLL_INTERVAL` | — | interval for polling Ollama for model changes | `1m` | `--model-poll-interval` |
 | `WORKER_NAME` | — | worker display name | hostname (or random) | `--worker-name` |
@@ -76,6 +76,7 @@ Note: The YAML schema currently covers only a subset (`server_url`, `client_key`
 | `AUTH_TOKEN` | — | authorization token for broker requests | unset | — |
 | `CLIENT_KEY` | — | shared secret for authenticating with the server | unset | `--client-key` |
 | `CONFIG_FILE` | — | path to YAML config file | OS-specific | `--config` |
+| `METRICS_PORT` | — | Prometheus metrics listen address or port | unset (disabled) | `--metrics-port` |
 | `MCP_TRANSPORT_ORDER` | `order` | comma separated transport order | `stdio,http,oauth` | `--mcp-transport-order` |
 | `MCP_INIT_TIMEOUT` | `initTimeout` | timeout for transport startup | `5s` | `--mcp-init-timeout` |
 | `MCP_PROTOCOL_VERSION` | `protocolVersion` | preferred MCP protocol version | negotiated automatically | `--mcp-protocol-version` |
@@ -99,14 +100,13 @@ Note: The YAML schema currently covers only a subset (`server_url`, `client_key`
 
 ### Consistency notes
 
-`SERVER_URL`, `CLIENT_KEY`, and `RECONNECT` remain shared between tools, providing predictable behavior. Metrics configuration still mixes `METRICS_PORT` on the server with `METRICS_ADDR` on the worker, and timeout variables combine duration strings (`REQUEST_TIMEOUT`) with millisecond suffixes (`BROKER_CALL_TIMEOUT_MS`). The worker's YAML config covers only a subset of its available settings, leaving items like `METRICS_ADDR` or `DRAIN_TIMEOUT` without config-file equivalents.
+`SERVER_URL`, `CLIENT_KEY`, and `RECONNECT` remain shared between tools, providing predictable behavior. Timeout variables still mix duration strings (`REQUEST_TIMEOUT`) with millisecond suffixes (`BROKER_CALL_TIMEOUT_MS`). The worker's YAML config covers only a subset of its available settings, leaving items like `METRICS_PORT` or `DRAIN_TIMEOUT` without config-file equivalents.
 
 ### Cleanup candidates
 
 | Option(s) | Issue | Recommendation |
 |-----------|-------|----------------|
 | `OLLAMA_URL`, `OLLAMA_BASE_URL` | legacy aliases for `COMPLETION_BASE_URL` | consolidate on `COMPLETION_BASE_URL` |
-| `METRICS_PORT` / `METRICS_ADDR` | inconsistent metrics naming | standardize on a single form (e.g., address) |
 | `BROKER_CALL_TIMEOUT_MS` vs `REQUEST_TIMEOUT` | mixed units and naming for timeouts | use duration strings consistently |
 | worker YAML coverage | config file omits many settings (metrics, timeouts, names) | expand or deprecate partial config schema |
 
