@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gaspardpetit/llamapool/internal/config"
 	"github.com/mark3labs/mcp-go/client/transport"
 	"gopkg.in/yaml.v3"
 )
@@ -88,7 +89,8 @@ func (c *Config) BindFlags() {
 	if c.HTTP.Timeout == 0 {
 		c.HTTP.Timeout = 30 * time.Second
 	}
-	c.ConfigFile = getEnv("MCP_CONFIG_FILE", c.ConfigFile)
+	cfgPath := config.DefaultConfigPath("mcp.yaml")
+	c.ConfigFile = getEnv("CONFIG_FILE", cfgPath)
 	c.Order = splitComma(getEnv("MCP_TRANSPORT_ORDER", strings.Join(c.Order, ",")))
 	c.InitTimeout = parseDuration(getEnv("MCP_INIT_TIMEOUT", c.InitTimeout.String()))
 	c.ProtocolVersion = getEnv("MCP_PROTOCOL_VERSION", c.ProtocolVersion)
@@ -124,7 +126,7 @@ func (c *Config) BindFlags() {
 		c.EnableLegacySSE = getEnv("MCP_ENABLE_LEGACY_SSE", "") == "true"
 	}
 
-	flag.StringVar(&c.ConfigFile, "mcp-config", c.ConfigFile, "path to YAML config file")
+	flag.StringVar(&c.ConfigFile, "config", c.ConfigFile, "path to YAML config file")
 	flag.Func("mcp-transport-order", "comma separated transport order", func(v string) error { c.Order = splitComma(v); return nil })
 	flag.DurationVar(&c.InitTimeout, "mcp-init-timeout", c.InitTimeout, "timeout for transport startup and initialization")
 	flag.StringVar(&c.ProtocolVersion, "mcp-protocol-version", c.ProtocolVersion, "preferred MCP protocol version")

@@ -25,7 +25,7 @@ Server-initiated JSON-RPC requests (for example sampling calls) are forwarded ac
 The new `llamapool-mcp` binary connects a private MCP provider to the public `llamapool-server`, allowing clients to invoke MCP methods via `POST /api/mcp/id/{id}`. The broker enforces request/response size limits, per-client concurrency caps, and 30s call timeouts; cancellation is not yet implemented. The client negotiates protocol versions and server capabilities, and exposes tunables such as `MCP_PROTOCOL_VERSION`, `MCP_HTTP_TIMEOUT`, and `MCP_MAX_INFLIGHT` for advanced deployments. By default `llamapool-mcp` requires absolute stdio commands and verifies TLS certificates; set `MCP_STDIO_ALLOW_RELATIVE=true` or `MCP_HTTP_INSECURE_SKIP_VERIFY=true` to relax these checks, and `MCP_OAUTH_TOKEN_FILE` to securely cache OAuth tokens on disk.
 By default the MCP relay exits if the server is unavailable. Add `-r` or `--reconnect` to keep retrying with backoff (1s×3, 5s×3, 15s×3, then every 30s). When enabled, it also probes the MCP provider and remains in a `not_ready` state until the provider becomes reachable.
 
-`llamapool-mcp` reads configuration from a YAML file when `MCP_CONFIG_FILE` is set. Values in the file—such as transport order, protocol version preference, or stdio working directory—are used as defaults and can be overridden by environment variables or CLI flags (e.g. `--mcp-http-url`, `--mcp-stdio-workdir`).
+`llamapool-mcp` reads configuration from a YAML file when `CONFIG_FILE` is set. Values in the file—such as transport order, protocol version preference, or stdio working directory—are used as defaults and can be overridden by environment variables or CLI flags (e.g. `--mcp-http-url`, `--mcp-stdio-workdir`).
 
 For transport configuration, common errors, and developer guidance see [doc/mcpclient.md](doc/mcpclient.md).
 For a comprehensive list of configuration options, see [doc/env.md](doc/env.md).
@@ -365,6 +365,7 @@ Commented example files are installed to `/etc/llamapool/`; edit these files to 
 When no explicit paths are provided, the worker falls back to OS defaults for
 its configuration and logs:
 
+- **Linux:** `/etc/llamapool/worker.yaml`
 - **macOS:** `~/Library/Application Support/llamapool/worker.yaml` and
   `~/Library/Logs/llamapool/`
 - **Windows:** `%ProgramData%\llamapool\worker.yaml` and

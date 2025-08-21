@@ -10,10 +10,15 @@ This document lists configuration options for the llamapool tools. Settings can 
 
 ## llamapool-server
 
-llamapool-server does not currently read from a configuration file; settings are provided via environment variables or CLI flags.
+The server optionally reads settings from a YAML config file. Defaults:
+
+- macOS: `~/Library/Application Support/llamapool/server.yaml`
+- Windows: `%ProgramData%\\llamapool\\server.yaml`
+- Linux: `/etc/llamapool/server.yaml`
 
 | Variable | Config key | Purpose | Default | CLI flag |
 |----------|------------|---------|---------|----------|
+| `CONFIG_FILE` | — | server config file path | OS-specific | `--config` |
 | `PORT` | — | HTTP listen port for the public API | `8080` | `--port` |
 | `METRICS_PORT` | — | Prometheus metrics listen port | same as `PORT` | `--metrics-port` |
 | `API_KEY` | — | client API key required for HTTP requests | unset (auth disabled) | `--api-key` |
@@ -33,11 +38,11 @@ The worker optionally reads settings from a YAML config file. Defaults:
 
 - macOS: `~/Library/Application Support/llamapool/worker.yaml`
 - Windows: `%ProgramData%\\llamapool\\worker.yaml`
-- Linux: none
+- Linux: `/etc/llamapool/worker.yaml`
 
 | Variable | Config key | Purpose | Default | CLI flag |
 |----------|------------|---------|---------|----------|
-| `CONFIG_FILE` | — | worker config file path | OS-specific (none on Linux) | `--config` |
+| `CONFIG_FILE` | — | worker config file path | OS-specific | `--config` |
 | `LOG_DIR` | — | directory for worker log files | OS-specific (none on Linux) | `--log-dir` |
 | `SERVER_URL` | `server_url` | server WebSocket URL for registration | `ws://localhost:8080/api/workers/connect` | `--server-url` |
 | `CLIENT_KEY` | `client_key` | shared secret for authenticating with the server | unset | `--client-key` |
@@ -57,7 +62,11 @@ Note: The YAML schema currently covers only a subset (`server_url`, `client_key`
 
 ## llamapool-mcp
 
-`llamapool-mcp` reads additional settings from a YAML file when `MCP_CONFIG_FILE` is set.
+`llamapool-mcp` reads additional settings from a YAML file when `CONFIG_FILE` is set. Defaults:
+
+- macOS: `~/Library/Application Support/llamapool/mcp.yaml`
+- Windows: `%ProgramData%\\llamapool\\mcp.yaml`
+- Linux: `/etc/llamapool/mcp.yaml`
 
 | Variable | Config key | Purpose | Default | CLI flag |
 |----------|------------|---------|---------|----------|
@@ -67,7 +76,7 @@ Note: The YAML schema currently covers only a subset (`server_url`, `client_key`
 | `PROVIDER_URL` | — | MCP provider URL | `http://127.0.0.1:7777/` | — |
 | `AUTH_TOKEN` | — | authorization token for broker requests | unset | — |
 | `CLIENT_KEY` | — | shared secret for authenticating with the server | unset | `--client-key` |
-| `MCP_CONFIG_FILE` | — | path to YAML config file | unset | `--mcp-config` |
+| `CONFIG_FILE` | — | path to YAML config file | OS-specific | `--config` |
 | `MCP_TRANSPORT_ORDER` | `order` | comma separated transport order | `stdio,http,oauth` | `--mcp-transport-order` |
 | `MCP_INIT_TIMEOUT` | `initTimeout` | timeout for transport startup | `5s` | `--mcp-init-timeout` |
 | `MCP_PROTOCOL_VERSION` | `protocolVersion` | preferred MCP protocol version | negotiated automatically | `--mcp-protocol-version` |
@@ -100,6 +109,5 @@ Note: The YAML schema currently covers only a subset (`server_url`, `client_key`
 | `OLLAMA_URL` | legacy alias for `OLLAMA_BASE_URL` | consolidate on `OLLAMA_BASE_URL` |
 | `METRICS_PORT` / `METRICS_ADDR` | inconsistent metrics naming | standardize on a single form (e.g., address) |
 | `BROKER_CALL_TIMEOUT_MS` vs `REQUEST_TIMEOUT` | mixed units and naming for timeouts | use duration strings consistently |
-| `CONFIG_FILE` / `MCP_CONFIG_FILE` | inconsistent config file naming | adopt a consistent `*_CONFIG_FILE` pattern |
 | worker YAML coverage | config file omits many settings (metrics, timeouts, names) | expand or deprecate partial config schema |
 

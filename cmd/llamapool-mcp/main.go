@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"net/http"
@@ -12,9 +13,11 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
+	"github.com/gaspardpetit/llamapool/internal/config"
 	"github.com/gaspardpetit/llamapool/internal/logx"
 	"github.com/gaspardpetit/llamapool/internal/mcp"
 	reconnect "github.com/gaspardpetit/llamapool/internal/reconnect"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -100,12 +103,25 @@ func main() {
 	reconnectFlag := getEnvBool("RECONNECT", false)
 	flag.BoolVar(&reconnectFlag, "reconnect", reconnectFlag, "reconnect to server on failure")
 	flag.BoolVar(&reconnectFlag, "r", reconnectFlag, "short for --reconnect")
+	cfgFile := getEnv("CONFIG_FILE", config.DefaultConfigPath("mcp.yaml"))
+	flag.StringVar(&cfgFile, "config", cfgFile, "mcp config file path")
 	clientKey := getEnv("CLIENT_KEY", "")
 	flag.StringVar(&clientKey, "client-key", clientKey, "shared secret for authenticating with the server")
 	flag.Parse()
 	if *showVersion {
 		fmt.Printf("llamapool-mcp version=%s sha=%s date=%s\n", version, buildSHA, buildDate)
 		return
+	}
+
+	if cfgFile != "" {
+		if b, err := os.ReadFile(cfgFile); err == nil {
+			var m map[string]any
+			if err := yaml.Unmarshal(b, &m); err != nil {
+				logx.Log.Fatal().Err(err).Str("path", cfgFile).Msg("parse config")
+			}
+		} else if !errors.Is(err, os.ErrNotExist) {
+			logx.Log.Fatal().Err(err).Str("path", cfgFile).Msg("load config")
+		}
 	}
 
 	wsURL := getEnv("SERVER_URL", "ws://localhost:8080/api/mcp/connect")

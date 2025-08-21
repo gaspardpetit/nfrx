@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gopkg.in/yaml.v3"
 )
 
 // WorkerConfig holds configuration for the worker agent.
@@ -93,19 +94,26 @@ func defaultWorkerPaths() (configFile, logDir string) {
 }
 
 func resolveWorkerPaths(goos, home, programData string) (configFile, logDir string) {
+	configFile = ResolveConfigPath(goos, home, programData, "worker.yaml")
 	switch goos {
 	case "darwin":
-		configFile = filepath.Join(home, "Library", "Application Support", "llamapool", "worker.yaml")
 		logDir = filepath.Join(home, "Library", "Logs", "llamapool")
 	case "windows":
 		if programData == "" {
 			programData = "C:/ProgramData"
 		}
 		programData = strings.TrimRight(programData, "\\/")
-		configFile = filepath.Join(programData, "llamapool", "worker.yaml")
 		logDir = filepath.Join(programData, "llamapool", "Logs")
-	default:
-		// Linux and other platforms keep existing behavior with no defaults.
 	}
 	return
+}
+
+// LoadFile populates the config from a YAML file. Fields already set remain unless
+// overwritten by corresponding entries in the file.
+func (c *WorkerConfig) LoadFile(path string) error {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	return yaml.Unmarshal(b, c)
 }
