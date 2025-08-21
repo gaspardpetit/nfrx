@@ -72,7 +72,7 @@ The Windows service runs `llamapool-worker` with the `--reconnect` flag and shut
   - Separate authentication keys for clients (`API_KEY`) and workers (`WORKER_KEY`).
   - Workers typically run behind firewalls and connect outbound over HTTPS/WSS.  
   - All traffic is encrypted end-to-end.
-- **Protocol compatibility** – Canonical endpoints are `/api/v1/*`, but the server also accepts OpenAI-style `POST /v1/chat/completions` and `POST /v1/embeddings` without altering JSON payloads.
+- **Protocol compatibility** – OpenAI-compatible endpoints are available under `/api/v1/*` without altering JSON payloads.
 
 ### How it works
 - The **server** accepts incoming HTTP requests from clients, authenticates them, and routes them to workers via WebSocket connections.
@@ -125,10 +125,10 @@ The Windows service runs `llamapool-worker` with the `--reconnect` flag and shut
 
 - Health: `GET /healthz`
 - OpenAI Models:
-  - `GET /api/v1/models` (also `/v1/models`)
-  - `GET /api/v1/models/{id}` (also `/v1/models/{id}`)
-- OpenAI Chat Completions: `POST /api/v1/chat/completions` (also `/v1/chat/completions`)
-- OpenAI Embeddings: `POST /api/v1/embeddings` (also `/v1/embeddings`)
+  - `GET /api/v1/models`
+  - `GET /api/v1/models/{id}`
+- OpenAI Chat Completions: `POST /api/v1/chat/completions`
+- OpenAI Embeddings: `POST /api/v1/embeddings`
 - llamapool API:
   - **State (JSON):** `GET /api/state`
   - **State (SSE):** `GET /api/state/stream`
@@ -142,7 +142,7 @@ The Windows service runs `llamapool-worker` with the `--reconnect` flag and shut
 
 ## Security
 
-- **Client authentication**: `API_KEY` required for `/api` routes (including `/api/v1`) and legacy `/v1` paths via `Authorization: Bearer <API_KEY>`.
+- **Client authentication**: `API_KEY` required for `/api` routes (including `/api/v1`) via `Authorization: Bearer <API_KEY>`.
 - **Worker authentication**: `WORKER_KEY` required for worker WebSocket registration.
 - **Transport**: run behind TLS (HTTPS/WSS) via reverse proxy or terminate TLS in-process.
 - **CORS**: cross-origin requests are denied unless explicitly allowed via `ALLOWED_ORIGINS` (comma separated) or the `--allowed-origins` flag.
@@ -468,12 +468,12 @@ For manual end-to-end verification on a clean VM, see [desktop/windows/ACCEPTANC
 
 | Feature | Supported | Notes |
 | --- | --- | --- |
-| OpenAI-compatible `POST /api/v1/chat/completions` | ✅ | Proxied to workers without payload mutation (also `/v1/chat/completions`) |
-| OpenAI-compatible `POST /api/v1/embeddings` | ✅ | Proxied to workers without payload mutation (also `/v1/embeddings`) |
+| OpenAI-compatible `POST /api/v1/chat/completions` | ✅ | Proxied to workers without payload mutation |
+| OpenAI-compatible `POST /api/v1/embeddings` | ✅ | Proxied to workers without payload mutation |
 | Multiple worker registration | ✅ | Workers can join/leave dynamically; models registered on connect |
 | Model-based routing (least-busy) | ✅ | `LeastBusyScheduler` selects worker by current load |
 | Model alias fallback | ✅ | Falls back to base model when exact quantization not available |
-| API key authentication for clients | ✅ | `Authorization: Bearer <API_KEY>` for `/api` (including `/api/v1`) and `/v1` routes |
+| API key authentication for clients | ✅ | `Authorization: Bearer <API_KEY>` for `/api` (including `/api/v1`) |
 | Worker key authentication | ✅ | Workers authenticate over WebSocket using `WORKER_KEY` |
 | Dynamic model discovery | ✅ | Workers advertise supported models; server aggregates |
 | HTTPS/WSS transport | ✅ | Use TLS terminator or run behind reverse proxy; WS path configurable |

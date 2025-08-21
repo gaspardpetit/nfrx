@@ -1,6 +1,6 @@
 ```
 x-env: &common_env
-  API_KEY: "test123"     # client API key for /v1 and /api
+  API_KEY: "test123"     # client API key for /api
   WORKER_KEY: "secret"   # worker registration key
 
 services:
@@ -49,6 +49,6 @@ docker exec ollama ollama pull gemma3n:e2b
 ```
 
 ```
-docker run --rm -e OPENAI_API_KEY=test123 -e OPENAI_API_BASE=http://host.docker.internal:8080/v1/ ghcr.io/tbckr/sgpt:latest -m gemma3n:e2b "Tell me an IT joke about http proxies"
+docker run --rm -e OPENAI_API_KEY=test123 -e OPENAI_API_BASE=http://host.docker.internal:8080/api/v1/ ghcr.io/tbckr/sgpt:latest -m gemma3n:e2b "Tell me an IT joke about http proxies"
 ```
 

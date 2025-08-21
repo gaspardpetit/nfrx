@@ -11,7 +11,7 @@ import (
 	"github.com/gaspardpetit/llamapool/internal/logx"
 )
 
-// ListModelsHandler handles GET /v1/models.
+// ListModelsHandler handles GET /api/v1/models.
 func ListModelsHandler(reg *ctrl.Registry) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		models := reg.AggregatedModels()
@@ -36,7 +36,7 @@ func ListModelsHandler(reg *ctrl.Registry) http.HandlerFunc {
 	}
 }
 
-// GetModelHandler handles GET /v1/models/{id}.
+// GetModelHandler handles GET /api/v1/models/{id}.
 func GetModelHandler(reg *ctrl.Registry) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")

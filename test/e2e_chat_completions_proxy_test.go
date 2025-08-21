@@ -70,7 +70,7 @@ func TestE2EChatCompletionsProxy(t *testing.T) {
 
 	// wait for worker registration
 	for i := 0; i < 20; i++ {
-		resp, err := http.Get(srv.URL + "/v1/models")
+		resp, err := http.Get(srv.URL + "/api/v1/models")
 		if err == nil {
 			var v struct {
 				Data []struct {
@@ -89,7 +89,7 @@ func TestE2EChatCompletionsProxy(t *testing.T) {
 	}
 
 	reqBody := []byte(`{"model":"llama3","stream":true}`)
-	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/v1/chat/completions", bytes.NewReader(reqBody))
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/api/v1/chat/completions", bytes.NewReader(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer apikey")
 	resp, err := http.DefaultClient.Do(req)

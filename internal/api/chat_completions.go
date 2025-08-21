@@ -15,7 +15,7 @@ import (
 	"github.com/gaspardpetit/llamapool/internal/metrics"
 )
 
-// ChatCompletionsHandler handles POST /v1/chat/completions as a pass-through.
+// ChatCompletionsHandler handles POST /api/v1/chat/completions as a pass-through.
 func ChatCompletionsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg *ctrl.MetricsRegistry) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Body == nil {

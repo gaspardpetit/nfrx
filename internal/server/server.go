@@ -48,10 +48,10 @@ func New(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler
 			apiGroup.Use(api.APIKeyMiddleware(cfg.APIKey))
 		}
 		apiGroup.Route("/v1", func(v1 chi.Router) {
-			v1.Post("/chat/completions", wrapper.PostV1ChatCompletions)
-			v1.Post("/embeddings", wrapper.PostV1Embeddings)
-			v1.Get("/models", wrapper.GetV1Models)
-			v1.Get("/models/{id}", wrapper.GetV1ModelsId)
+			v1.Post("/chat/completions", wrapper.PostApiV1ChatCompletions)
+			v1.Post("/embeddings", wrapper.PostApiV1Embeddings)
+			v1.Get("/models", wrapper.GetApiV1Models)
+			v1.Get("/models/{id}", wrapper.GetApiV1ModelsId)
 		})
 		apiGroup.Get("/state", wrapper.GetApiState)
 		apiGroup.Get("/state/stream", wrapper.GetApiStateStream)
@@ -63,15 +63,6 @@ func New(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler
 	r.Mount("/mcp", mcpserver.NewHandler())
 	r.Handle("/api/workers/connect", ctrl.WSHandler(reg, metrics, cfg.WorkerKey))
 
-	r.Group(func(openai chi.Router) {
-		if cfg.APIKey != "" {
-			openai.Use(api.APIKeyMiddleware(cfg.APIKey))
-		}
-		openai.Post("/v1/chat/completions", wrapper.PostV1ChatCompletions)
-		openai.Post("/v1/embeddings", wrapper.PostV1Embeddings)
-		openai.Get("/v1/models", wrapper.GetV1Models)
-		openai.Get("/v1/models/{id}", wrapper.GetV1ModelsId)
-	})
 	metricsPort := cfg.MetricsPort
 	if metricsPort == 0 {
 		metricsPort = cfg.Port
