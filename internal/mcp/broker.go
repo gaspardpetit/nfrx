@@ -99,17 +99,12 @@ func (r *Registry) WSHandler(clientKey string) http.HandlerFunc {
 			ID         string `json:"id"`
 			ClientName string `json:"client_name"`
 			ClientKey  string `json:"client_key"`
-			WorkerKey  string `json:"worker_key"`
 		}
 		if err := json.Unmarshal(data, &reg); err != nil {
 			_ = c.Close(websocket.StatusPolicyViolation, "invalid register")
 			return
 		}
 		key := reg.ClientKey
-		if key == "" && reg.WorkerKey != "" {
-			logx.Log.Warn().Msg("register message 'worker_key' field is deprecated; use 'client_key'")
-			key = reg.WorkerKey
-		}
 		if clientKey == "" && key != "" {
 			_ = c.Close(websocket.StatusPolicyViolation, "unauthorized")
 			return
