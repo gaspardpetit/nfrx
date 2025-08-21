@@ -15,7 +15,7 @@ import (
 	"github.com/gaspardpetit/llamapool/internal/metrics"
 )
 
-// EmbeddingsHandler handles POST /v1/embeddings as a pass-through.
+// EmbeddingsHandler handles POST /api/v1/embeddings as a pass-through.
 func EmbeddingsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg *ctrl.MetricsRegistry) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Body == nil {

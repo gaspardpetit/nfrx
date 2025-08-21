@@ -21,7 +21,7 @@ Endpoints are grouped by functional area.
 
 ## Inference API
 
-### `/api/v1` (preferred)
+### `/api/v1`
 
 | Verb & Endpoint | Parameters | Description | Auth |
 | --- | --- | --- | --- |
@@ -29,15 +29,6 @@ Endpoints are grouped by functional area.
 | `POST /api/v1/embeddings` | Body `{ model: string, input: any, ... }` | Proxy OpenAI embeddings. | API key |
 | `GET /api/v1/models` | – | List models. | API key |
 | `GET /api/v1/models/{id}` | Path `{id}` | Get model details. | API key |
-
-### `/v1` (legacy)
-
-| Verb & Endpoint | Parameters | Description | Auth |
-| --- | --- | --- | --- |
-| `POST /v1/chat/completions` | Body `{ model: string, messages: [{role: string, content: string}], stream?: bool, ... }` | Legacy path for chat completions. | API key |
-| `POST /v1/embeddings` | Body `{ model: string, input: any, ... }` | Legacy path for embeddings. | API key |
-| `GET /v1/models` | – | Legacy path for list models. | API key |
-| `GET /v1/models/{id}` | Path `{id}` | Legacy path for model details. | API key |
 
 ### Workers
 
@@ -62,9 +53,5 @@ Endpoints are grouped by functional area.
 
 | Endpoint | Reason |
 | --- | --- |
-| `POST /v1/chat/completions` | Superseded by `/api/v1/chat/completions`. |
-| `POST /v1/embeddings` | Superseded by `/api/v1/embeddings`. |
-| `GET /v1/models` | Superseded by `/api/v1/models`. |
-| `GET /v1/models/{id}` | Superseded by `/api/v1/models/{id}`. |
 | `POST /mcp` | Early MCP streaming endpoint, replaced by `/api/mcp/id/{id}`. |
 | `GET /mcp` | Early MCP event stream (SSE), replaced by `/api/mcp/connect`. |

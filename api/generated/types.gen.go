@@ -7,14 +7,14 @@ const (
 	BearerAuthScopes = "BearerAuth.Scopes"
 )
 
-// PostV1ChatCompletionsJSONBody defines parameters for PostV1ChatCompletions.
-type PostV1ChatCompletionsJSONBody map[string]interface{}
+// PostApiV1ChatCompletionsJSONBody defines parameters for PostApiV1ChatCompletions.
+type PostApiV1ChatCompletionsJSONBody map[string]interface{}
 
-// PostV1EmbeddingsJSONBody defines parameters for PostV1Embeddings.
-type PostV1EmbeddingsJSONBody map[string]interface{}
+// PostApiV1EmbeddingsJSONBody defines parameters for PostApiV1Embeddings.
+type PostApiV1EmbeddingsJSONBody map[string]interface{}
 
-// PostV1ChatCompletionsJSONRequestBody defines body for PostV1ChatCompletions for application/json ContentType.
-type PostV1ChatCompletionsJSONRequestBody PostV1ChatCompletionsJSONBody
+// PostApiV1ChatCompletionsJSONRequestBody defines body for PostApiV1ChatCompletions for application/json ContentType.
+type PostApiV1ChatCompletionsJSONRequestBody PostApiV1ChatCompletionsJSONBody
 
-// PostV1EmbeddingsJSONRequestBody defines body for PostV1Embeddings for application/json ContentType.
-type PostV1EmbeddingsJSONRequestBody PostV1EmbeddingsJSONBody
+// PostApiV1EmbeddingsJSONRequestBody defines body for PostApiV1Embeddings for application/json ContentType.
+type PostApiV1EmbeddingsJSONRequestBody PostApiV1EmbeddingsJSONBody

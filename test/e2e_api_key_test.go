@@ -21,7 +21,7 @@ func TestAPIKeyEnforcement(t *testing.T) {
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
-	resp, err := http.Get(srv.URL + "/v1/models")
+	resp, err := http.Get(srv.URL + "/api/v1/models")
 	if err != nil {
 		t.Fatalf("get without key: %v", err)
 	}
@@ -32,7 +32,7 @@ func TestAPIKeyEnforcement(t *testing.T) {
 		t.Fatalf("close body: %v", err)
 	}
 
-	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/v1/models", nil)
+	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/api/v1/models", nil)
 	req.Header.Set("Authorization", "Bearer test123")
 	resp, err = http.DefaultClient.Do(req)
 	if err != nil {

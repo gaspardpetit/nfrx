@@ -42,7 +42,7 @@ func TestWorkerModelRefresh(t *testing.T) {
 
 	waitForModels := func(n int, expect string) {
 		for i := 0; i < 50; i++ {
-			resp, err := http.Get(srv.URL + "/v1/models")
+			resp, err := http.Get(srv.URL + "/api/v1/models")
 			if err == nil {
 				var lr struct {
 					Data []struct {

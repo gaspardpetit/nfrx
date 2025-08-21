@@ -30,7 +30,7 @@ paths:
       responses:
         '101':
           description: Switching Protocols
-  /v1/models:
+  /api/v1/models:
     get:
       security: [ { BearerAuth: [] } ]
       summary: List models
@@ -58,7 +58,7 @@ paths:
                           type: string
                       required: [id, object, created, owned_by]
                 required: [data]
-  /v1/models/{id}:
+  /api/v1/models/{id}:
     get:
       security: [ { BearerAuth: [] } ]
       summary: Get model
@@ -86,7 +86,7 @@ paths:
                   owned_by:
                     type: string
                 required: [id, object, created, owned_by]
-  /v1/chat/completions:
+  /api/v1/chat/completions:
     post:
       security: [ { BearerAuth: [] } ]
       summary: Chat completions (proxy)
@@ -108,7 +108,7 @@ paths:
             text/event-stream:
               schema:
                 type: string
-  /v1/embeddings:
+  /api/v1/embeddings:
     post:
       security: [ { BearerAuth: [] } ]
       summary: Embeddings (proxy)

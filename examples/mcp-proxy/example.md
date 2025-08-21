@@ -9,7 +9,7 @@ Define the following `docker-compose.yaml`:
 
 ```
 x-env: &common_env
-  API_KEY: "test123"     # client API key for /v1 and /api
+  API_KEY: "test123"     # client API key for /api
   WORKER_KEY: "secret"   # worker registration key
   CLIENT_ID: mcp-1234    # a unique identifier for this mcp server
   

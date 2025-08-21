@@ -37,19 +37,19 @@ func (a *API) GetHealthz(w http.ResponseWriter, r *http.Request) {
 	_, _ = fmt.Fprintf(w, `{"status":"%s"}`, status)
 }
 
-func (a *API) PostV1ChatCompletions(w http.ResponseWriter, r *http.Request) {
+func (a *API) PostApiV1ChatCompletions(w http.ResponseWriter, r *http.Request) {
 	ChatCompletionsHandler(a.Reg, a.Sched, a.Metrics)(w, r)
 }
 
-func (a *API) PostV1Embeddings(w http.ResponseWriter, r *http.Request) {
+func (a *API) PostApiV1Embeddings(w http.ResponseWriter, r *http.Request) {
 	EmbeddingsHandler(a.Reg, a.Sched, a.Metrics)(w, r)
 }
 
-func (a *API) GetV1Models(w http.ResponseWriter, r *http.Request) {
+func (a *API) GetApiV1Models(w http.ResponseWriter, r *http.Request) {
 	ListModelsHandler(a.Reg)(w, r)
 }
 
-func (a *API) GetV1ModelsId(w http.ResponseWriter, r *http.Request, id string) {
+func (a *API) GetApiV1ModelsId(w http.ResponseWriter, r *http.Request, id string) {
 	GetModelHandler(a.Reg)(w, r)
 }
 
