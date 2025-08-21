@@ -21,7 +21,7 @@ func TestHeartbeatPrune(t *testing.T) {
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
 	cfg := config.ServerConfig{ClientKey: "secret", RequestTimeout: 5 * time.Second}
 	metricsReg := ctrl.NewMetricsRegistry("test", "", "")
-	handler := server.New(reg, metricsReg, sched, mcp.NewRegistry(), cfg)
+	handler := server.New(reg, metricsReg, sched, mcp.NewRegistry(cfg.RequestTimeout), cfg)
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 

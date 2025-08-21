@@ -49,25 +49,24 @@ type sessionInfo struct {
 
 // Registry stores active relays keyed by client ID.
 type Registry struct {
-	mu           sync.RWMutex
-	relays       map[string]*Relay
-	maxReqBytes  int64
-	maxRespBytes int64
-	callTimeout  time.Duration
-	heartbeat    time.Duration
-	deadAfter    time.Duration
-	maxConc      int
+	mu             sync.RWMutex
+	relays         map[string]*Relay
+	maxReqBytes    int64
+	maxRespBytes   int64
+	requestTimeout time.Duration
+	heartbeat      time.Duration
+	deadAfter      time.Duration
+	maxConc        int
 }
 
 // NewRegistry constructs a Registry using environment variables for configuration.
-func NewRegistry() *Registry {
+func NewRegistry(timeout time.Duration) *Registry {
 	maxReqBytes := int64(parseInt(getEnv("BROKER_MAX_REQ_BYTES", "10485760")))
 	maxRespBytes := int64(parseInt(getEnv("BROKER_MAX_RESP_BYTES", "10485760")))
-	callTimeout := time.Duration(parseInt(getEnv("BROKER_CALL_TIMEOUT_MS", "30000"))) * time.Millisecond
 	heartbeat := time.Duration(parseInt(getEnv("BROKER_WS_HEARTBEAT_MS", "15000"))) * time.Millisecond
 	deadAfter := time.Duration(parseInt(getEnv("BROKER_WS_DEAD_AFTER_MS", "45000"))) * time.Millisecond
 	maxConc := parseInt(getEnv("BROKER_MAX_CONCURRENCY_PER_CLIENT", "16"))
-	return &Registry{relays: map[string]*Relay{}, maxReqBytes: maxReqBytes, maxRespBytes: maxRespBytes, callTimeout: callTimeout, heartbeat: heartbeat, deadAfter: deadAfter, maxConc: maxConc}
+	return &Registry{relays: map[string]*Relay{}, maxReqBytes: maxReqBytes, maxRespBytes: maxRespBytes, requestTimeout: timeout, heartbeat: heartbeat, deadAfter: deadAfter, maxConc: maxConc}
 }
 
 func parseInt(v string) int {
@@ -318,7 +317,7 @@ func (r *Registry) HTTPHandler() http.HandlerFunc {
 				auth = strings.TrimSpace(h[7:])
 			}
 		}
-		ctx, cancel := context.WithTimeout(req.Context(), r.callTimeout)
+		ctx, cancel := context.WithTimeout(req.Context(), r.requestTimeout)
 		defer cancel()
 		if err := relay.write(ctx, Frame{T: "open", SID: sid, ReqID: reqID, Hint: env.Method, Auth: auth}); err != nil {
 			logx.Log.Warn().Str("component", "server.http").Str("client_id", clientID).Str("req_id", reqID).Str("error_code", "MCP_PROVIDER_UNAVAILABLE").Msg("relay write failed")

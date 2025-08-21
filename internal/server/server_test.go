@@ -18,7 +18,7 @@ func TestMetricsEndpointDefaultPort(t *testing.T) {
 	metricsReg := ctrl.NewMetricsRegistry("test", "", "")
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
 	cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":8080", RequestTimeout: time.Second}
-	h := New(reg, metricsReg, sched, mcp.NewRegistry(), cfg)
+	h := New(reg, metricsReg, sched, mcp.NewRegistry(time.Second), cfg)
 	ts := httptest.NewServer(h)
 	defer ts.Close()
 
@@ -36,7 +36,7 @@ func TestMetricsEndpointSeparatePort(t *testing.T) {
 	metricsReg := ctrl.NewMetricsRegistry("test", "", "")
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
 	cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":9090", RequestTimeout: time.Second}
-	h := New(reg, metricsReg, sched, mcp.NewRegistry(), cfg)
+	h := New(reg, metricsReg, sched, mcp.NewRegistry(time.Second), cfg)
 	ts := httptest.NewServer(h)
 	defer ts.Close()
 
@@ -54,7 +54,7 @@ func TestStatePage(t *testing.T) {
 	metricsReg := ctrl.NewMetricsRegistry("test", "", "")
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
 	cfg := config.ServerConfig{Port: 8080, RequestTimeout: time.Second}
-	h := New(reg, metricsReg, sched, mcp.NewRegistry(), cfg)
+	h := New(reg, metricsReg, sched, mcp.NewRegistry(time.Second), cfg)
 	ts := httptest.NewServer(h)
 	defer ts.Close()
 
@@ -76,7 +76,7 @@ func TestCORSAllowedOrigins(t *testing.T) {
 	metricsReg := ctrl.NewMetricsRegistry("test", "", "")
 	sched := &ctrl.LeastBusyScheduler{Reg: reg}
 	cfg := config.ServerConfig{Port: 8080, RequestTimeout: time.Second, AllowedOrigins: []string{"https://example.com"}}
-	h := New(reg, metricsReg, sched, mcp.NewRegistry(), cfg)
+	h := New(reg, metricsReg, sched, mcp.NewRegistry(time.Second), cfg)
 	ts := httptest.NewServer(h)
 	defer ts.Close()
 

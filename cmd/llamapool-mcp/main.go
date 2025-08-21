@@ -121,6 +121,8 @@ func main() {
 	drainTimeoutEnv := getEnv("DRAIN_TIMEOUT", "1m")
 	drainTimeout, _ := time.ParseDuration(drainTimeoutEnv)
 	flag.DurationVar(&drainTimeout, "drain-timeout", drainTimeout, "time to wait for in-flight calls on shutdown")
+	rtVal, _ := strconv.ParseFloat(getEnv("REQUEST_TIMEOUT", "300"), 64)
+	flag.Float64Var(&rtVal, "request-timeout", rtVal, "request timeout in seconds for provider responses")
 
 	wsURL := getEnv("SERVER_URL", "ws://localhost:8080/api/mcp/connect")
 	host, err := os.Hostname()
@@ -151,6 +153,7 @@ func main() {
 	}
 
 	header := http.Header{}
+	requestTimeout := time.Duration(rtVal * float64(time.Second))
 
 	if metricsAddr != "" {
 		if !strings.Contains(metricsAddr, ":") {
@@ -227,7 +230,7 @@ func main() {
 		runCtx, runCancel := context.WithCancel(ctx)
 		go monitorProvider(runCtx, providerURL, reconnectFlag)
 
-		relay := mcp.NewRelayClient(conn, providerURL, authToken)
+		relay := mcp.NewRelayClient(conn, providerURL, authToken, requestTimeout)
 		if err := relay.Run(runCtx); err != nil {
 			runCancel()
 			_ = conn.Close(websocket.StatusInternalError, "closing")
