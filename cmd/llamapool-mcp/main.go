@@ -109,6 +109,7 @@ func main() {
 	wsURL := getEnv("SERVER_URL", "ws://localhost:8080/api/mcp/connect")
 	clientID := getEnv("CLIENT_ID", "")
 	providerURL := getEnv("PROVIDER_URL", "http://127.0.0.1:7777/")
+	authToken := getEnv("AUTH_TOKEN", "")
 	header := http.Header{}
 
 	attempt := 0
@@ -149,7 +150,7 @@ func main() {
 		runCtx, cancel := context.WithCancel(ctx)
 		go monitorProvider(runCtx, providerURL, reconnectFlag)
 
-		relay := mcp.NewRelayClient(conn, providerURL)
+		relay := mcp.NewRelayClient(conn, providerURL, authToken)
 		if err := relay.Run(runCtx); err != nil {
 			cancel()
 			_ = conn.Close(websocket.StatusInternalError, "closing")

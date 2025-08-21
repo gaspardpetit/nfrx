@@ -14,11 +14,12 @@ import (
 type RelayClient struct {
 	conn        *websocket.Conn
 	providerURL string
+	token       string
 }
 
 // NewRelayClient creates a new relay client.
-func NewRelayClient(conn *websocket.Conn, providerURL string) *RelayClient {
-	return &RelayClient{conn: conn, providerURL: providerURL}
+func NewRelayClient(conn *websocket.Conn, providerURL, token string) *RelayClient {
+	return &RelayClient{conn: conn, providerURL: providerURL, token: token}
 }
 
 // Run processes frames until the context or connection ends.
@@ -34,6 +35,10 @@ func (r *RelayClient) Run(ctx context.Context) error {
 		}
 		switch f.T {
 		case "open":
+			if r.token != "" && f.Auth != r.token {
+				_ = r.send(ctx, Frame{T: "open.fail", SID: f.SID, Code: "MCP_UNAUTHORIZED", Msg: "unauthorized"})
+				continue
+			}
 			_ = r.send(ctx, Frame{T: "open.ok", SID: f.SID})
 		case "rpc":
 			resp, err := r.callProvider(ctx, f.Payload)
