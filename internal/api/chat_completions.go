@@ -106,6 +106,9 @@ func ChatCompletionsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg
 		bytesSent := false
 		success := false
 		var errMsg string
+		var tokensIn, tokensOut uint64
+		var sseBuf string
+		var bodyBuf []byte
 		var idle *time.Timer
 		var timeoutCh <-chan time.Time
 		if timeout > 0 {
@@ -116,10 +119,19 @@ func ChatCompletionsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg
 
 		defer func() {
 			dur := time.Since(start)
-			metricsReg.RecordJobEnd(worker.ID, meta.Model, dur, 0, 0, success, errMsg)
+			metricsReg.RecordJobEnd(worker.ID, meta.Model, dur, tokensIn, tokensOut, success, errMsg)
 			metricsReg.SetWorkerStatus(worker.ID, ctrl.StatusIdle)
 			metrics.ObserveRequestDuration(worker.ID, meta.Model, dur)
+			metrics.RecordWorkerProcessingTime(worker.ID, dur)
 			metrics.RecordModelRequest(meta.Model, success)
+			if tokensIn > 0 {
+				metrics.RecordModelTokens(meta.Model, "in", tokensIn)
+				metrics.RecordWorkerTokens(worker.ID, "in", tokensIn)
+			}
+			if tokensOut > 0 {
+				metrics.RecordModelTokens(meta.Model, "out", tokensOut)
+				metrics.RecordWorkerTokens(worker.ID, "out", tokensOut)
+			}
 		}()
 		for {
 			select {
@@ -202,7 +214,56 @@ func ChatCompletionsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg
 							}
 						}
 					}
+					if meta.Stream {
+						sseBuf += string(m.Data)
+						for {
+							idx := strings.Index(sseBuf, "\n")
+							if idx == -1 {
+								break
+							}
+							line := strings.TrimRight(sseBuf[:idx], "\r")
+							sseBuf = sseBuf[idx+1:]
+							if !strings.HasPrefix(line, "data:") {
+								continue
+							}
+							payload := strings.TrimSpace(line[5:])
+							if payload == "" || payload == "[DONE]" {
+								continue
+							}
+							var v struct {
+								Usage struct {
+									PromptTokens     uint64 `json:"prompt_tokens"`
+									CompletionTokens uint64 `json:"completion_tokens"`
+								} `json:"usage"`
+							}
+							if err := json.Unmarshal([]byte(payload), &v); err == nil {
+								if v.Usage.PromptTokens > 0 {
+									tokensIn = v.Usage.PromptTokens
+								}
+								if v.Usage.CompletionTokens > 0 {
+									tokensOut = v.Usage.CompletionTokens
+								}
+							}
+						}
+					} else {
+						bodyBuf = append(bodyBuf, m.Data...)
+					}
 				case ctrl.HTTPProxyResponseEndMessage:
+					if !meta.Stream {
+						var v struct {
+							Usage struct {
+								PromptTokens     uint64 `json:"prompt_tokens"`
+								CompletionTokens uint64 `json:"completion_tokens"`
+							} `json:"usage"`
+						}
+						_ = json.Unmarshal(bodyBuf, &v)
+						if v.Usage.PromptTokens > 0 {
+							tokensIn = v.Usage.PromptTokens
+						}
+						if v.Usage.CompletionTokens > 0 {
+							tokensOut = v.Usage.CompletionTokens
+						}
+					}
 					if m.Error != nil && !bytesSent {
 						if !headersSent {
 							w.Header().Set("Content-Type", "application/json")

@@ -132,6 +132,9 @@ function render() {
       <div class="name"><span class="status-dot" style="background:${status}"></span>${w.name || w.id}</div>
       <div>${w.status}</div>
       <div>inflight: ${w.inflight}</div>
+      <div>tokens in/out: ${w.tokens_in_total}/${w.tokens_out_total}</div>
+      <div>total tokens: ${w.tokens_total}</div>
+      <div>avg rate: ${w.avg_tokens_per_second.toFixed(2)} tok/s</div>
     `;
     container.appendChild(div);
   });

@@ -46,6 +46,8 @@ type WorkerSnapshot struct {
 	LastError         string                   `json:"last_error,omitempty"`
 	TokensInTotal     uint64                   `json:"tokens_in_total"`
 	TokensOutTotal    uint64                   `json:"tokens_out_total"`
+	TokensTotal       uint64                   `json:"tokens_total"`
+	AvgTokensPerSec   float64                  `json:"avg_tokens_per_second"`
 	PerModel          map[string]PerModelStats `json:"per_model"`
 }
 
@@ -362,6 +364,11 @@ func (m *MetricsRegistry) Snapshot() StateResponse {
 		if w.processedTotal > 0 {
 			avg = float64(w.processingMsTotal) / float64(w.processedTotal)
 		}
+		tokensTotal := w.tokensInTotal + w.tokensOutTotal
+		rate := 0.0
+		if w.processingMsTotal > 0 {
+			rate = float64(tokensTotal) / (float64(w.processingMsTotal) / 1000)
+		}
 		perModel := make(map[string]PerModelStats, len(w.perModel))
 		for k, v := range w.perModel {
 			perModel[k] = *v
@@ -386,6 +393,8 @@ func (m *MetricsRegistry) Snapshot() StateResponse {
 			LastError:         w.lastError,
 			TokensInTotal:     w.tokensInTotal,
 			TokensOutTotal:    w.tokensOutTotal,
+			TokensTotal:       tokensTotal,
+			AvgTokensPerSec:   rate,
 			PerModel:          perModel,
 		}
 		resp.Workers = append(resp.Workers, snapshot)
