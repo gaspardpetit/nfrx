@@ -21,7 +21,13 @@ Endpoints are grouped by functional area.
 
 ## Inference API
 
-### `/api/v1`
+### Worker Registration
+
+| Verb & Endpoint | Parameters | Description | Auth |
+| --- | --- | --- | --- |
+| `GET /api/workers/connect` (WS) | Initial message `{ type: "register", worker_key: string, worker_id?: string, worker_name?: string, models?: [string], max_concurrency?: int }` | Worker connects to server. | Worker key |
+
+### Client Usage
 
 | Verb & Endpoint | Parameters | Description | Auth |
 | --- | --- | --- | --- |
@@ -30,18 +36,19 @@ Endpoints are grouped by functional area.
 | `GET /api/v1/models` | – | List models. | API key |
 | `GET /api/v1/models/{id}` | Path `{id}` | Get model details. | API key |
 
-### Workers
-
-| Verb & Endpoint | Parameters | Description | Auth |
-| --- | --- | --- | --- |
-| `GET /api/workers/connect` (WS) | Initial message `{ type: "register", worker_key: string, worker_id?: string, worker_name?: string, models?: [string], max_concurrency?: int }` | Worker connects to server. | Worker key |
-
 ## MCP Endpoints
+
+### MCP Registration
 
 | Verb & Endpoint | Parameters | Description | Auth |
 | --- | --- | --- | --- |
 | `POST /api/mcp/id/{id}` | Path `{id}`; Body `{ jsonrpc: "2.0", id: number|string, method: string, params?: object }` | Forward MCP JSON-RPC request to relay. | MCP token |
-| `GET /api/mcp/connect` (WS) | Initial message `{ id: string }` | Register MCP relay over WebSocket. | MCP token |
+
+### Client (LLM) Usage
+
+| Verb & Endpoint | Parameters | Description | Auth |
+| --- | --- | --- | --- |
+| `POST /api/mcp/id/{id}` | Path `{id}`; Body `{ jsonrpc: "2.0", id: number|string, method: string, params?: object }` | Forward MCP JSON-RPC request to relay. | MCP token |
 
 ### Authentication schemes
 - **Public** – No authentication required.
