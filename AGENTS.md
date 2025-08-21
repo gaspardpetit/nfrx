@@ -36,5 +36,8 @@ requests to local Ollama instances. The repository contains two binaries:
   docker build -f deploy/Dockerfile.worker .
   ```
 
+## Documentation
+- Keep `docs/server-endpoints.md` current whenever HTTP or WebSocket endpoints change in any component.
+
 ## Further Reading
 - @README.md for project usage and examples
