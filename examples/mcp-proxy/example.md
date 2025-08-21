@@ -54,7 +54,7 @@ services:
     environment:
       <<: *common_env
       SERVER_URL: "ws://server:8080/api/mcp/connect"
-      WORKER_NAME: "Alpha"
+      CLIENT_NAME: "Alpha"
       PROVIDER_URL: http://clock:7777/mcp/
     ports:
       - "4555:4555"
@@ -98,14 +98,15 @@ curl http://localhost:8080/api/state \
   "models": [],
   "workers": [],
   "mcp": {
-    "clients": [
-      {
-        "id": "mcp-1234",
-        "status": "idle",
-        "inflight": 0,
-        "functions": {}
-      }
-    ],
+      "clients": [
+        {
+          "id": "mcp-1234",
+          "name": "Alpha",
+          "status": "idle",
+          "inflight": 0,
+          "functions": {}
+        }
+      ],
     "sessions": null
   }
 }

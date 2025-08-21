@@ -268,7 +268,7 @@ go run .\cmd\llamapool-server
 On Linux:
 
 ```bash
-SERVER_URL=ws://localhost:8080/api/workers/connect CLIENT_KEY=secret COMPLETION_BASE_URL=http://127.0.0.1:11434/v1 WORKER_NAME=Alpha go run ./cmd/llamapool-worker
+SERVER_URL=ws://localhost:8080/api/workers/connect CLIENT_KEY=secret COMPLETION_BASE_URL=http://127.0.0.1:11434/v1 CLIENT_NAME=Alpha go run ./cmd/llamapool-worker
 ```
 Optionally set `COMPLETION_API_KEY` to forward an API key to the backend. The worker proxies requests to `${COMPLETION_BASE_URL}/chat/completions`.
 
@@ -289,7 +289,7 @@ On Windows (Powershell)
 $env:SERVER_URL = "ws://localhost:8080/api/workers/connect"
 $env:CLIENT_KEY = "secret"
 $env:COMPLETION_BASE_URL = "http://127.0.0.1:11434/v1"
-$env:WORKER_NAME = "Alpha"
+$env:CLIENT_NAME = "Alpha"
 go run .\cmd\llamapool-worker
 # or:
 .\bin\llamapool-worker.exe

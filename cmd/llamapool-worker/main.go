@@ -81,7 +81,7 @@ func main() {
 		}
 	}()
 
-	log := logx.Log.Info().Str("worker_name", cfg.WorkerName)
+	log := logx.Log.Info().Str("client_name", cfg.ClientName)
 	if cfg.ClientKey != "" {
 		log = log.Bool("auth", true)
 	}

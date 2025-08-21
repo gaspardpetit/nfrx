@@ -21,10 +21,10 @@ import (
 
 // Run starts the worker agent.
 func Run(ctx context.Context, cfg config.WorkerConfig) error {
-	if cfg.WorkerID == "" {
-		cfg.WorkerID = uuid.NewString()
+	if cfg.ClientID == "" {
+		cfg.ClientID = uuid.NewString()
 	}
-	SetWorkerInfo(cfg.WorkerID, cfg.WorkerName, 0, nil)
+	SetWorkerInfo(cfg.ClientID, cfg.ClientName, 0, nil)
 	SetState("not_ready")
 	SetConnectedToServer(false)
 	SetConnectedToBackend(false)
@@ -102,8 +102,8 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg conf
 	vi := GetVersionInfo()
 	regMsg := ctrl.RegisterMessage{
 		Type:           "register",
-		WorkerID:       cfg.WorkerID,
-		WorkerName:     cfg.WorkerName,
+		WorkerID:       cfg.ClientID,
+		WorkerName:     cfg.ClientName,
 		ClientKey:      cfg.ClientKey,
 		Models:         GetState().Models,
 		MaxConcurrency: GetState().MaxConcurrency,
@@ -324,7 +324,7 @@ func probeBackend(ctx context.Context, client healthClient, cfg config.WorkerCon
 	if err != nil {
 		wasConnected := GetState().ConnectedToBackend
 		SetConnectedToBackend(false)
-		SetWorkerInfo(cfg.WorkerID, cfg.WorkerName, 0, nil)
+		SetWorkerInfo(cfg.ClientID, cfg.ClientName, 0, nil)
 		SetState("not_ready")
 		SetLastError(err.Error())
 
@@ -342,7 +342,7 @@ func probeBackend(ctx context.Context, client healthClient, cfg config.WorkerCon
 	prevModels := append([]string(nil), prev.Models...)
 
 	SetConnectedToBackend(true)
-	SetWorkerInfo(cfg.WorkerID, cfg.WorkerName, cfg.MaxConcurrency, models)
+	SetWorkerInfo(cfg.ClientID, cfg.ClientName, cfg.MaxConcurrency, models)
 	if GetState().ConnectedToServer && !IsDraining() && GetState().CurrentJobs == 0 {
 		SetState("connected_idle")
 	}
