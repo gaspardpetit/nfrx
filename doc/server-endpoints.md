@@ -48,7 +48,7 @@ Endpoints are grouped by functional area.
 
 | Verb & Endpoint | Parameters | Description | Auth |
 | --- | --- | --- | --- |
-| `POST /api/mcp/id/{id}` | Path `{id}`; Body `{ jsonrpc: "2.0", id: number|string, method: string, params?: object }` | Forward MCP JSON-RPC request to relay. | MCP token (optional) |
+| `POST /api/mcp/id/{id}` | Path `{id}`; Body `{ jsonrpc: "2.0", id: number\|string, method: string, params?: object }` | Forward MCP JSON-RPC request to relay. | MCP token (optional) |
 
 ### Authentication schemes
 - **Public** – No authentication required.
