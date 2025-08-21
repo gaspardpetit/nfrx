@@ -80,7 +80,7 @@ func ChatCompletionsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg
 			Type:      "http_proxy_request",
 			RequestID: reqID,
 			Method:    http.MethodPost,
-			Path:      "/v1/chat/completions",
+			Path:      "/chat/completions",
 			Headers:   headers,
 			Stream:    meta.Stream,
 			Body:      body,

@@ -16,9 +16,9 @@ var (
 		Name: "llamapool_worker_connected_to_server",
 		Help: "Whether the worker is connected to the server (1 or 0)",
 	})
-	connectedToOllamaGauge = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "llamapool_worker_connected_to_ollama",
-		Help: "Whether the worker can reach its Ollama backend (1 or 0)",
+	connectedToBackendGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "llamapool_worker_connected_to_backend",
+		Help: "Whether the worker can reach its completion backend (1 or 0)",
 	})
 	currentJobsGauge = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "llamapool_worker_current_jobs",
@@ -53,7 +53,7 @@ func StartMetricsServer(ctx context.Context, addr string) (string, error) {
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(
 		connectedToServerGauge,
-		connectedToOllamaGauge,
+		connectedToBackendGauge,
 		currentJobsGauge,
 		maxConcurrencyGauge,
 		jobsStartedCounter,
@@ -92,11 +92,11 @@ func setConnectedToServer(v bool) {
 	}
 }
 
-func setConnectedToOllama(v bool) {
+func setConnectedToBackend(v bool) {
 	if v {
-		connectedToOllamaGauge.Set(1)
+		connectedToBackendGauge.Set(1)
 	} else {
-		connectedToOllamaGauge.Set(0)
+		connectedToBackendGauge.Set(0)
 	}
 }
 

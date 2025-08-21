@@ -27,43 +27,43 @@ func (f fakeHealthClient) Health(ctx context.Context) ([]string, error) {
 	return f.models, f.err
 }
 
-func TestProbeOllamaUpdatesState(t *testing.T) {
+func TestProbeBackendUpdatesState(t *testing.T) {
 	resetState()
 	cfg := config.WorkerConfig{WorkerID: "w1", WorkerName: "n", MaxConcurrency: 1}
-	if err := probeOllama(context.Background(), fakeHealthClient{models: []string{"m1"}}, cfg, nil); err != nil {
+	if err := probeBackend(context.Background(), fakeHealthClient{models: []string{"m1"}}, cfg, nil); err != nil {
 		t.Fatalf("probe healthy: %v", err)
 	}
 	s := GetState()
-	if !s.ConnectedToOllama || len(s.Models) != 1 || s.LastError != "" {
+	if !s.ConnectedToBackend || len(s.Models) != 1 || s.LastError != "" {
 		t.Fatalf("expected healthy state, got %+v", s)
 	}
-	if err := probeOllama(context.Background(), fakeHealthClient{models: []string{"m1", "m2"}}, cfg, nil); err != nil {
+	if err := probeBackend(context.Background(), fakeHealthClient{models: []string{"m1", "m2"}}, cfg, nil); err != nil {
 		t.Fatalf("probe update: %v", err)
 	}
 	s = GetState()
 	if len(s.Models) != 2 || s.Models[1] != "m2" {
 		t.Fatalf("models not updated: %+v", s.Models)
 	}
-	if err := probeOllama(context.Background(), fakeHealthClient{err: errors.New("down")}, cfg, nil); err == nil {
+	if err := probeBackend(context.Background(), fakeHealthClient{err: errors.New("down")}, cfg, nil); err == nil {
 		t.Fatalf("expected error")
 	}
 	s = GetState()
-	if s.ConnectedToOllama || s.LastError == "" {
+	if s.ConnectedToBackend || s.LastError == "" {
 		t.Fatalf("expected failure state, got %+v", s)
 	}
 }
 
-func TestProbeOllamaSendsUpdates(t *testing.T) {
+func TestProbeBackendSendsUpdates(t *testing.T) {
 	resetState()
 	SetWorkerInfo("w1", "n", 1, []string{"m1"})
-	SetConnectedToOllama(true)
+	SetConnectedToBackend(true)
 	cfg := config.WorkerConfig{WorkerID: "w1", WorkerName: "n", MaxConcurrency: 1}
 
 	// We now use the status update channel, and probeOllama only emits when something changes.
 	ch := make(chan ctrl.StatusUpdateMessage, 1)
 
 	// Same models: no update expected
-	if err := probeOllama(context.Background(), fakeHealthClient{models: []string{"m1"}}, cfg, ch); err != nil {
+	if err := probeBackend(context.Background(), fakeHealthClient{models: []string{"m1"}}, cfg, ch); err != nil {
 		t.Fatalf("probe healthy(same models): %v", err)
 	}
 	select {
@@ -73,7 +73,7 @@ func TestProbeOllamaSendsUpdates(t *testing.T) {
 	}
 
 	// Models changed: one update expected, with the new models
-	if err := probeOllama(context.Background(), fakeHealthClient{models: []string{"m1", "m2"}}, cfg, ch); err != nil {
+	if err := probeBackend(context.Background(), fakeHealthClient{models: []string{"m1", "m2"}}, cfg, ch); err != nil {
 		t.Fatalf("probe healthy(update models): %v", err)
 	}
 	select {
@@ -86,7 +86,7 @@ func TestProbeOllamaSendsUpdates(t *testing.T) {
 	}
 
 	// Same models again: no new update expected
-	if err := probeOllama(context.Background(), fakeHealthClient{models: []string{"m1", "m2"}}, cfg, ch); err != nil {
+	if err := probeBackend(context.Background(), fakeHealthClient{models: []string{"m1", "m2"}}, cfg, ch); err != nil {
 		t.Fatalf("probe healthy(no change): %v", err)
 	}
 	select {
@@ -123,7 +123,7 @@ func TestHealthProbeIntegration(t *testing.T) {
 		t.Fatalf("start status server: %v", err)
 	}
 	ch := make(chan ctrl.StatusUpdateMessage, 1)
-	startOllamaMonitor(ctx, cfg, client, ch, 50*time.Millisecond)
+	startBackendMonitor(ctx, cfg, client, ch, 50*time.Millisecond)
 
 	time.Sleep(80 * time.Millisecond)
 	resp, err := http.Get("http://" + addr + "/status")
@@ -135,7 +135,7 @@ func TestHealthProbeIntegration(t *testing.T) {
 		t.Fatalf("decode: %v", err)
 	}
 	_ = resp.Body.Close()
-	if !st.ConnectedToOllama {
+	if !st.ConnectedToBackend {
 		t.Fatalf("expected connected")
 	}
 	healthy.Store(false)
@@ -148,7 +148,7 @@ func TestHealthProbeIntegration(t *testing.T) {
 		t.Fatalf("decode: %v", err)
 	}
 	_ = resp.Body.Close()
-	if st.ConnectedToOllama || st.LastError == "" {
+	if st.ConnectedToBackend || st.LastError == "" {
 		t.Fatalf("expected disconnected with error, got %+v", st)
 	}
 }

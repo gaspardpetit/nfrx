@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"sync"
 	"time"
 
@@ -26,9 +27,9 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 	SetWorkerInfo(cfg.WorkerID, cfg.WorkerName, 0, nil)
 	SetState("not_ready")
 	SetConnectedToServer(false)
-	SetConnectedToOllama(false)
+	SetConnectedToBackend(false)
 
-	client := ollama.New(cfg.OllamaBaseURL)
+	client := ollama.New(strings.TrimSuffix(cfg.CompletionBaseURL, "/v1"))
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -39,7 +40,7 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 	}
 
 	statusUpdates := make(chan ctrl.StatusUpdateMessage, 16)
-	startOllamaMonitor(ctx, cfg, client, statusUpdates, interval)
+	startBackendMonitor(ctx, cfg, client, statusUpdates, interval)
 
 	if cfg.StatusAddr != "" {
 		if _, err := StartStatusServer(ctx, cfg.StatusAddr, cfg.ConfigFile, cfg.DrainTimeout, cancel); err != nil {
@@ -90,14 +91,14 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg conf
 
 	logx.Log.Info().Str("server", cfg.ServerURL).Msg("connected to server")
 	SetConnectedToServer(true)
-	if GetState().ConnectedToOllama {
+	if GetState().ConnectedToBackend {
 		SetState("connected_idle")
 	} else {
 		SetState("not_ready")
 	}
 	SetLastError("")
 
-	_ = probeOllama(connCtx, client, cfg, nil)
+	_ = probeBackend(connCtx, client, cfg, nil)
 	vi := GetVersionInfo()
 	regMsg := ctrl.RegisterMessage{
 		Type:           "register",
@@ -158,7 +159,7 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg conf
 		}
 	}()
 	st := ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: GetState().MaxConcurrency, Models: GetState().Models}
-	if GetState().ConnectedToOllama {
+	if GetState().ConnectedToBackend {
 		st.Status = "idle"
 	} else {
 		st.Status = "not_ready"
@@ -285,14 +286,14 @@ type healthClient interface {
 	Health(context.Context) ([]string, error)
 }
 
-func startOllamaMonitor(ctx context.Context, cfg config.WorkerConfig, client healthClient, ch chan<- ctrl.StatusUpdateMessage, interval time.Duration) {
-	go monitorOllama(ctx, cfg, client, ch, interval)
+func startBackendMonitor(ctx context.Context, cfg config.WorkerConfig, client healthClient, ch chan<- ctrl.StatusUpdateMessage, interval time.Duration) {
+	go monitorBackend(ctx, cfg, client, ch, interval)
 }
 
-func monitorOllama(ctx context.Context, cfg config.WorkerConfig, client healthClient, ch chan<- ctrl.StatusUpdateMessage, interval time.Duration) {
+func monitorBackend(ctx context.Context, cfg config.WorkerConfig, client healthClient, ch chan<- ctrl.StatusUpdateMessage, interval time.Duration) {
 	attempt := 0
 	for {
-		err := probeOllama(ctx, client, cfg, ch)
+		err := probeBackend(ctx, client, cfg, ch)
 		if err != nil {
 			if !cfg.Reconnect {
 				return
@@ -315,14 +316,14 @@ func monitorOllama(ctx context.Context, cfg config.WorkerConfig, client healthCl
 	}
 }
 
-// probeOllama checks health, updates state, and (importantly) only emits a status
+// probeBackend checks health, updates state, and (importantly) only emits a status
 // update when either (a) connectivity flips, or (b) the models list actually changes.
 // On error, it always emits a not_ready status update.
-func probeOllama(ctx context.Context, client healthClient, cfg config.WorkerConfig, ch chan<- ctrl.StatusUpdateMessage) error {
+func probeBackend(ctx context.Context, client healthClient, cfg config.WorkerConfig, ch chan<- ctrl.StatusUpdateMessage) error {
 	models, err := client.Health(ctx)
 	if err != nil {
-		wasConnected := GetState().ConnectedToOllama
-		SetConnectedToOllama(false)
+		wasConnected := GetState().ConnectedToBackend
+		SetConnectedToBackend(false)
 		SetWorkerInfo(cfg.WorkerID, cfg.WorkerName, 0, nil)
 		SetState("not_ready")
 		SetLastError(err.Error())
@@ -337,10 +338,10 @@ func probeOllama(ctx context.Context, client healthClient, cfg config.WorkerConf
 	}
 
 	prev := GetState()
-	prevConnected := prev.ConnectedToOllama
+	prevConnected := prev.ConnectedToBackend
 	prevModels := append([]string(nil), prev.Models...)
 
-	SetConnectedToOllama(true)
+	SetConnectedToBackend(true)
 	SetWorkerInfo(cfg.WorkerID, cfg.WorkerName, cfg.MaxConcurrency, models)
 	if GetState().ConnectedToServer && !IsDraining() && GetState().CurrentJobs == 0 {
 		SetState("connected_idle")

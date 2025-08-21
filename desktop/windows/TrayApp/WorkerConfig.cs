@@ -8,7 +8,7 @@ public class WorkerConfig
 {
     public string ServerUrl { get; set; } = "";
     public string ClientKey { get; set; } = "";
-    public string OllamaBaseUrl { get; set; } = "http://127.0.0.1:11434";
+    public string CompletionBaseUrl { get; set; } = "http://127.0.0.1:11434/v1";
     public int MaxConcurrency { get; set; } = 2;
 
     public string StatusAddr

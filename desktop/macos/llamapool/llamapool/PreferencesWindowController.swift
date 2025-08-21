@@ -4,7 +4,7 @@ class PreferencesWindowController: NSWindowController {
     private let form = NSForm(frame: NSRect(x: 20, y: 60, width: 360, height: 140))
     private var serverEntry: NSFormCell!
     private var keyEntry: NSFormCell!
-    private var ollamaEntry: NSFormCell!
+    private var completionEntry: NSFormCell!
     private var concurrencyEntry: NSFormCell!
     private var portEntry: NSFormCell!
 
@@ -18,7 +18,7 @@ class PreferencesWindowController: NSWindowController {
 
         serverEntry = form.addEntry("Server URL:")
         keyEntry = form.addEntry("Worker Key:")
-        ollamaEntry = form.addEntry("Ollama Base URL:")
+        completionEntry = form.addEntry("Completion Base URL:")
         concurrencyEntry = form.addEntry("Max Concurrency:")
         portEntry = form.addEntry("Status Port:")
         window.contentView?.addSubview(form)
@@ -33,7 +33,7 @@ class PreferencesWindowController: NSWindowController {
         let config = ConfigManager.shared.load()
         serverEntry.stringValue = config.serverURL
         keyEntry.stringValue = config.workerKey
-        ollamaEntry.stringValue = config.ollamaBaseURL
+        completionEntry.stringValue = config.completionBaseURL
         concurrencyEntry.stringValue = String(config.maxConcurrency)
         portEntry.stringValue = String(config.statusPort)
     }
@@ -53,7 +53,7 @@ class PreferencesWindowController: NSWindowController {
         }
         let config = WorkerConfig(serverURL: serverEntry.stringValue,
                                   workerKey: keyEntry.stringValue,
-                                  ollamaBaseURL: ollamaEntry.stringValue,
+                                  completionBaseURL: completionEntry.stringValue,
                                   maxConcurrency: maxConc,
                                   statusPort: port)
         guard config.isValid() else {
