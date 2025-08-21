@@ -46,7 +46,7 @@ The worker optionally reads settings from a YAML config file. Defaults:
 | `LOG_DIR` | — | directory for worker log files | OS-specific (none on Linux) | `--log-dir` |
 | `SERVER_URL` | `server_url` | server WebSocket URL for registration | `ws://localhost:8080/api/workers/connect` | `--server-url` |
 | `CLIENT_KEY` | `client_key` | shared secret for authenticating with the server | unset | `--client-key` |
-| `COMPLETION_BASE_URL` | `completion_base_url` | base URL of the completion API (`OLLAMA_BASE_URL` alias) | `http://127.0.0.1:11434/v1` | `--completion-base-url` |
+| `COMPLETION_BASE_URL` | `completion_base_url` | base URL of the completion API | `http://127.0.0.1:11434/v1` | `--completion-base-url` |
 | `COMPLETION_API_KEY` | — | API key for the completion API | unset | `--completion-api-key` |
 | `MAX_CONCURRENCY` | `max_concurrency` | maximum number of jobs processed concurrently | `2` | `--max-concurrency` |
 | `WORKER_ID` | — | worker identifier (random if unset) | unset | `--worker-id` |
@@ -105,7 +105,6 @@ Note: The YAML schema currently covers only a subset (`server_url`, `client_key`
 
 | Option(s) | Issue | Recommendation |
 |-----------|-------|----------------|
-| `OLLAMA_URL`, `OLLAMA_BASE_URL` | legacy aliases for `COMPLETION_BASE_URL` | consolidate on `COMPLETION_BASE_URL` |
 | `METRICS_PORT` / `METRICS_ADDR` | inconsistent metrics naming | standardize on a single form (e.g., address) |
 | `BROKER_CALL_TIMEOUT_MS` vs `REQUEST_TIMEOUT` | mixed units and naming for timeouts | use duration strings consistently |
 | worker YAML coverage | config file omits many settings (metrics, timeouts, names) | expand or deprecate partial config schema |

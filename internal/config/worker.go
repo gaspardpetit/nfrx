@@ -38,7 +38,7 @@ func (c *WorkerConfig) BindFlags() {
 
 	c.ServerURL = getEnv("SERVER_URL", "ws://localhost:8080/api/workers/connect")
 	c.ClientKey = getEnv("CLIENT_KEY", "")
-	base := getEnv("COMPLETION_BASE_URL", getEnv("OLLAMA_BASE_URL", getEnv("OLLAMA_URL", "http://127.0.0.1:11434/v1")))
+	base := getEnv("COMPLETION_BASE_URL", "http://127.0.0.1:11434/v1")
 	c.CompletionBaseURL = base
 	c.CompletionAPIKey = getEnv("COMPLETION_API_KEY", getEnv("OLLAMA_API_KEY", ""))
 	mc := getEnv("MAX_CONCURRENCY", "2")
