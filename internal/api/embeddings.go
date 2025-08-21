@@ -13,11 +13,16 @@ import (
 	"github.com/gaspardpetit/llamapool/internal/ctrl"
 	"github.com/gaspardpetit/llamapool/internal/logx"
 	"github.com/gaspardpetit/llamapool/internal/metrics"
+	"github.com/gaspardpetit/llamapool/internal/serverstate"
 )
 
 // EmbeddingsHandler handles POST /api/v1/embeddings as a pass-through.
 func EmbeddingsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg *ctrl.MetricsRegistry, timeout time.Duration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if serverstate.IsDraining() {
+			http.Error(w, "server draining", http.StatusServiceUnavailable)
+			return
+		}
 		if r.Body == nil {
 			http.Error(w, "bad request", http.StatusBadRequest)
 			return

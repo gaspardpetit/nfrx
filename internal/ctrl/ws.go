@@ -10,11 +10,16 @@ import (
 	"github.com/coder/websocket"
 
 	"github.com/gaspardpetit/llamapool/internal/logx"
+	"github.com/gaspardpetit/llamapool/internal/serverstate"
 )
 
 // WSHandler handles incoming client websocket connections.
 func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if serverstate.IsDraining() {
+			http.Error(w, "draining", http.StatusServiceUnavailable)
+			return
+		}
 		c, err := websocket.Accept(w, r, nil)
 		if err != nil {
 			return
@@ -83,9 +88,15 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string) http.H
 		}
 		metrics.SetWorkerStatus(wk.ID, status)
 		logx.Log.Info().Str("worker_id", wk.ID).Str("worker_name", wk.Name).Int("model_count", len(wk.Models)).Msg("registered")
+		if reg.WorkerCount() == 1 {
+			serverstate.SetState("ready")
+		}
 		defer func() {
 			reg.Remove(wk.ID)
 			metrics.RemoveWorker(wk.ID)
+			if reg.WorkerCount() == 0 {
+				serverstate.SetState("not_ready")
+			}
 		}()
 
 		go func() {

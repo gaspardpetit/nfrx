@@ -14,6 +14,7 @@ import (
 	"github.com/coder/websocket"
 	"github.com/gaspardpetit/llamapool/internal/ctrl"
 	"github.com/gaspardpetit/llamapool/internal/logx"
+	"github.com/gaspardpetit/llamapool/internal/serverstate"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
@@ -84,6 +85,10 @@ func getEnv(k, d string) string {
 // WSHandler handles relay websocket connections.
 func (r *Registry) WSHandler(clientKey string) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
+		if serverstate.IsDraining() {
+			http.Error(w, "draining", http.StatusServiceUnavailable)
+			return
+		}
 		c, err := websocket.Accept(w, req, nil)
 		if err != nil {
 			return
@@ -261,6 +266,10 @@ func (rl *Relay) write(ctx context.Context, f Frame) error {
 // HTTPHandler handles host JSON-RPC requests.
 func (r *Registry) HTTPHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
+		if serverstate.IsDraining() {
+			http.Error(w, "draining", http.StatusServiceUnavailable)
+			return
+		}
 		clientID := chi.URLParam(req, "id")
 		reqID := uuid.NewString()
 		relay := r.getRelay(clientID)

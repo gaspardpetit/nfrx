@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -21,6 +22,7 @@ import (
 	"github.com/gaspardpetit/llamapool/internal/mcp"
 	"github.com/gaspardpetit/llamapool/internal/metrics"
 	"github.com/gaspardpetit/llamapool/internal/server"
+	"github.com/gaspardpetit/llamapool/internal/serverstate"
 )
 
 var (
@@ -72,8 +74,31 @@ func main() {
 		metricsSrv = &http.Server{Addr: cfg.MetricsAddr, Handler: mux}
 	}
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
+	ctx, cancel := context.WithCancel(context.Background())
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		for range sigCh {
+			if serverstate.IsDraining() || cfg.DrainTimeout == 0 {
+				logx.Log.Warn().Msg("termination requested")
+				cancel()
+				return
+			}
+			serverstate.StartDrain()
+			if cfg.DrainTimeout > 0 {
+				logx.Log.Info().Dur("timeout", cfg.DrainTimeout).Msg("draining; send SIGTERM again to terminate immediately")
+				go func(d time.Duration) {
+					time.Sleep(d)
+					if serverstate.IsDraining() {
+						logx.Log.Warn().Msg("drain timeout exceeded; terminating")
+						cancel()
+					}
+				}(cfg.DrainTimeout)
+			} else {
+				logx.Log.Info().Msg("draining; send SIGTERM again to terminate immediately")
+			}
+		}
+	}()
 	go func() {
 		<-ctx.Done()
 		if err := srv.Shutdown(context.Background()); err != nil {

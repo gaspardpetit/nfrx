@@ -24,6 +24,7 @@ The server optionally reads settings from a YAML config file. Defaults:
 | `API_KEY` | — | client API key required for HTTP requests | unset (auth disabled) | `--api-key` |
 | `CLIENT_KEY` | — | shared key clients must present when registering | unset | `--client-key` |
 | `REQUEST_TIMEOUT` | — | seconds without worker or MCP activity before timing out a request | `120` | `--request-timeout` |
+| `DRAIN_TIMEOUT` | — | time to wait for in-flight requests on shutdown | `5m` | `--drain-timeout` |
 | `ALLOWED_ORIGINS` | — | comma separated list of allowed CORS origins | unset (deny all) | `--allowed-origins` |
 | `BROKER_MAX_REQ_BYTES` | — | maximum MCP request size in bytes | `10485760` | — |
 | `BROKER_MAX_RESP_BYTES` | — | maximum MCP response size in bytes | `10485760` | — |
