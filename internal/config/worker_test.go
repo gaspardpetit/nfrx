@@ -18,7 +18,7 @@ func TestResolveWorkerPaths(t *testing.T) {
 			name:       "linux",
 			goos:       "linux",
 			home:       "/home/user",
-			wantConfig: "",
+			wantConfig: "/etc/llamapool/worker.yaml",
 			wantLogDir: "",
 		},
 		{

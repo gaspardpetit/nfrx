@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"net/http"
@@ -48,6 +49,12 @@ func main() {
 	if *showVersion {
 		fmt.Printf("llamapool-%s version=%s sha=%s date=%s\n", binaryName(), version, buildSHA, buildDate)
 		return
+	}
+
+	if cfg.ConfigFile != "" {
+		if err := cfg.LoadFile(cfg.ConfigFile); err != nil && !errors.Is(err, os.ErrNotExist) {
+			logx.Log.Fatal().Err(err).Str("path", cfg.ConfigFile).Msg("load config")
+		}
 	}
 
 	reg := ctrl.NewRegistry()
