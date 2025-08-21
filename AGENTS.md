@@ -37,6 +37,7 @@ requests to local Ollama instances. The repository contains two binaries:
   ```
 
 ## Documentation
+- Keep `docs/env.md` updated whenever environment variables, command line flags, or configuration file options change.
 - Keep `docs/server-endpoints.md` current whenever HTTP or WebSocket endpoints change in any component.
 
 ## Further Reading
