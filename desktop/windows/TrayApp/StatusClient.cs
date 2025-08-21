@@ -57,8 +57,8 @@ public record WorkerStatus(
     WorkerState State,
     [property: JsonPropertyName("connected_to_server")]
     bool ConnectedToServer,
-    [property: JsonPropertyName("connected_to_ollama")]
-    bool ConnectedToOllama,
+    [property: JsonPropertyName("connected_to_backend")]
+    bool ConnectedToBackend,
     [property: JsonPropertyName("current_jobs")]
     int CurrentJobs,
     [property: JsonPropertyName("max_concurrency")]

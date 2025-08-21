@@ -79,7 +79,7 @@ func EmbeddingsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg *ctr
 			Type:      "http_proxy_request",
 			RequestID: reqID,
 			Method:    http.MethodPost,
-			Path:      "/v1/embeddings",
+			Path:      "/embeddings",
 			Headers:   headers,
 			Stream:    false,
 			Body:      body,

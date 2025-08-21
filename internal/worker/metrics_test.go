@@ -13,7 +13,7 @@ func TestMetricsServer(t *testing.T) {
 	resetState()
 	SetWorkerInfo("id1", "worker", 2, nil)
 	SetConnectedToServer(true)
-	SetConnectedToOllama(true)
+	SetConnectedToBackend(true)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	addr, err := StartMetricsServer(ctx, "127.0.0.1:0")
@@ -31,6 +31,9 @@ func TestMetricsServer(t *testing.T) {
 	data := string(body)
 	if !strings.Contains(data, "llamapool_worker_connected_to_server 1") {
 		t.Fatalf("missing connected_to_server gauge: %s", data)
+	}
+	if !strings.Contains(data, "llamapool_worker_connected_to_backend 1") {
+		t.Fatalf("missing connected_to_backend gauge: %s", data)
 	}
 	if !strings.Contains(data, "llamapool_worker_jobs_started_total") {
 		t.Fatalf("missing jobs_started_total counter: %s", data)

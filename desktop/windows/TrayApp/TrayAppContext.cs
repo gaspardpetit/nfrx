@@ -158,7 +158,7 @@ public class TrayAppContext : ApplicationContext
         {
             ServerUrl = _config.ServerUrl,
             ClientKey = _config.ClientKey,
-            OllamaBaseUrl = _config.OllamaBaseUrl,
+            CompletionBaseUrl = _config.CompletionBaseUrl,
             MaxConcurrency = _config.MaxConcurrency,
             StatusPort = _config.StatusPort
         });
@@ -473,7 +473,7 @@ public class TrayAppContext : ApplicationContext
             var msg = $"Worker: {s.WorkerName} ({s.WorkerId})\n" +
                       $"Version: {s.Version}\n" +
                       $"Connected to server: {s.ConnectedToServer}\n" +
-                      $"Connected to Ollama: {s.ConnectedToOllama}\n" +
+                    $"Connected to Backend: {s.ConnectedToBackend}\n" +
                       $"Jobs: {s.CurrentJobs}/{s.MaxConcurrency}\n" +
                       $"Last error: {(string.IsNullOrEmpty(s.LastError) ? "<none>" : s.LastError)}";
             MessageBox.Show(msg, "Worker Details");

@@ -35,7 +35,7 @@ func handleHTTPProxy(ctx context.Context, cfg config.WorkerConfig, sendCh chan [
 	}()
 
 	logx.Log.Info().Str("request_id", req.RequestID).Msg("proxy start")
-	url := cfg.OllamaBaseURL + req.Path
+	url := cfg.CompletionBaseURL + req.Path
 	if req.Stream {
 		if strings.Contains(url, "?") {
 			url += "&stream=true"
@@ -54,8 +54,8 @@ func handleHTTPProxy(ctx context.Context, cfg config.WorkerConfig, sendCh chan [
 		}
 		httpReq.Header.Set(k, v)
 	}
-	if cfg.OllamaAPIKey != "" {
-		httpReq.Header.Set("Authorization", "Bearer "+cfg.OllamaAPIKey)
+	if cfg.CompletionAPIKey != "" {
+		httpReq.Header.Set("Authorization", "Bearer "+cfg.CompletionAPIKey)
 	}
 	httpReq.Header.Set("Connection", "close")
 

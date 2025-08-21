@@ -3,14 +3,14 @@ import Foundation
 struct WorkerConfig: Equatable {
     var serverURL: String
     var clientKey: String
-    var ollamaBaseURL: String
+    var completionBaseURL: String
     var maxConcurrency: Int
     var statusPort: Int
 
-    init(serverURL: String = "", clientKey: String = "", ollamaBaseURL: String = "", maxConcurrency: Int = 1, statusPort: Int = 4555) {
+    init(serverURL: String = "", clientKey: String = "", completionBaseURL: String = "http://127.0.0.1:11434/v1", maxConcurrency: Int = 1, statusPort: Int = 4555) {
         self.serverURL = serverURL
         self.clientKey = clientKey
-        self.ollamaBaseURL = ollamaBaseURL
+        self.completionBaseURL = completionBaseURL
         self.maxConcurrency = maxConcurrency
         self.statusPort = statusPort
     }
@@ -19,7 +19,7 @@ struct WorkerConfig: Equatable {
         return """
 server_url: \(serverURL)
 client_key: \(clientKey)
-ollama_base_url: \(ollamaBaseURL)
+completion_base_url: \(completionBaseURL)
 max_concurrency: \(maxConcurrency)
 status_port: \(statusPort)
 """
@@ -35,10 +35,10 @@ status_port: \(statusPort)
         }
         let serverURL = dict["server_url"] ?? ""
         let clientKey = dict["client_key"] ?? ""
-        let ollamaBaseURL = dict["ollama_base_url"] ?? ""
+        let completionBaseURL = dict["completion_base_url"] ?? ""
         let maxConcurrency = Int(dict["max_concurrency"] ?? "1") ?? 1
         let statusPort = Int(dict["status_port"] ?? "4555") ?? 4555
-        return WorkerConfig(serverURL: serverURL, clientKey: clientKey, ollamaBaseURL: ollamaBaseURL, maxConcurrency: maxConcurrency, statusPort: statusPort)
+        return WorkerConfig(serverURL: serverURL, clientKey: clientKey, completionBaseURL: completionBaseURL, maxConcurrency: maxConcurrency, statusPort: statusPort)
     }
 
     func isValid() -> Bool {
