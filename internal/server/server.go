@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -61,11 +62,7 @@ func New(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler
 	}
 	r.Handle("/api/workers/connect", ctrl.WSHandler(reg, metrics, cfg.ClientKey))
 
-	metricsPort := cfg.MetricsPort
-	if metricsPort == 0 {
-		metricsPort = cfg.Port
-	}
-	if metricsPort == cfg.Port {
+	if cfg.MetricsAddr == fmt.Sprintf(":%d", cfg.Port) {
 		r.Handle("/metrics", promhttp.Handler())
 	}
 

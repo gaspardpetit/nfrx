@@ -132,7 +132,7 @@ The Windows service runs `llamapool-worker` with the `--reconnect` flag and shut
 - llamapool API:
   - **State (JSON):** `GET /api/state`
   - **State (SSE):** `GET /api/state/stream`
-- Prometheus metrics: `GET /metrics` (serve on separate port via `METRICS_PORT` or `--metrics-port`)
+- Prometheus metrics: `GET /metrics` (serve on separate address via `METRICS_PORT` or `--metrics-port`)
 - API docs:
   - Swagger UI: `GET /api/client/`
   - OpenAPI schema: `GET /api/client/openapi.json`
@@ -153,13 +153,13 @@ The Windows service runs `llamapool-worker` with the `--reconnect` flag and shut
 
 ## Monitoring & Observability
 
-- **Prometheus** (`/metrics`, configurable port via `METRICS_PORT` or `--metrics-port`):
+- **Prometheus** (`/metrics`, configurable address via `METRICS_PORT` or `--metrics-port`):
   - `llamapool_build_info{component="server",version,sha,date}`
   - `llamapool_model_requests_total{model,outcome}`
   - `llamapool_model_tokens_total{model,kind}`
   - `llamapool_request_duration_seconds{worker_id,model}` (histogram)
   - (Optionally) per-worker gauges/counters if enabled.
-- **Worker metrics** (`--metrics-addr`):
+- **Worker metrics** (`METRICS_PORT` or `--metrics-port`):
   - Exposes `llamapool_worker_*` series such as
     `llamapool_worker_connected_to_server`,
     `llamapool_worker_connected_to_backend`,
@@ -169,6 +169,8 @@ The Windows service runs `llamapool-worker` with the `--reconnect` flag and shut
     `llamapool_worker_jobs_succeeded_total`,
     `llamapool_worker_jobs_failed_total`, and
     `llamapool_worker_job_duration_seconds` (histogram).
+- **MCP relay metrics** (`METRICS_PORT` or `--metrics-port`):
+  - Exposes basic Go runtime metrics.
 
 - **JSON/SSE State** (`/api/state`, `/api/state/stream`): suitable for custom dashboards showing:
   - worker list and status (connected/working/idle/gone)
