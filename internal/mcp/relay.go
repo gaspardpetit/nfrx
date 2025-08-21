@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"sync"
 
 	"github.com/coder/websocket"
 )
@@ -15,11 +16,14 @@ type RelayClient struct {
 	conn        *websocket.Conn
 	providerURL string
 	token       string
+	writeMu     sync.Mutex
+	sessMu      sync.Mutex
+	sessions    map[string]context.CancelFunc
 }
 
 // NewRelayClient creates a new relay client.
 func NewRelayClient(conn *websocket.Conn, providerURL, token string) *RelayClient {
-	return &RelayClient{conn: conn, providerURL: providerURL, token: token}
+	return &RelayClient{conn: conn, providerURL: providerURL, token: token, sessions: map[string]context.CancelFunc{}}
 }
 
 // Run processes frames until the context or connection ends.
@@ -41,23 +45,41 @@ func (r *RelayClient) Run(ctx context.Context) error {
 			}
 			_ = r.send(ctx, Frame{T: "open.ok", SID: f.SID})
 		case "rpc":
-			resp, err := r.callProvider(ctx, f.Payload)
-			if err != nil {
-				errObj := map[string]any{
-					"jsonrpc": "2.0",
-					"id":      nil,
-					"error": map[string]any{
-						"code":    -32000,
-						"message": "Provider error",
-						"data": map[string]any{
-							"mcp": "MCP_UPSTREAM_ERROR",
+			sessionCtx, cancel := context.WithCancel(ctx)
+			r.sessMu.Lock()
+			r.sessions[f.SID] = cancel
+			r.sessMu.Unlock()
+			go func(sid string, payload []byte) {
+				defer func() {
+					r.sessMu.Lock()
+					delete(r.sessions, sid)
+					r.sessMu.Unlock()
+				}()
+				resp, err := r.callProvider(sessionCtx, payload)
+				if err != nil {
+					errObj := map[string]any{
+						"jsonrpc": "2.0",
+						"id":      nil,
+						"error": map[string]any{
+							"code":    -32000,
+							"message": "Provider error",
+							"data": map[string]any{
+								"mcp": "MCP_UPSTREAM_ERROR",
+							},
 						},
-					},
+					}
+					resp, _ = json.Marshal(errObj)
 				}
-				resp, _ = json.Marshal(errObj)
+				_ = r.send(ctx, Frame{T: "rpc", SID: sid, Payload: resp})
+				_ = r.send(ctx, Frame{T: "close", SID: sid, Msg: "done"})
+			}(f.SID, f.Payload)
+		case "close":
+			r.sessMu.Lock()
+			cancel, ok := r.sessions[f.SID]
+			r.sessMu.Unlock()
+			if ok {
+				cancel()
 			}
-			_ = r.send(ctx, Frame{T: "rpc", SID: f.SID, Payload: resp})
-			_ = r.send(ctx, Frame{T: "close", SID: f.SID, Msg: "done"})
 		case "ping":
 			_ = r.send(ctx, Frame{T: "pong"})
 		}
@@ -69,6 +91,8 @@ func (r *RelayClient) send(ctx context.Context, f Frame) error {
 	if err != nil {
 		return err
 	}
+	r.writeMu.Lock()
+	defer r.writeMu.Unlock()
 	return r.conn.Write(ctx, websocket.MessageText, b)
 }
 
