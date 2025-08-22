@@ -3,7 +3,8 @@
 ## Overview
 `llamapool-mcp` relays Model Context Protocol (MCP) calls through a
 `llamapool-server`, allowing clients to reach private MCP providers via
-`POST /api/mcp/id/{id}`.
+`POST /api/mcp/id/{id}`. MCP is a specification originally proposed by
+Anthropic for connecting tools and knowledge sources.
 
 ## Setup
 Configure the relay using environment variables or a YAML file. Common

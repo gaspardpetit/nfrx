@@ -53,7 +53,7 @@ The worker optionally reads settings from a YAML config file. Defaults:
 | `STATUS_ADDR` | `status_addr` | local status HTTP listen address | unset (disabled) | `--status-addr` |
 | `METRICS_PORT` | `metrics_addr` | Prometheus metrics listen address or port | unset (disabled) | `--metrics-port` |
 | `DRAIN_TIMEOUT` | — | time to wait for in-flight jobs on shutdown | `1m` | `--drain-timeout` |
-| `MODEL_POLL_INTERVAL` | — | interval for polling Ollama for model changes | `1m` | `--model-poll-interval` |
+| `MODEL_POLL_INTERVAL` | — | interval for polling the LLM runtime for model changes | `1m` | `--model-poll-interval` |
 | `CLIENT_NAME` | — | worker display name | hostname (or random) | `--client-name` |
 | `RECONNECT` | — | reconnect to server on failure | `false` | `--reconnect`, `-r` |
 | `REQUEST_TIMEOUT` | — | seconds without backend feedback before failing a job | `300` | `--request-timeout` |

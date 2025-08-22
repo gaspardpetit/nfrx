@@ -1,10 +1,13 @@
 # AGENTS.md
 
 ## Project Overview
-llamapool provides a minimal Ollama-compatible server with a pool of workers that proxy
-requests to local Ollama instances. The repository contains two binaries:
+llamapool provides a minimal server with a pool of workers that proxy requests
+to local LLM runtimes over the OpenAI `chat/completions` API. The repository
+contains three binaries:
 - `llamapool-server`: hosts the public HTTP API and coordinates workers over WebSocket
-- `llamapool-worker`: connects to the server and forwards requests to a local Ollama
+- `llamapool-worker`: connects to the server and forwards requests to an
+  OpenAI-compatible runtime (e.g., Ollama or vLLM)
+- `llamapool-mcp`: relays Model Context Protocol (MCP) calls through the server
 
 ## Build & Commands
 - Build server and worker: `make build`

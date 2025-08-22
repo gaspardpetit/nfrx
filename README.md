@@ -6,9 +6,10 @@
 
 # llamapool
 
-llamapool provides a minimal Ollama-compatible server with a pool of workers
-that proxy requests to local LLM runtimes. It exposes an OpenAI-compatible
-`chat/completions` API and can relay [Model Context Protocol](https://github.com/modelcontextprotocol)
+llamapool provides a minimal server with a pool of workers that proxy
+requests to local LLM runtimes. Workers speak the OpenAI
+`chat/completions` API, and the server can relay
+[Model Context Protocol](https://github.com/modelcontextprotocol)
 requests.
 
 ## Table of Contents
@@ -33,8 +34,10 @@ Hosts the public HTTP API and dispatches requests to workers or MCP relays.
 [Read more](doc/server.md).
 
 ### llamapool-worker
-Connects to the server and forwards requests to a local LLM runtime.
-[Read more](doc/worker.md).
+Connects to the server and forwards requests to a local LLM runtime that
+implements the OpenAI Chat Completions API (e.g.,
+[Ollama](https://github.com/ollama/ollama) or
+[vLLM](https://github.com/vllm-project/vllm)). [Read more](doc/worker.md).
 
 ### llamapool-mcp
 Relays calls to private MCP providers through the server.
@@ -71,15 +74,16 @@ details and expected responses are documented in
 This project is licensed under the terms of the [MIT License](LICENSE).
 
 ## Credits
-llamapool builds on several open source projects:
+llamapool builds on several open source projects and standards:
 
-- [Ollama](https://github.com/ollama/ollama) – local LLM runtime whose API llamapool mirrors.
 - [chi](https://github.com/go-chi/chi) – HTTP router that serves the REST API.
 - [coder/websocket](https://github.com/coder/websocket) – WebSocket library used for worker communication.
 - [zerolog](https://github.com/rs/zerolog) – structured logging across components.
 - [Prometheus client_golang](https://github.com/prometheus/client_golang) – metrics collection and exposition.
 - [mcp-go](https://github.com/mark3labs/mcp-go) – Model Context Protocol relay support.
 - [kin-openapi](https://github.com/getkin/kin-openapi) and [oapi-codegen/runtime](https://github.com/oapi-codegen/runtime) – OpenAPI tooling for request and response validation.
+- [OpenAI API](https://platform.openai.com/docs/api-reference/introduction) – defines the `chat/completions` protocol used between server and workers.
+- [Model Context Protocol](https://github.com/modelcontextprotocol/specification) – tool invocation protocol originally proposed by Anthropic.
 
 ## Further Documentation
 Additional documents live under [doc/](doc) including the

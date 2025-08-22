@@ -1,12 +1,15 @@
 # Getting Started
 
-This quick start runs one `llamapool-server` and a single `llamapool-worker` serving an
-Ollama model.
+This quick start runs one `llamapool-server` and a single `llamapool-worker`
+serving a model from an OpenAI-compatible runtime.
 
 ## Prerequisites
 
 - Go 1.23 or later
-- An LLM runtime on the worker machine (e.g., [Ollama](https://github.com/ollama/ollama))
+- An LLM runtime on the worker machine that supports the OpenAI
+  chat/completions API (e.g.,
+  [Ollama](https://github.com/ollama/ollama) or
+  [vLLM](https://github.com/vllm-project/vllm))
 
 ## Build
 

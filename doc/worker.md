@@ -2,7 +2,10 @@
 
 ## Overview
 `llamapool-worker` connects to a `llamapool-server` and forwards requests to a
-local LLM runtime such as Ollama or vLLM.
+local LLM runtime that implements the
+[OpenAI chat/completions API](https://platform.openai.com/docs/api-reference/chat/create),
+such as [Ollama](https://github.com/ollama/ollama) or
+[vLLM](https://github.com/vllm-project/vllm).
 
 ## Setup
 Ensure the LLM runtime is running and the desired models are installed. Workers
