@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -18,8 +17,6 @@ import (
 	"github.com/gaspardpetit/llamapool/internal/logx"
 	"github.com/gaspardpetit/llamapool/internal/mcp"
 	reconnect "github.com/gaspardpetit/llamapool/internal/reconnect"
-	"github.com/google/uuid"
-	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -27,22 +24,6 @@ var (
 	buildSHA  = "unknown"
 	buildDate = "unknown"
 )
-
-func getEnv(k, d string) string {
-	if v := os.Getenv(k); v != "" {
-		return v
-	}
-	return d
-}
-
-func getEnvBool(k string, d bool) bool {
-	if v := os.Getenv(k); v != "" {
-		if b, err := strconv.ParseBool(v); err == nil {
-			return b
-		}
-	}
-	return d
-}
 
 func probeProvider(ctx context.Context, url string) error {
 	payload := map[string]any{
@@ -106,53 +87,31 @@ func monitorProvider(ctx context.Context, url string, shouldReconnect bool) {
 
 func main() {
 	showVersion := flag.Bool("version", false, "print version and exit")
-	reconnectFlag := getEnvBool("RECONNECT", false)
-	flag.BoolVar(&reconnectFlag, "reconnect", reconnectFlag, "reconnect to server on failure")
-	flag.BoolVar(&reconnectFlag, "r", reconnectFlag, "short for --reconnect")
-	cfgFile := getEnv("CONFIG_FILE", config.DefaultConfigPath("mcp.yaml"))
-	flag.StringVar(&cfgFile, "config", cfgFile, "mcp config file path")
-	clientKey := getEnv("CLIENT_KEY", "")
-	flag.StringVar(&clientKey, "client-key", clientKey, "shared secret for authenticating with the server")
-	metricsAddr := getEnv("METRICS_PORT", "")
-	flag.StringVar(&metricsAddr, "metrics-port", metricsAddr, "Prometheus metrics listen address or port (disabled when empty; e.g. 127.0.0.1:9090 or 9090)")
-	rtVal, _ := strconv.ParseFloat(getEnv("REQUEST_TIMEOUT", "300"), 64)
-	flag.Float64Var(&rtVal, "request-timeout", rtVal, "request timeout in seconds for provider responses")
-
-	wsURL := getEnv("SERVER_URL", "ws://localhost:8080/api/mcp/connect")
-	host, err := os.Hostname()
-	if err != nil || host == "" {
-		host = "mcp-" + uuid.NewString()[:8]
-	}
-	clientName := getEnv("CLIENT_NAME", host)
-	clientID := getEnv("CLIENT_ID", "")
-	flag.StringVar(&clientID, "client-id", clientID, "client identifier; assigned when empty")
-	flag.StringVar(&clientName, "client-name", clientName, "client display name shown in logs and status")
-	providerURL := getEnv("PROVIDER_URL", "http://127.0.0.1:7777/")
-	authToken := getEnv("AUTH_TOKEN", "")
+	var cfg config.MCPConfig
+	cfg.BindFlags()
 	flag.Parse()
 	if *showVersion {
 		fmt.Printf("llamapool-mcp version=%s sha=%s date=%s\n", version, buildSHA, buildDate)
 		return
 	}
-
-	if cfgFile != "" {
-		if b, err := os.ReadFile(cfgFile); err == nil {
-			var m map[string]any
-			if err := yaml.Unmarshal(b, &m); err != nil {
-				logx.Log.Fatal().Err(err).Str("path", cfgFile).Msg("parse config")
-			}
-		} else if !errors.Is(err, os.ErrNotExist) {
-			logx.Log.Fatal().Err(err).Str("path", cfgFile).Msg("load config")
+	if cfg.ConfigFile != "" {
+		if err := cfg.LoadFile(cfg.ConfigFile); err != nil && !errors.Is(err, os.ErrNotExist) {
+			logx.Log.Fatal().Err(err).Str("path", cfg.ConfigFile).Msg("load config")
 		}
 	}
 
 	header := http.Header{}
-	requestTimeout := time.Duration(rtVal * float64(time.Second))
+	reconnectFlag := cfg.Reconnect
+	metricsAddr := cfg.MetricsAddr
+	requestTimeout := cfg.RequestTimeout
+	wsURL := cfg.ServerURL
+	clientKey := cfg.ClientKey
+	clientID := cfg.ClientID
+	clientName := cfg.ClientName
+	providerURL := cfg.ProviderURL
+	authToken := cfg.AuthToken
 
 	if metricsAddr != "" {
-		if !strings.Contains(metricsAddr, ":") {
-			metricsAddr = ":" + metricsAddr
-		}
 		if _, err := mcp.StartMetricsServer(context.Background(), metricsAddr); err != nil {
 			logx.Log.Fatal().Err(err).Msg("metrics server")
 		}

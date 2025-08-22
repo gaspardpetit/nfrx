@@ -1,6 +1,6 @@
 # Configuration reference
 
-This document lists configuration options for the llamapool tools. Settings can be supplied via environment variables, command line flags, or (where supported) configuration files. `DEBUG` affects logging across all binaries.
+This document lists configuration options for the llamapool tools. Settings can be supplied via environment variables, command line flags, or configuration files. Sample config templates with defaults live under `examples/config/`. `DEBUG` affects logging across all binaries.
 
 ## Common
 
@@ -20,7 +20,7 @@ The server optionally reads settings from a YAML config file. Defaults:
 |----------|------------|---------|---------|----------|
 | `CONFIG_FILE` | — | server config file path | OS-specific | `--config` |
 | `PORT` | — | HTTP listen port for the public API | `8080` | `--port` |
-| `METRICS_PORT` | — | Prometheus metrics listen address or port | same as `PORT` | `--metrics-port` |
+| `METRICS_PORT` | `metrics_addr` | Prometheus metrics listen address or port | same as `PORT` | `--metrics-port` |
 | `API_KEY` | — | client API key required for HTTP requests | unset (auth disabled) | `--api-key` |
 | `CLIENT_KEY` | — | shared key clients must present when registering | unset | `--client-key` |
 | `REQUEST_TIMEOUT` | — | seconds without worker or MCP activity before timing out a request | `120` | `--request-timeout` |
@@ -51,14 +51,13 @@ The worker optionally reads settings from a YAML config file. Defaults:
 | `MAX_CONCURRENCY` | `max_concurrency` | maximum number of jobs processed concurrently | `2` | `--max-concurrency` |
 | `CLIENT_ID` | — | client identifier (random if unset) | unset | `--client-id` |
 | `STATUS_ADDR` | `status_addr` | local status HTTP listen address | unset (disabled) | `--status-addr` |
-| `METRICS_PORT` | — | Prometheus metrics listen address or port | unset (disabled) | `--metrics-port` |
+| `METRICS_PORT` | `metrics_addr` | Prometheus metrics listen address or port | unset (disabled) | `--metrics-port` |
 | `DRAIN_TIMEOUT` | — | time to wait for in-flight jobs on shutdown | `1m` | `--drain-timeout` |
 | `MODEL_POLL_INTERVAL` | — | interval for polling Ollama for model changes | `1m` | `--model-poll-interval` |
 | `CLIENT_NAME` | — | worker display name | hostname (or random) | `--client-name` |
 | `RECONNECT` | — | reconnect to server on failure | `false` | `--reconnect`, `-r` |
 | `REQUEST_TIMEOUT` | — | seconds without backend feedback before failing a job | `300` | `--request-timeout` |
 
-Note: The YAML schema currently covers only a subset (`server_url`, `client_key`, `completion_base_url`, `max_concurrency`, `status_addr`).
 
 ## llamapool-mcp
 
@@ -78,7 +77,7 @@ Note: The YAML schema currently covers only a subset (`server_url`, `client_key`
 | `AUTH_TOKEN` | — | authorization token for broker requests | unset | — |
 | `CLIENT_KEY` | — | shared secret for authenticating with the server | unset | `--client-key` |
 | `CONFIG_FILE` | — | path to YAML config file | OS-specific | `--config` |
-| `METRICS_PORT` | — | Prometheus metrics listen address or port | unset (disabled) | `--metrics-port` |
+| `METRICS_PORT` | `metrics_addr` | Prometheus metrics listen address or port | unset (disabled) | `--metrics-port` |
 | `REQUEST_TIMEOUT` | — | seconds to wait for MCP provider responses | `300` | `--request-timeout` |
 | `MCP_TRANSPORT_ORDER` | `order` | comma separated transport order | `stdio,http,oauth` | `--mcp-transport-order` |
 | `MCP_INIT_TIMEOUT` | `initTimeout` | timeout for transport startup | `5s` | `--mcp-init-timeout` |
@@ -103,11 +102,5 @@ Note: The YAML schema currently covers only a subset (`server_url`, `client_key`
 
 ### Consistency notes
 
-`SERVER_URL`, `CLIENT_KEY`, and `RECONNECT` remain shared between tools, providing predictable behavior. The worker's YAML config covers only a subset of its available settings, leaving items like `METRICS_PORT` or `DRAIN_TIMEOUT` without config-file equivalents.
-
-### Cleanup candidates
-
-| Option(s) | Issue | Recommendation |
-|-----------|-------|----------------|
-| worker YAML coverage | config file omits many settings (metrics, timeouts, names) | expand or deprecate partial config schema |
+`SERVER_URL`, `CLIENT_KEY`, and `RECONNECT` remain shared between tools, providing predictable behavior.
 

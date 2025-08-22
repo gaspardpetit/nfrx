@@ -1,0 +1,10 @@
+# Example configuration for llamapool-mcp
+server_url: ws://localhost:8080/api/mcp/connect
+# client_key: ""              # shared secret for authenticating with the server
+# client_id: ""               # client identifier; assigned when empty
+# client_name: ""             # client display name shown in logs
+provider_url: http://127.0.0.1:7777/
+# auth_token: ""             # authorization token for broker requests
+# metrics_addr: ""            # Prometheus metrics listen address
+request_timeout: 300s         # timeout for provider responses
+# reconnect: false            # reconnect to server on failure
