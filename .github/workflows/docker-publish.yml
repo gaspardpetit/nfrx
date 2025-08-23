@@ -25,11 +25,14 @@ jobs:
       matrix:
         variant:
           - name: server
+            suffix: ""
             dockerfile: deploy/Dockerfile.server
-          - name: mcp-worker
+          - name: mcp-client
+            suffix: "-mcp"
             dockerfile: deploy/Dockerfile.mcp
-          - name: worker
-            dockerfile: deploy/Dockerfile.worker
+          - name: llm-client
+            suffix: "-llm"
+            dockerfile: deploy/Dockerfile.llm
 
     steps:
       - name: Checkout repository
@@ -85,7 +88,7 @@ jobs:
         id: dmeta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.variant.name }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}${{ matrix.variant.suffix }}
           tags: |
             type=raw,value=sha-${{ steps.meta.outputs.sha }}
             type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
