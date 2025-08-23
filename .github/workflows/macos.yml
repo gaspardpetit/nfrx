@@ -13,21 +13,21 @@ jobs:
         env:
           DEVELOPMENT_TEAM: ${{ secrets.AC_TEAM_ID }}
         run: |
-          xcodebuild -project desktop/macos/infx/infx.xcodeproj -scheme infx -configuration Release -archivePath build/infx.xcarchive archive
-          xcodebuild -exportArchive -archivePath build/infx.xcarchive -exportOptionsPlist ci/exportOptions.plist -exportPath build/export
+          xcodebuild -project desktop/macos/nfrx/nfrx.xcodeproj -scheme nfrx -configuration Release -archivePath build/nfrx.xcarchive archive
+          xcodebuild -exportArchive -archivePath build/nfrx.xcarchive -exportOptionsPlist ci/exportOptions.plist -exportPath build/export
       - name: Create DMG
         run: |
-          ci/create-dmg.sh build/export/infx.app build/Infx.dmg
+          ci/create-dmg.sh build/export/nfrx.app build/Nfrx.dmg
       - name: Notarize
         env:
           AC_API_KEY_ID: ${{ secrets.AC_API_KEY_ID }}
           AC_API_ISSUER_ID: ${{ secrets.AC_API_ISSUER_ID }}
           AC_API_P8: ${{ secrets.AC_API_P8 }}
-        run: ci/notarize.sh build/Infx.dmg
+        run: ci/notarize.sh build/Nfrx.dmg
       - name: Staple
-        run: xcrun stapler staple build/Infx.dmg
+        run: xcrun stapler staple build/Nfrx.dmg
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Infx-macOS
-          path: build/Infx.dmg
+          name: Nfrx-macOS
+          path: build/Nfrx.dmg

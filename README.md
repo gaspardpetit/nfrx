@@ -1,22 +1,22 @@
-[![Build](https://github.com/gaspardpetit/infx/actions/workflows/ci.yml/badge.svg)](https://github.com/gaspardpetit/infx/actions/workflows/ci.yml)
-[![Docker](https://github.com/gaspardpetit/infx/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/gaspardpetit/infx/actions/workflows/docker-publish.yml)
-[![.deb](https://github.com/gaspardpetit/infx/actions/workflows/release-deb.yml/badge.svg)](https://github.com/gaspardpetit/infx/actions/workflows/release-deb.yml)
+[![Build](https://github.com/gaspardpetit/nfrx/actions/workflows/ci.yml/badge.svg)](https://github.com/gaspardpetit/nfrx/actions/workflows/ci.yml)
+[![Docker](https://github.com/gaspardpetit/nfrx/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/gaspardpetit/nfrx/actions/workflows/docker-publish.yml)
+[![.deb](https://github.com/gaspardpetit/nfrx/actions/workflows/release-deb.yml/badge.svg)](https://github.com/gaspardpetit/nfrx/actions/workflows/release-deb.yml)
 
-# infx
+# nfrx
 
-infx lets you expose your private AI services (LLM runtimes, tools, RAG processes) through a secure, public, OpenAI-compatible API — without exposing your local machines.
+nfrx lets you expose your private AI services (LLM runtimes, tools, RAG processes) through a secure, public, OpenAI-compatible API — without exposing your local machines.
 
 - **Run locally:** Keep Ollama, vLLM, MCP servers, or custom RAG processes on your own Macs, PCs, or servers.
-- **Connect out:** Each worker/tool connects outbound to a single public **infx** server (no inbound connections to your LAN).
-- **Use securely:** Clients and commercial LLMs (e.g., OpenAI, Claude) talk to **infx** via standard OpenAI endpoints or MCP URLs.
-- **Scale flexibly:** Add multiple heterogeneous machines; **infx** routes requests to the right one, queues when busy, and supports graceful draining for maintenance.
+- **Connect out:** Each worker/tool connects outbound to a single public **nfrx** server (no inbound connections to your LAN).
+- **Use securely:** Clients and commercial LLMs (e.g., OpenAI, Claude) talk to **nfrx** via standard OpenAI endpoints or MCP URLs.
+- **Scale flexibly:** Add multiple heterogeneous machines; **nfrx** routes requests to the right one, queues when busy, and supports graceful draining for maintenance.
 
 ## Getting Started
 
 ### Prerequisites (all setups)
 
-- A public host (cloud/VPS) with a domain or public IP for the **infx** server.
-- TLS (recommended) — terminate HTTPS/WSS at **infx** or your reverse proxy.
+- A public host (cloud/VPS) with a domain or public IP for the **nfrx** server.
+- TLS (recommended) — terminate HTTPS/WSS at **nfrx** or your reverse proxy.
 - Two credentials:
   - **API_KEY** — authenticates clients calling the public API.
   - **CLIENT_KEY** — authenticates private connectors (llm/mcp/rag) when they dial out.
@@ -41,14 +41,14 @@ docker run --rm \
   -p ${MY_SERVER_PORT}:8080 \
   -e CLIENT_KEY="${MY_CLIENT_KEY}" \
   -e API_KEY="${MY_API_KEY}" \
-  ghcr.io/gaspardpetit/infx:main
+  ghcr.io/gaspardpetit/nfrx:main
 ```
 
 ##### Bare (Linux)
 
 ```bash
 PORT=${MY_SERVER_PORT} CLIENT_KEY="${MY_CLIENT_KEY}" API_KEY="${MY_API_KEY}" \
-  infx   # or: go run ./cmd/infx
+  nfrx   # or: go run ./cmd/nfrx
 ```
 
 You may then choose to expose an LLM provider, an MCP server and/or a RAG system from private hardware behind a NAT/Firewall.
@@ -62,7 +62,7 @@ docker run --rm \
   -e SERVER_URL="wss://${MY_SERVER_ADDR}/api/llm/connect" \
   -e CLIENT_KEY="${MY_CLIENT_KEY}" \
   -e COMPLETION_BASE_URL="http://host.docker.internal:11434/v1" \
-  ghcr.io/gaspardpetit/infx-llm:main
+  ghcr.io/gaspardpetit/nfrx-llm:main
 ```
 
 ##### Bare (Linux)
@@ -71,7 +71,7 @@ docker run --rm \
 SERVER_URL="wss://${MY_SERVER_ADDR}/api/llm/connect" \
 CLIENT_KEY="${MY_CLIENT_KEY}" \
 COMPLETION_BASE_URL="http://127.0.0.1:11434/v1" \
-infx-llm   # or: go run ./cmd/infx-llm
+nfrx-llm   # or: go run ./cmd/nfrx-llm
 ```
 
 After connecting, you can reach your private instance from the public endpoint:
@@ -110,14 +110,14 @@ You should see:
 
 > Starting MCP server 'preferences' with transport 'http' on http://127.0.0.1:7777/mcp
 
-Now expose this MCP server to infx:
+Now expose this MCP server to nfrx:
 
 ```bash
 docker run --rm \
   -e SERVER_URL="wss://${MY_SERVER_ADDR}/api/mcp/connect" \
   -e CLIENT_KEY="${MY_CLIENT_KEY}" \
   -e CLIENT_ID="my-mcp-server-123" \
-  ghcr.io/gaspardpetit/infx-mcp:main
+  ghcr.io/gaspardpetit/nfrx-mcp:main
 ```
 
 Use your private MCP server with a public LLM (OpenAI Responses API example):
@@ -147,45 +147,45 @@ You should see something like:
 
 ## Overview
 
-**infx** is a lightweight, distributed worker pool that exposes an OpenAI-compatible `chat/completions` API, forwarding requests to one or more connected **LLM workers**.
+**nfrx** is a lightweight, distributed worker pool that exposes an OpenAI-compatible `chat/completions` API, forwarding requests to one or more connected **LLM workers**.
 It sits in front of existing LLM runtimes such as [Ollama](https://github.com/ollama/ollama), [vLLM](https://github.com/vllm-project/vllm), or [Open-WebUI](https://github.com/open-webui/open-webui), allowing you to scale, load-balance, and securely access them from anywhere.
 
-In addition to LLM workers, infx now supports relaying [Model Context Protocol](https://github.com/modelcontextprotocol) calls. 
+In addition to LLM workers, nfrx now supports relaying [Model Context Protocol](https://github.com/modelcontextprotocol) calls. 
 
-The server exposes a Streamable HTTP MCP endpoint at `POST /api/mcp/id/{id}` and forwards requests verbatim over WebSocket to a connected `infx-mcp` process. The broker enforces request/response size limits, per-client concurrency caps, and 30s call timeouts; cancellation is not yet implemented. When the relay is started with `AUTH_TOKEN`, clients must supply `Authorization: Bearer <token>` when calling this endpoint. The client negotiates protocol versions and server capabilities, and exposes tunables such as `MCP_PROTOCOL_VERSION`, `MCP_HTTP_TIMEOUT`, and `MCP_MAX_INFLIGHT` for advanced deployments.
+The server exposes a Streamable HTTP MCP endpoint at `POST /api/mcp/id/{id}` and forwards requests verbatim over WebSocket to a connected `nfrx-mcp` process. The broker enforces request/response size limits, per-client concurrency caps, and 30s call timeouts; cancellation is not yet implemented. When the relay is started with `AUTH_TOKEN`, clients must supply `Authorization: Bearer <token>` when calling this endpoint. The client negotiates protocol versions and server capabilities, and exposes tunables such as `MCP_PROTOCOL_VERSION`, `MCP_HTTP_TIMEOUT`, and `MCP_MAX_INFLIGHT` for advanced deployments.
 
 Server-initiated JSON-RPC requests (for example sampling calls) are forwarded across the WebSocket bridge and relayed back to clients, preserving full protocol semantics.
 
-The new `infx-mcp` binary connects a private MCP provider to the public `infx`, allowing clients to invoke MCP methods via `POST /api/mcp/id/{id}`. The broker enforces request/response size limits, per-client concurrency caps, and 30s call timeouts; cancellation is not yet implemented. The client negotiates protocol versions and server capabilities, and exposes tunables such as `MCP_PROTOCOL_VERSION`, `MCP_HTTP_TIMEOUT`, and `MCP_MAX_INFLIGHT` for advanced deployments. By default `infx-mcp` requires absolute stdio commands and verifies TLS certificates; set `MCP_STDIO_ALLOW_RELATIVE=true` or `MCP_HTTP_INSECURE_SKIP_VERIFY=true` to relax these checks, and `MCP_OAUTH_TOKEN_FILE` to securely cache OAuth tokens on disk.
+The new `nfrx-mcp` binary connects a private MCP provider to the public `nfrx`, allowing clients to invoke MCP methods via `POST /api/mcp/id/{id}`. The broker enforces request/response size limits, per-client concurrency caps, and 30s call timeouts; cancellation is not yet implemented. The client negotiates protocol versions and server capabilities, and exposes tunables such as `MCP_PROTOCOL_VERSION`, `MCP_HTTP_TIMEOUT`, and `MCP_MAX_INFLIGHT` for advanced deployments. By default `nfrx-mcp` requires absolute stdio commands and verifies TLS certificates; set `MCP_STDIO_ALLOW_RELATIVE=true` or `MCP_HTTP_INSECURE_SKIP_VERIFY=true` to relax these checks, and `MCP_OAUTH_TOKEN_FILE` to securely cache OAuth tokens on disk.
 By default the MCP relay exits if the server is unavailable. Add `-r` or `--reconnect` to keep retrying with backoff (1s×3, 5s×3, 15s×3, then every 30s). When enabled, it also probes the MCP provider and remains in a `not_ready` state until the provider becomes reachable.
 
-`infx-mcp` reads configuration from a YAML file when `CONFIG_FILE` is set. Values in the file—such as transport order, protocol version preference, or stdio working directory—are used as defaults and can be overridden by environment variables or CLI flags (e.g. `--mcp-http-url`, `--mcp-stdio-workdir`).
+`nfrx-mcp` reads configuration from a YAML file when `CONFIG_FILE` is set. Values in the file—such as transport order, protocol version preference, or stdio working directory—are used as defaults and can be overridden by environment variables or CLI flags (e.g. `--mcp-http-url`, `--mcp-stdio-workdir`).
 
 For transport configuration, common errors, and developer guidance see [doc/mcpclient.md](doc/mcpclient.md). For a comprehensive list of configuration options, see [doc/env.md](doc/env.md). Sample YAML configuration templates with defaults are available under `examples/config/`.
-Server state can be shared across multiple infx instances by setting `REDIS_ADDR` to a Redis connection URL (including Sentinel or cluster deployments).
+Server state can be shared across multiple nfrx instances by setting `REDIS_ADDR` to a Redis connection URL (including Sentinel or cluster deployments).
 For project direction and future enhancements, see [doc/roadmap.md](doc/roadmap.md).
 
 A typical deployment looks like this:
 
-- **`infx`** is deployed to a public or semi-public location (e.g., Azure, GCP, AWS, or a self-hosted server with dynamic DNS).
-- **`infx-llm`** runs on private machines (e.g., a Mac Studio or personal GPU workstation) alongside an LLM service.
+- **`nfrx`** is deployed to a public or semi-public location (e.g., Azure, GCP, AWS, or a self-hosted server with dynamic DNS).
+- **`nfrx-llm`** runs on private machines (e.g., a Mac Studio or personal GPU workstation) alongside an LLM service.
   When a worker connects, its available models are registered with the server and become accessible via the public API.
 
 ## macOS Menu Bar App
 
-An early-stage macOS menu bar companion lives under `desktop/macos/infx/`. It polls `http://127.0.0.1:4555/status` every two seconds to display live worker status and can manage a per-user LaunchAgent to start or stop a local `infx-llm` and toggle launching at login. A simple preferences window lets you edit worker connection settings which are written to `~/Library/Application Support/infx/worker.yaml`, and the menu offers quick links to open the config and logs folders, view live logs, copy diagnostics to the Desktop, and check for updates via Sparkle.
+An early-stage macOS menu bar companion lives under `desktop/macos/nfrx/`. It polls `http://127.0.0.1:4555/status` every two seconds to display live worker status and can manage a per-user LaunchAgent to start or stop a local `nfrx-llm` and toggle launching at login. A simple preferences window lets you edit worker connection settings which are written to `~/Library/Application Support/nfrx/worker.yaml`, and the menu offers quick links to open the config and logs folders, view live logs, copy diagnostics to the Desktop, and check for updates via Sparkle.
 
 ### Packaging
 
-The macOS app can be distributed as a signed and notarized DMG. After building the `infx` scheme in Release, create the disk image and submit it for notarization:
+The macOS app can be distributed as a signed and notarized DMG. After building the `nfrx` scheme in Release, create the disk image and submit it for notarization:
 
 ```bash
 # Create a DMG with an /Applications symlink
-ci/create-dmg.sh path/to/infx.app build/infx.dmg
+ci/create-dmg.sh path/to/nfrx.app build/nfrx.dmg
 
 # Notarize (requires AC_API_KEY_ID, AC_API_ISSUER_ID and AC_API_P8)
-ci/notarize.sh build/infx.dmg
-xcrun stapler staple build/infx.dmg
+ci/notarize.sh build/nfrx.dmg
+xcrun stapler staple build/nfrx.dmg
 ```
 
 `AC_API_P8` must contain a base64-encoded App Store Connect API key. Once notarization completes, the DMG can be distributed and will pass Gatekeeper on clean systems.
@@ -195,9 +195,9 @@ When using the GitHub Actions workflow, provide the `AC_TEAM_ID` secret with you
 ## Windows Tray App
 
 A Windows tray companion lives under `desktop/windows/`. It polls `http://127.0.0.1:4555/status` every two seconds to display worker status.
-The tray can start or stop the local `infx` Windows service, toggle whether it launches automatically with Windows, edit worker connection settings, open the config and logs folders, view live logs, and collect diagnostics to the Desktop. When the worker exposes lifecycle control endpoints, the tray also provides **Drain**, **Undrain**, and **Shutdown after drain** actions.
+The tray can start or stop the local `nfrx` Windows service, toggle whether it launches automatically with Windows, edit worker connection settings, open the config and logs folders, view live logs, and collect diagnostics to the Desktop. When the worker exposes lifecycle control endpoints, the tray also provides **Drain**, **Undrain**, and **Shutdown after drain** actions.
 
-The Windows service runs `infx-llm` with the `--reconnect` flag and shuts down if the worker process exits, preventing orphaned workers. The worker is attached to a job object so it also terminates if the service process is killed.
+The Windows service runs `nfrx-llm` with the `--reconnect` flag and shuts down if the worker process exits, preventing orphaned workers. The worker is attached to a job object so it also terminates if the service process is killed.
 
 ### Key features
 - **Dynamic worker discovery** – Workers can connect and disconnect at any time; the server updates the available model list in real-time.
@@ -224,7 +224,7 @@ The Windows service runs `infx-llm` with the `--reconnect` flag and shuts down i
                                          │  REQUEST 
                                          │  (API_KEY)
 ┌────────────────────────────────────────▼──────────────────────────────┐
-│                                 infx                      │
+│                                 nfrx                      │
 │                                                                       │
 │  ┌──────────────────────────┐                     ┌───────────────┐   │
 │  │  OpenAI-compatible API   │                     │  Observability│   │
@@ -243,7 +243,7 @@ The Windows service runs `infx-llm` with the `--reconnect` flag and shuts down i
      CONNECT |    |                       CONNECT |           |  
 (CLIENT_KEY) │    | REQUEST          (CLIENT_KEY) │           | REQUEST
      ┌───────┴────▼────────────┐           ┌──────┴───────────▼────────┐
-     │      infx-llm   │           │      infx-llm    │
+     │      nfrx-llm   │           │      nfrx-llm    │
      │     (private/home lab)  │           │       (cloud/on-prem)    │
      │                         │           │                          │
      └─────────────┬───────────┘           └─────────────┬────────────┘
@@ -264,7 +264,7 @@ The Windows service runs `infx-llm` with the `--reconnect` flag and shuts down i
   - `GET /api/v1/models/{id}`
 - OpenAI Chat Completions: `POST /api/v1/chat/completions`
 - OpenAI Embeddings: `POST /api/v1/embeddings`
-- infx API:
+- nfrx API:
   - **State (JSON):** `GET /api/state`
   - **State (SSE):** `GET /api/state/stream`
 - Prometheus metrics: `GET /metrics` (serve on separate address via `METRICS_PORT` or `--metrics-port`)
@@ -282,28 +282,28 @@ The Windows service runs `infx-llm` with the `--reconnect` flag and shuts down i
 - **Transport**: run behind TLS (HTTPS/WSS) via reverse proxy or terminate TLS in-process.
 - **CORS**: cross-origin requests are denied unless explicitly allowed via `ALLOWED_ORIGINS` (comma separated) or the `--allowed-origins` flag.
 
-- **Service isolation**: Debian packages run the daemons as the dedicated `infx` user with systemd-managed directories
-  (`/var/lib/infx`, `/var/cache/infx`, `/run/infx`) and hardening flags like `NoNewPrivileges=true` and
+- **Service isolation**: Debian packages run the daemons as the dedicated `nfrx` user with systemd-managed directories
+  (`/var/lib/nfrx`, `/var/cache/nfrx`, `/run/nfrx`) and hardening flags like `NoNewPrivileges=true` and
   `ProtectSystem=full`.
 
 ## Monitoring & Observability
 
 - **Prometheus** (`/metrics`, configurable address via `METRICS_PORT` or `--metrics-port`):
-  - `infx_build_info{component="server",version,sha,date}`
-  - `infx_model_requests_total{model,outcome}`
-  - `infx_model_tokens_total{model,kind}`
-  - `infx_request_duration_seconds{worker_id,model}` (histogram)
+  - `nfrx_build_info{component="server",version,sha,date}`
+  - `nfrx_model_requests_total{model,outcome}`
+  - `nfrx_model_tokens_total{model,kind}`
+  - `nfrx_request_duration_seconds{worker_id,model}` (histogram)
   - (Optionally) per-worker gauges/counters if enabled.
 - **Worker metrics** (`METRICS_PORT` or `--metrics-port`):
-  - Exposes `infx_worker_*` series such as
-    `infx_worker_connected_to_server`,
-    `infx_worker_connected_to_backend`,
-    `infx_worker_current_jobs`,
-    `infx_worker_max_concurrency`,
-    `infx_worker_jobs_started_total`,
-    `infx_worker_jobs_succeeded_total`,
-    `infx_worker_jobs_failed_total`, and
-    `infx_worker_job_duration_seconds` (histogram).
+  - Exposes `nfrx_worker_*` series such as
+    `nfrx_worker_connected_to_server`,
+    `nfrx_worker_connected_to_backend`,
+    `nfrx_worker_current_jobs`,
+    `nfrx_worker_max_concurrency`,
+    `nfrx_worker_jobs_started_total`,
+    `nfrx_worker_jobs_succeeded_total`,
+    `nfrx_worker_jobs_failed_total`, and
+    `nfrx_worker_job_duration_seconds` (histogram).
 - **MCP relay metrics** (`METRICS_PORT` or `--metrics-port`):
   - Exposes basic Go runtime metrics.
 
@@ -331,9 +331,9 @@ The Windows service runs `infx-llm` with the `--reconnect` flag and shuts down i
 ## Install via .deb
 
 ```bash
-wget https://github.com/gaspardpetit/infx/releases/download/v1.3.0/infx_1.3.0-1_amd64.deb
-sudo dpkg -i infx_1.3.0-1_amd64.deb
-sudo systemctl status infx
+wget https://github.com/gaspardpetit/nfrx/releases/download/v1.3.0/nfrx_1.3.0-1_amd64.deb
+sudo dpkg -i nfrx_1.3.0-1_amd64.deb
+sudo systemctl status nfrx
 ```
 
 ## Build
@@ -346,8 +346,8 @@ make build
 
 On Windows:
 ```
-go build -o .\bin\infx.exe .\cmd\infx
-go build -o .\bin\infx-llm.exe .\cmd\infx-llm
+go build -o .\bin\nfrx.exe .\cmd\nfrx
+go build -o .\bin\nfrx-llm.exe .\cmd\nfrx-llm
 ```
 
 ### Version
@@ -355,8 +355,8 @@ go build -o .\bin\infx-llm.exe .\cmd\infx-llm
 Both binaries expose a `--version` flag that prints the build metadata:
 
 ```bash
-infx --version
-infx-llm --version
+nfrx --version
+nfrx-llm --version
 ```
 
 The output includes the version, git SHA and build date.
@@ -369,13 +369,13 @@ The same version information appears at the top of `--help` output.
 On Linux:
 
 ```bash
-PORT=8080 CLIENT_KEY=secret API_KEY=test123 go run ./cmd/infx
+PORT=8080 CLIENT_KEY=secret API_KEY=test123 go run ./cmd/nfrx
 # or to expose metrics on a different port:
-# PORT=8080 METRICS_PORT=9090 CLIENT_KEY=secret API_KEY=test123 go run ./cmd/infx
+# PORT=8080 METRICS_PORT=9090 CLIENT_KEY=secret API_KEY=test123 go run ./cmd/nfrx
 ```
 
 Workers register with the server at `/api/workers/connect`.
-`infx-mcp` connects to the server at `ws://<server>/api/mcp/connect` and receives a unique id which is used by clients when calling `POST /api/mcp/id/{id}`.
+`nfrx-mcp` connects to the server at `ws://<server>/api/mcp/connect` and receives a unique id which is used by clients when calling `POST /api/mcp/id/{id}`.
 
 Sending `SIGTERM` to the server stops acceptance of new worker, MCP, and inference requests while allowing in-flight work to complete. The server waits up to `--drain-timeout` (default 5m) before shutting down.
 
@@ -385,18 +385,18 @@ On Windows (CMD)
 set PORT=8080
 set CLIENT_KEY=secret
 set API_KEY=test123
-go run .\cmd\infx
+go run .\cmd\nfrx
 REM or if you built:
-.\bin\infx.exe
+.\bin\nfrx.exe
 ```
 
 On Windows (Powershell)
 
 ```
 $env:PORT = "8080"; $env:CLIENT_KEY = "secret"; $env:API_KEY = "test123"
-go run .\cmd\infx
+go run .\cmd\nfrx
 # or if you built:
-.\bin\infx.exe
+.\bin\nfrx.exe
 ```
 
 
@@ -405,7 +405,7 @@ go run .\cmd\infx
 On Linux:
 
 ```bash
-SERVER_URL=ws://localhost:8080/api/workers/connect CLIENT_KEY=secret COMPLETION_BASE_URL=http://127.0.0.1:11434/v1 CLIENT_NAME=Alpha go run ./cmd/infx-llm
+SERVER_URL=ws://localhost:8080/api/workers/connect CLIENT_KEY=secret COMPLETION_BASE_URL=http://127.0.0.1:11434/v1 CLIENT_NAME=Alpha go run ./cmd/nfrx-llm
 ```
 Optionally set `COMPLETION_API_KEY` to forward an API key to the backend. The worker proxies requests to `${COMPLETION_BASE_URL}/chat/completions`.
 
@@ -415,9 +415,9 @@ On Windows (CMD)
 set SERVER_URL=ws://localhost:8080/api/workers/connect
 set CLIENT_KEY=secret
 set COMPLETION_BASE_URL=http://127.0.0.1:11434/v1
-go run .\cmd\infx-llm
+go run .\cmd\nfrx-llm
 REM or if you built:
-.\bin\infx-llm.exe
+.\bin\nfrx-llm.exe
 ```
 
 On Windows (Powershell)
@@ -427,9 +427,9 @@ $env:SERVER_URL = "ws://localhost:8080/api/workers/connect"
 $env:CLIENT_KEY = "secret"
 $env:COMPLETION_BASE_URL = "http://127.0.0.1:11434/v1"
 $env:CLIENT_NAME = "Alpha"
-go run .\cmd\infx-llm
+go run .\cmd\nfrx-llm
 # or:
-.\bin\infx-llm.exe
+.\bin\nfrx-llm.exe
 ```
 
 By default the worker exits if the server is unavailable. Add `-r` or `--reconnect` to keep retrying with backoff (1s×3, 5s×3, 15s×3, then every 30s).
@@ -441,8 +441,8 @@ When enabled, the worker also retries its Ollama backend and remains connected t
 
 Pre-built images are available:
 
-- Server: `ghcr.io/gaspardpetit/infx:main`
-- Worker: `ghcr.io/gaspardpetit/infx-llm:main`
+- Server: `ghcr.io/gaspardpetit/nfrx:main`
+- Worker: `ghcr.io/gaspardpetit/nfrx-llm:main`
 
 Tagged releases follow semantic versioning (e.g., `v1.2.3`, `v1.2`, `v1`, `latest`); the `main` tag tracks the latest development snapshot.
 
@@ -450,7 +450,7 @@ Tagged releases follow semantic versioning (e.g., `v1.2.3`, `v1.2`, `v1`, `lates
 
 ```bash
 docker run --rm -p 8080:8080 -e CLIENT_KEY=secret -e API_KEY=test123 \
-  ghcr.io/gaspardpetit/infx:main
+  ghcr.io/gaspardpetit/nfrx:main
 ```
 
 ### Worker
@@ -460,7 +460,7 @@ docker run --rm \
   -e SERVER_URL=ws://localhost:8080/api/workers/connect \
   -e CLIENT_KEY=secret \
   -e COMPLETION_BASE_URL=http://host.docker.internal:11434/v1 \
-  ghcr.io/gaspardpetit/infx-llm:main
+  ghcr.io/gaspardpetit/nfrx-llm:main
 ```
 
 When started with `--status-addr <addr>`, the worker serves local endpoints:
@@ -490,25 +490,25 @@ first run and stored alongside the worker config as `worker.token`.
 
 When running as a systemd service, both components read optional configuration
 files managed by systemd. The server loads variables from
-`/etc/infx/server.env` while the worker reads `/etc/infx/worker.env`.
+`/etc/nfrx/server.env` while the worker reads `/etc/nfrx/worker.env`.
 Each file contains `KEY=value` pairs, for example:
 
 ```bash
-# /etc/infx/server.env
+# /etc/nfrx/server.env
 # API_KEY=your_api_key
 # CLIENT_KEY=secret
 ```
 
-Commented example files are installed to `/etc/infx/`; edit these files to configure the services.
+Commented example files are installed to `/etc/nfrx/`; edit these files to configure the services.
 
 When no explicit paths are provided, the worker falls back to OS defaults for
 its configuration and logs:
 
-- **Linux:** `/etc/infx/worker.yaml`
-- **macOS:** `~/Library/Application Support/infx/worker.yaml` and
-  `~/Library/Logs/infx/`
-- **Windows:** `%ProgramData%\infx\worker.yaml` and
-  `%ProgramData%\infx\Logs\`
+- **Linux:** `/etc/nfrx/worker.yaml`
+- **macOS:** `~/Library/Application Support/nfrx/worker.yaml` and
+  `~/Library/Logs/nfrx/`
+- **Windows:** `%ProgramData%\nfrx\worker.yaml` and
+  `%ProgramData%\nfrx\Logs\`
 
 These locations can be overridden via the `CONFIG_FILE` and `LOG_DIR`
 environment variables or the `--config` and `--log-dir` flags.
@@ -594,16 +594,16 @@ go test ./...
 ## Windows integration (experimental)
 
 An initial Windows tray application and service wrapper live under `desktop/windows/`.
-A WiX-based MSI installer in `desktop/windows/Installer` installs the worker and tray binaries, registers the `infx` service, creates `%ProgramData%\infx` with a default configuration, and adds a Start Menu shortcut for the tray.
-The service wrapper launches `infx-llm.exe` installed at
-`%ProgramFiles%\infx\infx-llm.exe` with its working directory set to
-`%ProgramData%\infx`. Configuration is read from
-`%ProgramData%\infx\worker.yaml` and log output is written to
-`%ProgramData%\infx\Logs\worker.log`. The service is registered as
-`infx` with delayed automatic start. The tray app now polls the local worker
+A WiX-based MSI installer in `desktop/windows/Installer` installs the worker and tray binaries, registers the `nfrx` service, creates `%ProgramData%\nfrx` with a default configuration, and adds a Start Menu shortcut for the tray.
+The service wrapper launches `nfrx-llm.exe` installed at
+`%ProgramFiles%\nfrx\nfrx-llm.exe` with its working directory set to
+`%ProgramData%\nfrx`. Configuration is read from
+`%ProgramData%\nfrx\worker.yaml` and log output is written to
+`%ProgramData%\nfrx\Logs\worker.log`. The service is registered as
+`nfrx` with delayed automatic start. The tray app now polls the local worker
 every two seconds and updates its menu and tooltip to reflect the current status.
 A details dialog shows connection information, job counts, and any last error. A preferences window can edit the worker configuration and write it back to the YAML file, and the menu offers quick links to open the config and logs folders, view live logs, and collect diagnostics.
-The tray app checks the [infx GitHub releases](https://github.com/gaspardpetit/infx/releases) once per day and notifies when a new version is available.
+The tray app checks the [nfrx GitHub releases](https://github.com/gaspardpetit/nfrx/releases) once per day and notifies when a new version is available.
 For manual end-to-end verification on a clean VM, see [desktop/windows/ACCEPTANCE.md](desktop/windows/ACCEPTANCE.md).
 
 ## Currently Supported
@@ -623,11 +623,11 @@ For manual end-to-end verification on a clean VM, see [desktop/windows/ACCEPTANC
 | Real-time state API (JSON) | ✅ | `GET /api/state` returns full server/worker snapshot |
 | Real-time state stream (SSE) | ✅ | `GET /api/state/stream` for dashboards |
 | Token usage tracking | ✅ | Per-model and per-worker token totals (in/out) with average rate on dashboard |
-| Per-model success/error rates | ✅ | `infx_model_requests_total{outcome=...}` |
+| Per-model success/error rates | ✅ | `nfrx_model_requests_total{outcome=...}` |
 | Build info (server & worker) | ✅ | Server ldflags; worker-reported version/SHA/date reflected in state |
 | Draining | ✅ | Workers can be configured to drain before exiting to avoid interrupting an ongoing request with `--drain-timeout` |
 | Linux Deamons | ✅ | Debian packages are provided to install the worker and server as daemons |
 | Desktop Trays | In Progress | Windows and macOS tray applications to launch, configure and monitor the worker |
 | Server dashboard | ✅ | `/state` HTML page visualizes workers via SSE |
-| MCP endpoint bearer auth | ✅ | `infx-mcp` requires `Authorization: Bearer <AUTH_TOKEN>` when set |
-| Private MCP Endpoints | ✅ | Allow clients to expose an ephemeral MCP server through the `infx-mcp` relay |
+| MCP endpoint bearer auth | ✅ | `nfrx-mcp` requires `Authorization: Bearer <AUTH_TOKEN>` when set |
+| Private MCP Endpoints | ✅ | Allow clients to expose an ephemeral MCP server through the `nfrx-mcp` relay |

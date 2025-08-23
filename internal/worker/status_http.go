@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gaspardpetit/infx/internal/logx"
+	"github.com/gaspardpetit/nfrx/internal/logx"
 )
 
 // StartStatusServer starts an HTTP server exposing status, version, and control endpoints.

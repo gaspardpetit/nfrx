@@ -1,6 +1,6 @@
 # Configuration reference
 
-This document lists configuration options for the infx tools. Settings can be supplied via environment variables, command line flags, or configuration files. Sample config templates with defaults live under `examples/config/`. Logging is controlled globally via `LOG_LEVEL`.
+This document lists configuration options for the nfrx tools. Settings can be supplied via environment variables, command line flags, or configuration files. Sample config templates with defaults live under `examples/config/`. Logging is controlled globally via `LOG_LEVEL`.
 
 ## Common
 
@@ -8,13 +8,13 @@ This document lists configuration options for the infx tools. Settings can be su
 |----------|------------|---------|---------|----------|
 | `LOG_LEVEL` | `log_level` | set logging verbosity (`all`, `debug`, `info`, `warn`, `error`, `fatal`, `none`) | `info` | `--log-level` |
 
-## infx
+## nfrx
 
 The server optionally reads settings from a YAML config file. Defaults:
 
-- macOS: `~/Library/Application Support/infx/server.yaml`
-- Windows: `%ProgramData%\\infx\\server.yaml`
-- Linux: `/etc/infx/server.yaml`
+- macOS: `~/Library/Application Support/nfrx/server.yaml`
+- Windows: `%ProgramData%\\nfrx\\server.yaml`
+- Linux: `/etc/nfrx/server.yaml`
 
 | Variable | Config key | Purpose | Default | CLI flag |
 |----------|------------|---------|---------|----------|
@@ -34,13 +34,13 @@ The server optionally reads settings from a YAML config file. Defaults:
 | `BROKER_WS_DEAD_AFTER_MS` | — | MCP WebSocket idle timeout in milliseconds | `45000` | — |
 | `BROKER_MAX_CONCURRENCY_PER_CLIENT` | — | maximum concurrent MCP sessions per client | `16` | — |
 
-## infx-llm
+## nfrx-llm
 
 The worker optionally reads settings from a YAML config file. Defaults:
 
-- macOS: `~/Library/Application Support/infx/worker.yaml`
-- Windows: `%ProgramData%\\infx\\worker.yaml`
-- Linux: `/etc/infx/worker.yaml`
+- macOS: `~/Library/Application Support/nfrx/worker.yaml`
+- Windows: `%ProgramData%\\nfrx\\worker.yaml`
+- Linux: `/etc/nfrx/worker.yaml`
 
 | Variable | Config key | Purpose | Default | CLI flag |
 |----------|------------|---------|---------|----------|
@@ -62,13 +62,13 @@ The worker optionally reads settings from a YAML config file. Defaults:
 | `REQUEST_TIMEOUT` | — | seconds without backend feedback before failing a job | `300` | `--request-timeout` |
 
 
-## infx-mcp
+## nfrx-mcp
 
-`infx-mcp` reads additional settings from a YAML file when `CONFIG_FILE` is set. Defaults:
+`nfrx-mcp` reads additional settings from a YAML file when `CONFIG_FILE` is set. Defaults:
 
-- macOS: `~/Library/Application Support/infx/mcp.yaml`
-- Windows: `%ProgramData%\\infx\\mcp.yaml`
-- Linux: `/etc/infx/mcp.yaml`
+- macOS: `~/Library/Application Support/nfrx/mcp.yaml`
+- Windows: `%ProgramData%\\nfrx\\mcp.yaml`
+- Linux: `/etc/nfrx/mcp.yaml`
 
 | Variable | Config key | Purpose | Default | CLI flag |
 |----------|------------|---------|---------|----------|

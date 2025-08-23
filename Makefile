@@ -12,9 +12,9 @@ LDFLAGS ?= -s -w -X main.version=$(VERSION) -X main.buildSHA=$(BUILD_SHA) -X mai
 GOFLAGS ?= -trimpath
 
 build:
-	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./cmd/infx
-	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./cmd/infx-llm
-	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./cmd/infx-mcp
+	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./cmd/nfrx
+	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./cmd/nfrx-llm
+	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./cmd/nfrx-mcp
 
 test:
 	go test ./... -race -count=1

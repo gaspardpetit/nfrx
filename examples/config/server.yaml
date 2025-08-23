@@ -1,4 +1,4 @@
-# Example configuration for infx
+# Example configuration for nfrx
 port: 8080                    # HTTP listen port for the public API
 metrics_addr: ":8080"        # Prometheus metrics listen address
 # log_level: info             # logging verbosity (all, debug, info, warn, error, fatal, none)

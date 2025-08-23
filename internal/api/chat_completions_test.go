@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gaspardpetit/infx/internal/ctrl"
+	"github.com/gaspardpetit/nfrx/internal/ctrl"
 )
 
 type flushRecorder struct {

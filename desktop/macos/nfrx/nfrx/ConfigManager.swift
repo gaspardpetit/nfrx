@@ -6,7 +6,7 @@ class ConfigManager {
     private init() {}
 
     var configDirURL: URL {
-        fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/infx", isDirectory: true)
+        fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/nfrx", isDirectory: true)
     }
 
     var configFileURL: URL {
@@ -14,11 +14,11 @@ class ConfigManager {
     }
 
     var logsDirURL: URL {
-        fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/infx", isDirectory: true)
+        fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/nfrx", isDirectory: true)
     }
 
     var launchAgentURL: URL {
-        fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/LaunchAgents/io.infx.llm.plist")
+        fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/LaunchAgents/io.nfrx.llm.plist")
     }
 
     func load() -> WorkerConfig {
@@ -53,7 +53,7 @@ class ConfigManager {
             throw NSError(domain: "ConfigManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No diagnostic files found"])
         }
         let desktop = fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Desktop", isDirectory: true)
-        let zipURL = desktop.appendingPathComponent("InfxDiagnostics.zip")
+        let zipURL = desktop.appendingPathComponent("NfrxDiagnostics.zip")
         try? fileManager.removeItem(at: zipURL)
         let process = Process()
         process.launchPath = "/usr/bin/zip"

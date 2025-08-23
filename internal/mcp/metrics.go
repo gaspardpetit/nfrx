@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gaspardpetit/infx/internal/logx"
+	"github.com/gaspardpetit/nfrx/internal/logx"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 

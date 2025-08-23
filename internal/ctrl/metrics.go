@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gaspardpetit/infx/internal/serverstate"
+	"github.com/gaspardpetit/nfrx/internal/serverstate"
 )
 
 // WorkerStatus represents the current state of a worker.

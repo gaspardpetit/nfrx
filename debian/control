@@ -1,20 +1,20 @@
-Source: infx
+Source: nfrx
 Section: utils
 Priority: optional
 Maintainer: Gaspard Petit <gaspardpetit@gmail.com>
 Build-Depends: debhelper-compat (= 13), dh-golang, golang-any:native
 Standards-Version: 4.7.0
-Homepage: https://github.com/gaspardpetit/infx
+Homepage: https://github.com/gaspardpetit/nfrx
 Rules-Requires-Root: no
 
-Package: infx
+Package: nfrx
 Architecture: any
 Depends: ${misc:Depends}, adduser
-Description: infx server component (daemon)
- The server for infx.
+Description: nfrx server component (daemon)
+ The server for nfrx.
 
-Package: infx-llm
+Package: nfrx-llm
 Architecture: any
 Depends: ${misc:Depends}, adduser
-Description: infx worker component (daemon)
- The worker for infx.
+Description: nfrx worker component (daemon)
+ The worker for nfrx.

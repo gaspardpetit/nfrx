@@ -1,13 +1,13 @@
 [Unit]
-Description=infx worker
+Description=nfrx worker
 After=network-online.target
 Wants=network-online.target
 
 [Service]
-User=infx
-Group=infx
-EnvironmentFile=-/etc/infx/worker.env
-ExecStart=/usr/bin/infx-llm $WORKER_FLAGS
+User=nfrx
+Group=nfrx
+EnvironmentFile=-/etc/nfrx/worker.env
+ExecStart=/usr/bin/nfrx-llm $WORKER_FLAGS
 Restart=on-failure
 RestartSec=3s
 AmbientCapabilities=
@@ -16,8 +16,8 @@ ProtectSystem=full
 ProtectHome=true
 PrivateTmp=true
 CapabilityBoundingSet=
-StateDirectory=infx
-RuntimeDirectory=infx
+StateDirectory=nfrx
+RuntimeDirectory=nfrx
 # Hardening knobs (adjust as needed)
 ProtectKernelLogs=true
 ProtectKernelModules=true

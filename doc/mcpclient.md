@@ -1,6 +1,6 @@
 # MCP Client Guide
 
-This guide covers operation and development of the **infx-mcp** connector which bridges `infx` to third-party Model Context Protocol (MCP) providers.
+This guide covers operation and development of the **nfrx-mcp** connector which bridges `nfrx` to third-party Model Context Protocol (MCP) providers.
 
 ## Operator Guide
 

@@ -16,13 +16,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/gaspardpetit/infx/internal/config"
-	"github.com/gaspardpetit/infx/internal/ctrl"
-	"github.com/gaspardpetit/infx/internal/logx"
-	"github.com/gaspardpetit/infx/internal/mcp"
-	"github.com/gaspardpetit/infx/internal/metrics"
-	"github.com/gaspardpetit/infx/internal/server"
-	"github.com/gaspardpetit/infx/internal/serverstate"
+	"github.com/gaspardpetit/nfrx/internal/config"
+	"github.com/gaspardpetit/nfrx/internal/ctrl"
+	"github.com/gaspardpetit/nfrx/internal/logx"
+	"github.com/gaspardpetit/nfrx/internal/mcp"
+	"github.com/gaspardpetit/nfrx/internal/metrics"
+	"github.com/gaspardpetit/nfrx/internal/server"
+	"github.com/gaspardpetit/nfrx/internal/serverstate"
 )
 
 var (
@@ -33,8 +33,8 @@ var (
 
 func binaryName() string {
 	b := filepath.Base(os.Args[0])
-	if strings.HasPrefix(b, "infx-") {
-		return strings.TrimPrefix(b, "infx-")
+	if strings.HasPrefix(b, "nfrx-") {
+		return strings.TrimPrefix(b, "nfrx-")
 	}
 	return b
 }
@@ -44,12 +44,12 @@ func main() {
 	var cfg config.ServerConfig
 	cfg.BindFlags()
 	flag.Usage = func() {
-		_, _ = fmt.Fprintf(flag.CommandLine.Output(), "infx-%s version=%s sha=%s date=%s\n\n", binaryName(), version, buildSHA, buildDate)
+		_, _ = fmt.Fprintf(flag.CommandLine.Output(), "nfrx-%s version=%s sha=%s date=%s\n\n", binaryName(), version, buildSHA, buildDate)
 		flag.PrintDefaults()
 	}
 	flag.Parse()
 	if *showVersion {
-		fmt.Printf("infx-%s version=%s sha=%s date=%s\n", binaryName(), version, buildSHA, buildDate)
+		fmt.Printf("nfrx-%s version=%s sha=%s date=%s\n", binaryName(), version, buildSHA, buildDate)
 		return
 	}
 

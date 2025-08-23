@@ -11,7 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// ServerConfig holds configuration for the infx server.
+// ServerConfig holds configuration for the nfrx server.
 type ServerConfig struct {
 	Port                  int
 	MetricsAddr           string

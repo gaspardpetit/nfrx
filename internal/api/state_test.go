@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/gaspardpetit/infx/internal/ctrl"
+	"github.com/gaspardpetit/nfrx/internal/ctrl"
 )
 
 func TestGetState(t *testing.T) {

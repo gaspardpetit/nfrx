@@ -9,11 +9,11 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/gaspardpetit/infx/api/generated"
-	"github.com/gaspardpetit/infx/internal/api"
-	"github.com/gaspardpetit/infx/internal/config"
-	"github.com/gaspardpetit/infx/internal/ctrl"
-	"github.com/gaspardpetit/infx/internal/mcp"
+	"github.com/gaspardpetit/nfrx/api/generated"
+	"github.com/gaspardpetit/nfrx/internal/api"
+	"github.com/gaspardpetit/nfrx/internal/config"
+	"github.com/gaspardpetit/nfrx/internal/ctrl"
+	"github.com/gaspardpetit/nfrx/internal/mcp"
 )
 
 // New constructs the HTTP handler for the server.

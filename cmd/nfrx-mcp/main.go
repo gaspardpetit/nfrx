@@ -14,10 +14,10 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
-	"github.com/gaspardpetit/infx/internal/config"
-	"github.com/gaspardpetit/infx/internal/logx"
-	"github.com/gaspardpetit/infx/internal/mcp"
-	reconnect "github.com/gaspardpetit/infx/internal/reconnect"
+	"github.com/gaspardpetit/nfrx/internal/config"
+	"github.com/gaspardpetit/nfrx/internal/logx"
+	"github.com/gaspardpetit/nfrx/internal/mcp"
+	reconnect "github.com/gaspardpetit/nfrx/internal/reconnect"
 )
 
 var (
@@ -100,7 +100,7 @@ func main() {
 	cfg.BindFlags()
 	flag.Parse()
 	if *showVersion {
-		fmt.Printf("infx-mcp version=%s sha=%s date=%s\n", version, buildSHA, buildDate)
+		fmt.Printf("nfrx-mcp version=%s sha=%s date=%s\n", version, buildSHA, buildDate)
 		return
 	}
 	if cfg.ConfigFile != "" {

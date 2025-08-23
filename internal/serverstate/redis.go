@@ -19,7 +19,7 @@ type redisStore struct {
 	ctx    context.Context
 }
 
-const redisKey = "infx:state"
+const redisKey = "nfrx:state"
 
 // NewRedisStore connects to the given Redis URL and returns a Store.
 // The underlying key is initialized to a default state if it does not exist.

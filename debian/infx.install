@@ -1,3 +1,0 @@
-build/bin/infx usr/bin/
-debian/infx.service usr/lib/systemd/system/
-debian/examples/server.env etc/infx/server.env

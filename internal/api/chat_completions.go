@@ -10,10 +10,10 @@ import (
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 
-	"github.com/gaspardpetit/infx/internal/ctrl"
-	"github.com/gaspardpetit/infx/internal/logx"
-	"github.com/gaspardpetit/infx/internal/metrics"
-	"github.com/gaspardpetit/infx/internal/serverstate"
+	"github.com/gaspardpetit/nfrx/internal/ctrl"
+	"github.com/gaspardpetit/nfrx/internal/logx"
+	"github.com/gaspardpetit/nfrx/internal/metrics"
+	"github.com/gaspardpetit/nfrx/internal/serverstate"
 )
 
 // ChatCompletionsHandler handles POST /api/v1/chat/completions as a pass-through.

@@ -12,9 +12,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gaspardpetit/infx/internal/config"
-	"github.com/gaspardpetit/infx/internal/logx"
-	"github.com/gaspardpetit/infx/internal/worker"
+	"github.com/gaspardpetit/nfrx/internal/config"
+	"github.com/gaspardpetit/nfrx/internal/logx"
+	"github.com/gaspardpetit/nfrx/internal/worker"
 )
 
 var (
@@ -25,8 +25,8 @@ var (
 
 func binaryName() string {
 	b := filepath.Base(os.Args[0])
-	if strings.HasPrefix(b, "infx-") {
-		return strings.TrimPrefix(b, "infx-")
+	if strings.HasPrefix(b, "nfrx-") {
+		return strings.TrimPrefix(b, "nfrx-")
 	}
 	return b
 }
@@ -36,12 +36,12 @@ func main() {
 	var cfg config.WorkerConfig
 	cfg.BindFlags()
 	flag.Usage = func() {
-		_, _ = fmt.Fprintf(flag.CommandLine.Output(), "infx-%s version=%s sha=%s date=%s\n\n", binaryName(), version, buildSHA, buildDate)
+		_, _ = fmt.Fprintf(flag.CommandLine.Output(), "nfrx-%s version=%s sha=%s date=%s\n\n", binaryName(), version, buildSHA, buildDate)
 		flag.PrintDefaults()
 	}
 	flag.Parse()
 	if *showVersion {
-		fmt.Printf("infx-%s version=%s sha=%s date=%s\n", binaryName(), version, buildSHA, buildDate)
+		fmt.Printf("nfrx-%s version=%s sha=%s date=%s\n", binaryName(), version, buildSHA, buildDate)
 		return
 	}
 

@@ -1,6 +1,6 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: infx
-Source: https://github.com/gaspardpetit/infx
+Upstream-Name: nfrx
+Source: https://github.com/gaspardpetit/nfrx
 
 Files: *
 Copyright: 2024, 2025 Gaspard Petit

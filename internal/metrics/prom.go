@@ -9,7 +9,7 @@ import (
 var (
 	buildInfo = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name:        "infx_build_info",
+			Name:        "nfrx_build_info",
 			Help:        "Build information",
 			ConstLabels: prometheus.Labels{"component": "server"},
 		},
@@ -18,7 +18,7 @@ var (
 
 	modelRequests = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "infx_model_requests_total",
+			Name: "nfrx_model_requests_total",
 			Help: "Number of model requests",
 		},
 		[]string{"model", "outcome"},
@@ -26,7 +26,7 @@ var (
 
 	modelTokens = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "infx_model_tokens_total",
+			Name: "nfrx_model_tokens_total",
 			Help: "Tokens processed per model",
 		},
 		[]string{"kind", "model"},
@@ -34,7 +34,7 @@ var (
 
 	workerTokens = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "infx_worker_tokens_total",
+			Name: "nfrx_worker_tokens_total",
 			Help: "Tokens processed per worker",
 		},
 		[]string{"worker_id", "kind"},
@@ -42,7 +42,7 @@ var (
 
 	workerProcessing = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "infx_worker_processing_seconds_total",
+			Name: "nfrx_worker_processing_seconds_total",
 			Help: "Total processing time per worker",
 		},
 		[]string{"worker_id"},
@@ -50,7 +50,7 @@ var (
 
 	modelEmbeddings = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "infx_model_embeddings_total",
+			Name: "nfrx_model_embeddings_total",
 			Help: "Embeddings processed per model",
 		},
 		[]string{"model"},
@@ -58,7 +58,7 @@ var (
 
 	workerEmbeddings = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "infx_worker_embeddings_total",
+			Name: "nfrx_worker_embeddings_total",
 			Help: "Embeddings processed per worker",
 		},
 		[]string{"worker_id"},
@@ -66,7 +66,7 @@ var (
 
 	workerEmbeddingProcessing = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "infx_worker_embedding_processing_seconds_total",
+			Name: "nfrx_worker_embedding_processing_seconds_total",
 			Help: "Total embedding processing time per worker",
 		},
 		[]string{"worker_id"},
@@ -74,7 +74,7 @@ var (
 
 	requestDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name:    "infx_request_duration_seconds",
+			Name:    "nfrx_request_duration_seconds",
 			Help:    "Request duration",
 			Buckets: prometheus.DefBuckets,
 		},
