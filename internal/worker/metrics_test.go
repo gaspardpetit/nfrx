@@ -11,7 +11,7 @@ import (
 
 func TestMetricsServer(t *testing.T) {
 	resetState()
-	SetWorkerInfo("id1", "worker", 2, nil)
+	SetWorkerInfo("id1", "worker", 2, 0, nil)
 	SetConnectedToServer(true)
 	SetConnectedToBackend(true)
 	ctx, cancel := context.WithCancel(context.Background())

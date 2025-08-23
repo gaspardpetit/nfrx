@@ -24,7 +24,7 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 	if cfg.ClientID == "" {
 		cfg.ClientID = uuid.NewString()
 	}
-	SetWorkerInfo(cfg.ClientID, cfg.ClientName, 0, nil)
+	SetWorkerInfo(cfg.ClientID, cfg.ClientName, 0, cfg.EmbeddingBatchSize, nil)
 	SetState("not_ready")
 	SetConnectedToServer(false)
 	SetConnectedToBackend(false)
@@ -101,15 +101,16 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg conf
 	_ = probeBackend(connCtx, client, cfg, nil)
 	vi := GetVersionInfo()
 	regMsg := ctrl.RegisterMessage{
-		Type:           "register",
-		WorkerID:       cfg.ClientID,
-		WorkerName:     cfg.ClientName,
-		ClientKey:      cfg.ClientKey,
-		Models:         GetState().Models,
-		MaxConcurrency: GetState().MaxConcurrency,
-		Version:        vi.Version,
-		BuildSHA:       vi.BuildSHA,
-		BuildDate:      vi.BuildDate,
+		Type:               "register",
+		WorkerID:           cfg.ClientID,
+		WorkerName:         cfg.ClientName,
+		ClientKey:          cfg.ClientKey,
+		Models:             GetState().Models,
+		MaxConcurrency:     GetState().MaxConcurrency,
+		EmbeddingBatchSize: GetState().EmbeddingBatchSize,
+		Version:            vi.Version,
+		BuildSHA:           vi.BuildSHA,
+		BuildDate:          vi.BuildDate,
 	}
 	b, _ := json.Marshal(regMsg)
 	if err := ws.Write(connCtx, websocket.MessageText, b); err != nil {
@@ -158,7 +159,7 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg conf
 			}
 		}
 	}()
-	st := ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: GetState().MaxConcurrency, Models: GetState().Models}
+	st := ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: GetState().MaxConcurrency, EmbeddingBatchSize: GetState().EmbeddingBatchSize, Models: GetState().Models}
 	if GetState().ConnectedToBackend {
 		st.Status = "idle"
 	} else {
@@ -324,12 +325,12 @@ func probeBackend(ctx context.Context, client healthClient, cfg config.WorkerCon
 	if err != nil {
 		wasConnected := GetState().ConnectedToBackend
 		SetConnectedToBackend(false)
-		SetWorkerInfo(cfg.ClientID, cfg.ClientName, 0, nil)
+		SetWorkerInfo(cfg.ClientID, cfg.ClientName, 0, cfg.EmbeddingBatchSize, nil)
 		SetState("not_ready")
 		SetLastError(err.Error())
 
 		// Emit an update on error (always), but keep the channel non-blocking.
-		msg := ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: 0, Status: "not_ready"}
+		msg := ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: 0, EmbeddingBatchSize: cfg.EmbeddingBatchSize, Status: "not_ready"}
 		sendStatusUpdate(ch, msg)
 
 		// State changed from connected->disconnected; that's fine; test checks state, not channel.
@@ -342,7 +343,7 @@ func probeBackend(ctx context.Context, client healthClient, cfg config.WorkerCon
 	prevModels := append([]string(nil), prev.Models...)
 
 	SetConnectedToBackend(true)
-	SetWorkerInfo(cfg.ClientID, cfg.ClientName, cfg.MaxConcurrency, models)
+	SetWorkerInfo(cfg.ClientID, cfg.ClientName, cfg.MaxConcurrency, cfg.EmbeddingBatchSize, models)
 	if GetState().ConnectedToServer && !IsDraining() && GetState().CurrentJobs == 0 {
 		SetState("connected_idle")
 	}
@@ -364,10 +365,11 @@ func probeBackend(ctx context.Context, client healthClient, cfg config.WorkerCon
 	}
 	if changed {
 		msg := ctrl.StatusUpdateMessage{
-			Type:           "status_update",
-			MaxConcurrency: cfg.MaxConcurrency,
-			Models:         models,
-			Status:         "idle",
+			Type:               "status_update",
+			MaxConcurrency:     cfg.MaxConcurrency,
+			EmbeddingBatchSize: cfg.EmbeddingBatchSize,
+			Models:             models,
+			Status:             "idle",
 		}
 		sendStatusUpdate(ch, msg)
 	}

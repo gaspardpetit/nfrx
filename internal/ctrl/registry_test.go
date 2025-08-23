@@ -7,7 +7,7 @@ import (
 
 func TestRegistry(t *testing.T) {
 	reg := NewRegistry()
-	w := &Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1}
+	w := &Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, EmbeddingBatchSize: 0}
 	reg.Add(w)
 	if len(reg.WorkersForModel("m")) != 1 {
 		t.Fatalf("expected worker for model")
@@ -24,7 +24,7 @@ func TestRegistry(t *testing.T) {
 
 func TestRegistryPruneExpired(t *testing.T) {
 	reg := NewRegistry()
-	w := &Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, LastHeartbeat: time.Now().Add(-HeartbeatExpiry - time.Second), Send: make(chan interface{}), Jobs: make(map[string]chan interface{})}
+	w := &Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, EmbeddingBatchSize: 0, LastHeartbeat: time.Now().Add(-HeartbeatExpiry - time.Second), Send: make(chan interface{}), Jobs: make(map[string]chan interface{})}
 	jobCh := make(chan interface{})
 	w.Jobs["j1"] = jobCh
 	reg.Add(w)
@@ -42,7 +42,7 @@ func TestRegistryPruneExpired(t *testing.T) {
 
 func TestRegistryWorkersForAlias(t *testing.T) {
 	reg := NewRegistry()
-	w := &Worker{ID: "w1", Models: map[string]bool{"llama2:7b-fp16": true}, MaxConcurrency: 1}
+	w := &Worker{ID: "w1", Models: map[string]bool{"llama2:7b-fp16": true}, MaxConcurrency: 1, EmbeddingBatchSize: 0}
 	reg.Add(w)
 	ws := reg.WorkersForAlias("llama2:7b-q4_0")
 	if len(ws) != 1 || ws[0].ID != "w1" {

@@ -13,15 +13,16 @@ const (
 )
 
 type Worker struct {
-	ID             string
-	Name           string
-	Models         map[string]bool
-	MaxConcurrency int
-	InFlight       int
-	LastHeartbeat  time.Time
-	Send           chan interface{}
-	Jobs           map[string]chan interface{}
-	mu             sync.Mutex
+	ID                 string
+	Name               string
+	Models             map[string]bool
+	MaxConcurrency     int
+	EmbeddingBatchSize int
+	InFlight           int
+	LastHeartbeat      time.Time
+	Send               chan interface{}
+	Jobs               map[string]chan interface{}
+	mu                 sync.Mutex
 }
 
 type Registry struct {

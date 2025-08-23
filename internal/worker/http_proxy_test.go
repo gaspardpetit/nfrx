@@ -45,7 +45,7 @@ func TestHandleHTTPProxyAuthAndStream(t *testing.T) {
 	}))
 	defer ollama.Close()
 
-	cfg := config.WorkerConfig{CompletionBaseURL: ollama.URL + "/v1", CompletionAPIKey: "secret-123"}
+	cfg := config.WorkerConfig{CompletionBaseURL: ollama.URL + "/v1", CompletionAPIKey: "secret-123", EmbeddingBatchSize: 0}
 	sendCh := make(chan []byte, 16)
 	cancels := make(map[string]context.CancelFunc)
 	var mu sync.Mutex

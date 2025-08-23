@@ -28,6 +28,10 @@ var (
 		Name: "infero_worker_max_concurrency",
 		Help: "Maximum number of concurrent jobs",
 	})
+	embeddingBatchSizeGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "infero_worker_embedding_batch_size",
+		Help: "Ideal embedding batch size",
+	})
 	jobsStartedCounter = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "infero_worker_jobs_started_total",
 		Help: "Total number of jobs started",
@@ -56,6 +60,7 @@ func StartMetricsServer(ctx context.Context, addr string) (string, error) {
 		connectedToBackendGauge,
 		currentJobsGauge,
 		maxConcurrencyGauge,
+		embeddingBatchSizeGauge,
 		jobsStartedCounter,
 		jobsSucceededCounter,
 		jobsFailedCounter,
@@ -106,6 +111,10 @@ func setCurrentJobs(n int) {
 
 func setMaxConcurrency(n int) {
 	maxConcurrencyGauge.Set(float64(n))
+}
+
+func setEmbeddingBatchSize(n int) {
+	embeddingBatchSizeGauge.Set(float64(n))
 }
 
 // JobStarted increments the started jobs counter.

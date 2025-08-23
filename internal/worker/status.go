@@ -12,6 +12,7 @@ type State struct {
 	ConnectedToBackend bool      `json:"connected_to_backend"`
 	CurrentJobs        int       `json:"current_jobs"`
 	MaxConcurrency     int       `json:"max_concurrency"`
+	EmbeddingBatchSize int       `json:"embedding_batch_size"`
 	Models             []string  `json:"models"`
 	LastError          string    `json:"last_error"`
 	LastHeartbeat      time.Time `json:"last_heartbeat"`
@@ -54,15 +55,17 @@ func GetVersionInfo() VersionInfo {
 	return buildInfo
 }
 
-func SetWorkerInfo(id, name string, maxConc int, models []string) {
+func SetWorkerInfo(id, name string, maxConc, embedBatch int, models []string) {
 	stateMu.Lock()
 	stateData.WorkerID = id
 	stateData.WorkerName = name
 	stateData.MaxConcurrency = maxConc
+	stateData.EmbeddingBatchSize = embedBatch
 	stateData.Models = append([]string(nil), models...)
 	cur := stateData.CurrentJobs
 	stateMu.Unlock()
 	setMaxConcurrency(maxConc)
+	setEmbeddingBatchSize(embedBatch)
 	setCurrentJobs(cur)
 }
 

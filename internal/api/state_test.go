@@ -15,7 +15,7 @@ import (
 
 func TestGetState(t *testing.T) {
 	metricsReg := ctrl.NewMetricsRegistry("v", "sha", "date")
-	metricsReg.UpsertWorker("w1", "w1", "1", "a", "d", 1, []string{"m"})
+	metricsReg.UpsertWorker("w1", "w1", "1", "a", "d", 1, 0, []string{"m"})
 	metricsReg.SetWorkerStatus("w1", ctrl.StatusConnected)
 	metricsReg.RecordJobStart("w1")
 	metricsReg.RecordJobEnd("w1", "m", 50*time.Millisecond, 5, 7, true, "")

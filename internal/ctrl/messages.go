@@ -3,23 +3,25 @@ package ctrl
 import "encoding/json"
 
 type RegisterMessage struct {
-	Type           string   `json:"type"`
-	WorkerID       string   `json:"worker_id"`
-	WorkerName     string   `json:"worker_name,omitempty"`
-	ClientKey      string   `json:"client_key"`
-	Token          string   `json:"token,omitempty"`
-	Models         []string `json:"models"`
-	MaxConcurrency int      `json:"max_concurrency"`
-	Version        string   `json:"version,omitempty"`
-	BuildSHA       string   `json:"build_sha,omitempty"`
-	BuildDate      string   `json:"build_date,omitempty"`
+	Type               string   `json:"type"`
+	WorkerID           string   `json:"worker_id"`
+	WorkerName         string   `json:"worker_name,omitempty"`
+	ClientKey          string   `json:"client_key"`
+	Token              string   `json:"token,omitempty"`
+	Models             []string `json:"models"`
+	MaxConcurrency     int      `json:"max_concurrency"`
+	EmbeddingBatchSize int      `json:"embedding_batch_size"`
+	Version            string   `json:"version,omitempty"`
+	BuildSHA           string   `json:"build_sha,omitempty"`
+	BuildDate          string   `json:"build_date,omitempty"`
 }
 
 type StatusUpdateMessage struct {
-	Type           string   `json:"type"`
-	MaxConcurrency int      `json:"max_concurrency"`
-	Models         []string `json:"models,omitempty"`
-	Status         string   `json:"status,omitempty"`
+	Type               string   `json:"type"`
+	MaxConcurrency     int      `json:"max_concurrency"`
+	EmbeddingBatchSize int      `json:"embedding_batch_size"`
+	Models             []string `json:"models,omitempty"`
+	Status             string   `json:"status,omitempty"`
 }
 
 type HeartbeatMessage struct {
