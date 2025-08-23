@@ -128,6 +128,7 @@ func EmbeddingsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg *ctr
 		bytesSent := false
 		success := false
 		var errMsg string
+		embeddingsCount := uint64(1)
 		var idle *time.Timer
 		var timeoutCh <-chan time.Time
 		if timeout > 0 {
@@ -138,10 +139,15 @@ func EmbeddingsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg *ctr
 
 		defer func() {
 			dur := time.Since(start)
-			metricsReg.RecordJobEnd(worker.ID, meta.Model, dur, 0, 0, success, errMsg)
+			metricsReg.RecordJobEnd(worker.ID, meta.Model, dur, 0, 0, embeddingsCount, success, errMsg)
 			metricsReg.SetWorkerStatus(worker.ID, ctrl.StatusIdle)
 			metrics.ObserveRequestDuration(worker.ID, meta.Model, dur)
 			metrics.RecordModelRequest(meta.Model, success)
+			if success {
+				metrics.RecordWorkerEmbeddingProcessingTime(worker.ID, dur)
+				metrics.RecordWorkerEmbeddings(worker.ID, embeddingsCount)
+				metrics.RecordModelEmbeddings(meta.Model, embeddingsCount)
+			}
 		}()
 		for {
 			select {
@@ -341,7 +347,7 @@ func handleEmbeddingBatches(w http.ResponseWriter, r *http.Request, reg *ctrl.Re
 			reg.IncInFlight(worker.ID)
 			reqID := uuid.NewString()
 			logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", model).Msg("dispatch")
-			respBody, status, success, errMsg := proxyEmbeddingOnce(ctx, worker, reqID, logID, model, headers, body, metricsReg, timeout)
+			respBody, status, success, errMsg := proxyEmbeddingOnce(ctx, worker, reqID, logID, model, headers, body, metricsReg, batch, timeout)
 			reg.DecInFlight(worker.ID)
 			worker.RemoveJob(reqID)
 			if !success {
@@ -478,7 +484,7 @@ func handleEmbeddingBatches(w http.ResponseWriter, r *http.Request, reg *ctrl.Re
 				mp["input"] = b
 				body, _ := json.Marshal(mp)
 				logx.Log.Info().Str("request_id", logID).Str("worker_id", current.ID).Str("worker_name", current.Name).Str("model", model).Msg("dispatch")
-				respBody, status, success, errMsg := proxyEmbeddingOnce(ctx, current, reqID, logID, model, headers, body, metricsReg, timeout)
+				respBody, status, success, errMsg := proxyEmbeddingOnce(ctx, current, reqID, logID, model, headers, body, metricsReg, len(t.inputs), timeout)
 				reg.DecInFlight(current.ID)
 				current.RemoveJob(reqID)
 				if success {
@@ -560,7 +566,7 @@ func handleEmbeddingBatches(w http.ResponseWriter, r *http.Request, reg *ctrl.Re
 	}
 }
 
-func proxyEmbeddingOnce(ctx context.Context, worker *ctrl.Worker, reqID, logID, model string, headers map[string]string, body []byte, metricsReg *ctrl.MetricsRegistry, timeout time.Duration) ([]byte, int, bool, string) {
+func proxyEmbeddingOnce(ctx context.Context, worker *ctrl.Worker, reqID, logID, model string, headers map[string]string, body []byte, metricsReg *ctrl.MetricsRegistry, embeddings int, timeout time.Duration) ([]byte, int, bool, string) {
 	ch := make(chan interface{}, 16)
 	worker.AddJob(reqID, ch)
 
@@ -602,7 +608,7 @@ func proxyEmbeddingOnce(ctx context.Context, worker *ctrl.Worker, reqID, logID, 
 			default:
 			}
 			errMsg = "canceled"
-			metricsReg.RecordJobEnd(worker.ID, model, time.Since(start), 0, 0, success, errMsg)
+			metricsReg.RecordJobEnd(worker.ID, model, time.Since(start), 0, 0, 0, success, errMsg)
 			metricsReg.SetWorkerStatus(worker.ID, ctrl.StatusIdle)
 			metrics.ObserveRequestDuration(worker.ID, model, time.Since(start))
 			metrics.RecordModelRequest(model, false)
@@ -616,7 +622,7 @@ func proxyEmbeddingOnce(ctx context.Context, worker *ctrl.Worker, reqID, logID, 
 				case worker.Send <- ctrl.HTTPProxyCancelMessage{Type: "http_proxy_cancel", RequestID: reqID}:
 				default:
 				}
-				metricsReg.RecordJobEnd(worker.ID, model, time.Since(start), 0, 0, false, errMsg)
+				metricsReg.RecordJobEnd(worker.ID, model, time.Since(start), 0, 0, 0, false, errMsg)
 				metricsReg.SetWorkerStatus(worker.ID, ctrl.StatusIdle)
 				metrics.ObserveRequestDuration(worker.ID, model, time.Since(start))
 				metrics.RecordModelRequest(model, false)
@@ -629,7 +635,7 @@ func proxyEmbeddingOnce(ctx context.Context, worker *ctrl.Worker, reqID, logID, 
 		case msg, ok := <-ch:
 			if !ok {
 				errMsg = "closed"
-				metricsReg.RecordJobEnd(worker.ID, model, time.Since(start), 0, 0, false, errMsg)
+				metricsReg.RecordJobEnd(worker.ID, model, time.Since(start), 0, 0, 0, false, errMsg)
 				metricsReg.SetWorkerStatus(worker.ID, ctrl.StatusIdle)
 				metrics.ObserveRequestDuration(worker.ID, model, time.Since(start))
 				metrics.RecordModelRequest(model, false)
@@ -657,7 +663,16 @@ func proxyEmbeddingOnce(ctx context.Context, worker *ctrl.Worker, reqID, logID, 
 					success = status < http.StatusBadRequest
 				}
 				dur := time.Since(start)
-				metricsReg.RecordJobEnd(worker.ID, model, dur, 0, 0, success, errMsg)
+				embCount := uint64(0)
+				if success {
+					embCount = uint64(embeddings)
+				}
+				metricsReg.RecordJobEnd(worker.ID, model, dur, 0, 0, embCount, success, errMsg)
+				if success {
+					metrics.RecordWorkerEmbeddingProcessingTime(worker.ID, dur)
+					metrics.RecordWorkerEmbeddings(worker.ID, embCount)
+					metrics.RecordModelEmbeddings(model, embCount)
+				}
 				metricsReg.SetWorkerStatus(worker.ID, ctrl.StatusIdle)
 				metrics.ObserveRequestDuration(worker.ID, model, dur)
 				metrics.RecordModelRequest(model, success)

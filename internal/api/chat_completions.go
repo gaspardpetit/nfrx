@@ -124,7 +124,7 @@ func ChatCompletionsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg
 
 		defer func() {
 			dur := time.Since(start)
-			metricsReg.RecordJobEnd(worker.ID, meta.Model, dur, tokensIn, tokensOut, success, errMsg)
+			metricsReg.RecordJobEnd(worker.ID, meta.Model, dur, tokensIn, tokensOut, 0, success, errMsg)
 			metricsReg.SetWorkerStatus(worker.ID, ctrl.StatusIdle)
 			metrics.ObserveRequestDuration(worker.ID, meta.Model, dur)
 			metrics.RecordWorkerProcessingTime(worker.ID, dur)

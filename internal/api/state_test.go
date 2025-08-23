@@ -18,7 +18,7 @@ func TestGetState(t *testing.T) {
 	metricsReg.UpsertWorker("w1", "w1", "1", "a", "d", 1, 0, []string{"m"})
 	metricsReg.SetWorkerStatus("w1", ctrl.StatusConnected)
 	metricsReg.RecordJobStart("w1")
-	metricsReg.RecordJobEnd("w1", "m", 50*time.Millisecond, 5, 7, true, "")
+	metricsReg.RecordJobEnd("w1", "m", 50*time.Millisecond, 5, 7, 0, true, "")
 
 	h := &StateHandler{Metrics: metricsReg}
 	r := httptest.NewRequest(http.MethodGet, "/api/state", nil)

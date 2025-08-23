@@ -30,29 +30,33 @@ type PerModelStats struct {
 
 // WorkerSnapshot represents a snapshot of worker metrics.
 type WorkerSnapshot struct {
-	ID                 string                   `json:"id"`
-	Name               string                   `json:"name"`
-	Status             WorkerStatus             `json:"status"`
-	ConnectedAt        time.Time                `json:"connected_at"`
-	LastHeartbeat      time.Time                `json:"last_heartbeat"`
-	Version            string                   `json:"version"`
-	BuildSHA           string                   `json:"build_sha,omitempty"`
-	BuildDate          string                   `json:"build_date,omitempty"`
-	ModelsSupported    []string                 `json:"models_supported"`
-	MaxConcurrency     int                      `json:"max_concurrency"`
-	EmbeddingBatchSize int                      `json:"embedding_batch_size"`
-	ProcessedTotal     uint64                   `json:"processed_total"`
-	ProcessingMsTotal  uint64                   `json:"processing_ms_total"`
-	AvgProcessingMs    float64                  `json:"avg_processing_ms"`
-	Inflight           int                      `json:"inflight"`
-	FailuresTotal      uint64                   `json:"failures_total"`
-	QueueLen           int                      `json:"queue_len"`
-	LastError          string                   `json:"last_error,omitempty"`
-	TokensInTotal      uint64                   `json:"tokens_in_total"`
-	TokensOutTotal     uint64                   `json:"tokens_out_total"`
-	TokensTotal        uint64                   `json:"tokens_total"`
-	AvgTokensPerSec    float64                  `json:"avg_tokens_per_second"`
-	PerModel           map[string]PerModelStats `json:"per_model"`
+	ID                  string                   `json:"id"`
+	Name                string                   `json:"name"`
+	Status              WorkerStatus             `json:"status"`
+	ConnectedAt         time.Time                `json:"connected_at"`
+	LastHeartbeat       time.Time                `json:"last_heartbeat"`
+	Version             string                   `json:"version"`
+	BuildSHA            string                   `json:"build_sha,omitempty"`
+	BuildDate           string                   `json:"build_date,omitempty"`
+	ModelsSupported     []string                 `json:"models_supported"`
+	MaxConcurrency      int                      `json:"max_concurrency"`
+	EmbeddingBatchSize  int                      `json:"embedding_batch_size"`
+	ProcessedTotal      uint64                   `json:"processed_total"`
+	ProcessingMsTotal   uint64                   `json:"processing_ms_total"`
+	AvgProcessingMs     float64                  `json:"avg_processing_ms"`
+	Inflight            int                      `json:"inflight"`
+	FailuresTotal       uint64                   `json:"failures_total"`
+	QueueLen            int                      `json:"queue_len"`
+	LastError           string                   `json:"last_error,omitempty"`
+	TokensInTotal       uint64                   `json:"tokens_in_total"`
+	TokensOutTotal      uint64                   `json:"tokens_out_total"`
+	TokensTotal         uint64                   `json:"tokens_total"`
+	AvgTokensPerSec     float64                  `json:"avg_tokens_per_second"`
+	EmbeddingsTotal     uint64                   `json:"embeddings_total"`
+	EmbeddingMsTotal    uint64                   `json:"embedding_ms_total"`
+	AvgEmbeddingMs      float64                  `json:"avg_embedding_ms"`
+	AvgEmbeddingsPerSec float64                  `json:"avg_embeddings_per_second"`
+	PerModel            map[string]PerModelStats `json:"per_model"`
 }
 
 // ServerSnapshot contains server-wide aggregates.
@@ -157,6 +161,9 @@ type workerMetrics struct {
 	tokensInTotal  uint64
 	tokensOutTotal uint64
 
+	embeddingsTotal  uint64
+	embeddingMsTotal uint64
+
 	perModel map[string]*PerModelStats
 }
 
@@ -250,7 +257,7 @@ func (m *MetricsRegistry) RecordJobStart(id string) {
 }
 
 // RecordJobEnd records the end of a job.
-func (m *MetricsRegistry) RecordJobEnd(id, model string, duration time.Duration, tokensIn, tokensOut uint64, success bool, errMsg string) {
+func (m *MetricsRegistry) RecordJobEnd(id, model string, duration time.Duration, tokensIn, tokensOut, embeddings uint64, success bool, errMsg string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if w, ok := m.workers[id]; ok {
@@ -261,6 +268,10 @@ func (m *MetricsRegistry) RecordJobEnd(id, model string, duration time.Duration,
 		w.processingMsTotal += uint64(duration.Milliseconds())
 		w.tokensInTotal += tokensIn
 		w.tokensOutTotal += tokensOut
+		if embeddings > 0 && success {
+			w.embeddingsTotal += embeddings
+			w.embeddingMsTotal += uint64(duration.Milliseconds())
+		}
 		if w.perModel == nil {
 			w.perModel = make(map[string]*PerModelStats)
 		}
@@ -378,34 +389,46 @@ func (m *MetricsRegistry) Snapshot() StateResponse {
 		if w.processingMsTotal > 0 {
 			rate = float64(tokensTotal) / (float64(w.processingMsTotal) / 1000)
 		}
+		embAvg := 0.0
+		if w.embeddingsTotal > 0 {
+			embAvg = float64(w.embeddingMsTotal) / float64(w.embeddingsTotal)
+		}
+		embRate := 0.0
+		if w.embeddingMsTotal > 0 {
+			embRate = float64(w.embeddingsTotal) / (float64(w.embeddingMsTotal) / 1000)
+		}
 		perModel := make(map[string]PerModelStats, len(w.perModel))
 		for k, v := range w.perModel {
 			perModel[k] = *v
 		}
 		snapshot := WorkerSnapshot{
-			ID:                 w.id,
-			Name:               w.name,
-			Status:             w.status,
-			ConnectedAt:        w.connectedAt,
-			LastHeartbeat:      w.lastHeartbeat,
-			Version:            w.version,
-			BuildSHA:           w.buildSHA,
-			BuildDate:          w.buildDate,
-			ModelsSupported:    append([]string(nil), w.modelsSupported...),
-			MaxConcurrency:     w.maxConcurrency,
-			EmbeddingBatchSize: w.embeddingBatchSize,
-			ProcessedTotal:     w.processedTotal,
-			ProcessingMsTotal:  w.processingMsTotal,
-			AvgProcessingMs:    avg,
-			Inflight:           w.inflight,
-			FailuresTotal:      w.failuresTotal,
-			QueueLen:           w.queueLen,
-			LastError:          w.lastError,
-			TokensInTotal:      w.tokensInTotal,
-			TokensOutTotal:     w.tokensOutTotal,
-			TokensTotal:        tokensTotal,
-			AvgTokensPerSec:    rate,
-			PerModel:           perModel,
+			ID:                  w.id,
+			Name:                w.name,
+			Status:              w.status,
+			ConnectedAt:         w.connectedAt,
+			LastHeartbeat:       w.lastHeartbeat,
+			Version:             w.version,
+			BuildSHA:            w.buildSHA,
+			BuildDate:           w.buildDate,
+			ModelsSupported:     append([]string(nil), w.modelsSupported...),
+			MaxConcurrency:      w.maxConcurrency,
+			EmbeddingBatchSize:  w.embeddingBatchSize,
+			ProcessedTotal:      w.processedTotal,
+			ProcessingMsTotal:   w.processingMsTotal,
+			AvgProcessingMs:     avg,
+			Inflight:            w.inflight,
+			FailuresTotal:       w.failuresTotal,
+			QueueLen:            w.queueLen,
+			LastError:           w.lastError,
+			TokensInTotal:       w.tokensInTotal,
+			TokensOutTotal:      w.tokensOutTotal,
+			TokensTotal:         tokensTotal,
+			AvgTokensPerSec:     rate,
+			EmbeddingsTotal:     w.embeddingsTotal,
+			EmbeddingMsTotal:    w.embeddingMsTotal,
+			AvgEmbeddingMs:      embAvg,
+			AvgEmbeddingsPerSec: embRate,
+			PerModel:            perModel,
 		}
 		resp.Workers = append(resp.Workers, snapshot)
 	}

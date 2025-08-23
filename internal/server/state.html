@@ -136,6 +136,8 @@ function render() {
       <div>tokens in/out: ${w.tokens_in_total}/${w.tokens_out_total}</div>
       <div>total tokens: ${w.tokens_total}</div>
       <div>avg rate: ${w.avg_tokens_per_second.toFixed(2)} tok/s</div>
+      <div>embeddings: ${w.embeddings_total}</div>
+      <div>avg embed rate: ${w.avg_embeddings_per_second.toFixed(2)} emb/s</div>
     `;
     container.appendChild(div);
   });

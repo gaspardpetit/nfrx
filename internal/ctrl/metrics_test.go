@@ -24,7 +24,7 @@ func TestWorkerLifecycle(t *testing.T) {
 	reg.SetWorkerStatus("w1", StatusConnected)
 	reg.RecordHeartbeat("w1")
 	reg.RecordJobStart("w1")
-	reg.RecordJobEnd("w1", "llama3:8b", 100*time.Millisecond, 10, 20, true, "")
+	reg.RecordJobEnd("w1", "llama3:8b", 100*time.Millisecond, 10, 20, 1, true, "")
 
 	snap := reg.Snapshot()
 	if len(snap.Workers) != 1 {
@@ -37,6 +37,9 @@ func TestWorkerLifecycle(t *testing.T) {
 	if w.PerModel["llama3:8b"].SuccessTotal != 1 {
 		t.Fatalf("expected per-model success")
 	}
+	if w.EmbeddingsTotal != 1 || w.EmbeddingMsTotal != 100 {
+		t.Fatalf("bad embedding metrics %+v", w)
+	}
 	if snap.Server.JobsCompletedTotal != 1 {
 		t.Fatalf("expected job completed")
 	}
@@ -46,7 +49,7 @@ func TestErrorPaths(t *testing.T) {
 	reg := NewMetricsRegistry("v", "sha", "date")
 	reg.UpsertWorker("w1", "w1", "1.0", "a", "today", 1, 0, nil)
 	reg.RecordJobStart("w1")
-	reg.RecordJobEnd("w1", "m", 0, 0, 0, false, "boom")
+	reg.RecordJobEnd("w1", "m", 0, 0, 0, 0, false, "boom")
 
 	snap := reg.Snapshot()
 	w := snap.Workers[0]
@@ -106,7 +109,7 @@ func TestRegistryRace(t *testing.T) {
 			for j := 0; j < 100; j++ {
 				reg.RecordHeartbeat("w")
 				reg.RecordJobStart("w")
-				reg.RecordJobEnd("w", "m", time.Millisecond, 0, 0, true, "")
+				reg.RecordJobEnd("w", "m", time.Millisecond, 0, 0, 0, true, "")
 			}
 		}()
 	}

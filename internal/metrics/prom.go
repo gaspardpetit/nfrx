@@ -48,6 +48,30 @@ var (
 		[]string{"worker_id"},
 	)
 
+	modelEmbeddings = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "infero_model_embeddings_total",
+			Help: "Embeddings processed per model",
+		},
+		[]string{"model"},
+	)
+
+	workerEmbeddings = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "infero_worker_embeddings_total",
+			Help: "Embeddings processed per worker",
+		},
+		[]string{"worker_id"},
+	)
+
+	workerEmbeddingProcessing = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "infero_worker_embedding_processing_seconds_total",
+			Help: "Total embedding processing time per worker",
+		},
+		[]string{"worker_id"},
+	)
+
 	requestDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    "infero_request_duration_seconds",
@@ -60,7 +84,7 @@ var (
 
 // Register registers all metrics with the provided registerer.
 func Register(r prometheus.Registerer) {
-	r.MustRegister(buildInfo, modelRequests, modelTokens, requestDuration, workerTokens, workerProcessing)
+	r.MustRegister(buildInfo, modelRequests, modelTokens, requestDuration, workerTokens, workerProcessing, modelEmbeddings, workerEmbeddings, workerEmbeddingProcessing)
 }
 
 // SetServerBuildInfo sets the build info metric for the server.
@@ -95,4 +119,19 @@ func RecordWorkerTokens(workerID, kind string, n uint64) {
 // RecordWorkerProcessingTime records processing time for a worker.
 func RecordWorkerProcessingTime(workerID string, d time.Duration) {
 	workerProcessing.WithLabelValues(workerID).Add(d.Seconds())
+}
+
+// RecordModelEmbeddings increments embedding counters for a model.
+func RecordModelEmbeddings(model string, n uint64) {
+	modelEmbeddings.WithLabelValues(model).Add(float64(n))
+}
+
+// RecordWorkerEmbeddings increments embedding counters for a worker.
+func RecordWorkerEmbeddings(workerID string, n uint64) {
+	workerEmbeddings.WithLabelValues(workerID).Add(float64(n))
+}
+
+// RecordWorkerEmbeddingProcessingTime records embedding processing time for a worker.
+func RecordWorkerEmbeddingProcessingTime(workerID string, d time.Duration) {
+	workerEmbeddingProcessing.WithLabelValues(workerID).Add(d.Seconds())
 }
