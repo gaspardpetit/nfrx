@@ -20,7 +20,7 @@ func TestEmbeddings(t *testing.T) {
 	wk := &ctrl.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
 	reg.Add(wk)
 	metricsReg := ctrl.NewMetricsRegistry("", "", "")
-	h := EmbeddingsHandler(reg, sched, metricsReg, time.Second)
+	h := EmbeddingsHandler(reg, sched, metricsReg, time.Second, 8)
 
 	go func() {
 		msg := <-wk.Send
@@ -49,7 +49,7 @@ func TestEmbeddingsEarlyError(t *testing.T) {
 	wk := &ctrl.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
 	reg.Add(wk)
 	metricsReg := ctrl.NewMetricsRegistry("", "", "")
-	h := EmbeddingsHandler(reg, sched, metricsReg, time.Second)
+	h := EmbeddingsHandler(reg, sched, metricsReg, time.Second, 8)
 
 	go func() {
 		msg := <-wk.Send
@@ -77,7 +77,7 @@ func TestEmbeddingsBatching(t *testing.T) {
 	wk := &ctrl.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{}), EmbeddingBatchSize: 1}
 	reg.Add(wk)
 	metricsReg := ctrl.NewMetricsRegistry("", "", "")
-	h := EmbeddingsHandler(reg, sched, metricsReg, time.Second)
+	h := EmbeddingsHandler(reg, sched, metricsReg, time.Second, 8)
 
 	errCh := make(chan error, 1)
 	go func() {
@@ -128,5 +128,77 @@ func TestEmbeddingsBatching(t *testing.T) {
 	}
 	if resp.Usage.Prompt != 2 || resp.Usage.Total != 2 {
 		t.Fatalf("usage %+v", resp.Usage)
+	}
+}
+
+func TestEmbeddingsParallelSplit(t *testing.T) {
+	reg := ctrl.NewRegistry()
+	sched := &ctrl.LeastBusyScheduler{Reg: reg}
+	w1 := &ctrl.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{}), EmbeddingBatchSize: 10}
+	w2 := &ctrl.Worker{ID: "w2", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{}), EmbeddingBatchSize: 2}
+	reg.Add(w1)
+	reg.Add(w2)
+	metricsReg := ctrl.NewMetricsRegistry("", "", "")
+	h := EmbeddingsHandler(reg, sched, metricsReg, time.Second, 8)
+
+	go func() {
+		msg := <-w1.Send
+		req := msg.(ctrl.HTTPProxyRequestMessage)
+		var v struct {
+			Input []string `json:"input"`
+		}
+		_ = json.Unmarshal(req.Body, &v)
+		if len(v.Input) != 5 {
+			t.Fatalf("w1 batch %d", len(v.Input))
+		}
+		parts := make([]string, len(v.Input))
+		for i := range v.Input {
+			parts[i] = fmt.Sprintf("{\"embedding\":[%d],\"index\":%d}", i, i)
+		}
+		resp := fmt.Sprintf("{\"object\":\"list\",\"data\":[%s],\"model\":\"m\",\"usage\":{\"prompt_tokens\":%d,\"total_tokens\":%d}}", strings.Join(parts, ","), len(v.Input), len(v.Input))
+		ch := w1.Jobs[req.RequestID]
+		ch <- ctrl.HTTPProxyResponseHeadersMessage{Type: "http_proxy_response_headers", RequestID: req.RequestID, Status: 200, Headers: map[string]string{"Content-Type": "application/json"}}
+		ch <- ctrl.HTTPProxyResponseChunkMessage{Type: "http_proxy_response_chunk", RequestID: req.RequestID, Data: []byte(resp)}
+		ch <- ctrl.HTTPProxyResponseEndMessage{Type: "http_proxy_response_end", RequestID: req.RequestID}
+	}()
+
+	go func() {
+		msg := <-w2.Send
+		req := msg.(ctrl.HTTPProxyRequestMessage)
+		var v struct {
+			Input []string `json:"input"`
+		}
+		_ = json.Unmarshal(req.Body, &v)
+		if len(v.Input) != 1 {
+			t.Fatalf("w2 batch %d", len(v.Input))
+		}
+		parts := make([]string, len(v.Input))
+		for i := range v.Input {
+			parts[i] = fmt.Sprintf("{\"embedding\":[%d],\"index\":%d}", i, i)
+		}
+		resp := fmt.Sprintf("{\"object\":\"list\",\"data\":[%s],\"model\":\"m\",\"usage\":{\"prompt_tokens\":%d,\"total_tokens\":%d}}", strings.Join(parts, ","), len(v.Input), len(v.Input))
+		ch := w2.Jobs[req.RequestID]
+		ch <- ctrl.HTTPProxyResponseHeadersMessage{Type: "http_proxy_response_headers", RequestID: req.RequestID, Status: 200, Headers: map[string]string{"Content-Type": "application/json"}}
+		ch <- ctrl.HTTPProxyResponseChunkMessage{Type: "http_proxy_response_chunk", RequestID: req.RequestID, Data: []byte(resp)}
+		ch <- ctrl.HTTPProxyResponseEndMessage{Type: "http_proxy_response_end", RequestID: req.RequestID}
+	}()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/embeddings", bytes.NewReader([]byte(`{"model":"m","input":["a","b","c","d","e","f"]}`)))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != 200 {
+		t.Fatalf("status %d", rec.Code)
+	}
+	var resp struct {
+		Data []struct {
+			Embedding []int `json:"embedding"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(resp.Data) != 6 {
+		t.Fatalf("want 6 got %d", len(resp.Data))
 	}
 }

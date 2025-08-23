@@ -611,7 +611,7 @@ For manual end-to-end verification on a clean VM, see [desktop/windows/ACCEPTANC
 | Feature | Supported | Notes |
 | --- | --- | --- |
 | OpenAI-compatible `POST /api/v1/chat/completions` | ✅ | Proxied to workers without payload mutation |
-| OpenAI-compatible `POST /api/v1/embeddings` | ✅ | Requests with large input arrays are split across workers respecting each worker's ideal embedding batch size |
+| OpenAI-compatible `POST /api/v1/embeddings` | ✅ | Requests with large input arrays are split and processed in parallel across workers respecting each worker's ideal embedding batch size |
 | Multiple worker registration | ✅ | Workers can join/leave dynamically; models registered on connect |
 | Model-based routing (least-busy) | ✅ | `LeastBusyScheduler` selects worker by current load |
 | Model alias fallback | ✅ | Falls back to base model when exact quantization not available |

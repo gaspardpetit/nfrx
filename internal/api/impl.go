@@ -15,12 +15,13 @@ type HealthChecker interface {
 }
 
 type API struct {
-	Reg     *ctrl.Registry
-	Metrics *ctrl.MetricsRegistry
-	MCP     *mcp.Registry
-	Sched   ctrl.Scheduler
-	Timeout time.Duration
-	Health  HealthChecker
+	Reg                   *ctrl.Registry
+	Metrics               *ctrl.MetricsRegistry
+	MCP                   *mcp.Registry
+	Sched                 ctrl.Scheduler
+	Timeout               time.Duration
+	MaxParallelEmbeddings int
+	Health                HealthChecker
 }
 
 var _ generated.ServerInterface = (*API)(nil)
@@ -42,7 +43,7 @@ func (a *API) PostApiV1ChatCompletions(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) PostApiV1Embeddings(w http.ResponseWriter, r *http.Request) {
-	EmbeddingsHandler(a.Reg, a.Sched, a.Metrics, a.Timeout)(w, r)
+	EmbeddingsHandler(a.Reg, a.Sched, a.Metrics, a.Timeout, a.MaxParallelEmbeddings)(w, r)
 }
 
 func (a *API) GetApiV1Models(w http.ResponseWriter, r *http.Request) {
