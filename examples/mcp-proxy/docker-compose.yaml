@@ -40,7 +40,7 @@ services:
 
   worker:
     container_name: mcp
-    image: ghcr.io/gaspardpetit/infero-mcp-worker:main
+    image: ghcr.io/gaspardpetit/infero-mcp:main
     environment:
       <<: *common_env
       SERVER_URL: "ws://server:8080/api/mcp/connect"
