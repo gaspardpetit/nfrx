@@ -1,6 +1,6 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: infero
-Source: https://github.com/gaspardpetit/infero
+Upstream-Name: infx
+Source: https://github.com/gaspardpetit/infx
 
 Files: *
 Copyright: 2024, 2025 Gaspard Petit

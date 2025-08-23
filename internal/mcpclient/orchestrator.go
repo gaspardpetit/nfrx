@@ -9,7 +9,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/rs/zerolog"
 
-	"github.com/gaspardpetit/infero/internal/logx"
+	"github.com/gaspardpetit/infx/internal/logx"
 )
 
 // Orchestrator attempts connections using multiple transports until one succeeds.
@@ -62,7 +62,7 @@ func (o *Orchestrator) Connect(ctx context.Context) (Connector, error) {
 			Params: mcp.InitializeParams{
 				ProtocolVersion: version,
 				Capabilities:    mcp.ClientCapabilities{},
-				ClientInfo:      mcp.Implementation{Name: "infero-mcp", Version: "dev"},
+				ClientInfo:      mcp.Implementation{Name: "infx-mcp", Version: "dev"},
 			},
 		}
 		if _, err := conn.Initialize(ctxAttempt, initReq); err != nil {

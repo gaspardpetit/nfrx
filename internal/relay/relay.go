@@ -10,9 +10,9 @@ import (
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 
-	"github.com/gaspardpetit/infero/internal/ctrl"
-	"github.com/gaspardpetit/infero/internal/logx"
-	"github.com/gaspardpetit/infero/internal/metrics"
+	"github.com/gaspardpetit/infx/internal/ctrl"
+	"github.com/gaspardpetit/infx/internal/logx"
+	"github.com/gaspardpetit/infx/internal/metrics"
 )
 
 // GenerateRequest is the minimal request for generation.

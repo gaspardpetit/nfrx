@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gaspardpetit/infero/api/generated"
-	"github.com/gaspardpetit/infero/internal/ctrl"
-	"github.com/gaspardpetit/infero/internal/mcp"
+	"github.com/gaspardpetit/infx/api/generated"
+	"github.com/gaspardpetit/infx/internal/ctrl"
+	"github.com/gaspardpetit/infx/internal/mcp"
 )
 
 type HealthChecker interface {

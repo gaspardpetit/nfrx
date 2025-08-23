@@ -42,9 +42,9 @@ jobs:
           dotnet-version: '8.0.x'
       - name: Build worker
         run: |
-          go build -trimpath -o cmd/infero-llm/infero-llm.exe -ldflags "-s -w -X main.version=${{ steps.meta.outputs.version }} -X main.buildSHA=${{ steps.meta.outputs.sha }} -X main.buildDate=${{ steps.meta.outputs.date }}" ./cmd/infero-llm
+          go build -trimpath -o cmd/infx-llm/infx-llm.exe -ldflags "-s -w -X main.version=${{ steps.meta.outputs.version }} -X main.buildSHA=${{ steps.meta.outputs.sha }} -X main.buildDate=${{ steps.meta.outputs.date }}" ./cmd/infx-llm
       - name: Build .NET projects
-        run: dotnet build desktop/windows/Infero.Windows.sln -c Release
+        run: dotnet build desktop/windows/Infx.Windows.sln -c Release
       - name: Install WiX
         shell: pwsh
         run: |
@@ -54,11 +54,11 @@ jobs:
         run: |
           New-Item -ItemType Directory -Path build | Out-Null
           wix build desktop/windows/Installer/Product.wxs `
-            -d:WorkerExe="cmd\infero-llm\infero-llm.exe" `
+            -d:WorkerExe="cmd\infx-llm\infx-llm.exe" `
             -d:ServiceExe="desktop\windows\WindowsService\bin\Release\net8.0-windows\WindowsService.exe" `
             -d:TrayExe="desktop\windows\TrayApp\bin\Release\net8.0-windows\TrayApp.exe" `
             -d:DefaultConfig="desktop\windows\Installer\worker.yaml" `
-            -out build\infero.msi
+            -out build\infx.msi
 
       - name: Restore PFX from secret
         if: ${{ env.PFX_B64 != '' && github.event_name != 'pull_request' }}
@@ -73,8 +73,8 @@ jobs:
         run: |
           signtool sign /f build\codesign.pfx /p %PFX_PASS% /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 desktop\windows\TrayApp\bin\Release\net8.0-windows\TrayApp.exe
           signtool sign /f build\codesign.pfx /p %PFX_PASS% /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 desktop\windows\WindowsService\bin\Release\net8.0-windows\WindowsService.exe
-          signtool sign /f build\codesign.pfx /p %PFX_PASS% /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 cmd\infero-llm\infero-llm.exe
-          signtool sign /f build\codesign.pfx /p %PFX_PASS% /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 build\infero.msi
+          signtool sign /f build\codesign.pfx /p %PFX_PASS% /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 cmd\infx-llm\infx-llm.exe
+          signtool sign /f build\codesign.pfx /p %PFX_PASS% /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 build\infx.msi
       
       - name: Install cosign
         if: ${{ github.event_name != 'pull_request' }}
@@ -89,10 +89,10 @@ jobs:
           COSIGN_YES: "true"   # auto-approve keyless flow
         run: |
           $files = @(
-            "build/infero.msi",
+            "build/infx.msi",
             "desktop/windows/TrayApp/bin/Release/net8.0-windows/TrayApp.exe",
             "desktop/windows/WindowsService/bin/Release/net8.0-windows/WindowsService.exe",
-            "cmd/infero-llm/infero-llm.exe"
+            "cmd/infx-llm/infx-llm.exe"
           )
           foreach ($f in $files) {
             if (Test-Path $f) {
@@ -104,17 +104,17 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: infero-Windows
+          name: infx-Windows
           path: |
-            build\infero.msi
-            build\infero.msi.sig
-            build\infero.msi.pem
+            build\infx.msi
+            build\infx.msi.sig
+            build\infx.msi.pem
             desktop\windows\TrayApp\bin\Release\net8.0-windows\TrayApp.exe
             desktop\windows\TrayApp\bin\Release\net8.0-windows\TrayApp.exe.sig
             desktop\windows\TrayApp\bin\Release\net8.0-windows\TrayApp.exe.pem
             desktop\windows\WindowsService\bin\Release\net8.0-windows\WindowsService.exe
             desktop\windows\WindowsService\bin\Release\net8.0-windows\WindowsService.exe.sig
             desktop\windows\WindowsService\bin\Release\net8.0-windows\WindowsService.exe.pem
-            cmd\infero-llm\infero-llm.exe
-            cmd\infero-llm\infero-llm.exe.sig
-            cmd\infero-llm\infero-llm.exe.pem
+            cmd\infx-llm\infx-llm.exe
+            cmd\infx-llm\infx-llm.exe.sig
+            cmd\infx-llm\infx-llm.exe.pem

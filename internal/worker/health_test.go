@@ -12,9 +12,9 @@ import (
 	"path/filepath"
 	"sync/atomic"
 
-	"github.com/gaspardpetit/infero/internal/config"
-	"github.com/gaspardpetit/infero/internal/ctrl"
-	"github.com/gaspardpetit/infero/internal/ollama"
+	"github.com/gaspardpetit/infx/internal/config"
+	"github.com/gaspardpetit/infx/internal/ctrl"
+	"github.com/gaspardpetit/infx/internal/ollama"
 )
 
 // fakeHealthClient implements healthClient for unit tests.

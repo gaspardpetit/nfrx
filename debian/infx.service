@@ -1,13 +1,13 @@
 [Unit]
-Description=infero worker
+Description=infx server
 After=network-online.target
 Wants=network-online.target
 
 [Service]
-User=infero
-Group=infero
-EnvironmentFile=-/etc/infero/worker.env
-ExecStart=/usr/bin/infero-llm $WORKER_FLAGS
+User=infx
+Group=infx
+EnvironmentFile=-/etc/infx/server.env
+ExecStart=/usr/bin/infx $SERVER_FLAGS
 Restart=on-failure
 RestartSec=3s
 AmbientCapabilities=
@@ -16,8 +16,8 @@ ProtectSystem=full
 ProtectHome=true
 PrivateTmp=true
 CapabilityBoundingSet=
-StateDirectory=infero
-RuntimeDirectory=infero
+StateDirectory=infx
+RuntimeDirectory=infx
 ProtectKernelLogs=true
 ProtectKernelModules=true
 ProtectControlGroups=true

@@ -7,7 +7,7 @@ set -euo pipefail
 #   DESCRIBE                  e.g., output of `git describe` (snapshot only)
 #   BUILD_SHA                 short commit sha (snapshot only)
 #   BUILD_DATE                ISO UTC (snapshot only)
-#   DEB_PACKAGE              default: infero
+#   DEB_PACKAGE              default: infx
 #   DEB_DISTRIBUTION         default: unstable
 #   RELEASE_TITLE             (release) optional if not parsing event JSON
 #   RELEASE_BODY              (release) optional if not parsing event JSON
@@ -16,7 +16,7 @@ set -euo pipefail
 
 : "${DEB_VERSION:?DEB_VERSION is required}"
 : "${BUILD_KIND:?BUILD_KIND is required}"
-DEB_PACKAGE="${DEB_PACKAGE:-infero}"
+DEB_PACKAGE="${DEB_PACKAGE:-infx}"
 DEB_DISTRIBUTION="${DEB_DISTRIBUTION:-unstable}"
 
 # Ensure base changelog state (create or bump to DEB_VERSION)

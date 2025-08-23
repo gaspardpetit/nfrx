@@ -1,4 +1,4 @@
-module github.com/gaspardpetit/infero
+module github.com/gaspardpetit/infx
 
 go 1.23.0
 

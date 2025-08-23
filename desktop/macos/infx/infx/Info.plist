@@ -3,11 +3,11 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleDisplayName</key>
-    <string>infero</string>
+    <string>infx</string>
     <key>CFBundleIdentifier</key>
-    <string>io.infero.menubar</string>
+    <string>io.infx.menubar</string>
     <key>CFBundleName</key>
-    <string>infero</string>
+    <string>infx</string>
     <key>LSUIElement</key>
     <string>1</string>
     <key>SUFeedURL</key>

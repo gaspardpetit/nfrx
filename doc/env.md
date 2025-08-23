@@ -1,6 +1,6 @@
 # Configuration reference
 
-This document lists configuration options for the infero tools. Settings can be supplied via environment variables, command line flags, or configuration files. Sample config templates with defaults live under `examples/config/`. Logging is controlled globally via `LOG_LEVEL`.
+This document lists configuration options for the infx tools. Settings can be supplied via environment variables, command line flags, or configuration files. Sample config templates with defaults live under `examples/config/`. Logging is controlled globally via `LOG_LEVEL`.
 
 ## Common
 
@@ -8,13 +8,13 @@ This document lists configuration options for the infero tools. Settings can be 
 |----------|------------|---------|---------|----------|
 | `LOG_LEVEL` | `log_level` | set logging verbosity (`all`, `debug`, `info`, `warn`, `error`, `fatal`, `none`) | `info` | `--log-level` |
 
-## infero
+## infx
 
 The server optionally reads settings from a YAML config file. Defaults:
 
-- macOS: `~/Library/Application Support/infero/server.yaml`
-- Windows: `%ProgramData%\\infero\\server.yaml`
-- Linux: `/etc/infero/server.yaml`
+- macOS: `~/Library/Application Support/infx/server.yaml`
+- Windows: `%ProgramData%\\infx\\server.yaml`
+- Linux: `/etc/infx/server.yaml`
 
 | Variable | Config key | Purpose | Default | CLI flag |
 |----------|------------|---------|---------|----------|
@@ -34,13 +34,13 @@ The server optionally reads settings from a YAML config file. Defaults:
 | `BROKER_WS_DEAD_AFTER_MS` | — | MCP WebSocket idle timeout in milliseconds | `45000` | — |
 | `BROKER_MAX_CONCURRENCY_PER_CLIENT` | — | maximum concurrent MCP sessions per client | `16` | — |
 
-## infero-llm
+## infx-llm
 
 The worker optionally reads settings from a YAML config file. Defaults:
 
-- macOS: `~/Library/Application Support/infero/worker.yaml`
-- Windows: `%ProgramData%\\infero\\worker.yaml`
-- Linux: `/etc/infero/worker.yaml`
+- macOS: `~/Library/Application Support/infx/worker.yaml`
+- Windows: `%ProgramData%\\infx\\worker.yaml`
+- Linux: `/etc/infx/worker.yaml`
 
 | Variable | Config key | Purpose | Default | CLI flag |
 |----------|------------|---------|---------|----------|
@@ -62,13 +62,13 @@ The worker optionally reads settings from a YAML config file. Defaults:
 | `REQUEST_TIMEOUT` | — | seconds without backend feedback before failing a job | `300` | `--request-timeout` |
 
 
-## infero-mcp
+## infx-mcp
 
-`infero-mcp` reads additional settings from a YAML file when `CONFIG_FILE` is set. Defaults:
+`infx-mcp` reads additional settings from a YAML file when `CONFIG_FILE` is set. Defaults:
 
-- macOS: `~/Library/Application Support/infero/mcp.yaml`
-- Windows: `%ProgramData%\\infero\\mcp.yaml`
-- Linux: `/etc/infero/mcp.yaml`
+- macOS: `~/Library/Application Support/infx/mcp.yaml`
+- Windows: `%ProgramData%\\infx\\mcp.yaml`
+- Linux: `/etc/infx/mcp.yaml`
 
 | Variable | Config key | Purpose | Default | CLI flag |
 |----------|------------|---------|---------|----------|

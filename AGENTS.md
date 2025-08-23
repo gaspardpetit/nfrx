@@ -1,11 +1,11 @@
 # AGENTS.md
 
 ## Project Overview
-īnferō provides a minimal Ollama-compatible server with a pool of workers that proxy
+infx provides a minimal Ollama-compatible server with a pool of workers that proxy
 requests to local Ollama instances. The repository contains three binaries:
-- `infero`: hosts the public HTTP API and coordinates workers over WebSocket
-- `infero-llm`: connects to the server and forwards requests to a local Ollama
-- `infero-mcp`: bridges private MCP providers to the public server
+- `infx`: hosts the public HTTP API and coordinates workers over WebSocket
+- `infx-llm`: connects to the server and forwards requests to a local Ollama
+- `infx-mcp`: bridges private MCP providers to the public server
 
 ## Build & Commands
 - Build all binaries: `make build`
@@ -17,7 +17,7 @@ requests to local Ollama instances. The repository contains three binaries:
 - Use standard Go formatting via `gofmt -w` or `go fmt`
 - Prefer clarity over cleverness; keep functions small and well named
 - Default to the patterns already present in the `internal/` packages
-- Use lowercase `infero` in documentation and text unless referring to binaries or package names
+- Use lowercase `infx` in documentation and text unless referring to binaries or package names
 
 ## Logging Policy
 - Use structured logging via `internal/logx`.

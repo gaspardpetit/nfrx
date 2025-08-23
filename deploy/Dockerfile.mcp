@@ -6,8 +6,8 @@ COPY . .
 ARG TARGETOS TARGETARCH VERSION=dev GIT_SHA=unknown BUILD_DATE=unknown
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
     go build -ldflags "-s -w -X main.version=${VERSION} -X main.buildSHA=${GIT_SHA} -X main.buildDate=${BUILD_DATE}" \
-      -o /out/infero-mcp ./cmd/infero-mcp
+      -o /out/infx-mcp ./cmd/infx-mcp
 
 FROM gcr.io/distroless/base-debian12
-COPY --from=build /out/infero-mcp /infero-mcp
-ENTRYPOINT ["/infero-mcp"]
+COPY --from=build /out/infx-mcp /infx-mcp
+ENTRYPOINT ["/infx-mcp"]
