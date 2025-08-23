@@ -8,8 +8,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/gaspardpetit/llamapool/internal/config"
-	"github.com/gaspardpetit/llamapool/internal/ctrl"
+	"github.com/gaspardpetit/infero/internal/config"
+	"github.com/gaspardpetit/infero/internal/ctrl"
 )
 
 func TestHandleHTTPProxyAuthAndStream(t *testing.T) {

@@ -6,7 +6,7 @@ import (
 
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 
-	"github.com/gaspardpetit/llamapool/internal/logx"
+	"github.com/gaspardpetit/infero/internal/logx"
 )
 
 func MiddlewareChain() []func(http.Handler) http.Handler {

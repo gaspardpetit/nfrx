@@ -29,16 +29,16 @@ func TestMetricsServer(t *testing.T) {
 	defer func() { _ = resp.Body.Close() }()
 	body, _ := io.ReadAll(resp.Body)
 	data := string(body)
-	if !strings.Contains(data, "llamapool_worker_connected_to_server 1") {
+	if !strings.Contains(data, "infero_worker_connected_to_server 1") {
 		t.Fatalf("missing connected_to_server gauge: %s", data)
 	}
-	if !strings.Contains(data, "llamapool_worker_connected_to_backend 1") {
+	if !strings.Contains(data, "infero_worker_connected_to_backend 1") {
 		t.Fatalf("missing connected_to_backend gauge: %s", data)
 	}
-	if !strings.Contains(data, "llamapool_worker_jobs_started_total") {
+	if !strings.Contains(data, "infero_worker_jobs_started_total") {
 		t.Fatalf("missing jobs_started_total counter: %s", data)
 	}
-	if !strings.Contains(data, "llamapool_worker_job_duration_seconds") {
+	if !strings.Contains(data, "infero_worker_job_duration_seconds") {
 		t.Fatalf("missing job duration histogram: %s", data)
 	}
 }

@@ -9,7 +9,7 @@ import (
 var (
 	buildInfo = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name:        "llamapool_build_info",
+			Name:        "infero_build_info",
 			Help:        "Build information",
 			ConstLabels: prometheus.Labels{"component": "server"},
 		},
@@ -18,7 +18,7 @@ var (
 
 	modelRequests = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "llamapool_model_requests_total",
+			Name: "infero_model_requests_total",
 			Help: "Number of model requests",
 		},
 		[]string{"model", "outcome"},
@@ -26,7 +26,7 @@ var (
 
 	modelTokens = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "llamapool_model_tokens_total",
+			Name: "infero_model_tokens_total",
 			Help: "Tokens processed per model",
 		},
 		[]string{"kind", "model"},
@@ -34,7 +34,7 @@ var (
 
 	workerTokens = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "llamapool_worker_tokens_total",
+			Name: "infero_worker_tokens_total",
 			Help: "Tokens processed per worker",
 		},
 		[]string{"worker_id", "kind"},
@@ -42,7 +42,7 @@ var (
 
 	workerProcessing = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "llamapool_worker_processing_seconds_total",
+			Name: "infero_worker_processing_seconds_total",
 			Help: "Total processing time per worker",
 		},
 		[]string{"worker_id"},
@@ -50,7 +50,7 @@ var (
 
 	requestDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name:    "llamapool_request_duration_seconds",
+			Name:    "infero_request_duration_seconds",
 			Help:    "Request duration",
 			Buckets: prometheus.DefBuckets,
 		},

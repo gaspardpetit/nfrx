@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
-	"github.com/gaspardpetit/llamapool/internal/config"
-	"github.com/gaspardpetit/llamapool/internal/ctrl"
-	"github.com/gaspardpetit/llamapool/internal/relay"
+	"github.com/gaspardpetit/infero/internal/config"
+	"github.com/gaspardpetit/infero/internal/ctrl"
+	"github.com/gaspardpetit/infero/internal/relay"
 )
 
 func TestDrainAndTerminate(t *testing.T) {

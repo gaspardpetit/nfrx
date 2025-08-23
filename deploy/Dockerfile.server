@@ -6,9 +6,9 @@ COPY . .
 ARG TARGETOS TARGETARCH VERSION=dev GIT_SHA=unknown BUILD_DATE=unknown
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
     go build -ldflags "-s -w -X main.version=${VERSION} -X main.buildSHA=${GIT_SHA} -X main.buildDate=${BUILD_DATE}" \
-      -o /out/llamapool-server ./cmd/llamapool-server
+      -o /out/infero ./cmd/infero
 
 FROM gcr.io/distroless/base-debian12
-COPY --from=build /out/llamapool-server /llamapool-server
+COPY --from=build /out/infero /infero
 EXPOSE 8080
-ENTRYPOINT ["/llamapool-server"]
+ENTRYPOINT ["/infero"]

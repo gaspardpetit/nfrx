@@ -13,10 +13,10 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
-	"github.com/gaspardpetit/llamapool/internal/config"
-	"github.com/gaspardpetit/llamapool/internal/logx"
-	"github.com/gaspardpetit/llamapool/internal/mcp"
-	reconnect "github.com/gaspardpetit/llamapool/internal/reconnect"
+	"github.com/gaspardpetit/infero/internal/config"
+	"github.com/gaspardpetit/infero/internal/logx"
+	"github.com/gaspardpetit/infero/internal/mcp"
+	reconnect "github.com/gaspardpetit/infero/internal/reconnect"
 )
 
 var (
@@ -91,7 +91,7 @@ func main() {
 	cfg.BindFlags()
 	flag.Parse()
 	if *showVersion {
-		fmt.Printf("llamapool-mcp version=%s sha=%s date=%s\n", version, buildSHA, buildDate)
+		fmt.Printf("infero-mcp version=%s sha=%s date=%s\n", version, buildSHA, buildDate)
 		return
 	}
 	if cfg.ConfigFile != "" {

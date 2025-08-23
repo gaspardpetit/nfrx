@@ -1,6 +1,6 @@
 # Configuration reference
 
-This document lists configuration options for the llamapool tools. Settings can be supplied via environment variables, command line flags, or configuration files. Sample config templates with defaults live under `examples/config/`. `DEBUG` affects logging across all binaries.
+This document lists configuration options for the infero tools. Settings can be supplied via environment variables, command line flags, or configuration files. Sample config templates with defaults live under `examples/config/`. `DEBUG` affects logging across all binaries.
 
 ## Common
 
@@ -8,13 +8,13 @@ This document lists configuration options for the llamapool tools. Settings can 
 |----------|------------|---------|---------|----------|
 | `DEBUG` | — | enable verbose logging | info level when unset | — |
 
-## llamapool-server
+## infero
 
 The server optionally reads settings from a YAML config file. Defaults:
 
-- macOS: `~/Library/Application Support/llamapool/server.yaml`
-- Windows: `%ProgramData%\\llamapool\\server.yaml`
-- Linux: `/etc/llamapool/server.yaml`
+- macOS: `~/Library/Application Support/infero/server.yaml`
+- Windows: `%ProgramData%\\infero\\server.yaml`
+- Linux: `/etc/infero/server.yaml`
 
 | Variable | Config key | Purpose | Default | CLI flag |
 |----------|------------|---------|---------|----------|
@@ -32,13 +32,13 @@ The server optionally reads settings from a YAML config file. Defaults:
 | `BROKER_WS_DEAD_AFTER_MS` | — | MCP WebSocket idle timeout in milliseconds | `45000` | — |
 | `BROKER_MAX_CONCURRENCY_PER_CLIENT` | — | maximum concurrent MCP sessions per client | `16` | — |
 
-## llamapool-worker
+## infero-llm
 
 The worker optionally reads settings from a YAML config file. Defaults:
 
-- macOS: `~/Library/Application Support/llamapool/worker.yaml`
-- Windows: `%ProgramData%\\llamapool\\worker.yaml`
-- Linux: `/etc/llamapool/worker.yaml`
+- macOS: `~/Library/Application Support/infero/worker.yaml`
+- Windows: `%ProgramData%\\infero\\worker.yaml`
+- Linux: `/etc/infero/worker.yaml`
 
 | Variable | Config key | Purpose | Default | CLI flag |
 |----------|------------|---------|---------|----------|
@@ -59,13 +59,13 @@ The worker optionally reads settings from a YAML config file. Defaults:
 | `REQUEST_TIMEOUT` | — | seconds without backend feedback before failing a job | `300` | `--request-timeout` |
 
 
-## llamapool-mcp
+## infero-mcp
 
-`llamapool-mcp` reads additional settings from a YAML file when `CONFIG_FILE` is set. Defaults:
+`infero-mcp` reads additional settings from a YAML file when `CONFIG_FILE` is set. Defaults:
 
-- macOS: `~/Library/Application Support/llamapool/mcp.yaml`
-- Windows: `%ProgramData%\\llamapool\\mcp.yaml`
-- Linux: `/etc/llamapool/mcp.yaml`
+- macOS: `~/Library/Application Support/infero/mcp.yaml`
+- Windows: `%ProgramData%\\infero\\mcp.yaml`
+- Linux: `/etc/infero/mcp.yaml`
 
 | Variable | Config key | Purpose | Default | CLI flag |
 |----------|------------|---------|---------|----------|

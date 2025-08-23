@@ -12,9 +12,9 @@ LDFLAGS ?= -s -w -X main.version=$(VERSION) -X main.buildSHA=$(BUILD_SHA) -X mai
 GOFLAGS ?= -trimpath
 
 build:
-	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./cmd/llamapool-server
-	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./cmd/llamapool-worker
-	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./cmd/llamapool-mcp
+	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./cmd/infero
+	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./cmd/infero-llm
+	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./cmd/infero-mcp
 
 test:
 	go test ./... -race -count=1

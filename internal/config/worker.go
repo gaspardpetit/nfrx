@@ -115,13 +115,13 @@ func resolveWorkerPaths(goos, home, programData string) (configFile, logDir stri
 	configFile = ResolveConfigPath(goos, home, programData, "worker.yaml")
 	switch goos {
 	case "darwin":
-		logDir = filepath.Join(home, "Library", "Logs", "llamapool")
+		logDir = filepath.Join(home, "Library", "Logs", "infero")
 	case "windows":
 		if programData == "" {
 			programData = "C:/ProgramData"
 		}
 		programData = strings.TrimRight(programData, "\\/")
-		logDir = filepath.Join(programData, "llamapool", "Logs")
+		logDir = filepath.Join(programData, "infero", "Logs")
 	}
 	return
 }

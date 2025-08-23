@@ -1,20 +1,20 @@
-Source: llamapool
+Source: infero
 Section: utils
 Priority: optional
 Maintainer: Gaspard Petit <gaspardpetit@gmail.com>
 Build-Depends: debhelper-compat (= 13), dh-golang, golang-any:native
 Standards-Version: 4.7.0
-Homepage: https://github.com/gaspardpetit/llamapool
+Homepage: https://github.com/gaspardpetit/infero
 Rules-Requires-Root: no
 
-Package: llamapool-server
+Package: infero
 Architecture: any
 Depends: ${misc:Depends}, adduser
-Description: llamapool server component (daemon)
- The server for llamapool.
+Description: infero server component (daemon)
+ The server for infero.
 
-Package: llamapool-worker
+Package: infero-llm
 Architecture: any
 Depends: ${misc:Depends}, adduser
-Description: llamapool worker component (daemon)
- The worker for llamapool.
+Description: infero worker component (daemon)
+ The worker for infero.

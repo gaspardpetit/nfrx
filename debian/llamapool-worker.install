@@ -1,3 +1,0 @@
-build/bin/llamapool-worker usr/bin/
-debian/llamapool-worker.service usr/lib/systemd/system/
-debian/examples/worker.env etc/llamapool/worker.env

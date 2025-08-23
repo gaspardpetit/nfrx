@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gaspardpetit/llamapool/internal/config"
-	"github.com/gaspardpetit/llamapool/internal/ctrl"
-	"github.com/gaspardpetit/llamapool/internal/mcp"
+	"github.com/gaspardpetit/infero/internal/config"
+	"github.com/gaspardpetit/infero/internal/ctrl"
+	"github.com/gaspardpetit/infero/internal/mcp"
 )
 
 func TestMetricsEndpointDefaultPort(t *testing.T) {

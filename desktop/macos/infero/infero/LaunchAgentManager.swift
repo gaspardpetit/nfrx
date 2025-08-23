@@ -4,26 +4,26 @@ class LaunchAgentManager {
     static let shared = LaunchAgentManager()
 
     private let fileManager = FileManager.default
-    private let label = "io.llamapool.worker"
+    private let label = "io.infero.llm"
 
     private var launchAgentURL: URL {
         fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/LaunchAgents/\(label).plist")
     }
 
     private var logsDirURL: URL {
-        fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/Llamapool")
+        fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/infero")
     }
 
     private var configDirURL: URL {
-        fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Llamapool")
+        fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/infero")
     }
 
     private var workerBinaryURL: URL {
-        Bundle.main.resourceURL!.appendingPathComponent("bin/llamapool-worker")
+        Bundle.main.resourceURL!.appendingPathComponent("bin/infero-llm")
     }
 
     private var templateURL: URL? {
-        Bundle.main.url(forResource: "io.llamapool.worker", withExtension: "plist.template")
+        Bundle.main.url(forResource: "io.infero.llm", withExtension: "plist.template")
     }
 
     func start() throws {

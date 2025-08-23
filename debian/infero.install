@@ -1,0 +1,3 @@
+build/bin/infero usr/bin/
+debian/infero.service usr/lib/systemd/system/
+debian/examples/server.env etc/infero/server.env
