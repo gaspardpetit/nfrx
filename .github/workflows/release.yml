@@ -55,7 +55,7 @@ jobs:
           mkdir -p dist
           go build -ldflags "$LDFLAGS" -o dist/infero${EXT} ./cmd/infero
           go build -ldflags "$LDFLAGS" -o dist/infero-llm${EXT} ./cmd/infero-llm
-
+          go build -ldflags "$LDFLAGS" -o dist/infero-mcp${EXT} ./cmd/infero-mcp
       - name: Package
         id: pkg
         shell: bash
