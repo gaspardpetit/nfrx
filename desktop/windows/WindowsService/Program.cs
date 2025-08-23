@@ -4,7 +4,7 @@ using WindowsService;
 var builder = Host.CreateApplicationBuilder(args);
 builder.Services.AddWindowsService(options =>
 {
-    options.ServiceName = "llamapool";
+    options.ServiceName = "infero";
 });
 builder.Services.AddHostedService<Worker>();
 

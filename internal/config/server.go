@@ -11,7 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// ServerConfig holds configuration for the llamapool server.
+// ServerConfig holds configuration for the infero server.
 type ServerConfig struct {
 	Port           int
 	MetricsAddr    string

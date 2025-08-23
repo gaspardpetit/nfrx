@@ -10,10 +10,10 @@ import (
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 
-	"github.com/gaspardpetit/llamapool/internal/ctrl"
-	"github.com/gaspardpetit/llamapool/internal/logx"
-	"github.com/gaspardpetit/llamapool/internal/metrics"
-	"github.com/gaspardpetit/llamapool/internal/serverstate"
+	"github.com/gaspardpetit/infero/internal/ctrl"
+	"github.com/gaspardpetit/infero/internal/logx"
+	"github.com/gaspardpetit/infero/internal/metrics"
+	"github.com/gaspardpetit/infero/internal/serverstate"
 )
 
 // EmbeddingsHandler handles POST /api/v1/embeddings as a pass-through.

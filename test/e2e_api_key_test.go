@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gaspardpetit/llamapool/internal/config"
-	"github.com/gaspardpetit/llamapool/internal/ctrl"
-	"github.com/gaspardpetit/llamapool/internal/mcp"
-	"github.com/gaspardpetit/llamapool/internal/server"
+	"github.com/gaspardpetit/infero/internal/config"
+	"github.com/gaspardpetit/infero/internal/ctrl"
+	"github.com/gaspardpetit/infero/internal/mcp"
+	"github.com/gaspardpetit/infero/internal/server"
 )
 
 func TestAPIKeyEnforcement(t *testing.T) {

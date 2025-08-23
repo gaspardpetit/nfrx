@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
-	"github.com/gaspardpetit/llamapool/internal/ctrl"
-	"github.com/gaspardpetit/llamapool/internal/logx"
-	"github.com/gaspardpetit/llamapool/internal/serverstate"
+	"github.com/gaspardpetit/infero/internal/ctrl"
+	"github.com/gaspardpetit/infero/internal/logx"
+	"github.com/gaspardpetit/infero/internal/serverstate"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )

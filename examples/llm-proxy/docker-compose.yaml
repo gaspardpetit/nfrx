@@ -11,7 +11,7 @@ services:
 
   server:
     container_name: server
-    image: ghcr.io/gaspardpetit/llamapool-server:main
+    image: ghcr.io/gaspardpetit/infero:main
     environment:
       <<: *common_env
       PORT: "8080"
@@ -22,7 +22,7 @@ services:
 
   worker:
     container_name: worker
-    image: ghcr.io/gaspardpetit/llamapool-worker:main
+    image: ghcr.io/gaspardpetit/infero-llm:main
     environment:
       <<: *common_env
       SERVER_URL: "ws://server:8080/api/workers/connect"

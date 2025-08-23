@@ -1,0 +1,3 @@
+build/bin/infero-llm usr/bin/
+debian/infero-llm.service usr/lib/systemd/system/
+debian/examples/worker.env etc/infero/worker.env

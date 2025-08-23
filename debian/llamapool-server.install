@@ -1,3 +1,0 @@
-build/bin/llamapool-server usr/bin/
-debian/llamapool-server.service usr/lib/systemd/system/
-debian/examples/server.env etc/llamapool/server.env

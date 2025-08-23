@@ -1,6 +1,6 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: llamapool
-Source: https://github.com/gaspardpetit/llamapool
+Upstream-Name: infero
+Source: https://github.com/gaspardpetit/infero
 
 Files: *
 Copyright: 2024, 2025 Gaspard Petit

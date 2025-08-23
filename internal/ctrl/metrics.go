@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gaspardpetit/llamapool/internal/serverstate"
+	"github.com/gaspardpetit/infero/internal/serverstate"
 )
 
 // WorkerStatus represents the current state of a worker.

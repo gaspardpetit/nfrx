@@ -6,42 +6,42 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gaspardpetit/llamapool/internal/logx"
+	"github.com/gaspardpetit/infero/internal/logx"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
 	connectedToServerGauge = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "llamapool_worker_connected_to_server",
+		Name: "infero_worker_connected_to_server",
 		Help: "Whether the worker is connected to the server (1 or 0)",
 	})
 	connectedToBackendGauge = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "llamapool_worker_connected_to_backend",
+		Name: "infero_worker_connected_to_backend",
 		Help: "Whether the worker can reach its completion backend (1 or 0)",
 	})
 	currentJobsGauge = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "llamapool_worker_current_jobs",
+		Name: "infero_worker_current_jobs",
 		Help: "Number of jobs currently being processed",
 	})
 	maxConcurrencyGauge = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "llamapool_worker_max_concurrency",
+		Name: "infero_worker_max_concurrency",
 		Help: "Maximum number of concurrent jobs",
 	})
 	jobsStartedCounter = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "llamapool_worker_jobs_started_total",
+		Name: "infero_worker_jobs_started_total",
 		Help: "Total number of jobs started",
 	})
 	jobsSucceededCounter = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "llamapool_worker_jobs_succeeded_total",
+		Name: "infero_worker_jobs_succeeded_total",
 		Help: "Total number of jobs that succeeded",
 	})
 	jobsFailedCounter = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "llamapool_worker_jobs_failed_total",
+		Name: "infero_worker_jobs_failed_total",
 		Help: "Total number of jobs that failed",
 	})
 	jobDurationHist = prometheus.NewHistogram(prometheus.HistogramOpts{
-		Name:    "llamapool_worker_job_duration_seconds",
+		Name:    "infero_worker_job_duration_seconds",
 		Help:    "Duration of jobs in seconds",
 		Buckets: prometheus.DefBuckets,
 	})

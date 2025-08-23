@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gaspardpetit/llamapool/internal/ctrl"
-	"github.com/gaspardpetit/llamapool/internal/logx"
-	"github.com/gaspardpetit/llamapool/internal/mcp"
+	"github.com/gaspardpetit/infero/internal/ctrl"
+	"github.com/gaspardpetit/infero/internal/logx"
+	"github.com/gaspardpetit/infero/internal/mcp"
 )
 
 // StateHandler serves state snapshots and streams.

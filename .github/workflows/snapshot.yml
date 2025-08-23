@@ -52,8 +52,8 @@ jobs:
           EXT=""
           [ "$GOOS" = "windows" ] && EXT=".exe"
           mkdir -p dist
-          go build -trimpath -ldflags "$LDFLAGS" -o "dist/llamapool-server${EXT}" ./cmd/llamapool-server
-          go build -trimpath -ldflags "$LDFLAGS" -o "dist/llamapool-worker${EXT}" ./cmd/llamapool-worker
+          go build -trimpath -ldflags "$LDFLAGS" -o "dist/infero${EXT}" ./cmd/infero
+          go build -trimpath -ldflags "$LDFLAGS" -o "dist/infero-llm${EXT}" ./cmd/infero-llm
 
       
       - name: Package
@@ -62,7 +62,7 @@ jobs:
         run: |
           OS=${{ matrix.goos }}
           ARCH=${{ matrix.goarch }}
-          NAME="llamapool_${OS}_${ARCH}_${{ steps.meta.outputs.describe }}"
+          NAME="infero_${OS}_${ARCH}_${{ steps.meta.outputs.describe }}"
           mkdir -p "pkg/$NAME"
           cp -v LICENSE README.md dist/* "pkg/$NAME"/
           echo "file=pkg/$NAME" >> $GITHUB_OUTPUT

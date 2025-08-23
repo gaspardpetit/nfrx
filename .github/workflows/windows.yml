@@ -42,9 +42,9 @@ jobs:
           dotnet-version: '8.0.x'
       - name: Build worker
         run: |
-          go build -trimpath -o cmd/llamapool-worker/llamapool-worker.exe -ldflags "-s -w -X main.version=${{ steps.meta.outputs.version }} -X main.buildSHA=${{ steps.meta.outputs.sha }} -X main.buildDate=${{ steps.meta.outputs.date }}" ./cmd/llamapool-worker
+          go build -trimpath -o cmd/infero-llm/infero-llm.exe -ldflags "-s -w -X main.version=${{ steps.meta.outputs.version }} -X main.buildSHA=${{ steps.meta.outputs.sha }} -X main.buildDate=${{ steps.meta.outputs.date }}" ./cmd/infero-llm
       - name: Build .NET projects
-        run: dotnet build desktop/windows/Llamapool.Windows.sln -c Release
+        run: dotnet build desktop/windows/Infero.Windows.sln -c Release
       - name: Install WiX
         shell: pwsh
         run: |
@@ -54,11 +54,11 @@ jobs:
         run: |
           New-Item -ItemType Directory -Path build | Out-Null
           wix build desktop/windows/Installer/Product.wxs `
-            -d:WorkerExe="cmd\llamapool-worker\llamapool-worker.exe" `
+            -d:WorkerExe="cmd\infero-llm\infero-llm.exe" `
             -d:ServiceExe="desktop\windows\WindowsService\bin\Release\net8.0-windows\WindowsService.exe" `
             -d:TrayExe="desktop\windows\TrayApp\bin\Release\net8.0-windows\TrayApp.exe" `
             -d:DefaultConfig="desktop\windows\Installer\worker.yaml" `
-            -out build\llamapool.msi
+            -out build\infero.msi
 
       - name: Restore PFX from secret
         if: ${{ env.PFX_B64 != '' && github.event_name != 'pull_request' }}
@@ -73,8 +73,8 @@ jobs:
         run: |
           signtool sign /f build\codesign.pfx /p %PFX_PASS% /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 desktop\windows\TrayApp\bin\Release\net8.0-windows\TrayApp.exe
           signtool sign /f build\codesign.pfx /p %PFX_PASS% /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 desktop\windows\WindowsService\bin\Release\net8.0-windows\WindowsService.exe
-          signtool sign /f build\codesign.pfx /p %PFX_PASS% /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 cmd\llamapool-worker\llamapool-worker.exe
-          signtool sign /f build\codesign.pfx /p %PFX_PASS% /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 build\llamapool.msi
+          signtool sign /f build\codesign.pfx /p %PFX_PASS% /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 cmd\infero-llm\infero-llm.exe
+          signtool sign /f build\codesign.pfx /p %PFX_PASS% /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 build\infero.msi
       
       - name: Install cosign
         if: ${{ github.event_name != 'pull_request' }}
@@ -89,10 +89,10 @@ jobs:
           COSIGN_YES: "true"   # auto-approve keyless flow
         run: |
           $files = @(
-            "build/llamapool.msi",
+            "build/infero.msi",
             "desktop/windows/TrayApp/bin/Release/net8.0-windows/TrayApp.exe",
             "desktop/windows/WindowsService/bin/Release/net8.0-windows/WindowsService.exe",
-            "cmd/llamapool-worker/llamapool-worker.exe"
+            "cmd/infero-llm/infero-llm.exe"
           )
           foreach ($f in $files) {
             if (Test-Path $f) {
@@ -104,17 +104,17 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: llamapool-Windows
+          name: infero-Windows
           path: |
-            build\llamapool.msi
-            build\llamapool.msi.sig
-            build\llamapool.msi.pem
+            build\infero.msi
+            build\infero.msi.sig
+            build\infero.msi.pem
             desktop\windows\TrayApp\bin\Release\net8.0-windows\TrayApp.exe
             desktop\windows\TrayApp\bin\Release\net8.0-windows\TrayApp.exe.sig
             desktop\windows\TrayApp\bin\Release\net8.0-windows\TrayApp.exe.pem
             desktop\windows\WindowsService\bin\Release\net8.0-windows\WindowsService.exe
             desktop\windows\WindowsService\bin\Release\net8.0-windows\WindowsService.exe.sig
             desktop\windows\WindowsService\bin\Release\net8.0-windows\WindowsService.exe.pem
-            cmd\llamapool-worker\llamapool-worker.exe
-            cmd\llamapool-worker\llamapool-worker.exe.sig
-            cmd\llamapool-worker\llamapool-worker.exe.pem
+            cmd\infero-llm\infero-llm.exe
+            cmd\infero-llm\infero-llm.exe.sig
+            cmd\infero-llm\infero-llm.exe.pem
