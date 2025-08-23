@@ -63,7 +63,7 @@ func RelayGenerateStream(ctx context.Context, reg *ctrl.Registry, metricsReg *ct
 	var errMsg string
 	defer func() {
 		dur := time.Since(start)
-		metricsReg.RecordJobEnd(worker.ID, req.Model, dur, tokensIn, tokensOut, success, errMsg)
+		metricsReg.RecordJobEnd(worker.ID, req.Model, dur, tokensIn, tokensOut, 0, success, errMsg)
 		metricsReg.SetWorkerStatus(worker.ID, ctrl.StatusIdle)
 		metrics.ObserveRequestDuration(worker.ID, req.Model, dur)
 		metrics.RecordWorkerProcessingTime(worker.ID, dur)
@@ -194,7 +194,7 @@ func RelayGenerateOnce(ctx context.Context, reg *ctrl.Registry, metricsReg *ctrl
 	var success bool
 	defer func() {
 		dur := time.Since(start)
-		metricsReg.RecordJobEnd(worker.ID, req.Model, dur, tokensIn, tokensOut, success, errMsg)
+		metricsReg.RecordJobEnd(worker.ID, req.Model, dur, tokensIn, tokensOut, 0, success, errMsg)
 		metricsReg.SetWorkerStatus(worker.ID, ctrl.StatusIdle)
 		metrics.ObserveRequestDuration(worker.ID, req.Model, dur)
 		metrics.RecordWorkerProcessingTime(worker.ID, dur)

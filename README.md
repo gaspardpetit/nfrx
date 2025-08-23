@@ -564,7 +564,7 @@ curl http://localhost:8080/metrics
 curl http://localhost:9090/metrics
 ```
 
-The HTML dashboard at `/state` visualizes workers and reports per-worker token totals and average token processing rates.
+The HTML dashboard at `/state` visualizes workers and reports per-worker token totals, embedding totals, and average processing rates for both tokens and embeddings.
 
 The server also exposes OpenAI-style model listing endpoints:
 

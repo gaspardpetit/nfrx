@@ -141,6 +141,7 @@ func TestEmbeddingsParallelSplit(t *testing.T) {
 	metricsReg := ctrl.NewMetricsRegistry("", "", "")
 	h := EmbeddingsHandler(reg, sched, metricsReg, time.Second, 8)
 
+	errCh := make(chan error, 2)
 	go func() {
 		msg := <-w1.Send
 		req := msg.(ctrl.HTTPProxyRequestMessage)
@@ -149,7 +150,8 @@ func TestEmbeddingsParallelSplit(t *testing.T) {
 		}
 		_ = json.Unmarshal(req.Body, &v)
 		if len(v.Input) != 5 {
-			t.Fatalf("w1 batch %d", len(v.Input))
+			errCh <- fmt.Errorf("w1 batch %d", len(v.Input))
+			return
 		}
 		parts := make([]string, len(v.Input))
 		for i := range v.Input {
@@ -160,6 +162,7 @@ func TestEmbeddingsParallelSplit(t *testing.T) {
 		ch <- ctrl.HTTPProxyResponseHeadersMessage{Type: "http_proxy_response_headers", RequestID: req.RequestID, Status: 200, Headers: map[string]string{"Content-Type": "application/json"}}
 		ch <- ctrl.HTTPProxyResponseChunkMessage{Type: "http_proxy_response_chunk", RequestID: req.RequestID, Data: []byte(resp)}
 		ch <- ctrl.HTTPProxyResponseEndMessage{Type: "http_proxy_response_end", RequestID: req.RequestID}
+		errCh <- nil
 	}()
 
 	go func() {
@@ -170,7 +173,8 @@ func TestEmbeddingsParallelSplit(t *testing.T) {
 		}
 		_ = json.Unmarshal(req.Body, &v)
 		if len(v.Input) != 1 {
-			t.Fatalf("w2 batch %d", len(v.Input))
+			errCh <- fmt.Errorf("w2 batch %d", len(v.Input))
+			return
 		}
 		parts := make([]string, len(v.Input))
 		for i := range v.Input {
@@ -181,12 +185,19 @@ func TestEmbeddingsParallelSplit(t *testing.T) {
 		ch <- ctrl.HTTPProxyResponseHeadersMessage{Type: "http_proxy_response_headers", RequestID: req.RequestID, Status: 200, Headers: map[string]string{"Content-Type": "application/json"}}
 		ch <- ctrl.HTTPProxyResponseChunkMessage{Type: "http_proxy_response_chunk", RequestID: req.RequestID, Data: []byte(resp)}
 		ch <- ctrl.HTTPProxyResponseEndMessage{Type: "http_proxy_response_end", RequestID: req.RequestID}
+		errCh <- nil
 	}()
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/embeddings", bytes.NewReader([]byte(`{"model":"m","input":["a","b","c","d","e","f"]}`)))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
+	if err := <-errCh; err != nil {
+		t.Fatalf("worker: %v", err)
+	}
+	if err := <-errCh; err != nil {
+		t.Fatalf("worker: %v", err)
+	}
 	if rec.Code != 200 {
 		t.Fatalf("status %d", rec.Code)
 	}

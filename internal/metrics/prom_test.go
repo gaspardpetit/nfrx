@@ -17,6 +17,9 @@ func TestPromMetrics(t *testing.T) {
 	ObserveRequestDuration("w1", "llama3:8b", 100*time.Millisecond)
 	RecordWorkerTokens("w1", "in", 10)
 	RecordWorkerProcessingTime("w1", 100*time.Millisecond)
+	RecordModelEmbeddings("llama3:8b", 2)
+	RecordWorkerEmbeddings("w1", 2)
+	RecordWorkerEmbeddingProcessingTime("w1", 100*time.Millisecond)
 
 	if v := testutil.ToFloat64(modelRequests.WithLabelValues("llama3:8b", "success")); v != 1 {
 		t.Fatalf("model requests: %v", v)
@@ -29,6 +32,15 @@ func TestPromMetrics(t *testing.T) {
 	}
 	if v := testutil.ToFloat64(workerProcessing.WithLabelValues("w1")); v != 0.1 {
 		t.Fatalf("worker processing: %v", v)
+	}
+	if v := testutil.ToFloat64(modelEmbeddings.WithLabelValues("llama3:8b")); v != 2 {
+		t.Fatalf("model embeddings: %v", v)
+	}
+	if v := testutil.ToFloat64(workerEmbeddings.WithLabelValues("w1")); v != 2 {
+		t.Fatalf("worker embeddings: %v", v)
+	}
+	if v := testutil.ToFloat64(workerEmbeddingProcessing.WithLabelValues("w1")); v != 0.1 {
+		t.Fatalf("worker embedding processing: %v", v)
 	}
 	if v := testutil.ToFloat64(buildInfo.WithLabelValues("2024-01-01", "abc", "1.0.0")); v != 1 {
 		t.Fatalf("build info: %v", v)
