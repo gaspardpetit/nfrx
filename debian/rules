@@ -41,9 +41,9 @@ GO_LDFLAGS := $(GO_STRIP_FLAGS) \
 
 override_dh_auto_build:
 	# Build server
-	GOBIN=$(CURDIR)/build/bin go build -ldflags "$(GO_LDFLAGS)" -o build/bin/infx ./cmd/infx
+	GOBIN=$(CURDIR)/build/bin go build -ldflags "$(GO_LDFLAGS)" -o build/bin/nfrx ./cmd/nfrx
 	# Build worker
-	GOBIN=$(CURDIR)/build/bin go build -ldflags "$(GO_LDFLAGS)" -o build/bin/infx-llm ./cmd/infx-llm
+	GOBIN=$(CURDIR)/build/bin go build -ldflags "$(GO_LDFLAGS)" -o build/bin/nfrx-llm ./cmd/nfrx-llm
 
 override_dh_auto_install:
 	# Installation handled via .install files

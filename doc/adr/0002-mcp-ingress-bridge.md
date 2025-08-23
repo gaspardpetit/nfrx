@@ -1,7 +1,7 @@
 # ADR 0002: MCP ingress bridge frame schema
 
 ## Context
-The public `infx` will accept MCP client traffic over Streamable HTTP and relay it to `infx-mcp` via WebSocket. To keep the relay transport-agnostic and opaque, we need a well-defined frame format and correlation rules for JSON-RPC messages.
+The public `nfrx` will accept MCP client traffic over Streamable HTTP and relay it to `nfrx-mcp` via WebSocket. To keep the relay transport-agnostic and opaque, we need a well-defined frame format and correlation rules for JSON-RPC messages.
 
 ## Decision
 Define a WebSocket frame schema used between the ingress and the downstream bridge:

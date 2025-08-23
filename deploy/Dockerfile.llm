@@ -6,8 +6,8 @@ COPY . .
 ARG TARGETOS TARGETARCH VERSION=dev GIT_SHA=unknown BUILD_DATE=unknown
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
     go build -ldflags "-s -w -X main.version=${VERSION} -X main.buildSHA=${GIT_SHA} -X main.buildDate=${BUILD_DATE}" \
-      -o /out/infx-llm ./cmd/infx-llm
+      -o /out/nfrx-llm ./cmd/nfrx-llm
 
 FROM gcr.io/distroless/base-debian12
-COPY --from=build /out/infx-llm /infx-llm
-ENTRYPOINT ["/infx-llm"]
+COPY --from=build /out/nfrx-llm /nfrx-llm
+ENTRYPOINT ["/nfrx-llm"]

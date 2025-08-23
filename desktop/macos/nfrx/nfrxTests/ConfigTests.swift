@@ -1,5 +1,5 @@
 import XCTest
-@testable import infx
+@testable import nfrx
 
 final class ConfigTests: XCTestCase {
     func testYAMLRoundTrip() throws {

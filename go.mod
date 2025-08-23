@@ -1,4 +1,4 @@
-module github.com/gaspardpetit/infx
+module github.com/gaspardpetit/nfrx
 
 go 1.23.0
 

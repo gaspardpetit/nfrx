@@ -1,0 +1,13 @@
+#!/bin/sh
+set -e
+case "$1" in
+  configure)
+    if ! getent group nfrx >/dev/null; then
+      addgroup --system nfrx
+    fi
+    if ! id -u nfrx >/dev/null 2>&1; then
+      adduser --system --ingroup nfrx --no-create-home --home /nonexistent --shell /usr/sbin/nologin nfrx
+    fi
+    ;;
+esac
+#DEBHELPER#

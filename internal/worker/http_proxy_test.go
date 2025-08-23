@@ -8,8 +8,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/gaspardpetit/infx/internal/config"
-	"github.com/gaspardpetit/infx/internal/ctrl"
+	"github.com/gaspardpetit/nfrx/internal/config"
+	"github.com/gaspardpetit/nfrx/internal/ctrl"
 )
 
 func TestHandleHTTPProxyAuthAndStream(t *testing.T) {

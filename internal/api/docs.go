@@ -3,8 +3,8 @@ package api
 import (
 	"net/http"
 
-	"github.com/gaspardpetit/infx/api/generated"
-	"github.com/gaspardpetit/infx/internal/logx"
+	"github.com/gaspardpetit/nfrx/api/generated"
+	"github.com/gaspardpetit/nfrx/internal/logx"
 )
 
 var openapiJSON []byte
@@ -35,7 +35,7 @@ const swaggerPage = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>infx API</title>
+  <title>nfrx API</title>
   <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
 </head>
 <body>

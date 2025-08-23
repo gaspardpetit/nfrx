@@ -53,16 +53,16 @@ jobs:
           EXT=""
           if [ "$GOOS" = "windows" ]; then EXT=".exe"; fi
           mkdir -p dist
-          go build -ldflags "$LDFLAGS" -o dist/infx${EXT} ./cmd/infx
-          go build -ldflags "$LDFLAGS" -o dist/infx-llm${EXT} ./cmd/infx-llm
-          go build -ldflags "$LDFLAGS" -o dist/infx-mcp${EXT} ./cmd/infx-mcp
+          go build -ldflags "$LDFLAGS" -o dist/nfrx${EXT} ./cmd/nfrx
+          go build -ldflags "$LDFLAGS" -o dist/nfrx-llm${EXT} ./cmd/nfrx-llm
+          go build -ldflags "$LDFLAGS" -o dist/nfrx-mcp${EXT} ./cmd/nfrx-mcp
       - name: Package
         id: pkg
         shell: bash
         run: |
           OS=${{ matrix.goos }}
           ARCH=${{ matrix.goarch }}
-          NAME="infx_${OS}_${ARCH}_${{ steps.meta.outputs.version }}"
+          NAME="nfrx_${OS}_${ARCH}_${{ steps.meta.outputs.version }}"
           mkdir -p "pkg/$NAME"
           cp -v LICENSE README.md dist/* "pkg/$NAME"/
           echo "dir=pkg/$NAME" >> $GITHUB_OUTPUT

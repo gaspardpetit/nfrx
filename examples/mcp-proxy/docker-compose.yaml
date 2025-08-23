@@ -29,7 +29,7 @@ services:
     restart: unless-stopped
   server:
     container_name: server
-    image: ghcr.io/gaspardpetit/infx:main
+    image: ghcr.io/gaspardpetit/nfrx:main
     environment:
       <<: *common_env
       PORT: "8080"
@@ -40,7 +40,7 @@ services:
 
   worker:
     container_name: mcp
-    image: ghcr.io/gaspardpetit/infx-mcp:main
+    image: ghcr.io/gaspardpetit/nfrx-mcp:main
     environment:
       <<: *common_env
       SERVER_URL: "ws://server:8080/api/mcp/connect"

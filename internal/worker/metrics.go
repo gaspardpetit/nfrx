@@ -6,46 +6,46 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gaspardpetit/infx/internal/logx"
+	"github.com/gaspardpetit/nfrx/internal/logx"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
 	connectedToServerGauge = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "infx_worker_connected_to_server",
+		Name: "nfrx_worker_connected_to_server",
 		Help: "Whether the worker is connected to the server (1 or 0)",
 	})
 	connectedToBackendGauge = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "infx_worker_connected_to_backend",
+		Name: "nfrx_worker_connected_to_backend",
 		Help: "Whether the worker can reach its completion backend (1 or 0)",
 	})
 	currentJobsGauge = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "infx_worker_current_jobs",
+		Name: "nfrx_worker_current_jobs",
 		Help: "Number of jobs currently being processed",
 	})
 	maxConcurrencyGauge = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "infx_worker_max_concurrency",
+		Name: "nfrx_worker_max_concurrency",
 		Help: "Maximum number of concurrent jobs",
 	})
 	embeddingBatchSizeGauge = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "infx_worker_embedding_batch_size",
+		Name: "nfrx_worker_embedding_batch_size",
 		Help: "Ideal embedding batch size",
 	})
 	jobsStartedCounter = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "infx_worker_jobs_started_total",
+		Name: "nfrx_worker_jobs_started_total",
 		Help: "Total number of jobs started",
 	})
 	jobsSucceededCounter = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "infx_worker_jobs_succeeded_total",
+		Name: "nfrx_worker_jobs_succeeded_total",
 		Help: "Total number of jobs that succeeded",
 	})
 	jobsFailedCounter = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "infx_worker_jobs_failed_total",
+		Name: "nfrx_worker_jobs_failed_total",
 		Help: "Total number of jobs that failed",
 	})
 	jobDurationHist = prometheus.NewHistogram(prometheus.HistogramOpts{
-		Name:    "infx_worker_job_duration_seconds",
+		Name:    "nfrx_worker_job_duration_seconds",
 		Help:    "Duration of jobs in seconds",
 		Buckets: prometheus.DefBuckets,
 	})

@@ -22,10 +22,10 @@ public class Worker : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-        var workerExe = Path.Combine(programFiles, "infx", "infx-llm.exe");
+        var workerExe = Path.Combine(programFiles, "nfrx", "nfrx-llm.exe");
 
         var programData = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
-        var dataDir = Path.Combine(programData, "infx");
+        var dataDir = Path.Combine(programData, "nfrx");
         Directory.CreateDirectory(dataDir);
 
         var logsDir = Path.Combine(dataDir, "Logs");
@@ -36,7 +36,7 @@ public class Worker : BackgroundService
 
         if (Process.GetProcessesByName(Path.GetFileNameWithoutExtension(workerExe)).Any())
         {
-            _logger.LogWarning("infx-llm is already running; exiting service");
+            _logger.LogWarning("nfrx-llm is already running; exiting service");
             _lifetime.StopApplication();
             return;
         }

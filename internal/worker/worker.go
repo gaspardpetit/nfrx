@@ -11,12 +11,12 @@ import (
 	"github.com/coder/websocket"
 	"github.com/google/uuid"
 
-	"github.com/gaspardpetit/infx/internal/config"
-	"github.com/gaspardpetit/infx/internal/ctrl"
-	"github.com/gaspardpetit/infx/internal/logx"
-	"github.com/gaspardpetit/infx/internal/ollama"
-	reconnect "github.com/gaspardpetit/infx/internal/reconnect"
-	"github.com/gaspardpetit/infx/internal/relay"
+	"github.com/gaspardpetit/nfrx/internal/config"
+	"github.com/gaspardpetit/nfrx/internal/ctrl"
+	"github.com/gaspardpetit/nfrx/internal/logx"
+	"github.com/gaspardpetit/nfrx/internal/ollama"
+	reconnect "github.com/gaspardpetit/nfrx/internal/reconnect"
+	"github.com/gaspardpetit/nfrx/internal/relay"
 )
 
 // Run starts the worker agent.

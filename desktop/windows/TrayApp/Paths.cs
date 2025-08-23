@@ -9,7 +9,7 @@ namespace TrayApp;
 public static class Paths
 {
     public static readonly string ProgramDataDir =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "infx");
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "nfrx");
 
     public static readonly string LogsDir = Path.Combine(ProgramDataDir, "Logs");
 
@@ -21,7 +21,7 @@ public static class Paths
 
     public static readonly string BinaryPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
-        "infx",
-        "infx-llm.exe");
+        "nfrx",
+        "nfrx-llm.exe");
 }
 

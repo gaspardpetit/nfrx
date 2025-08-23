@@ -3,9 +3,9 @@
 ## Current State
 
 ### Architecture
-- **infx** – central HTTP API and coordination point. Accepts OpenAI-compatible requests, maintains registry of connected workers and MCP relays over WebSocket, and dispatches jobs using a least‑busy scheduler.
-- **infx-llm** – runs near an LLM runtime (Ollama, vLLM, etc.). Workers register available models, forward generation/embedding jobs, track health, and expose status/metrics endpoints.
-- **infx-mcp** – bridges Model Context Protocol providers to the public server via WebSocket, enforcing size limits and auth while relaying JSON‑RPC calls.
+- **nfrx** – central HTTP API and coordination point. Accepts OpenAI-compatible requests, maintains registry of connected workers and MCP relays over WebSocket, and dispatches jobs using a least‑busy scheduler.
+- **nfrx-llm** – runs near an LLM runtime (Ollama, vLLM, etc.). Workers register available models, forward generation/embedding jobs, track health, and expose status/metrics endpoints.
+- **nfrx-mcp** – bridges Model Context Protocol providers to the public server via WebSocket, enforcing size limits and auth while relaying JSON‑RPC calls.
 
 ### Resilience
 - Workers and MCP relays reconnect with bounded backoff.

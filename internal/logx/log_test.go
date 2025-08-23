@@ -3,7 +3,7 @@ package logx_test
 import (
 	"testing"
 
-	"github.com/gaspardpetit/infx/internal/logx"
+	"github.com/gaspardpetit/nfrx/internal/logx"
 	"github.com/rs/zerolog"
 )
 

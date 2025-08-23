@@ -4,26 +4,26 @@ class LaunchAgentManager {
     static let shared = LaunchAgentManager()
 
     private let fileManager = FileManager.default
-    private let label = "io.infx.llm"
+    private let label = "io.nfrx.llm"
 
     private var launchAgentURL: URL {
         fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/LaunchAgents/\(label).plist")
     }
 
     private var logsDirURL: URL {
-        fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/infx")
+        fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/nfrx")
     }
 
     private var configDirURL: URL {
-        fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/infx")
+        fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/nfrx")
     }
 
     private var workerBinaryURL: URL {
-        Bundle.main.resourceURL!.appendingPathComponent("bin/infx-llm")
+        Bundle.main.resourceURL!.appendingPathComponent("bin/nfrx-llm")
     }
 
     private var templateURL: URL? {
-        Bundle.main.url(forResource: "io.infx.llm", withExtension: "plist.template")
+        Bundle.main.url(forResource: "io.nfrx.llm", withExtension: "plist.template")
     }
 
     func start() throws {

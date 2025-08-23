@@ -1,7 +1,7 @@
 # ADR 0001: Transport-agnostic MCP client connector
 
 ## Context
-infx-mcp must connect to arbitrary third-party Model Context Protocol (MCP) servers using different transports. Compatibility and sane defaults are required without forcing legacy behaviours.
+nfrx-mcp must connect to arbitrary third-party Model Context Protocol (MCP) servers using different transports. Compatibility and sane defaults are required without forcing legacy behaviours.
 
 ## Decision
 We introduce a `mcpclient` package that defines a transport-agnostic `Connector` interface and an `Orchestrator` that attempts connection using multiple transports in order:
@@ -16,6 +16,6 @@ Each transport is wrapped by a common connector implementing `Start`, `Initializ
 Configuration specifies transport order, timeouts, auth settings, and feature gates. Legacy SSE remains opt-in to keep the default path modern.
 
 ## Consequences
-- infx-mcp gains fallback behaviour and can negotiate protocol versions and capabilities.
+- nfrx-mcp gains fallback behaviour and can negotiate protocol versions and capabilities.
 - New transports can be added by implementing the `Connector` interface and registering a factory with the orchestrator.
 - Legacy transports do not affect default behaviour unless explicitly enabled.

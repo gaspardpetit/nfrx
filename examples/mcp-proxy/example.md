@@ -1,6 +1,6 @@
 # MCP Proxy Example
 
-This example shows how to bridge a Python [fastmcp](https://pypi.org/project/fastmcp/) server through `infx-mcp` so that calls sent to `infx` are forwarded to a private MCP provider.
+This example shows how to bridge a Python [fastmcp](https://pypi.org/project/fastmcp/) server through `nfrx-mcp` so that calls sent to `nfrx` are forwarded to a private MCP provider.
 
 
 ## 1. Docker compose
@@ -39,7 +39,7 @@ services:
     restart: unless-stopped
   server:
     container_name: server
-    image: ghcr.io/gaspardpetit/infx:main
+    image: ghcr.io/gaspardpetit/nfrx:main
     environment:
       <<: *common_env
       PORT: "8080"
@@ -50,7 +50,7 @@ services:
 
   worker:
     container_name: mcp
-    image: ghcr.io/gaspardpetit/infx-mcp:main
+    image: ghcr.io/gaspardpetit/nfrx-mcp:main
     environment:
       <<: *common_env
       SERVER_URL: "ws://server:8080/api/mcp/connect"
@@ -114,7 +114,7 @@ curl http://localhost:8080/api/state \
 
 And notice that the client is registered (`mcp-1234` in this example).
 
-## 3. Run MCP commands across the infx 
+## 3. Run MCP commands across the nfrx 
 
 Regular MCP commands should now be available under `http://localhost:8080/api/mcp/id/<id>`
 

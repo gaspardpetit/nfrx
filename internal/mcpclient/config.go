@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gaspardpetit/infx/internal/config"
+	"github.com/gaspardpetit/nfrx/internal/config"
 	"github.com/mark3labs/mcp-go/client/transport"
 	"gopkg.in/yaml.v3"
 )
