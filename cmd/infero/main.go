@@ -60,6 +60,15 @@ func main() {
 	}
 	logx.Configure(cfg.LogLevel)
 
+	if cfg.RedisAddr != "" {
+		rs, err := serverstate.NewRedisStore(cfg.RedisAddr)
+		if err != nil {
+			logx.Log.Fatal().Err(err).Msg("connect redis")
+		}
+		serverstate.UseStore(rs)
+		logx.Log.Info().Str("addr", cfg.RedisAddr).Msg("using redis state store")
+	}
+
 	reg := ctrl.NewRegistry()
 	metricsReg := ctrl.NewMetricsRegistry(version, buildSHA, buildDate)
 	metrics.Register(prometheus.DefaultRegisterer)

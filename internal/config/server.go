@@ -22,6 +22,7 @@ type ServerConfig struct {
 	AllowedOrigins []string
 	ConfigFile     string
 	LogLevel       string
+	RedisAddr      string
 }
 
 // BindFlags populates the struct with defaults from environment variables and
@@ -43,6 +44,7 @@ func (c *ServerConfig) BindFlags() {
 	}
 	c.APIKey = getEnv("API_KEY", "")
 	c.ClientKey = getEnv("CLIENT_KEY", "")
+	c.RedisAddr = getEnv("REDIS_ADDR", "")
 	if v, err := strconv.ParseFloat(getEnv("REQUEST_TIMEOUT", "120"), 64); err == nil {
 		c.RequestTimeout = time.Duration(v * float64(time.Second))
 	} else {
@@ -61,6 +63,7 @@ func (c *ServerConfig) BindFlags() {
 	flag.StringVar(&c.MetricsAddr, "metrics-port", c.MetricsAddr, "Prometheus metrics listen address or port; defaults to the value of --port")
 	flag.StringVar(&c.APIKey, "api-key", c.APIKey, "client API key required for HTTP requests; leave empty to disable auth")
 	flag.StringVar(&c.ClientKey, "client-key", c.ClientKey, "shared key clients must present when registering")
+	flag.StringVar(&c.RedisAddr, "redis-addr", c.RedisAddr, "redis connection URL for server state")
 	flag.Func("request-timeout", "request timeout in seconds without worker activity", func(v string) error {
 		f, err := strconv.ParseFloat(v, 64)
 		if err != nil {

@@ -28,6 +28,7 @@ By default the MCP relay exits if the server is unavailable. Add `-r` or `--reco
 `infero-mcp` reads configuration from a YAML file when `CONFIG_FILE` is set. Values in the file—such as transport order, protocol version preference, or stdio working directory—are used as defaults and can be overridden by environment variables or CLI flags (e.g. `--mcp-http-url`, `--mcp-stdio-workdir`).
 
 For transport configuration, common errors, and developer guidance see [doc/mcpclient.md](doc/mcpclient.md). For a comprehensive list of configuration options, see [doc/env.md](doc/env.md). Sample YAML configuration templates with defaults are available under `examples/config/`.
+Server state can be shared across multiple infero instances by setting `REDIS_ADDR` to a Redis connection URL (including Sentinel or cluster deployments).
 For project direction and future enhancements, see [doc/roadmap.md](doc/roadmap.md).
 
 A typical deployment looks like this:

@@ -7,3 +7,4 @@ metrics_addr: ":8080"        # Prometheus metrics listen address
 request_timeout: 120s         # request timeout without worker activity
 drain_timeout: 5m             # wait time for in-flight requests on shutdown
 # allowed_origins: []         # comma separated list of allowed CORS origins
+# redis_addr: redis://127.0.0.1:6379/0  # redis connection URL for server state
