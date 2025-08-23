@@ -1,6 +1,7 @@
 # Example configuration for infero
 port: 8080                    # HTTP listen port for the public API
 metrics_addr: ":8080"        # Prometheus metrics listen address
+# log_level: info             # logging verbosity (all, debug, info, warn, error, fatal, none)
 # api_key: ""                # client API key required for HTTP requests
 # client_key: ""             # shared key clients must present when registering
 request_timeout: 120s         # request timeout without worker activity

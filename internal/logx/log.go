@@ -11,29 +11,39 @@ import (
 // Log is the shared logger used throughout the project.
 var Log = log.Logger
 
-// Configure sets the global log level based on environment variables.
-// LOG_LEVEL takes precedence and accepts zerolog levels (trace, debug, info,
-// warn, error, fatal, panic). When unset, DEBUG=true maps to debug level,
-// otherwise info is used. Invalid values fall back to info.
-func Configure() {
-	lvlStr := strings.ToLower(os.Getenv("LOG_LEVEL"))
-	if lvlStr == "" {
-		if strings.ToLower(os.Getenv("DEBUG")) == "true" {
-			lvlStr = "debug"
-		} else {
-			lvlStr = "info"
-		}
-	}
-	lvl, err := zerolog.ParseLevel(lvlStr)
-	if err != nil {
-		lvl = zerolog.InfoLevel
-	}
-	zerolog.SetGlobalLevel(lvl)
+// Configure sets the global log level and output format.
+// The level string is tolerant of case and common synonyms.
+func Configure(level string) {
+	zerolog.SetGlobalLevel(parseLevel(level))
 
 	// Optional: make logs human-readable in dev
 	Log = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 }
 
+// parseLevel converts a string to a zerolog level.
+// Accepts: all, debug, info, warn, warning, error, fatal, none.
+// Unknown values default to info.
+func parseLevel(level string) zerolog.Level {
+	switch strings.ToLower(strings.TrimSpace(level)) {
+	case "all", "trace":
+		return zerolog.TraceLevel
+	case "debug":
+		return zerolog.DebugLevel
+	case "info":
+		return zerolog.InfoLevel
+	case "warn", "warning":
+		return zerolog.WarnLevel
+	case "error":
+		return zerolog.ErrorLevel
+	case "fatal":
+		return zerolog.FatalLevel
+	case "none", "off", "disabled":
+		return zerolog.Disabled
+	default:
+		return zerolog.InfoLevel
+	}
+}
+
 func init() {
-	Configure()
+	Configure(os.Getenv("LOG_LEVEL"))
 }

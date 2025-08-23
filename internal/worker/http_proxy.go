@@ -13,6 +13,7 @@ import (
 	"github.com/gaspardpetit/infero/internal/config"
 	"github.com/gaspardpetit/infero/internal/ctrl"
 	"github.com/gaspardpetit/infero/internal/logx"
+	"github.com/rs/zerolog"
 )
 
 func handleHTTPProxy(ctx context.Context, cfg config.WorkerConfig, sendCh chan []byte, req ctrl.HTTPProxyRequestMessage, cancels map[string]context.CancelFunc, mu *sync.Mutex, onDone func()) {
@@ -60,6 +61,10 @@ func handleHTTPProxy(ctx context.Context, cfg config.WorkerConfig, sendCh chan [
 	httpReq.Header.Set("Connection", "close")
 
 	client := &http.Client{}
+	lvl := zerolog.GlobalLevel()
+	if lvl <= zerolog.DebugLevel {
+		logx.Log.Debug().Str("request_id", req.RequestID).Str("method", req.Method).Str("url", url).Interface("headers", httpReq.Header).Bytes("body", req.Body).Msg("http proxy request")
+	}
 	resp, err := client.Do(httpReq)
 	if err != nil {
 		sendProxyError(reqCtx, req.RequestID, sendCh, err)
@@ -70,6 +75,11 @@ func handleHTTPProxy(ctx context.Context, cfg config.WorkerConfig, sendCh chan [
 	hdrs := map[string]string{}
 	for k, v := range resp.Header {
 		hdrs[k] = strings.Join(v, ", ")
+	}
+	if lvl <= zerolog.DebugLevel {
+		logx.Log.Debug().Str("request_id", req.RequestID).Str("url", url).Int("status", resp.StatusCode).Interface("headers", resp.Header).Msg("http proxy response")
+	} else if lvl <= zerolog.InfoLevel {
+		logx.Log.Info().Str("request_id", req.RequestID).Str("url", url).Int("status", resp.StatusCode).Msg("http proxy")
 	}
 	hmsg := ctrl.HTTPProxyResponseHeadersMessage{Type: "http_proxy_response_headers", RequestID: req.RequestID, Status: resp.StatusCode, Headers: hdrs}
 	b, _ := json.Marshal(hmsg)
@@ -87,6 +97,9 @@ func handleHTTPProxy(ctx context.Context, cfg config.WorkerConfig, sendCh chan [
 	for {
 		n, err := resp.Body.Read(buf)
 		if n > 0 {
+			if lvl <= zerolog.DebugLevel {
+				logx.Log.Debug().Str("request_id", req.RequestID).Bytes("chunk", buf[:n]).Msg("http proxy chunk")
+			}
 			cmsg := ctrl.HTTPProxyResponseChunkMessage{Type: "http_proxy_response_chunk", RequestID: req.RequestID, Data: append([]byte(nil), buf[:n]...)}
 			bb, _ := json.Marshal(cmsg)
 			sendMsg(reqCtx, sendCh, bb)

@@ -1,5 +1,6 @@
 # Example configuration for infero-mcp
 server_url: ws://localhost:8080/api/mcp/connect
+# log_level: info             # logging verbosity (all, debug, info, warn, error, fatal, none)
 # client_key: ""              # shared secret for authenticating with the server
 # client_id: ""               # client identifier; assigned when empty
 # client_name: ""             # client display name shown in logs

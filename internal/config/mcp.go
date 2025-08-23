@@ -23,6 +23,7 @@ type MCPConfig struct {
 	RequestTimeout time.Duration
 	Reconnect      bool
 	ConfigFile     string
+	LogLevel       string
 }
 
 // BindFlags populates the struct with defaults from environment variables and
@@ -30,6 +31,7 @@ type MCPConfig struct {
 func (c *MCPConfig) BindFlags() {
 	cfgPath := DefaultConfigPath("mcp.yaml")
 	c.ConfigFile = getEnv("CONFIG_FILE", cfgPath)
+	c.LogLevel = getEnv("LOG_LEVEL", "info")
 
 	c.ServerURL = getEnv("SERVER_URL", "ws://localhost:8080/api/mcp/connect")
 	c.ClientKey = getEnv("CLIENT_KEY", "")
@@ -56,6 +58,7 @@ func (c *MCPConfig) BindFlags() {
 	}
 
 	flag.StringVar(&c.ConfigFile, "config", c.ConfigFile, "mcp config file path")
+	flag.StringVar(&c.LogLevel, "log-level", c.LogLevel, "log verbosity (all, debug, info, warn, error, fatal, none)")
 	flag.StringVar(&c.ServerURL, "server-url", c.ServerURL, "broker WebSocket URL (e.g. ws://localhost:8080/api/mcp/connect)")
 	flag.StringVar(&c.ClientKey, "client-key", c.ClientKey, "shared secret for authenticating with the server")
 	flag.StringVar(&c.ProviderURL, "provider-url", c.ProviderURL, "MCP provider URL")

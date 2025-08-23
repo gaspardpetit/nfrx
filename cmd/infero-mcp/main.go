@@ -108,6 +108,7 @@ func main() {
 			logx.Log.Fatal().Err(err).Str("path", cfg.ConfigFile).Msg("load config")
 		}
 	}
+	logx.Configure(cfg.LogLevel)
 
 	header := http.Header{}
 	reconnectFlag := cfg.Reconnect
