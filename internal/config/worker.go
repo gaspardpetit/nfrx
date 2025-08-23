@@ -15,22 +15,23 @@ import (
 
 // WorkerConfig holds configuration for the worker agent.
 type WorkerConfig struct {
-	ServerURL         string
-	ClientKey         string
-	CompletionBaseURL string
-	CompletionAPIKey  string
-	MaxConcurrency    int
-	ClientID          string
-	ClientName        string
-	StatusAddr        string
-	MetricsAddr       string
-	DrainTimeout      time.Duration
-	ModelPollInterval time.Duration
-	ConfigFile        string
-	LogDir            string
-	Reconnect         bool
-	RequestTimeout    time.Duration
-	LogLevel          string
+	ServerURL          string
+	ClientKey          string
+	CompletionBaseURL  string
+	CompletionAPIKey   string
+	MaxConcurrency     int
+	EmbeddingBatchSize int
+	ClientID           string
+	ClientName         string
+	StatusAddr         string
+	MetricsAddr        string
+	DrainTimeout       time.Duration
+	ModelPollInterval  time.Duration
+	ConfigFile         string
+	LogDir             string
+	Reconnect          bool
+	RequestTimeout     time.Duration
+	LogLevel           string
 }
 
 func (c *WorkerConfig) BindFlags() {
@@ -49,6 +50,10 @@ func (c *WorkerConfig) BindFlags() {
 		c.MaxConcurrency = v
 	} else {
 		c.MaxConcurrency = 2
+	}
+	eb := getEnv("EMBEDDING_BATCH_SIZE", "0")
+	if v, err := strconv.Atoi(eb); err == nil {
+		c.EmbeddingBatchSize = v
 	}
 	c.ClientID = getEnv("CLIENT_ID", "")
 	c.StatusAddr = getEnv("STATUS_ADDR", "")
@@ -87,6 +92,7 @@ func (c *WorkerConfig) BindFlags() {
 	flag.StringVar(&c.CompletionBaseURL, "completion-base-url", c.CompletionBaseURL, "base URL of the completion API (e.g. http://127.0.0.1:11434/v1)")
 	flag.StringVar(&c.CompletionAPIKey, "completion-api-key", c.CompletionAPIKey, "API key for the completion API; leave empty for no auth")
 	flag.IntVar(&c.MaxConcurrency, "max-concurrency", c.MaxConcurrency, "maximum number of jobs processed concurrently")
+	flag.IntVar(&c.EmbeddingBatchSize, "embedding-batch-size", c.EmbeddingBatchSize, "ideal embedding batch size for embeddings")
 	flag.StringVar(&c.ClientID, "client-id", c.ClientID, "client identifier; randomly generated if omitted")
 	flag.StringVar(&c.ClientName, "client-name", c.ClientName, "client display name shown in logs and status")
 	flag.StringVar(&c.StatusAddr, "status-addr", c.StatusAddr, "local status HTTP listen address (enables /status; e.g. 127.0.0.1:4555)")

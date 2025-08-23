@@ -30,28 +30,29 @@ type PerModelStats struct {
 
 // WorkerSnapshot represents a snapshot of worker metrics.
 type WorkerSnapshot struct {
-	ID                string                   `json:"id"`
-	Name              string                   `json:"name"`
-	Status            WorkerStatus             `json:"status"`
-	ConnectedAt       time.Time                `json:"connected_at"`
-	LastHeartbeat     time.Time                `json:"last_heartbeat"`
-	Version           string                   `json:"version"`
-	BuildSHA          string                   `json:"build_sha,omitempty"`
-	BuildDate         string                   `json:"build_date,omitempty"`
-	ModelsSupported   []string                 `json:"models_supported"`
-	MaxConcurrency    int                      `json:"max_concurrency"`
-	ProcessedTotal    uint64                   `json:"processed_total"`
-	ProcessingMsTotal uint64                   `json:"processing_ms_total"`
-	AvgProcessingMs   float64                  `json:"avg_processing_ms"`
-	Inflight          int                      `json:"inflight"`
-	FailuresTotal     uint64                   `json:"failures_total"`
-	QueueLen          int                      `json:"queue_len"`
-	LastError         string                   `json:"last_error,omitempty"`
-	TokensInTotal     uint64                   `json:"tokens_in_total"`
-	TokensOutTotal    uint64                   `json:"tokens_out_total"`
-	TokensTotal       uint64                   `json:"tokens_total"`
-	AvgTokensPerSec   float64                  `json:"avg_tokens_per_second"`
-	PerModel          map[string]PerModelStats `json:"per_model"`
+	ID                 string                   `json:"id"`
+	Name               string                   `json:"name"`
+	Status             WorkerStatus             `json:"status"`
+	ConnectedAt        time.Time                `json:"connected_at"`
+	LastHeartbeat      time.Time                `json:"last_heartbeat"`
+	Version            string                   `json:"version"`
+	BuildSHA           string                   `json:"build_sha,omitempty"`
+	BuildDate          string                   `json:"build_date,omitempty"`
+	ModelsSupported    []string                 `json:"models_supported"`
+	MaxConcurrency     int                      `json:"max_concurrency"`
+	EmbeddingBatchSize int                      `json:"embedding_batch_size"`
+	ProcessedTotal     uint64                   `json:"processed_total"`
+	ProcessingMsTotal  uint64                   `json:"processing_ms_total"`
+	AvgProcessingMs    float64                  `json:"avg_processing_ms"`
+	Inflight           int                      `json:"inflight"`
+	FailuresTotal      uint64                   `json:"failures_total"`
+	QueueLen           int                      `json:"queue_len"`
+	LastError          string                   `json:"last_error,omitempty"`
+	TokensInTotal      uint64                   `json:"tokens_in_total"`
+	TokensOutTotal     uint64                   `json:"tokens_out_total"`
+	TokensTotal        uint64                   `json:"tokens_total"`
+	AvgTokensPerSec    float64                  `json:"avg_tokens_per_second"`
+	PerModel           map[string]PerModelStats `json:"per_model"`
 }
 
 // ServerSnapshot contains server-wide aggregates.
@@ -134,16 +135,17 @@ type MetricsRegistry struct {
 }
 
 type workerMetrics struct {
-	id              string
-	name            string
-	status          WorkerStatus
-	connectedAt     time.Time
-	lastHeartbeat   time.Time
-	version         string
-	buildSHA        string
-	buildDate       string
-	modelsSupported []string
-	maxConcurrency  int
+	id                 string
+	name               string
+	status             WorkerStatus
+	connectedAt        time.Time
+	lastHeartbeat      time.Time
+	version            string
+	buildSHA           string
+	buildDate          string
+	modelsSupported    []string
+	maxConcurrency     int
+	embeddingBatchSize int
 
 	processedTotal    uint64
 	processingMsTotal uint64
@@ -170,7 +172,7 @@ func NewMetricsRegistry(serverVersion, serverSHA, serverDate string) *MetricsReg
 }
 
 // UpsertWorker registers or updates a worker.
-func (m *MetricsRegistry) UpsertWorker(id, name, version, buildSHA, buildDate string, maxConcurrency int, models []string) {
+func (m *MetricsRegistry) UpsertWorker(id, name, version, buildSHA, buildDate string, maxConcurrency, embeddingBatchSize int, models []string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	w, ok := m.workers[id]
@@ -184,6 +186,7 @@ func (m *MetricsRegistry) UpsertWorker(id, name, version, buildSHA, buildDate st
 	w.buildDate = buildDate
 	w.modelsSupported = models
 	w.maxConcurrency = maxConcurrency
+	w.embeddingBatchSize = embeddingBatchSize
 	w.lastHeartbeat = time.Now()
 	if w.status == "" {
 		w.status = StatusConnected
@@ -206,11 +209,12 @@ func (m *MetricsRegistry) SetWorkerStatus(id string, status WorkerStatus) {
 	m.mu.Unlock()
 }
 
-// UpdateWorker updates a worker's models and max concurrency.
-func (m *MetricsRegistry) UpdateWorker(id string, maxConcurrency int, models []string) {
+// UpdateWorker updates a worker's models and limits.
+func (m *MetricsRegistry) UpdateWorker(id string, maxConcurrency, embeddingBatchSize int, models []string) {
 	m.mu.Lock()
 	if w, ok := m.workers[id]; ok {
 		w.maxConcurrency = maxConcurrency
+		w.embeddingBatchSize = embeddingBatchSize
 		if models != nil {
 			w.modelsSupported = models
 		}
@@ -379,28 +383,29 @@ func (m *MetricsRegistry) Snapshot() StateResponse {
 			perModel[k] = *v
 		}
 		snapshot := WorkerSnapshot{
-			ID:                w.id,
-			Name:              w.name,
-			Status:            w.status,
-			ConnectedAt:       w.connectedAt,
-			LastHeartbeat:     w.lastHeartbeat,
-			Version:           w.version,
-			BuildSHA:          w.buildSHA,
-			BuildDate:         w.buildDate,
-			ModelsSupported:   append([]string(nil), w.modelsSupported...),
-			MaxConcurrency:    w.maxConcurrency,
-			ProcessedTotal:    w.processedTotal,
-			ProcessingMsTotal: w.processingMsTotal,
-			AvgProcessingMs:   avg,
-			Inflight:          w.inflight,
-			FailuresTotal:     w.failuresTotal,
-			QueueLen:          w.queueLen,
-			LastError:         w.lastError,
-			TokensInTotal:     w.tokensInTotal,
-			TokensOutTotal:    w.tokensOutTotal,
-			TokensTotal:       tokensTotal,
-			AvgTokensPerSec:   rate,
-			PerModel:          perModel,
+			ID:                 w.id,
+			Name:               w.name,
+			Status:             w.status,
+			ConnectedAt:        w.connectedAt,
+			LastHeartbeat:      w.lastHeartbeat,
+			Version:            w.version,
+			BuildSHA:           w.buildSHA,
+			BuildDate:          w.buildDate,
+			ModelsSupported:    append([]string(nil), w.modelsSupported...),
+			MaxConcurrency:     w.maxConcurrency,
+			EmbeddingBatchSize: w.embeddingBatchSize,
+			ProcessedTotal:     w.processedTotal,
+			ProcessingMsTotal:  w.processingMsTotal,
+			AvgProcessingMs:    avg,
+			Inflight:           w.inflight,
+			FailuresTotal:      w.failuresTotal,
+			QueueLen:           w.queueLen,
+			LastError:          w.lastError,
+			TokensInTotal:      w.tokensInTotal,
+			TokensOutTotal:     w.tokensOutTotal,
+			TokensTotal:        tokensTotal,
+			AvgTokensPerSec:    rate,
+			PerModel:           perModel,
 		}
 		resp.Workers = append(resp.Workers, snapshot)
 	}

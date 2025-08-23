@@ -68,20 +68,21 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string) http.H
 			}
 		}
 		wk := &Worker{
-			ID:             rm.WorkerID,
-			Name:           name,
-			Models:         map[string]bool{},
-			MaxConcurrency: rm.MaxConcurrency,
-			InFlight:       0,
-			LastHeartbeat:  time.Now(),
-			Send:           make(chan interface{}, 32),
-			Jobs:           make(map[string]chan interface{}),
+			ID:                 rm.WorkerID,
+			Name:               name,
+			Models:             map[string]bool{},
+			MaxConcurrency:     rm.MaxConcurrency,
+			EmbeddingBatchSize: rm.EmbeddingBatchSize,
+			InFlight:           0,
+			LastHeartbeat:      time.Now(),
+			Send:               make(chan interface{}, 32),
+			Jobs:               make(map[string]chan interface{}),
 		}
 		for _, m := range rm.Models {
 			wk.Models[m] = true
 		}
 		reg.Add(wk)
-		metrics.UpsertWorker(wk.ID, wk.Name, rm.Version, rm.BuildSHA, rm.BuildDate, rm.MaxConcurrency, rm.Models)
+		metrics.UpsertWorker(wk.ID, wk.Name, rm.Version, rm.BuildSHA, rm.BuildDate, rm.MaxConcurrency, rm.EmbeddingBatchSize, rm.Models)
 		status := StatusIdle
 		if rm.MaxConcurrency == 0 {
 			status = StatusNotReady
@@ -141,6 +142,7 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string) http.H
 				if err := json.Unmarshal(msg, &m); err == nil {
 					wk.mu.Lock()
 					wk.MaxConcurrency = m.MaxConcurrency
+					wk.EmbeddingBatchSize = m.EmbeddingBatchSize
 					if m.Models != nil {
 						wk.Models = map[string]bool{}
 						for _, mm := range m.Models {
@@ -148,7 +150,7 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string) http.H
 						}
 					}
 					wk.mu.Unlock()
-					metrics.UpdateWorker(wk.ID, m.MaxConcurrency, m.Models)
+					metrics.UpdateWorker(wk.ID, m.MaxConcurrency, m.EmbeddingBatchSize, m.Models)
 					if m.Status != "" {
 						metrics.SetWorkerStatus(wk.ID, WorkerStatus(m.Status))
 					}

@@ -5,6 +5,7 @@ server_url: ws://localhost:8080/api/workers/connect
 completion_base_url: http://127.0.0.1:11434/v1
 # completion_api_key: ""      # API key for the completion API
 max_concurrency: 2
+# embedding_batch_size: 0     # ideal number of inputs per embeddings call
 # client_id: ""               # client identifier
 # client_name: ""             # worker display name
 # status_addr: ""             # local status HTTP listen address

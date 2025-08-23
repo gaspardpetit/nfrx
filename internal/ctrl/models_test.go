@@ -7,8 +7,8 @@ import (
 
 func TestAggregatedModels(t *testing.T) {
 	reg := NewRegistry()
-	reg.Add(&Worker{ID: "w1", Name: "Alpha", Models: map[string]bool{"llama3:8b": true, "mistral:7b": true}, MaxConcurrency: 1})
-	reg.Add(&Worker{ID: "w2", Name: "Beta", Models: map[string]bool{"llama3:8b": true, "qwen2.5:14b": true}, MaxConcurrency: 1})
+	reg.Add(&Worker{ID: "w1", Name: "Alpha", Models: map[string]bool{"llama3:8b": true, "mistral:7b": true}, MaxConcurrency: 1, EmbeddingBatchSize: 0})
+	reg.Add(&Worker{ID: "w2", Name: "Beta", Models: map[string]bool{"llama3:8b": true, "qwen2.5:14b": true}, MaxConcurrency: 1, EmbeddingBatchSize: 0})
 
 	list := reg.AggregatedModels()
 	if len(list) != 3 {

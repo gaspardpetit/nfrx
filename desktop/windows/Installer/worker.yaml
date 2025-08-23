@@ -3,4 +3,5 @@ server_url: ""
 client_key: ""
 completion_base_url: "http://127.0.0.1:11434/v1"
 max_concurrency: 1
+# embedding_batch_size: 0
 status_addr: "127.0.0.1:4555"

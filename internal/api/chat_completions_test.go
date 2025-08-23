@@ -24,7 +24,7 @@ func TestChatCompletionsHeaders(t *testing.T) {
 	wk := &ctrl.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
 	reg.Add(wk)
 	metricsReg := ctrl.NewMetricsRegistry("", "", "")
-	metricsReg.UpsertWorker("w1", "w1", "", "", "", 1, []string{"m"})
+	metricsReg.UpsertWorker("w1", "w1", "", "", "", 1, 0, []string{"m"})
 	metricsReg.SetWorkerStatus("w1", ctrl.StatusConnected)
 	h := ChatCompletionsHandler(reg, sched, metricsReg, time.Second)
 

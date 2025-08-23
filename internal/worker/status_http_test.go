@@ -14,7 +14,7 @@ import (
 func TestStatusHTTP(t *testing.T) {
 	resetState()
 	SetBuildInfo("v1", "sha1", "2024-01-01")
-	SetWorkerInfo("id1", "worker", 2, []string{"m1"})
+	SetWorkerInfo("id1", "worker", 2, 0, []string{"m1"})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	cfgFile := filepath.Join(t.TempDir(), "worker.yaml")

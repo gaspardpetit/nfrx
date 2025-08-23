@@ -65,7 +65,7 @@ func TestE2EChatCompletionsProxy(t *testing.T) {
 	defer cancel()
 	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/api/workers/connect"
 	go func() {
-		_ = worker.Run(ctx, config.WorkerConfig{ServerURL: wsURL, ClientKey: "secret", CompletionBaseURL: ollama.URL + "/v1", CompletionAPIKey: "secret-123", ClientID: "w1", ClientName: "w1", MaxConcurrency: 2})
+		_ = worker.Run(ctx, config.WorkerConfig{ServerURL: wsURL, ClientKey: "secret", CompletionBaseURL: ollama.URL + "/v1", CompletionAPIKey: "secret-123", ClientID: "w1", ClientName: "w1", MaxConcurrency: 2, EmbeddingBatchSize: 0})
 	}()
 
 	// wait for worker registration

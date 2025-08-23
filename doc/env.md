@@ -50,6 +50,7 @@ The worker optionally reads settings from a YAML config file. Defaults:
 | `COMPLETION_BASE_URL` | `completion_base_url` | base URL of the completion API | `http://127.0.0.1:11434/v1` | `--completion-base-url` |
 | `COMPLETION_API_KEY` | — | API key for the completion API | unset | `--completion-api-key` |
 | `MAX_CONCURRENCY` | `max_concurrency` | maximum number of jobs processed concurrently | `2` | `--max-concurrency` |
+| `EMBEDDING_BATCH_SIZE` | `embedding_batch_size` | ideal number of inputs per embeddings call | `0` | `--embedding-batch-size` |
 | `CLIENT_ID` | — | client identifier (random if unset) | unset | `--client-id` |
 | `STATUS_ADDR` | `status_addr` | local status HTTP listen address | unset (disabled) | `--status-addr` |
 | `METRICS_PORT` | `metrics_addr` | Prometheus metrics listen address or port | unset (disabled) | `--metrics-port` |

@@ -27,7 +27,7 @@ The JSON snapshot includes `server.state` which reports `ready`, `not_ready`, or
 
 | Verb & Endpoint | Parameters | Description | Auth |
 | --- | --- | --- | --- |
-| `GET /api/workers/connect` (WS) | Initial message `{ type: "register", client_key?: string, worker_id?: string, worker_name?: string, models?: [string], max_concurrency?: int }` | Worker connects to server. | Client key |
+| `GET /api/workers/connect` (WS) | Initial message `{ type: "register", client_key?: string, worker_id?: string, worker_name?: string, models?: [string], max_concurrency?: int, embedding_batch_size?: int }` | Worker connects to server. | Client key |
 
 ### Client Usage
 
