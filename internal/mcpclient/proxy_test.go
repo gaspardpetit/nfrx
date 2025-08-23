@@ -10,7 +10,7 @@ import (
 	"github.com/mark3labs/mcp-go/client/transport"
 	"github.com/mark3labs/mcp-go/mcp"
 
-	"github.com/gaspardpetit/infero/internal/mcpbridge"
+	"github.com/gaspardpetit/infx/internal/mcpbridge"
 )
 
 type fakeWSConn struct {

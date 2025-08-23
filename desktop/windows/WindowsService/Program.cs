@@ -4,7 +4,7 @@ using WindowsService;
 var builder = Host.CreateApplicationBuilder(args);
 builder.Services.AddWindowsService(options =>
 {
-    options.ServiceName = "infero";
+    options.ServiceName = "infx";
 });
 builder.Services.AddHostedService<Worker>();
 

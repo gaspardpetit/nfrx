@@ -1,0 +1,3 @@
+build/bin/infx-llm usr/bin/
+debian/infx-llm.service usr/lib/systemd/system/
+debian/examples/worker.env etc/infx/worker.env

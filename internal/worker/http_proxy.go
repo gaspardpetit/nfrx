@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gaspardpetit/infero/internal/config"
-	"github.com/gaspardpetit/infero/internal/ctrl"
-	"github.com/gaspardpetit/infero/internal/logx"
+	"github.com/gaspardpetit/infx/internal/config"
+	"github.com/gaspardpetit/infx/internal/ctrl"
+	"github.com/gaspardpetit/infx/internal/logx"
 	"github.com/rs/zerolog"
 )
 

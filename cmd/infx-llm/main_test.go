@@ -20,7 +20,7 @@ func TestVersionFlag(t *testing.T) {
 		t.Fatalf("command failed: %v\n%s", err, out)
 	}
 	got := strings.TrimSpace(string(out))
-	want := fmt.Sprintf("infero-llm version=%s sha=%s date=%s", v, sha, date)
+	want := fmt.Sprintf("infx-llm version=%s sha=%s date=%s", v, sha, date)
 	if got != want {
 		t.Fatalf("unexpected output: got %q want %q", got, want)
 	}

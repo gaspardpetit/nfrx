@@ -20,14 +20,14 @@ func DefaultConfigPath(name string) string {
 func ResolveConfigPath(goos, home, programData, name string) string {
 	switch goos {
 	case "darwin":
-		return filepath.Join(home, "Library", "Application Support", "infero", name)
+		return filepath.Join(home, "Library", "Application Support", "infx", name)
 	case "windows":
 		if programData == "" {
 			programData = "C:/ProgramData"
 		}
 		programData = strings.TrimRight(programData, "\\/")
-		return filepath.Join(programData, "infero", name)
+		return filepath.Join(programData, "infx", name)
 	default:
-		return filepath.Join("/etc", "infero", name)
+		return filepath.Join("/etc", "infx", name)
 	}
 }

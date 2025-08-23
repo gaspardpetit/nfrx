@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gaspardpetit/infero/internal/ctrl"
+	"github.com/gaspardpetit/infx/internal/ctrl"
 )
 
 func TestRelayGenerateStream(t *testing.T) {

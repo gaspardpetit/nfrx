@@ -9,8 +9,8 @@ import (
 
 	"github.com/coder/websocket"
 
-	"github.com/gaspardpetit/infero/internal/logx"
-	"github.com/gaspardpetit/infero/internal/serverstate"
+	"github.com/gaspardpetit/infx/internal/logx"
+	"github.com/gaspardpetit/infx/internal/serverstate"
 )
 
 // WSHandler handles incoming client websocket connections.

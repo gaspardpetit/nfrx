@@ -1,5 +1,5 @@
 import XCTest
-@testable import infero
+@testable import infx
 
 final class StatusClientTests: XCTestCase {
     let sampleJSON = """

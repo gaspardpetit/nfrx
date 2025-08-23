@@ -12,8 +12,8 @@ import (
 	"github.com/mark3labs/mcp-go/client/transport"
 	"github.com/mark3labs/mcp-go/mcp"
 
-	"github.com/gaspardpetit/infero/internal/logx"
-	"github.com/gaspardpetit/infero/internal/mcpbridge"
+	"github.com/gaspardpetit/infx/internal/logx"
+	"github.com/gaspardpetit/infx/internal/mcpbridge"
 )
 
 // wsConn abstracts a minimal websocket connection for testing.

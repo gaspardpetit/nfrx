@@ -13,21 +13,21 @@ jobs:
         env:
           DEVELOPMENT_TEAM: ${{ secrets.AC_TEAM_ID }}
         run: |
-          xcodebuild -project desktop/macos/infero/infero.xcodeproj -scheme infero -configuration Release -archivePath build/infero.xcarchive archive
-          xcodebuild -exportArchive -archivePath build/infero.xcarchive -exportOptionsPlist ci/exportOptions.plist -exportPath build/export
+          xcodebuild -project desktop/macos/infx/infx.xcodeproj -scheme infx -configuration Release -archivePath build/infx.xcarchive archive
+          xcodebuild -exportArchive -archivePath build/infx.xcarchive -exportOptionsPlist ci/exportOptions.plist -exportPath build/export
       - name: Create DMG
         run: |
-          ci/create-dmg.sh build/export/infero.app build/Infero.dmg
+          ci/create-dmg.sh build/export/infx.app build/Infx.dmg
       - name: Notarize
         env:
           AC_API_KEY_ID: ${{ secrets.AC_API_KEY_ID }}
           AC_API_ISSUER_ID: ${{ secrets.AC_API_ISSUER_ID }}
           AC_API_P8: ${{ secrets.AC_API_P8 }}
-        run: ci/notarize.sh build/Infero.dmg
+        run: ci/notarize.sh build/Infx.dmg
       - name: Staple
-        run: xcrun stapler staple build/Infero.dmg
+        run: xcrun stapler staple build/Infx.dmg
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Infero-macOS
-          path: build/Infero.dmg
+          name: Infx-macOS
+          path: build/Infx.dmg

@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>io.infero.llm</string>
+    <string>io.infx.llm</string>
     <key>ProgramArguments</key>
     <array>
         <string>{{WORKER_PATH}}</string>

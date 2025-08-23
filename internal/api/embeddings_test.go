@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gaspardpetit/infero/internal/ctrl"
+	"github.com/gaspardpetit/infx/internal/ctrl"
 )
 
 func TestEmbeddings(t *testing.T) {

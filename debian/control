@@ -1,20 +1,20 @@
-Source: infero
+Source: infx
 Section: utils
 Priority: optional
 Maintainer: Gaspard Petit <gaspardpetit@gmail.com>
 Build-Depends: debhelper-compat (= 13), dh-golang, golang-any:native
 Standards-Version: 4.7.0
-Homepage: https://github.com/gaspardpetit/infero
+Homepage: https://github.com/gaspardpetit/infx
 Rules-Requires-Root: no
 
-Package: infero
+Package: infx
 Architecture: any
 Depends: ${misc:Depends}, adduser
-Description: infero server component (daemon)
- The server for infero.
+Description: infx server component (daemon)
+ The server for infx.
 
-Package: infero-llm
+Package: infx-llm
 Architecture: any
 Depends: ${misc:Depends}, adduser
-Description: infero worker component (daemon)
- The worker for infero.
+Description: infx worker component (daemon)
+ The worker for infx.

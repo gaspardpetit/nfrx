@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gaspardpetit/infero/internal/logx"
+	"github.com/gaspardpetit/infx/internal/logx"
 )
 
 const (
