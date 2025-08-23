@@ -3,9 +3,9 @@
 ## Current State
 
 ### Architecture
-- **llamapool-server** – central HTTP API and coordination point. Accepts OpenAI-compatible requests, maintains registry of connected workers and MCP relays over WebSocket, and dispatches jobs using a least‑busy scheduler.
-- **llamapool-worker** – runs near an LLM runtime (Ollama, vLLM, etc.). Workers register available models, forward generation/embedding jobs, track health, and expose status/metrics endpoints.
-- **llamapool-mcp** – bridges Model Context Protocol providers to the public server via WebSocket, enforcing size limits and auth while relaying JSON‑RPC calls.
+- **infero** – central HTTP API and coordination point. Accepts OpenAI-compatible requests, maintains registry of connected workers and MCP relays over WebSocket, and dispatches jobs using a least‑busy scheduler.
+- **infero-llm** – runs near an LLM runtime (Ollama, vLLM, etc.). Workers register available models, forward generation/embedding jobs, track health, and expose status/metrics endpoints.
+- **infero-mcp** – bridges Model Context Protocol providers to the public server via WebSocket, enforcing size limits and auth while relaying JSON‑RPC calls.
 
 ### Resilience
 - Workers and MCP relays reconnect with bounded backoff.

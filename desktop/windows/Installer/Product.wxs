@@ -1,28 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
-	<Package Name="llamapool" Manufacturer="llamapool" Version="0.0.1"
+	<Package Name="infero" Manufacturer="infero" Version="0.0.1"
 			 UpgradeCode="2b2ad0a1-9a9a-4f85-becb-f93347172913">
 		<MediaTemplate />
 		<!-- Optional but recommended -->
-		<!-- <MajorUpgrade DowngradeErrorMessage="A newer version of llamapool is already installed."/> -->
+		<!-- <MajorUpgrade DowngradeErrorMessage="A newer version of infero is already installed."/> -->
 
 		<!-- 64-bit program files root -->
 		<StandardDirectory Id="ProgramFiles64Folder">
-			<Directory Id="INSTALLFOLDER" Name="llamapool">
+			<Directory Id="INSTALLFOLDER" Name="infero">
 				<Component Id="WorkerExe" Guid="2f3e5d88-1b9e-4e76-8cfb-2a4e3cd85406">
-					<File Id="LlamapoolWorkerExe" Source="$(var.WorkerExe)" KeyPath="yes" />
+					<File Id="InferoWorkerExe" Source="$(var.WorkerExe)" KeyPath="yes" />
 				</Component>
 
 				<Component Id="ServiceExe" Guid="ad770f31-08dd-4ec6-9c07-4b993b0c7a40">
 					<File Id="WindowsServiceExe" Source="$(var.ServiceExe)" KeyPath="yes" />
-					<ServiceInstall Id="LlamapoolService"
-									Name="llamapool"
-									DisplayName="llamapool"
+					<ServiceInstall Id="InferoService"
+									Name="infero"
+									DisplayName="infero"
 									Start="auto"
 									ErrorControl="normal"
 									Type="ownProcess" />
 					<ServiceControl Id="StartService"
-									Name="llamapool"
+									Name="infero"
 									Start="install"
 									Stop="both"
 									Remove="uninstall"
@@ -39,17 +39,17 @@
 
 		<!-- Per-user Start Menu shortcut in its own HKCU-keyed component (fixes ICE43/57/64) -->
 		<StandardDirectory Id="ProgramMenuFolder">
-			<Directory Id="ProgramMenuDir" Name="llamapool">
+			<Directory Id="ProgramMenuDir" Name="infero">
 				<Component Id="TrayShortcutCmp" Guid="c1b2b3c4-d5e6-47f8-9a0b-112233445566">
 					<!-- HKCU registry value as KeyPath for non-advertised shortcut -->
 					<RegistryValue Root="HKCU"
-								   Key="Software\llamapool\Installer"
+								   Key="Software\infero\Installer"
 								   Name="TrayShortcut"
 								   Type="string"
 								   Value="1"
 								   KeyPath="yes" />
 					<Shortcut Id="TrayShortcut"
-							  Name="llamapool Tray"
+							  Name="infero Tray"
 							  Directory="ProgramMenuDir"
 							  Target="[INSTALLFOLDER]Tray\TrayApp.exe"
 							  WorkingDirectory="TrayDir" />
@@ -61,7 +61,7 @@
 
 		<!-- Per-machine data under ProgramData -->
 		<StandardDirectory Id="CommonAppDataFolder">
-			<Directory Id="ProgramDataLlamapool" Name="llamapool">
+			<Directory Id="ProgramDataInfero" Name="infero">
 				<Component Id="ProgramData" Guid="c025ef5f-08da-4d66-a1fd-a755dc8e7e7b">
 					<CreateFolder />
 				</Component>
@@ -77,7 +77,7 @@
 		</StandardDirectory>
 
 		<!-- Feature must also be inside <Package> -->
-		<Feature Id="ProductFeature" Title="llamapool" Level="1">
+		<Feature Id="ProductFeature" Title="infero" Level="1">
 			<ComponentRef Id="WorkerExe" />
 			<ComponentRef Id="ServiceExe" />
 			<ComponentRef Id="TrayApp" />

@@ -12,7 +12,7 @@ services:
 
   server:
     container_name: server
-    image: ghcr.io/gaspardpetit/llamapool-server:main
+    image: ghcr.io/gaspardpetit/infero:main
     environment:
       <<: *common_env
       PORT: "8080"
@@ -23,7 +23,7 @@ services:
 
   worker:
     container_name: worker
-    image: ghcr.io/gaspardpetit/llamapool-worker:main
+    image: ghcr.io/gaspardpetit/infero-llm:main
     depends_on: [ollama]
     environment:
       <<: *common_env

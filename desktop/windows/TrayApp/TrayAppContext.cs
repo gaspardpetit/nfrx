@@ -35,10 +35,10 @@ public class TrayAppContext : ApplicationContext
     private string? _lastError;
     private WorkerConfig _config;
     private bool _controlsAvailable;
-    private const string ReleaseApi = "https://api.github.com/repos/gaspardpetit/llamapool/releases/latest";
-    private const string ReleasePage = "https://github.com/gaspardpetit/llamapool/releases";
+    private const string ReleaseApi = "https://api.github.com/repos/gaspardpetit/infero/releases/latest";
+    private const string ReleasePage = "https://github.com/gaspardpetit/infero/releases";
 
-    private const string ServiceName = "llamapool";
+    private const string ServiceName = "infero";
 
     public TrayAppContext()
     {
@@ -104,7 +104,7 @@ public class TrayAppContext : ApplicationContext
             Icon = SystemIcons.Application,
             ContextMenuStrip = contextMenu,
             Visible = true,
-            Text = "llamapool"
+            Text = "infero"
         };
 
         _config = WorkerConfig.Load(Paths.ConfigPath);
@@ -117,7 +117,7 @@ public class TrayAppContext : ApplicationContext
         _updateTimer = new System.Windows.Forms.Timer { Interval = 24 * 60 * 60 * 1000 };
         _updateTimer.Tick += async (_, _) => await CheckForUpdatesAsync();
         _updateTimer.Start();
-        _updateClient.DefaultRequestHeaders.UserAgent.ParseAdd("llamapool-trayapp");
+        _updateClient.DefaultRequestHeaders.UserAgent.ParseAdd("infero-trayapp");
 
         _controlsAvailable = false;
         _ = ProbeControlEndpointsAsync();
@@ -173,7 +173,7 @@ public class TrayAppContext : ApplicationContext
             _ = ProbeControlEndpointsAsync();
             if (running)
             {
-                var res = MessageBox.Show("Restart worker service now?", "llamapool", MessageBoxButtons.YesNo);
+                var res = MessageBox.Show("Restart worker service now?", "infero", MessageBoxButtons.YesNo);
                 if (res == DialogResult.Yes)
                 {
                     try
@@ -236,7 +236,7 @@ public class TrayAppContext : ApplicationContext
     {
         try
         {
-            var tempDir = Path.Combine(Path.GetTempPath(), $"llamapool-diagnostics-{Guid.NewGuid()}");
+            var tempDir = Path.Combine(Path.GetTempPath(), $"infero-diagnostics-{Guid.NewGuid()}");
             Directory.CreateDirectory(tempDir);
 
             if (File.Exists(Paths.ConfigPath))
@@ -254,7 +254,7 @@ public class TrayAppContext : ApplicationContext
             File.WriteAllText(Path.Combine(tempDir, "sc_query.txt"), RunProcessCapture("sc.exe", $"query {ServiceName}"));
 
             var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-            var zipPath = Path.Combine(desktop, $"llamapool-diagnostics-{DateTime.Now:yyyyMMddHHmmss}.zip");
+            var zipPath = Path.Combine(desktop, $"infero-diagnostics-{DateTime.Now:yyyyMMddHHmmss}.zip");
             ZipFile.CreateFromDirectory(tempDir, zipPath);
 
             MessageBox.Show($"Diagnostics collected to {zipPath}");
@@ -380,7 +380,7 @@ public class TrayAppContext : ApplicationContext
                 }
                 else
                 {
-                    _notifyIcon.BalloonTipTitle = "llamapool";
+                    _notifyIcon.BalloonTipTitle = "infero";
                     _notifyIcon.BalloonTipText = $"Version {_latestVersion} is available (current {current}).";
                     EventHandler? handler = null;
                     handler = (_, _) =>
@@ -441,7 +441,7 @@ public class TrayAppContext : ApplicationContext
 
             var text = TextForState(status.State);
             _statusItem.Text = $"Status: {text}";
-            _notifyIcon.Text = $"llamapool - {text}";
+            _notifyIcon.Text = $"infero - {text}";
             _detailsItem.Enabled = true;
             UpdateVersionItem();
         }
@@ -450,7 +450,7 @@ public class TrayAppContext : ApplicationContext
             _currentStatus = null;
             _lastError = ex.Message;
             _statusItem.Text = "Status: Disconnected";
-            _notifyIcon.Text = "llamapool - Disconnected";
+            _notifyIcon.Text = "infero - Disconnected";
             _detailsItem.Enabled = !string.IsNullOrEmpty(_lastError);
         }
         catch (Exception ex)
@@ -458,7 +458,7 @@ public class TrayAppContext : ApplicationContext
             _currentStatus = null;
             _lastError = ex.Message;
             _statusItem.Text = "Status: Error";
-            _notifyIcon.Text = "llamapool - Error";
+            _notifyIcon.Text = "infero - Error";
             _detailsItem.Enabled = true;
         }
 

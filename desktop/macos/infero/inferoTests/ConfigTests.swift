@@ -1,5 +1,5 @@
 import XCTest
-@testable import llamapool
+@testable import infero
 
 final class ConfigTests: XCTestCase {
     func testYAMLRoundTrip() throws {

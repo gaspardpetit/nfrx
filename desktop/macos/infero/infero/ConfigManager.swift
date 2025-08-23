@@ -6,7 +6,7 @@ class ConfigManager {
     private init() {}
 
     var configDirURL: URL {
-        fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Llamapool", isDirectory: true)
+        fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/infero", isDirectory: true)
     }
 
     var configFileURL: URL {
@@ -14,11 +14,11 @@ class ConfigManager {
     }
 
     var logsDirURL: URL {
-        fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/Llamapool", isDirectory: true)
+        fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/infero", isDirectory: true)
     }
 
     var launchAgentURL: URL {
-        fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/LaunchAgents/io.llamapool.worker.plist")
+        fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/LaunchAgents/io.infero.llm.plist")
     }
 
     func load() -> WorkerConfig {
@@ -53,7 +53,7 @@ class ConfigManager {
             throw NSError(domain: "ConfigManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No diagnostic files found"])
         }
         let desktop = fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Desktop", isDirectory: true)
-        let zipURL = desktop.appendingPathComponent("LlamapoolDiagnostics.zip")
+        let zipURL = desktop.appendingPathComponent("InferoDiagnostics.zip")
         try? fileManager.removeItem(at: zipURL)
         let process = Process()
         process.launchPath = "/usr/bin/zip"

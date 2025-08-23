@@ -1,6 +1,6 @@
 # MCP Client Guide
 
-This guide covers operation and development of the **llamapool-mcp** connector which bridges `llamapool-server` to third-party Model Context Protocol (MCP) providers.
+This guide covers operation and development of the **infero-mcp** connector which bridges `infero` to third-party Model Context Protocol (MCP) providers.
 
 ## Operator Guide
 

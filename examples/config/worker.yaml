@@ -1,4 +1,4 @@
-# Example configuration for llamapool-worker
+# Example configuration for infero-llm
 server_url: ws://localhost:8080/api/workers/connect
 # client_key: ""              # shared secret for authenticating with the server
 completion_base_url: http://127.0.0.1:11434/v1

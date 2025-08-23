@@ -1,13 +1,13 @@
 [Unit]
-Description=llamapool server
+Description=infero server
 After=network-online.target
 Wants=network-online.target
 
 [Service]
-User=llamapool
-Group=llamapool
-EnvironmentFile=-/etc/llamapool/server.env
-ExecStart=/usr/bin/llamapool-server $SERVER_FLAGS
+User=infero
+Group=infero
+EnvironmentFile=-/etc/infero/server.env
+ExecStart=/usr/bin/infero $SERVER_FLAGS
 Restart=on-failure
 RestartSec=3s
 AmbientCapabilities=
@@ -16,8 +16,9 @@ ProtectSystem=full
 ProtectHome=true
 PrivateTmp=true
 CapabilityBoundingSet=
-StateDirectory=llamapool
-RuntimeDirectory=llamapool
+StateDirectory=infero
+RuntimeDirectory=infero
+# Hardening knobs (adjust as needed)
 ProtectKernelLogs=true
 ProtectKernelModules=true
 ProtectControlGroups=true

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gaspardpetit/llamapool/internal/ctrl"
+	"github.com/gaspardpetit/infero/internal/ctrl"
 )
 
 func TestEmbeddings(t *testing.T) {

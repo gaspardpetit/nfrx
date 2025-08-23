@@ -22,10 +22,10 @@ public class Worker : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-        var workerExe = Path.Combine(programFiles, "llamapool", "llamapool-worker.exe");
+        var workerExe = Path.Combine(programFiles, "infero", "infero-llm.exe");
 
         var programData = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
-        var dataDir = Path.Combine(programData, "llamapool");
+        var dataDir = Path.Combine(programData, "infero");
         Directory.CreateDirectory(dataDir);
 
         var logsDir = Path.Combine(dataDir, "Logs");
@@ -36,7 +36,7 @@ public class Worker : BackgroundService
 
         if (Process.GetProcessesByName(Path.GetFileNameWithoutExtension(workerExe)).Any())
         {
-            _logger.LogWarning("llamapool-worker is already running; exiting service");
+            _logger.LogWarning("infero-llm is already running; exiting service");
             _lifetime.StopApplication();
             return;
         }

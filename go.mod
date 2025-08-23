@@ -1,4 +1,4 @@
-module github.com/gaspardpetit/llamapool
+module github.com/gaspardpetit/infero
 
 go 1.23.0
 

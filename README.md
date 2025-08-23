@@ -22,7 +22,7 @@ The server exposes a Streamable HTTP MCP endpoint at `POST /api/mcp/id/{id}` and
 
 Server-initiated JSON-RPC requests (for example sampling calls) are forwarded across the WebSocket bridge and relayed back to clients, preserving full protocol semantics.
 
-The new `infero-mcp` binary connects a private MCP provider to the public `infero-server`, allowing clients to invoke MCP methods via `POST /api/mcp/id/{id}`. The broker enforces request/response size limits, per-client concurrency caps, and 30s call timeouts; cancellation is not yet implemented. The client negotiates protocol versions and server capabilities, and exposes tunables such as `MCP_PROTOCOL_VERSION`, `MCP_HTTP_TIMEOUT`, and `MCP_MAX_INFLIGHT` for advanced deployments. By default `infero-mcp` requires absolute stdio commands and verifies TLS certificates; set `MCP_STDIO_ALLOW_RELATIVE=true` or `MCP_HTTP_INSECURE_SKIP_VERIFY=true` to relax these checks, and `MCP_OAUTH_TOKEN_FILE` to securely cache OAuth tokens on disk.
+The new `infero-mcp` binary connects a private MCP provider to the public `infero`, allowing clients to invoke MCP methods via `POST /api/mcp/id/{id}`. The broker enforces request/response size limits, per-client concurrency caps, and 30s call timeouts; cancellation is not yet implemented. The client negotiates protocol versions and server capabilities, and exposes tunables such as `MCP_PROTOCOL_VERSION`, `MCP_HTTP_TIMEOUT`, and `MCP_MAX_INFLIGHT` for advanced deployments. By default `infero-mcp` requires absolute stdio commands and verifies TLS certificates; set `MCP_STDIO_ALLOW_RELATIVE=true` or `MCP_HTTP_INSECURE_SKIP_VERIFY=true` to relax these checks, and `MCP_OAUTH_TOKEN_FILE` to securely cache OAuth tokens on disk.
 By default the MCP relay exits if the server is unavailable. Add `-r` or `--reconnect` to keep retrying with backoff (1s×3, 5s×3, 15s×3, then every 30s). When enabled, it also probes the MCP provider and remains in a `not_ready` state until the provider becomes reachable.
 
 `infero-mcp` reads configuration from a YAML file when `CONFIG_FILE` is set. Values in the file—such as transport order, protocol version preference, or stdio working directory—are used as defaults and can be overridden by environment variables or CLI flags (e.g. `--mcp-http-url`, `--mcp-stdio-workdir`).
@@ -32,13 +32,13 @@ For project direction and future enhancements, see [doc/roadmap.md](doc/roadmap.
 
 A typical deployment looks like this:
 
-- **`infero-server`** is deployed to a public or semi-public location (e.g., Azure, GCP, AWS, or a self-hosted server with dynamic DNS).
-- **`infero-worker`** runs on private machines (e.g., a Mac Studio or personal GPU workstation) alongside an LLM service.
+- **`infero`** is deployed to a public or semi-public location (e.g., Azure, GCP, AWS, or a self-hosted server with dynamic DNS).
+- **`infero-llm`** runs on private machines (e.g., a Mac Studio or personal GPU workstation) alongside an LLM service.
   When a worker connects, its available models are registered with the server and become accessible via the public API.
 
 ## macOS Menu Bar App
 
-An early-stage macOS menu bar companion lives under `desktop/macos/infero/`. It polls `http://127.0.0.1:4555/status` every two seconds to display live worker status and can manage a per-user LaunchAgent to start or stop a local `infero-worker` and toggle launching at login. A simple preferences window lets you edit worker connection settings which are written to `~/Library/Application Support/infero/worker.yaml`, and the menu offers quick links to open the config and logs folders, view live logs, copy diagnostics to the Desktop, and check for updates via Sparkle.
+An early-stage macOS menu bar companion lives under `desktop/macos/infero/`. It polls `http://127.0.0.1:4555/status` every two seconds to display live worker status and can manage a per-user LaunchAgent to start or stop a local `infero-llm` and toggle launching at login. A simple preferences window lets you edit worker connection settings which are written to `~/Library/Application Support/infero/worker.yaml`, and the menu offers quick links to open the config and logs folders, view live logs, copy diagnostics to the Desktop, and check for updates via Sparkle.
 
 ### Packaging
 
@@ -62,7 +62,7 @@ When using the GitHub Actions workflow, provide the `AC_TEAM_ID` secret with you
 A Windows tray companion lives under `desktop/windows/`. It polls `http://127.0.0.1:4555/status` every two seconds to display worker status.
 The tray can start or stop the local `infero` Windows service, toggle whether it launches automatically with Windows, edit worker connection settings, open the config and logs folders, view live logs, and collect diagnostics to the Desktop. When the worker exposes lifecycle control endpoints, the tray also provides **Drain**, **Undrain**, and **Shutdown after drain** actions.
 
-The Windows service runs `infero-worker` with the `--reconnect` flag and shuts down if the worker process exits, preventing orphaned workers. The worker is attached to a job object so it also terminates if the service process is killed.
+The Windows service runs `infero-llm` with the `--reconnect` flag and shuts down if the worker process exits, preventing orphaned workers. The worker is attached to a job object so it also terminates if the service process is killed.
 
 ### Key features
 - **Dynamic worker discovery** – Workers can connect and disconnect at any time; the server updates the available model list in real-time.
@@ -89,7 +89,7 @@ The Windows service runs `infero-worker` with the `--reconnect` flag and shuts d
                                          │  REQUEST 
                                          │  (API_KEY)
 ┌────────────────────────────────────────▼──────────────────────────────┐
-│                                 infero-server                      │
+│                                 infero                      │
 │                                                                       │
 │  ┌──────────────────────────┐                     ┌───────────────┐   │
 │  │  OpenAI-compatible API   │                     │  Observability│   │
@@ -108,7 +108,7 @@ The Windows service runs `infero-worker` with the `--reconnect` flag and shuts d
      CONNECT |    |                       CONNECT |           |  
 (CLIENT_KEY) │    | REQUEST          (CLIENT_KEY) │           | REQUEST
      ┌───────┴────▼────────────┐           ┌──────┴───────────▼────────┐
-     │      infero-worker   │           │      infero-worker    │
+     │      infero-llm   │           │      infero-llm    │
      │     (private/home lab)  │           │       (cloud/on-prem)    │
      │                         │           │                          │
      └─────────────┬───────────┘           └─────────────┬────────────┘
@@ -196,9 +196,9 @@ The Windows service runs `infero-worker` with the `--reconnect` flag and shuts d
 ## Install via .deb
 
 ```bash
-wget https://github.com/gaspardpetit/infero/releases/download/v1.3.0/infero-server_1.3.0-1_amd64.deb
-sudo dpkg -i infero-server_1.3.0-1_amd64.deb
-sudo systemctl status infero-server
+wget https://github.com/gaspardpetit/infero/releases/download/v1.3.0/infero_1.3.0-1_amd64.deb
+sudo dpkg -i infero_1.3.0-1_amd64.deb
+sudo systemctl status infero
 ```
 
 ## Build
@@ -211,8 +211,8 @@ make build
 
 On Windows:
 ```
-go build -o .\bin\infero-server.exe .\cmd\infero-server
-go build -o .\bin\infero-worker.exe .\cmd\infero-worker
+go build -o .\bin\infero.exe .\cmd\infero
+go build -o .\bin\infero-llm.exe .\cmd\infero-llm
 ```
 
 ### Version
@@ -220,8 +220,8 @@ go build -o .\bin\infero-worker.exe .\cmd\infero-worker
 Both binaries expose a `--version` flag that prints the build metadata:
 
 ```bash
-infero-server --version
-infero-worker --version
+infero --version
+infero-llm --version
 ```
 
 The output includes the version, git SHA and build date.
@@ -234,9 +234,9 @@ The same version information appears at the top of `--help` output.
 On Linux:
 
 ```bash
-PORT=8080 CLIENT_KEY=secret API_KEY=test123 go run ./cmd/infero-server
+PORT=8080 CLIENT_KEY=secret API_KEY=test123 go run ./cmd/infero
 # or to expose metrics on a different port:
-# PORT=8080 METRICS_PORT=9090 CLIENT_KEY=secret API_KEY=test123 go run ./cmd/infero-server
+# PORT=8080 METRICS_PORT=9090 CLIENT_KEY=secret API_KEY=test123 go run ./cmd/infero
 ```
 
 Workers register with the server at `/api/workers/connect`.
@@ -250,18 +250,18 @@ On Windows (CMD)
 set PORT=8080
 set CLIENT_KEY=secret
 set API_KEY=test123
-go run .\cmd\infero-server
+go run .\cmd\infero
 REM or if you built:
-.\bin\infero-server.exe
+.\bin\infero.exe
 ```
 
 On Windows (Powershell)
 
 ```
 $env:PORT = "8080"; $env:CLIENT_KEY = "secret"; $env:API_KEY = "test123"
-go run .\cmd\infero-server
+go run .\cmd\infero
 # or if you built:
-.\bin\infero-server.exe
+.\bin\infero.exe
 ```
 
 
@@ -270,7 +270,7 @@ go run .\cmd\infero-server
 On Linux:
 
 ```bash
-SERVER_URL=ws://localhost:8080/api/workers/connect CLIENT_KEY=secret COMPLETION_BASE_URL=http://127.0.0.1:11434/v1 CLIENT_NAME=Alpha go run ./cmd/infero-worker
+SERVER_URL=ws://localhost:8080/api/workers/connect CLIENT_KEY=secret COMPLETION_BASE_URL=http://127.0.0.1:11434/v1 CLIENT_NAME=Alpha go run ./cmd/infero-llm
 ```
 Optionally set `COMPLETION_API_KEY` to forward an API key to the backend. The worker proxies requests to `${COMPLETION_BASE_URL}/chat/completions`.
 
@@ -280,9 +280,9 @@ On Windows (CMD)
 set SERVER_URL=ws://localhost:8080/api/workers/connect
 set CLIENT_KEY=secret
 set COMPLETION_BASE_URL=http://127.0.0.1:11434/v1
-go run .\cmd\infero-worker
+go run .\cmd\infero-llm
 REM or if you built:
-.\bin\infero-worker.exe
+.\bin\infero-llm.exe
 ```
 
 On Windows (Powershell)
@@ -292,9 +292,9 @@ $env:SERVER_URL = "ws://localhost:8080/api/workers/connect"
 $env:CLIENT_KEY = "secret"
 $env:COMPLETION_BASE_URL = "http://127.0.0.1:11434/v1"
 $env:CLIENT_NAME = "Alpha"
-go run .\cmd\infero-worker
+go run .\cmd\infero-llm
 # or:
-.\bin\infero-worker.exe
+.\bin\infero-llm.exe
 ```
 
 By default the worker exits if the server is unavailable. Add `-r` or `--reconnect` to keep retrying with backoff (1s×3, 5s×3, 15s×3, then every 30s).
@@ -306,8 +306,8 @@ When enabled, the worker also retries its Ollama backend and remains connected t
 
 Pre-built images are available:
 
-- Server: `ghcr.io/gaspardpetit/infero-server:main`
-- Worker: `ghcr.io/gaspardpetit/infero-worker:main`
+- Server: `ghcr.io/gaspardpetit/infero:main`
+- Worker: `ghcr.io/gaspardpetit/infero-llm:main`
 
 Tagged releases follow semantic versioning (e.g., `v1.2.3`, `v1.2`, `v1`, `latest`); the `main` tag tracks the latest development snapshot.
 
@@ -315,7 +315,7 @@ Tagged releases follow semantic versioning (e.g., `v1.2.3`, `v1.2`, `v1`, `lates
 
 ```bash
 docker run --rm -p 8080:8080 -e CLIENT_KEY=secret -e API_KEY=test123 \
-  ghcr.io/gaspardpetit/infero-server:main
+  ghcr.io/gaspardpetit/infero:main
 ```
 
 ### Worker
@@ -325,7 +325,7 @@ docker run --rm \
   -e SERVER_URL=ws://localhost:8080/api/workers/connect \
   -e CLIENT_KEY=secret \
   -e COMPLETION_BASE_URL=http://host.docker.internal:11434/v1 \
-  ghcr.io/gaspardpetit/infero-worker:main
+  ghcr.io/gaspardpetit/infero-llm:main
 ```
 
 When started with `--status-addr <addr>`, the worker serves local endpoints:
@@ -460,8 +460,8 @@ go test ./...
 
 An initial Windows tray application and service wrapper live under `desktop/windows/`.
 A WiX-based MSI installer in `desktop/windows/Installer` installs the worker and tray binaries, registers the `infero` service, creates `%ProgramData%\infero` with a default configuration, and adds a Start Menu shortcut for the tray.
-The service wrapper launches `infero-worker.exe` installed at
-`%ProgramFiles%\infero\infero-worker.exe` with its working directory set to
+The service wrapper launches `infero-llm.exe` installed at
+`%ProgramFiles%\infero\infero-llm.exe` with its working directory set to
 `%ProgramData%\infero`. Configuration is read from
 `%ProgramData%\infero\worker.yaml` and log output is written to
 `%ProgramData%\infero\Logs\worker.log`. The service is registered as

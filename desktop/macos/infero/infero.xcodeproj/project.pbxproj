@@ -11,7 +11,7 @@
 		0F1D8737149CFCAC86539DB412907003 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A63B552BD1AE32A6791879F1AB6A515D /* Sparkle */; };
 		3C5A9DCC93AC47D2A548BBF1F8E26370 /* LaunchAgentManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F4338ED4FF54C8F9A7491F083790C23 /* LaunchAgentManager.swift */; };
 		4AB0C8F71A2346C8B30B5E02 /* StatusClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6F8C39D6E9C4E14A5D0E2D9 /* StatusClient.swift */; };
-		5D748F4BE7C9450EAD7714010E8AA9F8 /* io.llamapool.worker.plist.template in Resources */ = {isa = PBXBuildFile; fileRef = 911230C1E6D64B889FDC9BC0A8E368F2 /* io.llamapool.worker.plist.template */; };
+		5D748F4BE7C9450EAD7714010E8AA9F8 /* io.infero.llm.plist.template in Resources */ = {isa = PBXBuildFile; fileRef = 911230C1E6D64B889FDC9BC0A8E368F2 /* io.infero.llm.plist.template */; };
 		77EE2F6323744EB4AF1E26772BAA8DF7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DB20D9050486454BA6F1464F12F231D1 /* Assets.xcassets */; };
 		A1B2C3D4E5F60708A9B0C1D2 /* WorkerConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A60708B9C0D1E2 /* WorkerConfig.swift */; };
 		B21ACD2F315B40E38B7B6A6E /* StatusClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EAD688B5AC2497F99047482 /* StatusClientTests.swift */; };
@@ -27,7 +27,7 @@
 			containerPortal = EFA3DD98CD7E44A39AE163AC1EE87901 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 7E40A3A7183646E390A7675E6A480D3A;
-			remoteInfo = llamapool;
+			remoteInfo = infero;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -35,17 +35,17 @@
 		24B6B6BC5ECD4E9CA7C7F7E8086B9FA5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		4EAD688B5AC2497F99047482 /* StatusClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusClientTests.swift; sourceTree = "<group>"; };
 		6F4338ED4FF54C8F9A7491F083790C23 /* LaunchAgentManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAgentManager.swift; sourceTree = "<group>"; };
-		911230C1E6D64B889FDC9BC0A8E368F2 /* io.llamapool.worker.plist.template */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = io.llamapool.worker.plist.template; sourceTree = "<group>"; };
+		911230C1E6D64B889FDC9BC0A8E368F2 /* io.infero.llm.plist.template */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = io.infero.llm.plist.template; sourceTree = "<group>"; };
 		971B6CAEA8F64FC59C9EB4D41F6B6685 /* LogsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogsWindowController.swift; sourceTree = "<group>"; };
 		9B993A0AF20C45B9BFF02576573C7A4D /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		9FDC5B0B495D4A6C8C96F2E9 /* llamapoolTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = llamapoolTests.xctest; path = .xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		9FDC5B0B495D4A6C8C96F2E9 /* inferoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = inferoTests.xctest; path = .xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A7B8C9D0E1F2A3B4C5D6E7F8 /* ConfigTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigTests.swift; sourceTree = "<group>"; };
 		B1C2D3E4F5A60708B9C0D1E2 /* WorkerConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkerConfig.swift; sourceTree = "<group>"; };
 		D4E5F60708A9B0C1D2E3F4A5 /* ConfigManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigManager.swift; sourceTree = "<group>"; };
 		D6F8C39D6E9C4E14A5D0E2D9 /* StatusClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusClient.swift; sourceTree = "<group>"; };
 		DB20D9050486454BA6F1464F12F231D1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		E5F708A9B0C1D2E3F4A5B6C7 /* PreferencesWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesWindowController.swift; sourceTree = "<group>"; };
-		E9B117E139B24CC89E7EDB0E95964914 /* llamapool.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = llamapool.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E9B117E139B24CC89E7EDB0E95964914 /* infero.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = infero.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -67,7 +67,7 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		141EB2E1593C4112932B0389AB5F9296 /* llamapool */ = {
+		141EB2E1593C4112932B0389AB5F9296 /* infero */ = {
 			isa = PBXGroup;
 			children = (
 				9B993A0AF20C45B9BFF02576573C7A4D /* AppDelegate.swift */,
@@ -81,14 +81,14 @@
 				24B6B6BC5ECD4E9CA7C7F7E8086B9FA5 /* Info.plist */,
 				B3A7F042CB5C4B0891846F5A8C13A01F /* Resources */,
 			);
-			path = llamapool;
+			path = infero;
 			sourceTree = "<group>";
 		};
 		44CFCA963667432983C404F9C521016F /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				E9B117E139B24CC89E7EDB0E95964914 /* llamapool.app */,
-				9FDC5B0B495D4A6C8C96F2E9 /* llamapoolTests.xctest */,
+				E9B117E139B24CC89E7EDB0E95964914 /* infero.app */,
+				9FDC5B0B495D4A6C8C96F2E9 /* inferoTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -96,25 +96,25 @@
 		B3A7F042CB5C4B0891846F5A8C13A01F /* Resources */ = {
 			isa = PBXGroup;
 			children = (
-				911230C1E6D64B889FDC9BC0A8E368F2 /* io.llamapool.worker.plist.template */,
+				911230C1E6D64B889FDC9BC0A8E368F2 /* io.infero.llm.plist.template */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
 		};
-		B6510F4A0DAF4274A96E1F24 /* llamapoolTests */ = {
+		B6510F4A0DAF4274A96E1F24 /* inferoTests */ = {
 			isa = PBXGroup;
 			children = (
 				4EAD688B5AC2497F99047482 /* StatusClientTests.swift */,
 				A7B8C9D0E1F2A3B4C5D6E7F8 /* ConfigTests.swift */,
 			);
-			path = llamapoolTests;
+			path = inferoTests;
 			sourceTree = "<group>";
 		};
 		C4AF78D32CA148FD840522B16CD390C5 = {
 			isa = PBXGroup;
 			children = (
-				141EB2E1593C4112932B0389AB5F9296 /* llamapool */,
-				B6510F4A0DAF4274A96E1F24 /* llamapoolTests */,
+				141EB2E1593C4112932B0389AB5F9296 /* infero */,
+				B6510F4A0DAF4274A96E1F24 /* inferoTests */,
 				44CFCA963667432983C404F9C521016F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -122,9 +122,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		7E40A3A7183646E390A7675E6A480D3A /* llamapool */ = {
+		7E40A3A7183646E390A7675E6A480D3A /* infero */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = C7B568CE9BB341ADBBBA73E0E8F9FA73 /* Build configuration list for PBXNativeTarget "llamapool" */;
+			buildConfigurationList = C7B568CE9BB341ADBBBA73E0E8F9FA73 /* Build configuration list for PBXNativeTarget "infero" */;
 			buildPhases = (
 				37CB0AE7999D42FA885AD32F59A81DF4 /* Sources */,
 				0A44A43592684603805C437737106041 /* Frameworks */,
@@ -134,17 +134,17 @@
 			);
 			dependencies = (
 			);
-			name = llamapool;
+			name = infero;
 			packageProductDependencies = (
 				A63B552BD1AE32A6791879F1AB6A515D /* Sparkle */,
 			);
-			productName = llamapool;
-			productReference = E9B117E139B24CC89E7EDB0E95964914 /* llamapool.app */;
+			productName = infero;
+			productReference = E9B117E139B24CC89E7EDB0E95964914 /* infero.app */;
 			productType = "com.apple.product-type.application";
 		};
-		EBE90F3B7CBB4F6FA4A5E2D1 /* llamapoolTests */ = {
+		EBE90F3B7CBB4F6FA4A5E2D1 /* inferoTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 5A0F1C1F6DA7414E8C992243 /* Build configuration list for PBXNativeTarget "llamapoolTests" */;
+			buildConfigurationList = 5A0F1C1F6DA7414E8C992243 /* Build configuration list for PBXNativeTarget "inferoTests" */;
 			buildPhases = (
 				0C7D3CF2E5B745708FA8A6F0 /* Sources */,
 				AA1F75C905AB4286842F4F6B /* Frameworks */,
@@ -154,9 +154,9 @@
 			dependencies = (
 				D4816C4E23E8424E8AF97B64 /* PBXTargetDependency */,
 			);
-			name = llamapoolTests;
-			productName = llamapoolTests;
-			productReference = 9FDC5B0B495D4A6C8C96F2E9 /* llamapoolTests.xctest */;
+			name = inferoTests;
+			productName = inferoTests;
+			productReference = 9FDC5B0B495D4A6C8C96F2E9 /* inferoTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
@@ -176,7 +176,7 @@
 					};
 				};
 			};
-			buildConfigurationList = A7403101D9BC406791D60A9DD5DA68C4 /* Build configuration list for PBXProject "llamapool" */;
+			buildConfigurationList = A7403101D9BC406791D60A9DD5DA68C4 /* Build configuration list for PBXProject "infero" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -191,8 +191,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				7E40A3A7183646E390A7675E6A480D3A /* llamapool */,
-				EBE90F3B7CBB4F6FA4A5E2D1 /* llamapoolTests */,
+				7E40A3A7183646E390A7675E6A480D3A /* infero */,
+				EBE90F3B7CBB4F6FA4A5E2D1 /* inferoTests */,
 			);
 		};
 /* End PBXProject section */
@@ -203,7 +203,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				77EE2F6323744EB4AF1E26772BAA8DF7 /* Assets.xcassets in Resources */,
-				5D748F4BE7C9450EAD7714010E8AA9F8 /* io.llamapool.worker.plist.template in Resources */,
+				5D748F4BE7C9450EAD7714010E8AA9F8 /* io.infero.llm.plist.template in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -238,7 +238,7 @@
 /* Begin PBXTargetDependency section */
 		D4816C4E23E8424E8AF97B64 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 7E40A3A7183646E390A7675E6A480D3A /* llamapool */;
+			target = 7E40A3A7183646E390A7675E6A480D3A /* infero */;
 			targetProxy = A3F276C72E8149D3A868DE32 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -266,9 +266,9 @@
 					"@executable_path/../Frameworks",
 					"@loader_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = io.llamapool.menubarTests;
+				PRODUCT_BUNDLE_IDENTIFIER = io.infero.menubarTests;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/llamapool.app/Contents/MacOS/llamapool";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/infero.app/Contents/MacOS/infero";
 			};
 			name = Debug;
 		};
@@ -282,9 +282,9 @@
 					"@executable_path/../Frameworks",
 					"@loader_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = io.llamapool.menubarTests;
+				PRODUCT_BUNDLE_IDENTIFIER = io.infero.menubarTests;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/llamapool.app/Contents/MacOS/llamapool";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/infero.app/Contents/MacOS/infero";
 			};
 			name = Release;
 		};
@@ -293,13 +293,13 @@
 			buildSettings = {
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = 4L476C5647;
-				INFOPLIST_FILE = llamapool/Info.plist;
+				INFOPLIST_FILE = infero/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				PRODUCT_BUNDLE_IDENTIFIER = io.llamapool.menubar;
+				PRODUCT_BUNDLE_IDENTIFIER = io.infero.menubar;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 			};
@@ -310,13 +310,13 @@
 			buildSettings = {
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = 4L476C5647;
-				INFOPLIST_FILE = llamapool/Info.plist;
+				INFOPLIST_FILE = infero/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				PRODUCT_BUNDLE_IDENTIFIER = io.llamapool.menubar;
+				PRODUCT_BUNDLE_IDENTIFIER = io.infero.menubar;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 			};
@@ -325,7 +325,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		5A0F1C1F6DA7414E8C992243 /* Build configuration list for PBXNativeTarget "llamapoolTests" */ = {
+		5A0F1C1F6DA7414E8C992243 /* Build configuration list for PBXNativeTarget "inferoTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				9A15E67F3AD24A879EE39C77 /* Debug */,
@@ -334,7 +334,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		A7403101D9BC406791D60A9DD5DA68C4 /* Build configuration list for PBXProject "llamapool" */ = {
+		A7403101D9BC406791D60A9DD5DA68C4 /* Build configuration list for PBXProject "infero" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				8928F6627FB749B593B2DD95BD265C64 /* Debug */,
@@ -343,7 +343,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		C7B568CE9BB341ADBBBA73E0E8F9FA73 /* Build configuration list for PBXNativeTarget "llamapool" */ = {
+		C7B568CE9BB341ADBBBA73E0E8F9FA73 /* Build configuration list for PBXNativeTarget "infero" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D9CBDBA712C2439483B0194F53AD3372 /* Debug */,
