@@ -34,7 +34,7 @@ The JSON snapshot includes `server.state` which reports `ready`, `not_ready`, or
 | Verb & Endpoint | Parameters | Description | Auth |
 | --- | --- | --- | --- |
 | `POST /api/v1/chat/completions` | Body `{ model: string, messages: [{role: string, content: string}], stream?: bool, ... }` | Proxy OpenAI chat completions. | API key |
-| `POST /api/v1/embeddings` | Body `{ model: string, input: any, ... }` | Proxy OpenAI embeddings. | API key |
+| `POST /api/v1/embeddings` | Body `{ model: string, input: any, ... }` | Proxy OpenAI embeddings; large input arrays are automatically batched per worker. | API key |
 | `GET /api/v1/models` | – | List models. | API key |
 | `GET /api/v1/models/{id}` | Path `{id}` | Get model details. | API key |
 
