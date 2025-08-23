@@ -27,6 +27,7 @@ The server optionally reads settings from a YAML config file. Defaults:
 | `DRAIN_TIMEOUT` | — | time to wait for in-flight requests on shutdown | `5m` | `--drain-timeout` |
 | `ALLOWED_ORIGINS` | — | comma separated list of allowed CORS origins | unset (deny all) | `--allowed-origins` |
 | `REDIS_ADDR` | `redis_addr` | Redis connection URL for server state (e.g. `redis://:pass@host:6379/0`, `redis-sentinel://host:26379/mymaster`) | unset | `--redis-addr` |
+| `MAX_PARALLEL_EMBEDDINGS` | `max_parallel_embeddings` | maximum number of workers to split embeddings across | `8` | `--max-parallel-embeddings` |
 | `BROKER_MAX_REQ_BYTES` | — | maximum MCP request size in bytes | `10485760` | — |
 | `BROKER_MAX_RESP_BYTES` | — | maximum MCP response size in bytes | `10485760` | — |
 | `BROKER_WS_HEARTBEAT_MS` | — | MCP WebSocket heartbeat interval in milliseconds | `15000` | — |

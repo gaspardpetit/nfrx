@@ -30,7 +30,7 @@ func New(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler
 		r.Use(m)
 	}
 
-	impl := &api.API{Reg: reg, Metrics: metrics, MCP: mcpReg, Sched: sched, Timeout: cfg.RequestTimeout}
+	impl := &api.API{Reg: reg, Metrics: metrics, MCP: mcpReg, Sched: sched, Timeout: cfg.RequestTimeout, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
 	wrapper := generated.ServerInterfaceWrapper{Handler: impl}
 
 	r.Route("/api/client", func(r chi.Router) {

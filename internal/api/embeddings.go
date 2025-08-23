@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
@@ -19,7 +22,7 @@ import (
 )
 
 // EmbeddingsHandler handles POST /api/v1/embeddings as a pass-through.
-func EmbeddingsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg *ctrl.MetricsRegistry, timeout time.Duration) http.HandlerFunc {
+func EmbeddingsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg *ctrl.MetricsRegistry, timeout time.Duration, maxParallel int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if serverstate.IsDraining() {
 			http.Error(w, "server draining", http.StatusServiceUnavailable)
@@ -49,7 +52,7 @@ func EmbeddingsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg *ctr
 		if raw, ok := payload["input"]; ok {
 			var inputs []json.RawMessage
 			if err := json.Unmarshal(raw, &inputs); err == nil && len(inputs) > 0 {
-				handleEmbeddingBatches(w, r, reg, sched, metricsReg, timeout, meta.Model, payload, inputs)
+				handleEmbeddingBatches(w, r, reg, metricsReg, timeout, meta.Model, payload, inputs, maxParallel)
 				return
 			}
 		}
@@ -255,84 +258,302 @@ type embeddingResponse struct {
 	Usage  embeddingUsage    `json:"usage"`
 }
 
-func handleEmbeddingBatches(w http.ResponseWriter, r *http.Request, reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg *ctrl.MetricsRegistry, timeout time.Duration, model string, payload map[string]json.RawMessage, inputs []json.RawMessage) {
-	logID := chiMiddleware.GetReqID(r.Context())
+func handleEmbeddingBatches(w http.ResponseWriter, r *http.Request, reg *ctrl.Registry, metricsReg *ctrl.MetricsRegistry, timeout time.Duration, model string, payload map[string]json.RawMessage, inputs []json.RawMessage, maxParallel int) {
+	ctx := r.Context()
+	var cancel context.CancelFunc
+	logID := chiMiddleware.GetReqID(ctx)
 	exact := reg.WorkersForModel(model)
-	remaining := inputs
-	var allData []json.RawMessage
-	var usage embeddingUsage
-	var respModel string
-
-	for len(remaining) > 0 {
-		worker, err := sched.PickWorker(model)
-		if err != nil {
-			logx.Log.Warn().Str("model", model).Msg("no worker")
-			http.Error(w, "no worker", http.StatusNotFound)
-			return
-		}
-		if len(exact) == 0 && len(allData) == 0 {
-			if key, ok := ctrl.AliasKey(model); ok {
-				logx.Log.Info().Str("event", "alias_fallback").Str("requested_id", model).Str("alias_key", key).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Msg("alias fallback")
-			}
-		}
-
-		reg.IncInFlight(worker.ID)
-		reqID := uuid.NewString()
-		batch := worker.EmbeddingBatchSize
-		if batch <= 0 || batch > len(remaining) {
-			batch = len(remaining)
-		}
-		b, _ := json.Marshal(remaining[:batch])
-		payload["input"] = b
-		body, _ := json.Marshal(payload)
-		headers := map[string]string{}
-		headers["Content-Type"] = r.Header.Get("Content-Type")
-		if v := r.Header.Get("Accept"); v != "" {
-			headers["Accept"] = v
-		}
-		if v := r.Header.Get("Accept-Language"); v != "" {
-			headers["Accept-Language"] = v
-		}
-		if v := r.Header.Get("User-Agent"); v != "" {
-			headers["User-Agent"] = v
-		}
-		rid := r.Header.Get("X-Request-Id")
-		if rid == "" {
-			rid = logID
-		}
-		headers["X-Request-Id"] = rid
-		headers["Cache-Control"] = "no-store"
-
-		logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", model).Msg("dispatch")
-		respBody, status, success, errMsg := proxyEmbeddingOnce(r.Context(), worker, reqID, logID, model, headers, body, metricsReg, timeout)
-		reg.DecInFlight(worker.ID)
-		worker.RemoveJob(reqID)
-		if !success {
-			w.Header().Set("Content-Type", "application/json")
-			if status == 0 {
-				status = http.StatusBadGateway
-			}
-			w.WriteHeader(status)
-			if len(respBody) > 0 {
-				_, _ = w.Write(respBody)
-			} else {
-				_, _ = w.Write([]byte(`{"error":"` + errMsg + `"}`))
-			}
-			return
-		}
-
-		var resp embeddingResponse
-		_ = json.Unmarshal(respBody, &resp)
-		allData = append(allData, resp.Data...)
-		usage.PromptTokens += resp.Usage.PromptTokens
-		usage.TotalTokens += resp.Usage.TotalTokens
-		if respModel == "" {
-			respModel = resp.Model
-		}
-		remaining = remaining[batch:]
+	if maxParallel <= 0 {
+		maxParallel = 1
 	}
 
-	final := embeddingResponse{Object: "list", Data: allData, Model: respModel, Usage: usage}
+	headers := map[string]string{}
+	headers["Content-Type"] = r.Header.Get("Content-Type")
+	if v := r.Header.Get("Accept"); v != "" {
+		headers["Accept"] = v
+	}
+	if v := r.Header.Get("Accept-Language"); v != "" {
+		headers["Accept-Language"] = v
+	}
+	if v := r.Header.Get("User-Agent"); v != "" {
+		headers["User-Agent"] = v
+	}
+	rid := r.Header.Get("X-Request-Id")
+	if rid == "" {
+		rid = logID
+	}
+	headers["X-Request-Id"] = rid
+	headers["Cache-Control"] = "no-store"
+
+	basePayload := make(map[string]json.RawMessage, len(payload))
+	for k, v := range payload {
+		if k != "input" {
+			basePayload[k] = v
+		}
+	}
+
+	workers := reg.WorkersForModel(model)
+	if len(workers) == 0 {
+		workers = reg.WorkersForAlias(model)
+	}
+	if len(workers) == 0 {
+		logx.Log.Warn().Str("model", model).Msg("no worker")
+		http.Error(w, "no worker", http.StatusNotFound)
+		return
+	}
+	sort.Slice(workers, func(i, j int) bool {
+		if workers[i].InFlight == workers[j].InFlight {
+			return workers[i].EmbeddingBatchSize > workers[j].EmbeddingBatchSize
+		}
+		return workers[i].InFlight < workers[j].InFlight
+	})
+	if len(workers) > maxParallel {
+		workers = workers[:maxParallel]
+	}
+	if len(workers) > len(inputs) {
+		workers = workers[:len(inputs)]
+	}
+	if len(exact) == 0 {
+		if key, ok := ctrl.AliasKey(model); ok {
+			logx.Log.Info().Str("event", "alias_fallback").Str("requested_id", model).Str("alias_key", key).Str("worker_id", workers[0].ID).Str("worker_name", workers[0].Name).Msg("alias fallback")
+		}
+	}
+
+	// If only one worker is available, fall back to sequential batching respecting its batch size.
+	if len(workers) == 1 {
+		worker := workers[0]
+		remaining := inputs
+		var allData []json.RawMessage
+		var usage embeddingUsage
+		var respModel string
+		for len(remaining) > 0 {
+			batch := worker.EmbeddingBatchSize
+			if batch <= 0 || batch > len(remaining) {
+				batch = len(remaining)
+			}
+			b, _ := json.Marshal(remaining[:batch])
+			mp := make(map[string]json.RawMessage, len(basePayload)+1)
+			for k, v := range basePayload {
+				mp[k] = v
+			}
+			mp["input"] = b
+			body, _ := json.Marshal(mp)
+			reg.IncInFlight(worker.ID)
+			reqID := uuid.NewString()
+			logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", model).Msg("dispatch")
+			respBody, status, success, errMsg := proxyEmbeddingOnce(ctx, worker, reqID, logID, model, headers, body, metricsReg, timeout)
+			reg.DecInFlight(worker.ID)
+			worker.RemoveJob(reqID)
+			if !success {
+				w.Header().Set("Content-Type", "application/json")
+				if status == 0 {
+					status = http.StatusBadGateway
+				}
+				w.WriteHeader(status)
+				if len(respBody) > 0 {
+					_, _ = w.Write(respBody)
+				} else {
+					_, _ = w.Write([]byte(`{"error":"` + errMsg + `"}`))
+				}
+				return
+			}
+			var resp embeddingResponse
+			_ = json.Unmarshal(respBody, &resp)
+			allData = append(allData, resp.Data...)
+			usage.PromptTokens += resp.Usage.PromptTokens
+			usage.TotalTokens += resp.Usage.TotalTokens
+			if respModel == "" {
+				respModel = resp.Model
+			}
+			remaining = remaining[batch:]
+		}
+		final := embeddingResponse{Object: "list", Data: allData, Model: respModel, Usage: usage}
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(final); err != nil {
+			logx.Log.Error().Err(err).Msg("write embeddings response")
+		}
+		return
+	}
+
+	type batchTask struct {
+		start     int
+		inputs    []json.RawMessage
+		attempted map[string]bool
+	}
+
+	// Split inputs proportionally to workers' batch sizes.
+	totalWeight := 0
+	weights := make([]int, len(workers))
+	for i, wkr := range workers {
+		weight := wkr.EmbeddingBatchSize
+		if weight <= 0 {
+			weight = len(inputs)
+		}
+		weights[i] = weight
+		totalWeight += weight
+	}
+	tasks := make([]batchTask, len(workers))
+	remaining := len(inputs)
+	offset := 0
+	remainingWeight := totalWeight
+	for i := range workers {
+		size := remaining
+		if i < len(workers)-1 {
+			portion := remaining * weights[i] / remainingWeight
+			if portion < 1 {
+				portion = 1
+			}
+			if portion > remaining {
+				portion = remaining
+			}
+			size = portion
+			remaining -= portion
+			remainingWeight -= weights[i]
+		}
+		tasks[i] = batchTask{start: offset, inputs: inputs[offset : offset+size], attempted: make(map[string]bool)}
+		offset += size
+	}
+
+	ctx, cancel = context.WithCancel(ctx)
+	defer cancel()
+
+	type taskResult struct {
+		start  int
+		data   []json.RawMessage
+		usage  embeddingUsage
+		model  string
+		status int
+		body   []byte
+		errMsg string
+		failed bool
+	}
+
+	resCh := make(chan taskResult, len(tasks))
+
+	var mu sync.Mutex
+	used := make(map[string]bool)
+	cond := sync.NewCond(&mu)
+	for _, wkr := range workers {
+		used[wkr.ID] = true
+	}
+	acquire := func(exclude map[string]bool) (*ctrl.Worker, error) {
+		mu.Lock()
+		defer mu.Unlock()
+		for {
+			for _, w := range workers {
+				if used[w.ID] || exclude[w.ID] {
+					continue
+				}
+				used[w.ID] = true
+				return w, nil
+			}
+			if len(exclude) >= len(workers) {
+				return nil, errors.New("no worker")
+			}
+			cond.Wait()
+		}
+	}
+	release := func(wk *ctrl.Worker) {
+		mu.Lock()
+		delete(used, wk.ID)
+		mu.Unlock()
+		cond.Signal()
+	}
+
+	var wg sync.WaitGroup
+	for i, wk := range workers {
+		t := tasks[i]
+		wg.Add(1)
+		go func(t batchTask, wk *ctrl.Worker) {
+			defer wg.Done()
+			current := wk
+			for {
+				reqID := uuid.NewString()
+				reg.IncInFlight(current.ID)
+				b, _ := json.Marshal(t.inputs)
+				mp := make(map[string]json.RawMessage, len(basePayload)+1)
+				for k, v := range basePayload {
+					mp[k] = v
+				}
+				mp["input"] = b
+				body, _ := json.Marshal(mp)
+				logx.Log.Info().Str("request_id", logID).Str("worker_id", current.ID).Str("worker_name", current.Name).Str("model", model).Msg("dispatch")
+				respBody, status, success, errMsg := proxyEmbeddingOnce(ctx, current, reqID, logID, model, headers, body, metricsReg, timeout)
+				reg.DecInFlight(current.ID)
+				current.RemoveJob(reqID)
+				if success {
+					var resp embeddingResponse
+					_ = json.Unmarshal(respBody, &resp)
+					resCh <- taskResult{start: t.start, data: resp.Data, usage: resp.Usage, model: resp.Model}
+					release(current)
+					return
+				}
+				t.attempted[current.ID] = true
+				release(current)
+				if len(t.attempted) >= len(workers) {
+					resCh <- taskResult{start: t.start, status: status, body: respBody, errMsg: errMsg, failed: true}
+					return
+				}
+				next, err := acquire(t.attempted)
+				if err != nil {
+					resCh <- taskResult{start: t.start, status: status, body: respBody, errMsg: errMsg, failed: true}
+					return
+				}
+				current = next
+			}
+		}(t, wk)
+	}
+
+	wg.Wait()
+	close(resCh)
+
+	finalData := make([]json.RawMessage, len(inputs))
+	var usage embeddingUsage
+	var respModel string
+	failed := false
+	var errBody []byte
+	var status int
+	var errMsg string
+	for res := range resCh {
+		if res.failed {
+			failed = true
+			if status == 0 {
+				status = res.status
+			}
+			if len(errBody) == 0 {
+				errBody = res.body
+			}
+			if errMsg == "" {
+				errMsg = res.errMsg
+			}
+			continue
+		}
+		copy(finalData[res.start:], res.data)
+		usage.PromptTokens += res.usage.PromptTokens
+		usage.TotalTokens += res.usage.TotalTokens
+		if respModel == "" {
+			respModel = res.model
+		}
+	}
+
+	if failed {
+		w.Header().Set("Content-Type", "application/json")
+		if status == 0 {
+			status = http.StatusBadGateway
+		}
+		w.WriteHeader(status)
+		if len(errBody) > 0 {
+			_, _ = w.Write(errBody)
+		} else {
+			if errMsg == "" {
+				errMsg = "upstream_error"
+			}
+			_, _ = w.Write([]byte(`{"error":"` + errMsg + `"}`))
+		}
+		return
+	}
+
+	final := embeddingResponse{Object: "list", Data: finalData, Model: respModel, Usage: usage}
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(final); err != nil {
 		logx.Log.Error().Err(err).Msg("write embeddings response")
