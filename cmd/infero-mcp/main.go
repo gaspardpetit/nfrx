@@ -7,6 +7,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -48,6 +49,11 @@ func probeProvider(ctx context.Context, url string) error {
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode >= http.StatusBadRequest {
+		b, _ := io.ReadAll(resp.Body)
+		msg := strings.TrimSpace(string(b))
+		if msg != "" {
+			return fmt.Errorf("status %s: %s", resp.Status, msg)
+		}
 		return fmt.Errorf("status %s", resp.Status)
 	}
 	return nil

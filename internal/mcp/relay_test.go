@@ -25,7 +25,8 @@ func TestCallProviderNon200(t *testing.T) {
 	var msg struct {
 		Error struct {
 			Data struct {
-				MCP string `json:"mcp"`
+				MCP  string `json:"mcp"`
+				Body string `json:"body"`
 			} `json:"data"`
 		} `json:"error"`
 	}
@@ -34,5 +35,8 @@ func TestCallProviderNon200(t *testing.T) {
 	}
 	if msg.Error.Data.MCP != "MCP_UPSTREAM_ERROR" {
 		t.Fatalf("expected MCP_UPSTREAM_ERROR got %s", msg.Error.Data.MCP)
+	}
+	if msg.Error.Data.Body != "boom" {
+		t.Fatalf("expected body 'boom' got %q", msg.Error.Data.Body)
 	}
 }

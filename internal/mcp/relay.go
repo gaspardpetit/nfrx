@@ -144,16 +144,20 @@ func (r *RelayClient) callProvider(ctx context.Context, payload []byte) ([]byte,
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
+		data := map[string]any{
+			"mcp":    "MCP_UPSTREAM_ERROR",
+			"status": resp.StatusCode,
+		}
+		if len(body) > 0 {
+			data["body"] = string(body)
+		}
 		errObj := map[string]any{
 			"jsonrpc": "2.0",
 			"id":      env.ID,
 			"error": map[string]any{
 				"code":    -32000,
 				"message": "Provider error",
-				"data": map[string]any{
-					"mcp":    "MCP_UPSTREAM_ERROR",
-					"status": resp.StatusCode,
-				},
+				"data":    data,
 			},
 		}
 		b, _ := json.Marshal(errObj)
