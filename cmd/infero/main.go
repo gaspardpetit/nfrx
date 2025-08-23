@@ -58,6 +58,7 @@ func main() {
 			logx.Log.Fatal().Err(err).Str("path", cfg.ConfigFile).Msg("load config")
 		}
 	}
+	logx.Configure(cfg.LogLevel)
 
 	reg := ctrl.NewRegistry()
 	metricsReg := ctrl.NewMetricsRegistry(version, buildSHA, buildDate)

@@ -8,23 +8,22 @@ import (
 )
 
 func TestConfigureLogLevel(t *testing.T) {
-	t.Setenv("LOG_LEVEL", "trace")
-	t.Setenv("DEBUG", "")
-	logx.Configure()
+	logx.Configure("all")
 	if zerolog.GlobalLevel() != zerolog.TraceLevel {
 		t.Fatalf("expected trace level, got %s", zerolog.GlobalLevel())
 	}
 
-	t.Setenv("LOG_LEVEL", "")
-	t.Setenv("DEBUG", "true")
-	logx.Configure()
-	if zerolog.GlobalLevel() != zerolog.DebugLevel {
-		t.Fatalf("expected debug level, got %s", zerolog.GlobalLevel())
+	logx.Configure("WARNING")
+	if zerolog.GlobalLevel() != zerolog.WarnLevel {
+		t.Fatalf("expected warn level, got %s", zerolog.GlobalLevel())
 	}
 
-	t.Setenv("LOG_LEVEL", "bogus")
-	t.Setenv("DEBUG", "")
-	logx.Configure()
+	logx.Configure("none")
+	if zerolog.GlobalLevel() != zerolog.Disabled {
+		t.Fatalf("expected disabled level, got %s", zerolog.GlobalLevel())
+	}
+
+	logx.Configure("bogus")
 	if zerolog.GlobalLevel() != zerolog.InfoLevel {
 		t.Fatalf("expected info level, got %s", zerolog.GlobalLevel())
 	}

@@ -1,13 +1,12 @@
 # Configuration reference
 
-This document lists configuration options for the infero tools. Settings can be supplied via environment variables, command line flags, or configuration files. Sample config templates with defaults live under `examples/config/`. Logging is controlled globally via `DEBUG` or `LOG_LEVEL`.
+This document lists configuration options for the infero tools. Settings can be supplied via environment variables, command line flags, or configuration files. Sample config templates with defaults live under `examples/config/`. Logging is controlled globally via `LOG_LEVEL`.
 
 ## Common
 
 | Variable | Config key | Purpose | Default | CLI flag |
 |----------|------------|---------|---------|----------|
-| `DEBUG` | — | enable verbose logging | info level when unset | — |
-| `LOG_LEVEL` | — | set logging verbosity (`trace`, `debug`, `info`, `warn`, `error`) | `info` | — |
+| `LOG_LEVEL` | `log_level` | set logging verbosity (`all`, `debug`, `info`, `warn`, `error`, `fatal`, `none`) | `info` | `--log-level` |
 
 ## infero
 

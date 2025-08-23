@@ -30,12 +30,14 @@ type WorkerConfig struct {
 	LogDir            string
 	Reconnect         bool
 	RequestTimeout    time.Duration
+	LogLevel          string
 }
 
 func (c *WorkerConfig) BindFlags() {
 	cfgPath, logDir := defaultWorkerPaths()
 	c.ConfigFile = getEnv("CONFIG_FILE", cfgPath)
 	c.LogDir = getEnv("LOG_DIR", logDir)
+	c.LogLevel = getEnv("LOG_LEVEL", "info")
 
 	c.ServerURL = getEnv("SERVER_URL", "ws://localhost:8080/api/workers/connect")
 	c.ClientKey = getEnv("CLIENT_KEY", "")
@@ -91,6 +93,7 @@ func (c *WorkerConfig) BindFlags() {
 	flag.StringVar(&c.MetricsAddr, "metrics-port", c.MetricsAddr, "Prometheus metrics listen address or port (disabled when empty; e.g. 127.0.0.1:9090 or 9090)")
 	flag.StringVar(&c.ConfigFile, "config", c.ConfigFile, "worker config file path")
 	flag.StringVar(&c.LogDir, "log-dir", c.LogDir, "directory for worker log files")
+	flag.StringVar(&c.LogLevel, "log-level", c.LogLevel, "log verbosity (all, debug, info, warn, error, fatal, none)")
 	flag.DurationVar(&c.DrainTimeout, "drain-timeout", c.DrainTimeout, "time to wait for in-flight jobs on shutdown (-1 to wait indefinitely, 0 to exit immediately)")
 	flag.DurationVar(&c.ModelPollInterval, "model-poll-interval", c.ModelPollInterval, "interval for polling backend for model changes")
 	flag.Func("request-timeout", "request timeout in seconds without backend feedback", func(v string) error {

@@ -21,6 +21,7 @@ type ServerConfig struct {
 	DrainTimeout   time.Duration
 	AllowedOrigins []string
 	ConfigFile     string
+	LogLevel       string
 }
 
 // BindFlags populates the struct with defaults from environment variables and
@@ -28,6 +29,7 @@ type ServerConfig struct {
 func (c *ServerConfig) BindFlags() {
 	cfgPath := DefaultConfigPath("server.yaml")
 	c.ConfigFile = getEnv("CONFIG_FILE", cfgPath)
+	c.LogLevel = getEnv("LOG_LEVEL", "info")
 
 	port, _ := strconv.Atoi(getEnv("PORT", "8080"))
 	c.Port = port
@@ -54,6 +56,7 @@ func (c *ServerConfig) BindFlags() {
 	c.AllowedOrigins = splitComma(getEnv("ALLOWED_ORIGINS", strings.Join(c.AllowedOrigins, ",")))
 
 	flag.StringVar(&c.ConfigFile, "config", c.ConfigFile, "server config file path")
+	flag.StringVar(&c.LogLevel, "log-level", c.LogLevel, "log verbosity (all, debug, info, warn, error, fatal, none)")
 	flag.IntVar(&c.Port, "port", c.Port, "HTTP listen port for the public API")
 	flag.StringVar(&c.MetricsAddr, "metrics-port", c.MetricsAddr, "Prometheus metrics listen address or port; defaults to the value of --port")
 	flag.StringVar(&c.APIKey, "api-key", c.APIKey, "client API key required for HTTP requests; leave empty to disable auth")
