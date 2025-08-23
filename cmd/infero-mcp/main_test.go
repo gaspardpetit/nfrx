@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -20,5 +21,18 @@ func TestProbeProviderSetsAcceptHeader(t *testing.T) {
 
 	if err := probeProvider(context.Background(), srv.URL); err != nil {
 		t.Fatalf("probeProvider returned error: %v", err)
+	}
+}
+
+func TestProbeProviderReturnsBodyOnError(t *testing.T) {
+	msg := "nope"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotAcceptable)
+		_, _ = w.Write([]byte(msg))
+	}))
+	defer srv.Close()
+	err := probeProvider(context.Background(), srv.URL)
+	if err == nil || !strings.Contains(err.Error(), msg) {
+		t.Fatalf("expected error containing %q got %v", msg, err)
 	}
 }
