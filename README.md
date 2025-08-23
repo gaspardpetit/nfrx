@@ -1,15 +1,149 @@
 [![Build](https://github.com/gaspardpetit/infero/actions/workflows/ci.yml/badge.svg)](https://github.com/gaspardpetit/infero/actions/workflows/ci.yml)
 [![Docker](https://github.com/gaspardpetit/infero/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/gaspardpetit/infero/actions/workflows/docker-publish.yml)
 [![.deb](https://github.com/gaspardpetit/infero/actions/workflows/release-deb.yml/badge.svg)](https://github.com/gaspardpetit/infero/actions/workflows/release-deb.yml)
-[![macOS Build](https://github.com/gaspardpetit/infero/actions/workflows/macos.yml/badge.svg)](https://github.com/gaspardpetit/infero/actions/workflows/macos.yml)
-[![Windows Build](https://github.com/gaspardpetit/infero/actions/workflows/windows.yml/badge.svg)](https://github.com/gaspardpetit/infero/actions/workflows/windows.yml)
-
 
 # īnferō
 
-<div align="center">
-  <img alt="infero" width="240" src="https://github.com/gaspardpetit/infero/blob/888f4e74e32c752adb75662813438d2da16513a4/doc/img/infero-logo-3.png">
-</div>
+īnferō lets you expose your private AI services (LLM runtimes, tools, RAG processes) through a secure, public, OpenAI-compatible API — without exposing your local machines.
+
+- **Run locally:** Keep Ollama, vLLM, MCP servers, or custom RAG processes on your own Macs, PCs, or servers.
+- **Connect out:** Each worker/tool connects outbound to a single public **infero** server (no inbound connections to your LAN).
+- **Use securely:** Clients and commercial LLMs (e.g., OpenAI, Claude) talk to **infero** via standard OpenAI endpoints or MCP URLs.
+- **Scale flexibly:** Add multiple heterogeneous machines; **infero** routes requests to the right one, queues when busy, and supports graceful draining for maintenance.
+
+## Getting Started
+
+### Prerequisites (all setups)
+
+- A public host (cloud/VPS) with a domain or public IP for the **infero** server.
+- TLS (recommended) — terminate HTTPS/WSS at **infero** or your reverse proxy.
+- Two credentials:
+  - **API_KEY** — authenticates clients calling the public API.
+  - **CLIENT_KEY** — authenticates private connectors (llm/mcp/rag) when they dial out.
+
+For the next examples, define:
+
+```bash
+export MY_API_KEY='test123'
+export MY_CLIENT_KEY='secret'
+export MY_SERVER_PORT=8080
+export MY_SERVER_ADDR="localhost:${MY_SERVER_PORT}"
+```
+
+### Run the public server
+
+Typically, this goes behind a publicly available URL or IP.
+
+##### Docker
+
+```bash
+docker run --rm \
+  -p ${MY_SERVER_PORT}:8080 \
+  -e CLIENT_KEY="${MY_CLIENT_KEY}" \
+  -e API_KEY="${MY_API_KEY}" \
+  ghcr.io/gaspardpetit/infero:main
+```
+
+##### Bare (Linux)
+
+```bash
+PORT=${MY_SERVER_PORT} CLIENT_KEY="${MY_CLIENT_KEY}" API_KEY="${MY_API_KEY}" \
+  infero   # or: go run ./cmd/infero
+```
+
+You may then choose to expose an LLM provider, an MCP server and/or a RAG system from private hardware behind a NAT/Firewall.
+
+### Expose a local LLM worker (Ollama shown)
+
+##### Docker
+
+```bash
+docker run --rm \
+  -e SERVER_URL="wss://${MY_SERVER_ADDR}/api/llm/connect" \
+  -e CLIENT_KEY="${MY_CLIENT_KEY}" \
+  -e COMPLETION_BASE_URL="http://host.docker.internal:11434/v1" \
+  ghcr.io/gaspardpetit/infero-llm:main
+```
+
+##### Bare (Linux)
+
+```bash
+SERVER_URL="wss://${MY_SERVER_ADDR}/api/llm/connect" \
+CLIENT_KEY="${MY_CLIENT_KEY}" \
+COMPLETION_BASE_URL="http://127.0.0.1:11434/v1" \
+infero-llm   # or: go run ./cmd/infero-llm
+```
+
+After connecting, you can reach your private instance from the public endpoint:
+
+```bash
+curl -N -X POST "https://${MY_SERVER_ADDR}/api/v1/chat/completions" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${MY_API_KEY}" \
+  -d '{
+        "model":"gpt-oss:20b",
+        "messages":[{"role":"user","content":"What's a caliper?"}],
+        "stream":true
+      }'
+```
+
+### Expose a local MCP server (FastMCP shown)
+
+Start a minimal FastMCP server on port 7777:
+
+```bash
+python3 - <<'PY'
+from datetime import datetime
+from fastmcp import FastMCP
+
+app = FastMCP('preferences', stateless_http=True, json_response=True)
+
+@app.tool('favorite/color')
+def favorite_color():
+    return 'blue with a hint of green'
+
+app.run('http', host='127.0.0.1', port=7777)
+PY
+```
+
+You should see:
+
+> Starting MCP server 'preferences' with transport 'http' on http://127.0.0.1:7777/mcp
+
+Now expose this MCP server to infero:
+
+```bash
+docker run --rm \
+  -e SERVER_URL="wss://${MY_SERVER_ADDR}/api/mcp/connect" \
+  -e CLIENT_KEY="${MY_CLIENT_KEY}" \
+  -e CLIENT_ID="my-mcp-server-123" \
+  ghcr.io/gaspardpetit/infero-mcp:main
+```
+
+Use your private MCP server with a public LLM (OpenAI Responses API example):
+
+```bash
+curl https://api.openai.com/v1/responses \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data '{
+  "model": "gpt-5",
+  "input": "This is a test for using tools. You retrieve your favorite color from the preferences tool to complete this test.",
+    "tools": [
+      {
+        "type": "mcp",
+        "server_label": "preferences",
+        "server_url": "https://${MY_SERVER_ADDR}/api/mcp/id/my-mcp-server-123",
+        "authorization": "${MY_API_KEY}",
+        "require_approval": "never"
+      }
+    ]
+}'
+```
+
+You should see something like:
+
+> "My favorite color is: blue with a hint of green."
 
 ## Overview
 
