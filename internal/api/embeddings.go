@@ -1,6 +1,8 @@
 package api
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -40,6 +42,19 @@ func EmbeddingsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg *ctr
 			Model string `json:"model"`
 		}
 		_ = json.Unmarshal(body, &meta)
+
+		// Determine if the request input is an array so we can batch it.
+		payload := map[string]json.RawMessage{}
+		_ = json.Unmarshal(body, &payload)
+		if raw, ok := payload["input"]; ok {
+			var inputs []json.RawMessage
+			if err := json.Unmarshal(raw, &inputs); err == nil && len(inputs) > 0 {
+				handleEmbeddingBatches(w, r, reg, sched, metricsReg, timeout, meta.Model, payload, inputs)
+				return
+			}
+		}
+
+		// Fallback to original pass-through behaviour for non-array inputs.
 		exact := reg.WorkersForModel(meta.Model)
 		worker, err := sched.PickWorker(meta.Model)
 		if err != nil {
@@ -223,6 +238,210 @@ func EmbeddingsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg *ctr
 					logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", meta.Model).Dur("duration", time.Since(start)).Msg("complete")
 					return
 				}
+			}
+		}
+	}
+}
+
+type embeddingUsage struct {
+	PromptTokens int `json:"prompt_tokens"`
+	TotalTokens  int `json:"total_tokens"`
+}
+
+type embeddingResponse struct {
+	Object string            `json:"object"`
+	Data   []json.RawMessage `json:"data"`
+	Model  string            `json:"model"`
+	Usage  embeddingUsage    `json:"usage"`
+}
+
+func handleEmbeddingBatches(w http.ResponseWriter, r *http.Request, reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg *ctrl.MetricsRegistry, timeout time.Duration, model string, payload map[string]json.RawMessage, inputs []json.RawMessage) {
+	logID := chiMiddleware.GetReqID(r.Context())
+	exact := reg.WorkersForModel(model)
+	remaining := inputs
+	var allData []json.RawMessage
+	var usage embeddingUsage
+	var respModel string
+
+	for len(remaining) > 0 {
+		worker, err := sched.PickWorker(model)
+		if err != nil {
+			logx.Log.Warn().Str("model", model).Msg("no worker")
+			http.Error(w, "no worker", http.StatusNotFound)
+			return
+		}
+		if len(exact) == 0 && len(allData) == 0 {
+			if key, ok := ctrl.AliasKey(model); ok {
+				logx.Log.Info().Str("event", "alias_fallback").Str("requested_id", model).Str("alias_key", key).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Msg("alias fallback")
+			}
+		}
+
+		reg.IncInFlight(worker.ID)
+		reqID := uuid.NewString()
+		batch := worker.EmbeddingBatchSize
+		if batch <= 0 || batch > len(remaining) {
+			batch = len(remaining)
+		}
+		b, _ := json.Marshal(remaining[:batch])
+		payload["input"] = b
+		body, _ := json.Marshal(payload)
+		headers := map[string]string{}
+		headers["Content-Type"] = r.Header.Get("Content-Type")
+		if v := r.Header.Get("Accept"); v != "" {
+			headers["Accept"] = v
+		}
+		if v := r.Header.Get("Accept-Language"); v != "" {
+			headers["Accept-Language"] = v
+		}
+		if v := r.Header.Get("User-Agent"); v != "" {
+			headers["User-Agent"] = v
+		}
+		rid := r.Header.Get("X-Request-Id")
+		if rid == "" {
+			rid = logID
+		}
+		headers["X-Request-Id"] = rid
+		headers["Cache-Control"] = "no-store"
+
+		logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", model).Msg("dispatch")
+		respBody, status, success, errMsg := proxyEmbeddingOnce(r.Context(), worker, reqID, logID, model, headers, body, metricsReg, timeout)
+		reg.DecInFlight(worker.ID)
+		worker.RemoveJob(reqID)
+		if !success {
+			w.Header().Set("Content-Type", "application/json")
+			if status == 0 {
+				status = http.StatusBadGateway
+			}
+			w.WriteHeader(status)
+			if len(respBody) > 0 {
+				_, _ = w.Write(respBody)
+			} else {
+				_, _ = w.Write([]byte(`{"error":"` + errMsg + `"}`))
+			}
+			return
+		}
+
+		var resp embeddingResponse
+		_ = json.Unmarshal(respBody, &resp)
+		allData = append(allData, resp.Data...)
+		usage.PromptTokens += resp.Usage.PromptTokens
+		usage.TotalTokens += resp.Usage.TotalTokens
+		if respModel == "" {
+			respModel = resp.Model
+		}
+		remaining = remaining[batch:]
+	}
+
+	final := embeddingResponse{Object: "list", Data: allData, Model: respModel, Usage: usage}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(final); err != nil {
+		logx.Log.Error().Err(err).Msg("write embeddings response")
+	}
+}
+
+func proxyEmbeddingOnce(ctx context.Context, worker *ctrl.Worker, reqID, logID, model string, headers map[string]string, body []byte, metricsReg *ctrl.MetricsRegistry, timeout time.Duration) ([]byte, int, bool, string) {
+	ch := make(chan interface{}, 16)
+	worker.AddJob(reqID, ch)
+
+	msg := ctrl.HTTPProxyRequestMessage{
+		Type:      "http_proxy_request",
+		RequestID: reqID,
+		Method:    http.MethodPost,
+		Path:      "/embeddings",
+		Headers:   headers,
+		Stream:    false,
+		Body:      body,
+	}
+	select {
+	case worker.Send <- msg:
+		metricsReg.RecordJobStart(worker.ID)
+		metricsReg.SetWorkerStatus(worker.ID, ctrl.StatusWorking)
+	default:
+		logx.Log.Warn().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", model).Msg("worker busy")
+		return []byte(`{"error":"worker_busy"}`), http.StatusServiceUnavailable, false, "worker_busy"
+	}
+
+	start := time.Now()
+	success := false
+	var errMsg string
+	var status int
+	var buf bytes.Buffer
+	var idle *time.Timer
+	var timeoutCh <-chan time.Time
+	if timeout > 0 {
+		idle = time.NewTimer(timeout)
+		timeoutCh = idle.C
+		defer idle.Stop()
+	}
+	for {
+		select {
+		case <-ctx.Done():
+			select {
+			case worker.Send <- ctrl.HTTPProxyCancelMessage{Type: "http_proxy_cancel", RequestID: reqID}:
+			default:
+			}
+			errMsg = "canceled"
+			metricsReg.RecordJobEnd(worker.ID, model, time.Since(start), 0, 0, success, errMsg)
+			metricsReg.SetWorkerStatus(worker.ID, ctrl.StatusIdle)
+			metrics.ObserveRequestDuration(worker.ID, model, time.Since(start))
+			metrics.RecordModelRequest(model, false)
+			return nil, status, false, errMsg
+		case <-timeoutCh:
+			hb := worker.LastHeartbeat
+			since := time.Since(hb)
+			if since > timeout {
+				errMsg = "timeout"
+				select {
+				case worker.Send <- ctrl.HTTPProxyCancelMessage{Type: "http_proxy_cancel", RequestID: reqID}:
+				default:
+				}
+				metricsReg.RecordJobEnd(worker.ID, model, time.Since(start), 0, 0, false, errMsg)
+				metricsReg.SetWorkerStatus(worker.ID, ctrl.StatusIdle)
+				metrics.ObserveRequestDuration(worker.ID, model, time.Since(start))
+				metrics.RecordModelRequest(model, false)
+				return nil, http.StatusGatewayTimeout, false, errMsg
+			}
+			if idle != nil {
+				idle.Reset(timeout - since)
+				timeoutCh = idle.C
+			}
+		case msg, ok := <-ch:
+			if !ok {
+				errMsg = "closed"
+				metricsReg.RecordJobEnd(worker.ID, model, time.Since(start), 0, 0, false, errMsg)
+				metricsReg.SetWorkerStatus(worker.ID, ctrl.StatusIdle)
+				metrics.ObserveRequestDuration(worker.ID, model, time.Since(start))
+				metrics.RecordModelRequest(model, false)
+				return nil, http.StatusBadGateway, false, errMsg
+			}
+			if idle != nil {
+				if !idle.Stop() {
+					<-timeoutCh
+				}
+				idle.Reset(timeout)
+				timeoutCh = idle.C
+			}
+			switch m := msg.(type) {
+			case ctrl.HTTPProxyResponseHeadersMessage:
+				status = m.Status
+			case ctrl.HTTPProxyResponseChunkMessage:
+				if len(m.Data) > 0 {
+					buf.Write(m.Data)
+				}
+			case ctrl.HTTPProxyResponseEndMessage:
+				if m.Error != nil {
+					errMsg = m.Error.Message
+					logx.Log.Error().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", model).Str("error_code", m.Error.Code).Str("error", m.Error.Message).Msg("upstream error")
+				} else {
+					success = status < http.StatusBadRequest
+				}
+				dur := time.Since(start)
+				metricsReg.RecordJobEnd(worker.ID, model, dur, 0, 0, success, errMsg)
+				metricsReg.SetWorkerStatus(worker.ID, ctrl.StatusIdle)
+				metrics.ObserveRequestDuration(worker.ID, model, dur)
+				metrics.RecordModelRequest(model, success)
+				logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", model).Dur("duration", dur).Msg("complete")
+				return buf.Bytes(), status, success && errMsg == "", errMsg
 			}
 		}
 	}
