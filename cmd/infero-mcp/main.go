@@ -27,6 +27,7 @@ var (
 )
 
 func probeProvider(ctx context.Context, url string) error {
+	logx.Log.Debug().Str("url", url).Msg("probing mcp provider")
 	payload := map[string]any{
 		"jsonrpc": "2.0",
 		"id":      "1",
@@ -48,6 +49,7 @@ func probeProvider(ctx context.Context, url string) error {
 		return err
 	}
 	defer func() { _ = resp.Body.Close() }()
+	logx.Log.Debug().Str("status", resp.Status).Msg("probe response")
 	if resp.StatusCode >= http.StatusBadRequest {
 		b, _ := io.ReadAll(resp.Body)
 		msg := strings.TrimSpace(string(b))
@@ -62,6 +64,7 @@ func probeProvider(ctx context.Context, url string) error {
 func monitorProvider(ctx context.Context, url string, shouldReconnect bool) {
 	attempt := 0
 	for {
+		logx.Log.Debug().Int("attempt", attempt).Str("url", url).Msg("checking mcp provider")
 		err := probeProvider(ctx, url)
 		if err != nil {
 			lvl := logx.Log.Warn()
