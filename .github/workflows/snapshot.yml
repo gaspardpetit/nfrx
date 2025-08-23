@@ -54,7 +54,7 @@ jobs:
           mkdir -p dist
           go build -trimpath -ldflags "$LDFLAGS" -o "dist/infero${EXT}" ./cmd/infero
           go build -trimpath -ldflags "$LDFLAGS" -o "dist/infero-llm${EXT}" ./cmd/infero-llm
-
+          go build -trimpath -ldflags "$LDFLAGS" -o "dist/infero-mcp${EXT}" ./cmd/infero-mcp
       
       - name: Package
         id: pkg
