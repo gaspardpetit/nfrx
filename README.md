@@ -82,7 +82,7 @@ curl -N -X POST "https://${MY_SERVER_ADDR}/api/v1/chat/completions" \
   -H "Authorization: Bearer ${MY_API_KEY}" \
   -d '{
         "model":"gpt-oss:20b",
-        "messages":[{"role":"user","content":"What's a caliper?"}],
+        "messages":[{"role":"user","content":"What is a caliper?"}],
         "stream":true
       }'
 ```
