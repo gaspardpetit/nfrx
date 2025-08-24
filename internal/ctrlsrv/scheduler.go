@@ -1,4 +1,4 @@
-package ctrl
+package ctrlsrv
 
 import "errors"
 

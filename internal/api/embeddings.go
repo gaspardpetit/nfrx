@@ -15,14 +15,15 @@ import (
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 
-	"github.com/gaspardpetit/nfrx/internal/ctrl"
+	ctrl "github.com/gaspardpetit/nfrx/internal/ctrl"
+	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
 	"github.com/gaspardpetit/nfrx/internal/logx"
 	"github.com/gaspardpetit/nfrx/internal/metrics"
 	"github.com/gaspardpetit/nfrx/internal/serverstate"
 )
 
 // EmbeddingsHandler handles POST /api/v1/embeddings as a pass-through.
-func EmbeddingsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg *ctrl.MetricsRegistry, timeout time.Duration, maxParallel int) http.HandlerFunc {
+func EmbeddingsHandler(reg *ctrlsrv.Registry, sched ctrlsrv.Scheduler, metricsReg *ctrlsrv.MetricsRegistry, timeout time.Duration, maxParallel int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if serverstate.IsDraining() {
 			http.Error(w, "server draining", http.StatusServiceUnavailable)
@@ -110,7 +111,7 @@ func EmbeddingsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg *ctr
 		select {
 		case worker.Send <- msg:
 			metricsReg.RecordJobStart(worker.ID)
-			metricsReg.SetWorkerStatus(worker.ID, ctrl.StatusWorking)
+			metricsReg.SetWorkerStatus(worker.ID, ctrlsrv.StatusWorking)
 		default:
 			logx.Log.Warn().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", meta.Model).Msg("worker busy")
 			w.Header().Set("Content-Type", "application/json")
@@ -140,7 +141,7 @@ func EmbeddingsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg *ctr
 		defer func() {
 			dur := time.Since(start)
 			metricsReg.RecordJobEnd(worker.ID, meta.Model, dur, 0, 0, embeddingsCount, success, errMsg)
-			metricsReg.SetWorkerStatus(worker.ID, ctrl.StatusIdle)
+			metricsReg.SetWorkerStatus(worker.ID, ctrlsrv.StatusIdle)
 			metrics.ObserveRequestDuration(worker.ID, meta.Model, dur)
 			metrics.RecordModelRequest(meta.Model, success)
 			if success {
@@ -264,7 +265,7 @@ type embeddingResponse struct {
 	Usage  embeddingUsage    `json:"usage"`
 }
 
-func handleEmbeddingBatches(w http.ResponseWriter, r *http.Request, reg *ctrl.Registry, metricsReg *ctrl.MetricsRegistry, timeout time.Duration, model string, payload map[string]json.RawMessage, inputs []json.RawMessage, maxParallel int) {
+func handleEmbeddingBatches(w http.ResponseWriter, r *http.Request, reg *ctrlsrv.Registry, metricsReg *ctrlsrv.MetricsRegistry, timeout time.Duration, model string, payload map[string]json.RawMessage, inputs []json.RawMessage, maxParallel int) {
 	ctx := r.Context()
 	var cancel context.CancelFunc
 	logID := chiMiddleware.GetReqID(ctx)
@@ -442,7 +443,7 @@ func handleEmbeddingBatches(w http.ResponseWriter, r *http.Request, reg *ctrl.Re
 	for _, wkr := range workers {
 		used[wkr.ID] = true
 	}
-	acquire := func(exclude map[string]bool) (*ctrl.Worker, error) {
+	acquire := func(exclude map[string]bool) (*ctrlsrv.Worker, error) {
 		mu.Lock()
 		defer mu.Unlock()
 		for {
@@ -459,7 +460,7 @@ func handleEmbeddingBatches(w http.ResponseWriter, r *http.Request, reg *ctrl.Re
 			cond.Wait()
 		}
 	}
-	release := func(wk *ctrl.Worker) {
+	release := func(wk *ctrlsrv.Worker) {
 		mu.Lock()
 		delete(used, wk.ID)
 		mu.Unlock()
@@ -470,7 +471,7 @@ func handleEmbeddingBatches(w http.ResponseWriter, r *http.Request, reg *ctrl.Re
 	for i, wk := range workers {
 		t := tasks[i]
 		wg.Add(1)
-		go func(t batchTask, wk *ctrl.Worker) {
+		go func(t batchTask, wk *ctrlsrv.Worker) {
 			defer wg.Done()
 			current := wk
 			for {
@@ -566,7 +567,7 @@ func handleEmbeddingBatches(w http.ResponseWriter, r *http.Request, reg *ctrl.Re
 	}
 }
 
-func proxyEmbeddingOnce(ctx context.Context, worker *ctrl.Worker, reqID, logID, model string, headers map[string]string, body []byte, metricsReg *ctrl.MetricsRegistry, embeddings int, timeout time.Duration) ([]byte, int, bool, string) {
+func proxyEmbeddingOnce(ctx context.Context, worker *ctrlsrv.Worker, reqID, logID, model string, headers map[string]string, body []byte, metricsReg *ctrlsrv.MetricsRegistry, embeddings int, timeout time.Duration) ([]byte, int, bool, string) {
 	ch := make(chan interface{}, 16)
 	worker.AddJob(reqID, ch)
 
@@ -582,7 +583,7 @@ func proxyEmbeddingOnce(ctx context.Context, worker *ctrl.Worker, reqID, logID, 
 	select {
 	case worker.Send <- msg:
 		metricsReg.RecordJobStart(worker.ID)
-		metricsReg.SetWorkerStatus(worker.ID, ctrl.StatusWorking)
+		metricsReg.SetWorkerStatus(worker.ID, ctrlsrv.StatusWorking)
 	default:
 		logx.Log.Warn().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", model).Msg("worker busy")
 		return []byte(`{"error":"worker_busy"}`), http.StatusServiceUnavailable, false, "worker_busy"
@@ -609,7 +610,7 @@ func proxyEmbeddingOnce(ctx context.Context, worker *ctrl.Worker, reqID, logID, 
 			}
 			errMsg = "canceled"
 			metricsReg.RecordJobEnd(worker.ID, model, time.Since(start), 0, 0, 0, success, errMsg)
-			metricsReg.SetWorkerStatus(worker.ID, ctrl.StatusIdle)
+			metricsReg.SetWorkerStatus(worker.ID, ctrlsrv.StatusIdle)
 			metrics.ObserveRequestDuration(worker.ID, model, time.Since(start))
 			metrics.RecordModelRequest(model, false)
 			return nil, status, false, errMsg
@@ -623,7 +624,7 @@ func proxyEmbeddingOnce(ctx context.Context, worker *ctrl.Worker, reqID, logID, 
 				default:
 				}
 				metricsReg.RecordJobEnd(worker.ID, model, time.Since(start), 0, 0, 0, false, errMsg)
-				metricsReg.SetWorkerStatus(worker.ID, ctrl.StatusIdle)
+				metricsReg.SetWorkerStatus(worker.ID, ctrlsrv.StatusIdle)
 				metrics.ObserveRequestDuration(worker.ID, model, time.Since(start))
 				metrics.RecordModelRequest(model, false)
 				return nil, http.StatusGatewayTimeout, false, errMsg
@@ -636,7 +637,7 @@ func proxyEmbeddingOnce(ctx context.Context, worker *ctrl.Worker, reqID, logID, 
 			if !ok {
 				errMsg = "closed"
 				metricsReg.RecordJobEnd(worker.ID, model, time.Since(start), 0, 0, 0, false, errMsg)
-				metricsReg.SetWorkerStatus(worker.ID, ctrl.StatusIdle)
+				metricsReg.SetWorkerStatus(worker.ID, ctrlsrv.StatusIdle)
 				metrics.ObserveRequestDuration(worker.ID, model, time.Since(start))
 				metrics.RecordModelRequest(model, false)
 				return nil, http.StatusBadGateway, false, errMsg
@@ -673,7 +674,7 @@ func proxyEmbeddingOnce(ctx context.Context, worker *ctrl.Worker, reqID, logID, 
 					metrics.RecordWorkerEmbeddings(worker.ID, embCount)
 					metrics.RecordModelEmbeddings(model, embCount)
 				}
-				metricsReg.SetWorkerStatus(worker.ID, ctrl.StatusIdle)
+				metricsReg.SetWorkerStatus(worker.ID, ctrlsrv.StatusIdle)
 				metrics.ObserveRequestDuration(worker.ID, model, dur)
 				metrics.RecordModelRequest(model, success)
 				logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", model).Dur("duration", dur).Msg("complete")

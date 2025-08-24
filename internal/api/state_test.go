@@ -10,13 +10,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/gaspardpetit/nfrx/internal/ctrl"
+	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
 )
 
 func TestGetState(t *testing.T) {
-	metricsReg := ctrl.NewMetricsRegistry("v", "sha", "date")
+	metricsReg := ctrlsrv.NewMetricsRegistry("v", "sha", "date")
 	metricsReg.UpsertWorker("w1", "w1", "1", "a", "d", 1, 0, []string{"m"})
-	metricsReg.SetWorkerStatus("w1", ctrl.StatusConnected)
+	metricsReg.SetWorkerStatus("w1", ctrlsrv.StatusConnected)
 	metricsReg.RecordJobStart("w1")
 	metricsReg.RecordJobEnd("w1", "m", 50*time.Millisecond, 5, 7, 0, true, "")
 
@@ -24,7 +24,7 @@ func TestGetState(t *testing.T) {
 	r := httptest.NewRequest(http.MethodGet, "/api/state", nil)
 	w := httptest.NewRecorder()
 	h.GetState(w, r)
-	var resp ctrl.StateResponse
+	var resp ctrlsrv.StateResponse
 	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
@@ -37,7 +37,7 @@ func TestGetState(t *testing.T) {
 }
 
 func TestGetStateStream(t *testing.T) {
-	metricsReg := ctrl.NewMetricsRegistry("v", "sha", "date")
+	metricsReg := ctrlsrv.NewMetricsRegistry("v", "sha", "date")
 	h := &StateHandler{Metrics: metricsReg}
 
 	r := chi.NewRouter()

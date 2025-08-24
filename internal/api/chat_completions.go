@@ -10,14 +10,15 @@ import (
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 
-	"github.com/gaspardpetit/nfrx/internal/ctrl"
+	ctrl "github.com/gaspardpetit/nfrx/internal/ctrl"
+	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
 	"github.com/gaspardpetit/nfrx/internal/logx"
 	"github.com/gaspardpetit/nfrx/internal/metrics"
 	"github.com/gaspardpetit/nfrx/internal/serverstate"
 )
 
 // ChatCompletionsHandler handles POST /api/v1/chat/completions as a pass-through.
-func ChatCompletionsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg *ctrl.MetricsRegistry, timeout time.Duration) http.HandlerFunc {
+func ChatCompletionsHandler(reg *ctrlsrv.Registry, sched ctrlsrv.Scheduler, metricsReg *ctrlsrv.MetricsRegistry, timeout time.Duration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if serverstate.IsDraining() {
 			http.Error(w, "server draining", http.StatusServiceUnavailable)
@@ -93,7 +94,7 @@ func ChatCompletionsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg
 		select {
 		case worker.Send <- msg:
 			metricsReg.RecordJobStart(worker.ID)
-			metricsReg.SetWorkerStatus(worker.ID, ctrl.StatusWorking)
+			metricsReg.SetWorkerStatus(worker.ID, ctrlsrv.StatusWorking)
 		default:
 			logx.Log.Warn().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", meta.Model).Msg("worker busy")
 			w.Header().Set("Content-Type", "application/json")
@@ -125,7 +126,7 @@ func ChatCompletionsHandler(reg *ctrl.Registry, sched ctrl.Scheduler, metricsReg
 		defer func() {
 			dur := time.Since(start)
 			metricsReg.RecordJobEnd(worker.ID, meta.Model, dur, tokensIn, tokensOut, 0, success, errMsg)
-			metricsReg.SetWorkerStatus(worker.ID, ctrl.StatusIdle)
+			metricsReg.SetWorkerStatus(worker.ID, ctrlsrv.StatusIdle)
 			metrics.ObserveRequestDuration(worker.ID, meta.Model, dur)
 			metrics.RecordWorkerProcessingTime(worker.ID, dur)
 			metrics.RecordModelRequest(meta.Model, success)

@@ -11,17 +11,18 @@ import (
 	"github.com/coder/websocket"
 
 	"github.com/gaspardpetit/nfrx/internal/config"
-	"github.com/gaspardpetit/nfrx/internal/ctrl"
-	"github.com/gaspardpetit/nfrx/internal/mcp"
+	ctrl "github.com/gaspardpetit/nfrx/internal/ctrl"
+	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
+	mcpbroker "github.com/gaspardpetit/nfrx/internal/mcpbroker"
 	"github.com/gaspardpetit/nfrx/internal/server"
 )
 
 func TestHeartbeatPrune(t *testing.T) {
-	reg := ctrl.NewRegistry()
-	sched := &ctrl.LeastBusyScheduler{Reg: reg}
+	reg := ctrlsrv.NewRegistry()
+	sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
 	cfg := config.ServerConfig{ClientKey: "secret", RequestTimeout: 5 * time.Second}
-	metricsReg := ctrl.NewMetricsRegistry("test", "", "")
-	handler := server.New(reg, metricsReg, sched, mcp.NewRegistry(cfg.RequestTimeout), cfg)
+	metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
+	handler := server.New(reg, metricsReg, sched, mcpbroker.NewRegistry(cfg.RequestTimeout), cfg)
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 

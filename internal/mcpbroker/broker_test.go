@@ -1,4 +1,4 @@
-package mcp
+package mcpbroker
 
 import (
 	"bytes"
@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
+	mcp "github.com/gaspardpetit/nfrx/internal/mcp"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -43,7 +44,7 @@ func TestHTTPHandlerRelayOffline(t *testing.T) {
 func TestHTTPHandlerConcurrencyLimit(t *testing.T) {
 	reg := NewRegistry(time.Second)
 	reg.maxConc = 1
-	reg.relays["client"] = &Relay{pending: map[string]chan Frame{}, inflight: 1, methods: map[string]int{}, sessions: map[string]sessionInfo{}}
+	reg.relays["client"] = &Relay{pending: map[string]chan mcp.Frame{}, inflight: 1, methods: map[string]int{}, sessions: map[string]sessionInfo{}}
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/mcp/id/client", bytes.NewReader([]byte(`{"jsonrpc":"2.0","id":1,"method":"initialize"}`)))
 	rctx := chi.NewRouteContext()
@@ -96,7 +97,7 @@ func TestHTTPHandlerUnauthorized(t *testing.T) {
 	_ = json.Unmarshal(msg, &ack)
 	clientID := ack.ID
 
-	relay := NewRelayClient(conn, "http://127.0.0.1/", "s3cr3t", time.Second)
+	relay := mcp.NewRelayClient(conn, "http://127.0.0.1/", "s3cr3t", time.Second)
 	go func() { _ = relay.Run(ctx) }()
 
 	req := httptest.NewRequest(http.MethodPost, "/api/mcp/id/"+clientID, bytes.NewReader([]byte(`{"jsonrpc":"2.0","id":1,"method":"initialize"}`)))

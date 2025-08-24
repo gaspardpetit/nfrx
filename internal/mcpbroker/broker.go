@@ -1,4 +1,4 @@
-package mcp
+package mcpbroker
 
 import (
 	"context"
@@ -12,30 +12,19 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
-	"github.com/gaspardpetit/nfrx/internal/ctrl"
+	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
 	"github.com/gaspardpetit/nfrx/internal/logx"
+	"github.com/gaspardpetit/nfrx/internal/mcp"
 	"github.com/gaspardpetit/nfrx/internal/serverstate"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
 
-// Frame represents a broker <-> relay frame.
-type Frame struct {
-	T       string          `json:"t"`
-	SID     string          `json:"sid,omitempty"`
-	ReqID   string          `json:"req_id,omitempty"`
-	Hint    string          `json:"hint,omitempty"`
-	Payload json.RawMessage `json:"payload,omitempty"`
-	Code    string          `json:"code,omitempty"`
-	Msg     string          `json:"msg,omitempty"`
-	Auth    string          `json:"auth,omitempty"`
-}
-
 // Relay tracks a connected MCP relay.
 type Relay struct {
 	conn     *websocket.Conn
 	mu       sync.Mutex
-	pending  map[string]chan Frame
+	pending  map[string]chan mcp.Frame
 	inflight int
 	lastSeen time.Time
 	methods  map[string]int
@@ -127,7 +116,7 @@ func (r *Registry) WSHandler(clientKey string) http.HandlerFunc {
 			_ = c.Close(websocket.StatusPolicyViolation, "id in use")
 			return
 		}
-		relay := &Relay{conn: c, pending: map[string]chan Frame{}, lastSeen: time.Now(), methods: map[string]int{}, sessions: map[string]sessionInfo{}, name: reg.ClientName}
+		relay := &Relay{conn: c, pending: map[string]chan mcp.Frame{}, lastSeen: time.Now(), methods: map[string]int{}, sessions: map[string]sessionInfo{}, name: reg.ClientName}
 		r.relays[clientID] = relay
 		r.mu.Unlock()
 
@@ -153,7 +142,7 @@ func (r *Registry) readPump(ctx context.Context, clientID string, relay *Relay) 
 		if err != nil {
 			return
 		}
-		var f Frame
+		var f mcp.Frame
 		if json.Unmarshal(data, &f) != nil {
 			continue
 		}
@@ -188,7 +177,7 @@ func (r *Registry) pingLoop(ctx context.Context, clientID string, relay *Relay) 
 				_ = relay.conn.Close(websocket.StatusNormalClosure, "dead")
 				return
 			}
-			_ = relay.write(context.Background(), Frame{T: "ping"})
+			_ = relay.write(context.Background(), mcp.Frame{T: "ping"})
 		case <-ctx.Done():
 			return
 		}
@@ -202,10 +191,10 @@ func (r *Registry) getRelay(clientID string) *Relay {
 }
 
 // Snapshot returns a snapshot of connected relays and active sessions.
-func (r *Registry) Snapshot() ctrl.MCPState {
+func (r *Registry) Snapshot() ctrlsrv.MCPState {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	state := ctrl.MCPState{}
+	state := ctrlsrv.MCPState{}
 	for id, rl := range r.relays {
 		rl.mu.Lock()
 		funcs := make(map[string]int, len(rl.methods))
@@ -216,7 +205,7 @@ func (r *Registry) Snapshot() ctrl.MCPState {
 		if rl.inflight > 0 {
 			status = "active"
 		}
-		state.Clients = append(state.Clients, ctrl.MCPClientSnapshot{
+		state.Clients = append(state.Clients, ctrlsrv.MCPClientSnapshot{
 			ID:        id,
 			Name:      rl.name,
 			Status:    status,
@@ -224,7 +213,7 @@ func (r *Registry) Snapshot() ctrl.MCPState {
 			Functions: funcs,
 		})
 		for sid, s := range rl.sessions {
-			state.Sessions = append(state.Sessions, ctrl.MCPSessionSnapshot{
+			state.Sessions = append(state.Sessions, ctrlsrv.MCPSessionSnapshot{
 				ID:         sid,
 				ClientID:   id,
 				Method:     s.method,
@@ -237,8 +226,8 @@ func (r *Registry) Snapshot() ctrl.MCPState {
 	return state
 }
 
-func (rl *Relay) register(sid string) chan Frame {
-	ch := make(chan Frame, 4)
+func (rl *Relay) register(sid string) chan mcp.Frame {
+	ch := make(chan mcp.Frame, 4)
 	rl.mu.Lock()
 	rl.pending[sid] = ch
 	rl.mu.Unlock()
@@ -251,7 +240,7 @@ func (rl *Relay) unregister(sid string) {
 	rl.mu.Unlock()
 }
 
-func (rl *Relay) write(ctx context.Context, f Frame) error {
+func (rl *Relay) write(ctx context.Context, f mcp.Frame) error {
 	b, err := json.Marshal(f)
 	if err != nil {
 		return err
@@ -328,7 +317,7 @@ func (r *Registry) HTTPHandler() http.HandlerFunc {
 		}
 		ctx, cancel := context.WithTimeout(req.Context(), r.requestTimeout)
 		defer cancel()
-		if err := relay.write(ctx, Frame{T: "open", SID: sid, ReqID: reqID, Hint: env.Method, Auth: auth}); err != nil {
+		if err := relay.write(ctx, mcp.Frame{T: "open", SID: sid, ReqID: reqID, Hint: env.Method, Auth: auth}); err != nil {
 			logx.Log.Warn().Str("component", "server.http").Str("client_id", clientID).Str("req_id", reqID).Str("error_code", "MCP_PROVIDER_UNAVAILABLE").Msg("relay write failed")
 			writeRPCError(w, env.ID, http.StatusServiceUnavailable, "MCP_PROVIDER_UNAVAILABLE", "relay write failed", reqID)
 			return
@@ -347,33 +336,33 @@ func (r *Registry) HTTPHandler() http.HandlerFunc {
 				return
 			}
 		case <-ctx.Done():
-			_ = relay.write(context.Background(), Frame{T: "close", SID: sid, Msg: "timeout"})
+			_ = relay.write(context.Background(), mcp.Frame{T: "close", SID: sid, Msg: "timeout"})
 			logx.Log.Warn().Str("component", "server.http").Str("client_id", clientID).Str("req_id", reqID).Str("error_code", "MCP_TIMEOUT").Msg("timeout waiting for open")
 			writeRPCError(w, env.ID, http.StatusGatewayTimeout, "MCP_TIMEOUT", "timeout waiting for open", reqID)
 			return
 		}
-		if err := relay.write(ctx, Frame{T: "rpc", SID: sid, Payload: raw}); err != nil {
-			_ = relay.write(context.Background(), Frame{T: "close", SID: sid, Msg: "relay_write_failed"})
+		if err := relay.write(ctx, mcp.Frame{T: "rpc", SID: sid, Payload: raw}); err != nil {
+			_ = relay.write(context.Background(), mcp.Frame{T: "close", SID: sid, Msg: "relay_write_failed"})
 			logx.Log.Warn().Str("component", "server.http").Str("client_id", clientID).Str("req_id", reqID).Str("error_code", "MCP_PROVIDER_UNAVAILABLE").Msg("relay write failed")
 			writeRPCError(w, env.ID, http.StatusServiceUnavailable, "MCP_PROVIDER_UNAVAILABLE", "relay write failed", reqID)
 			return
 		}
-		var resp Frame
+		var resp mcp.Frame
 		select {
 		case resp = <-ch:
 			if len(resp.Payload) > int(r.maxRespBytes) {
-				_ = relay.write(context.Background(), Frame{T: "close", SID: sid, Msg: "resp_too_large"})
+				_ = relay.write(context.Background(), mcp.Frame{T: "close", SID: sid, Msg: "resp_too_large"})
 				logx.Log.Warn().Str("component", "server.http").Str("client_id", clientID).Str("req_id", reqID).Str("error_code", "MCP_LIMIT_EXCEEDED").Msg("response too large")
 				writeRPCError(w, env.ID, http.StatusOK, "MCP_LIMIT_EXCEEDED", "response too large", reqID)
 				return
 			}
 		case <-ctx.Done():
-			_ = relay.write(context.Background(), Frame{T: "close", SID: sid, Msg: "timeout"})
+			_ = relay.write(context.Background(), mcp.Frame{T: "close", SID: sid, Msg: "timeout"})
 			logx.Log.Warn().Str("component", "server.http").Str("client_id", clientID).Str("req_id", reqID).Str("error_code", "MCP_TIMEOUT").Msg("timeout waiting for response")
 			writeRPCError(w, env.ID, http.StatusGatewayTimeout, "MCP_TIMEOUT", "timeout waiting for response", reqID)
 			return
 		}
-		_ = relay.write(context.Background(), Frame{T: "close", SID: sid, Msg: "done"})
+		_ = relay.write(context.Background(), mcp.Frame{T: "close", SID: sid, Msg: "done"})
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		if len(resp.Payload) > 0 {

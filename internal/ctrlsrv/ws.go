@@ -1,4 +1,4 @@
-package ctrl
+package ctrlsrv
 
 import (
 	"encoding/json"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/coder/websocket"
 
+	ctrl "github.com/gaspardpetit/nfrx/internal/ctrl"
 	"github.com/gaspardpetit/nfrx/internal/logx"
 	"github.com/gaspardpetit/nfrx/internal/serverstate"
 )
@@ -40,7 +41,7 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string) http.H
 			_ = c.Close(websocket.StatusPolicyViolation, "expected register")
 			return
 		}
-		var rm RegisterMessage
+		var rm ctrl.RegisterMessage
 		if err := json.Unmarshal(data, &rm); err != nil {
 			return
 		}
@@ -138,7 +139,7 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string) http.H
 				reg.UpdateHeartbeat(wk.ID)
 				metrics.RecordHeartbeat(wk.ID)
 			case "status_update":
-				var m StatusUpdateMessage
+				var m ctrl.StatusUpdateMessage
 				if err := json.Unmarshal(msg, &m); err == nil {
 					wk.mu.Lock()
 					wk.MaxConcurrency = m.MaxConcurrency
@@ -156,7 +157,7 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string) http.H
 					}
 				}
 			case "job_chunk":
-				var m JobChunkMessage
+				var m ctrl.JobChunkMessage
 				if err := json.Unmarshal(msg, &m); err == nil {
 					wk.mu.Lock()
 					ch, ok := wk.Jobs[m.JobID]
@@ -166,7 +167,7 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string) http.H
 					}
 				}
 			case "job_result":
-				var m JobResultMessage
+				var m ctrl.JobResultMessage
 				if err := json.Unmarshal(msg, &m); err == nil {
 					wk.mu.Lock()
 					ch, ok := wk.Jobs[m.JobID]
@@ -180,7 +181,7 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string) http.H
 					}
 				}
 			case "job_error":
-				var m JobErrorMessage
+				var m ctrl.JobErrorMessage
 				if err := json.Unmarshal(msg, &m); err == nil {
 					wk.mu.Lock()
 					ch, ok := wk.Jobs[m.JobID]
@@ -194,7 +195,7 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string) http.H
 					}
 				}
 			case "http_proxy_response_headers":
-				var m HTTPProxyResponseHeadersMessage
+				var m ctrl.HTTPProxyResponseHeadersMessage
 				if err := json.Unmarshal(msg, &m); err == nil {
 					wk.mu.Lock()
 					ch, ok := wk.Jobs[m.RequestID]
@@ -204,7 +205,7 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string) http.H
 					}
 				}
 			case "http_proxy_response_chunk":
-				var m HTTPProxyResponseChunkMessage
+				var m ctrl.HTTPProxyResponseChunkMessage
 				if err := json.Unmarshal(msg, &m); err == nil {
 					wk.mu.Lock()
 					ch, ok := wk.Jobs[m.RequestID]
@@ -214,7 +215,7 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string) http.H
 					}
 				}
 			case "http_proxy_response_end":
-				var m HTTPProxyResponseEndMessage
+				var m ctrl.HTTPProxyResponseEndMessage
 				if err := json.Unmarshal(msg, &m); err == nil {
 					wk.mu.Lock()
 					ch, ok := wk.Jobs[m.RequestID]

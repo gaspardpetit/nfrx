@@ -1,4 +1,4 @@
-package ctrl
+package ctrlsrv
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
+	ctrl "github.com/gaspardpetit/nfrx/internal/ctrl"
 )
 
 func TestRegisterStoresWorkerName(t *testing.T) {
@@ -26,7 +27,7 @@ func TestRegisterStoresWorkerName(t *testing.T) {
 	defer func() {
 		_ = conn.Close(websocket.StatusNormalClosure, "")
 	}()
-	rm := RegisterMessage{Type: "register", WorkerID: "w1abcdef", WorkerName: "Alpha", Models: []string{"m"}, MaxConcurrency: 1, EmbeddingBatchSize: 0}
+	rm := ctrl.RegisterMessage{Type: "register", WorkerID: "w1abcdef", WorkerName: "Alpha", Models: []string{"m"}, MaxConcurrency: 1, EmbeddingBatchSize: 0}
 	b, _ := json.Marshal(rm)
 	if err := conn.Write(ctx, websocket.MessageText, b); err != nil {
 		t.Fatalf("write: %v", err)
@@ -61,7 +62,7 @@ func TestRegisterFallbackName(t *testing.T) {
 	defer func() {
 		_ = conn.Close(websocket.StatusNormalClosure, "")
 	}()
-	rm := RegisterMessage{Type: "register", WorkerID: "w123456789", Models: []string{"m"}, MaxConcurrency: 1, EmbeddingBatchSize: 0}
+	rm := ctrl.RegisterMessage{Type: "register", WorkerID: "w123456789", Models: []string{"m"}, MaxConcurrency: 1, EmbeddingBatchSize: 0}
 	b, _ := json.Marshal(rm)
 	if err := conn.Write(ctx, websocket.MessageText, b); err != nil {
 		t.Fatalf("write: %v", err)
