@@ -5,15 +5,15 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gaspardpetit/nfrx/internal/ctrl"
+	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
 	"github.com/gaspardpetit/nfrx/internal/logx"
-	"github.com/gaspardpetit/nfrx/internal/mcp"
+	mcpbroker "github.com/gaspardpetit/nfrx/internal/mcpbroker"
 )
 
 // StateHandler serves state snapshots and streams.
 type StateHandler struct {
-	Metrics *ctrl.MetricsRegistry
-	MCP     *mcp.Registry
+	Metrics *ctrlsrv.MetricsRegistry
+	MCP     *mcpbroker.Registry
 }
 
 // GetState returns a JSON snapshot of metrics.

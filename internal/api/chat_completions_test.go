@@ -8,7 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gaspardpetit/nfrx/internal/ctrl"
+	ctrl "github.com/gaspardpetit/nfrx/internal/ctrl"
+	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
 )
 
 type flushRecorder struct {
@@ -19,13 +20,13 @@ type flushRecorder struct {
 func (f *flushRecorder) Flush() { f.flushed = true }
 
 func TestChatCompletionsHeaders(t *testing.T) {
-	reg := ctrl.NewRegistry()
-	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	wk := &ctrl.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
+	reg := ctrlsrv.NewRegistry()
+	sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
+	wk := &ctrlsrv.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
 	reg.Add(wk)
-	metricsReg := ctrl.NewMetricsRegistry("", "", "")
+	metricsReg := ctrlsrv.NewMetricsRegistry("", "", "")
 	metricsReg.UpsertWorker("w1", "w1", "", "", "", 1, 0, []string{"m"})
-	metricsReg.SetWorkerStatus("w1", ctrl.StatusConnected)
+	metricsReg.SetWorkerStatus("w1", ctrlsrv.StatusConnected)
 	h := ChatCompletionsHandler(reg, sched, metricsReg, time.Second)
 
 	go func() {
@@ -57,11 +58,11 @@ func TestChatCompletionsHeaders(t *testing.T) {
 }
 
 func TestChatCompletionsOpaque(t *testing.T) {
-	reg := ctrl.NewRegistry()
-	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	wk := &ctrl.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
+	reg := ctrlsrv.NewRegistry()
+	sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
+	wk := &ctrlsrv.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
 	reg.Add(wk)
-	metricsReg := ctrl.NewMetricsRegistry("", "", "")
+	metricsReg := ctrlsrv.NewMetricsRegistry("", "", "")
 	h := ChatCompletionsHandler(reg, sched, metricsReg, time.Second)
 
 	go func() {
@@ -84,11 +85,11 @@ func TestChatCompletionsOpaque(t *testing.T) {
 }
 
 func TestChatCompletionsEarlyError(t *testing.T) {
-	reg := ctrl.NewRegistry()
-	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	wk := &ctrl.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
+	reg := ctrlsrv.NewRegistry()
+	sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
+	wk := &ctrlsrv.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
 	reg.Add(wk)
-	metricsReg := ctrl.NewMetricsRegistry("", "", "")
+	metricsReg := ctrlsrv.NewMetricsRegistry("", "", "")
 	h := ChatCompletionsHandler(reg, sched, metricsReg, time.Second)
 
 	go func() {

@@ -11,15 +11,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gaspardpetit/nfrx/internal/ctrl"
+	ctrl "github.com/gaspardpetit/nfrx/internal/ctrl"
+	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
 )
 
 func TestEmbeddings(t *testing.T) {
-	reg := ctrl.NewRegistry()
-	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	wk := &ctrl.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
+	reg := ctrlsrv.NewRegistry()
+	sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
+	wk := &ctrlsrv.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
 	reg.Add(wk)
-	metricsReg := ctrl.NewMetricsRegistry("", "", "")
+	metricsReg := ctrlsrv.NewMetricsRegistry("", "", "")
 	h := EmbeddingsHandler(reg, sched, metricsReg, time.Second, 8)
 
 	go func() {
@@ -44,11 +45,11 @@ func TestEmbeddings(t *testing.T) {
 }
 
 func TestEmbeddingsEarlyError(t *testing.T) {
-	reg := ctrl.NewRegistry()
-	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	wk := &ctrl.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
+	reg := ctrlsrv.NewRegistry()
+	sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
+	wk := &ctrlsrv.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
 	reg.Add(wk)
-	metricsReg := ctrl.NewMetricsRegistry("", "", "")
+	metricsReg := ctrlsrv.NewMetricsRegistry("", "", "")
 	h := EmbeddingsHandler(reg, sched, metricsReg, time.Second, 8)
 
 	go func() {
@@ -72,11 +73,11 @@ func TestEmbeddingsEarlyError(t *testing.T) {
 }
 
 func TestEmbeddingsBatching(t *testing.T) {
-	reg := ctrl.NewRegistry()
-	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	wk := &ctrl.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{}), EmbeddingBatchSize: 1}
+	reg := ctrlsrv.NewRegistry()
+	sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
+	wk := &ctrlsrv.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{}), EmbeddingBatchSize: 1}
 	reg.Add(wk)
-	metricsReg := ctrl.NewMetricsRegistry("", "", "")
+	metricsReg := ctrlsrv.NewMetricsRegistry("", "", "")
 	h := EmbeddingsHandler(reg, sched, metricsReg, time.Second, 8)
 
 	errCh := make(chan error, 1)
@@ -132,13 +133,13 @@ func TestEmbeddingsBatching(t *testing.T) {
 }
 
 func TestEmbeddingsParallelSplit(t *testing.T) {
-	reg := ctrl.NewRegistry()
-	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	w1 := &ctrl.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{}), EmbeddingBatchSize: 10}
-	w2 := &ctrl.Worker{ID: "w2", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{}), EmbeddingBatchSize: 2}
+	reg := ctrlsrv.NewRegistry()
+	sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
+	w1 := &ctrlsrv.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{}), EmbeddingBatchSize: 10}
+	w2 := &ctrlsrv.Worker{ID: "w2", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{}), EmbeddingBatchSize: 2}
 	reg.Add(w1)
 	reg.Add(w2)
-	metricsReg := ctrl.NewMetricsRegistry("", "", "")
+	metricsReg := ctrlsrv.NewMetricsRegistry("", "", "")
 	h := EmbeddingsHandler(reg, sched, metricsReg, time.Second, 8)
 
 	errCh := make(chan error, 2)

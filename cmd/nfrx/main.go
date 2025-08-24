@@ -17,9 +17,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/gaspardpetit/nfrx/internal/config"
-	"github.com/gaspardpetit/nfrx/internal/ctrl"
+	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
 	"github.com/gaspardpetit/nfrx/internal/logx"
-	"github.com/gaspardpetit/nfrx/internal/mcp"
+	mcpbroker "github.com/gaspardpetit/nfrx/internal/mcpbroker"
 	"github.com/gaspardpetit/nfrx/internal/metrics"
 	"github.com/gaspardpetit/nfrx/internal/server"
 	"github.com/gaspardpetit/nfrx/internal/serverstate"
@@ -69,12 +69,12 @@ func main() {
 		logx.Log.Info().Str("addr", cfg.RedisAddr).Msg("using redis state store")
 	}
 
-	reg := ctrl.NewRegistry()
-	metricsReg := ctrl.NewMetricsRegistry(version, buildSHA, buildDate)
+	reg := ctrlsrv.NewRegistry()
+	metricsReg := ctrlsrv.NewMetricsRegistry(version, buildSHA, buildDate)
 	metrics.Register(prometheus.DefaultRegisterer)
 	metrics.SetServerBuildInfo(version, buildSHA, buildDate)
-	sched := &ctrl.LeastBusyScheduler{Reg: reg}
-	mcpReg := mcp.NewRegistry(cfg.RequestTimeout)
+	sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
+	mcpReg := mcpbroker.NewRegistry(cfg.RequestTimeout)
 	handler := server.New(reg, metricsReg, sched, mcpReg, cfg)
 	srv := &http.Server{Addr: fmt.Sprintf(":%d", cfg.Port), Handler: handler}
 	var metricsSrv *http.Server

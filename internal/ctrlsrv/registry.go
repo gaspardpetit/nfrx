@@ -1,9 +1,10 @@
-package ctrl
+package ctrlsrv
 
 import (
 	"sync"
 	"time"
 
+	ctrl "github.com/gaspardpetit/nfrx/internal/ctrl"
 	"github.com/gaspardpetit/nfrx/internal/logx"
 )
 
@@ -109,7 +110,7 @@ func (r *Registry) WorkersForModel(model string) []*Worker {
 
 // WorkersForAlias returns any worker that exposes a model whose alias matches the alias of requested.
 func (r *Registry) WorkersForAlias(requested string) []*Worker {
-	key, ok := AliasKey(requested)
+	key, ok := ctrl.AliasKey(requested)
 	if !ok {
 		return nil
 	}
@@ -120,7 +121,7 @@ func (r *Registry) WorkersForAlias(requested string) []*Worker {
 	for _, w := range r.workers {
 		w.mu.Lock()
 		for m := range w.Models {
-			if ak, ok := AliasKey(m); ok && ak == key && w.InFlight < w.MaxConcurrency {
+			if ak, ok := ctrl.AliasKey(m); ok && ak == key && w.InFlight < w.MaxConcurrency {
 				res = append(res, w)
 				break
 			}

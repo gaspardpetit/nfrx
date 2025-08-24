@@ -12,12 +12,12 @@ import (
 	"github.com/gaspardpetit/nfrx/api/generated"
 	"github.com/gaspardpetit/nfrx/internal/api"
 	"github.com/gaspardpetit/nfrx/internal/config"
-	"github.com/gaspardpetit/nfrx/internal/ctrl"
-	"github.com/gaspardpetit/nfrx/internal/mcp"
+	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
+	mcpbroker "github.com/gaspardpetit/nfrx/internal/mcpbroker"
 )
 
 // New constructs the HTTP handler for the server.
-func New(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler, mcpReg *mcp.Registry, cfg config.ServerConfig) http.Handler {
+func New(reg *ctrlsrv.Registry, metrics *ctrlsrv.MetricsRegistry, sched ctrlsrv.Scheduler, mcpReg *mcpbroker.Registry, cfg config.ServerConfig) http.Handler {
 	r := chi.NewRouter()
 	if len(cfg.AllowedOrigins) > 0 {
 		r.Use(cors.Handler(cors.Options{
@@ -60,16 +60,16 @@ func New(reg *ctrl.Registry, metrics *ctrl.MetricsRegistry, sched ctrl.Scheduler
 		r.Post("/api/mcp/id/{id}", mcpReg.HTTPHandler())
 		r.Handle("/api/mcp/connect", mcpReg.WSHandler(cfg.ClientKey))
 	}
-	r.Handle("/api/workers/connect", ctrl.WSHandler(reg, metrics, cfg.ClientKey))
+	r.Handle("/api/workers/connect", ctrlsrv.WSHandler(reg, metrics, cfg.ClientKey))
 
 	if cfg.MetricsAddr == fmt.Sprintf(":%d", cfg.Port) {
 		r.Handle("/metrics", promhttp.Handler())
 	}
 
 	go func() {
-		ticker := time.NewTicker(ctrl.HeartbeatInterval)
+		ticker := time.NewTicker(ctrlsrv.HeartbeatInterval)
 		for range ticker.C {
-			reg.PruneExpired(ctrl.HeartbeatExpiry)
+			reg.PruneExpired(ctrlsrv.HeartbeatExpiry)
 		}
 	}()
 
