@@ -15,7 +15,9 @@ import (
 	ctrl "github.com/gaspardpetit/nfrx/internal/ctrl"
 	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
 	mcpbroker "github.com/gaspardpetit/nfrx/internal/mcpbroker"
+	"github.com/gaspardpetit/nfrx/internal/plugin"
 	"github.com/gaspardpetit/nfrx/internal/server"
+	"github.com/gaspardpetit/nfrx/internal/serverstate"
 )
 
 func TestWorkerAuth(t *testing.T) {
@@ -23,7 +25,8 @@ func TestWorkerAuth(t *testing.T) {
 	sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
 	cfg := config.ServerConfig{ClientKey: "secret", RequestTimeout: 5 * time.Second}
 	metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
-	handler := server.New(reg, metricsReg, sched, mcpbroker.NewRegistry(cfg.RequestTimeout), cfg)
+	stateReg := serverstate.NewRegistry()
+	handler := server.New(reg, metricsReg, sched, mcpbroker.NewRegistry(cfg.RequestTimeout), cfg, stateReg, []plugin.Plugin{})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
@@ -87,7 +90,8 @@ func TestWorkerClientKeyUnexpected(t *testing.T) {
 	sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
 	cfg := config.ServerConfig{RequestTimeout: 5 * time.Second}
 	metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
-	handler := server.New(reg, metricsReg, sched, mcpbroker.NewRegistry(cfg.RequestTimeout), cfg)
+	stateReg := serverstate.NewRegistry()
+	handler := server.New(reg, metricsReg, sched, mcpbroker.NewRegistry(cfg.RequestTimeout), cfg, stateReg, []plugin.Plugin{})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
@@ -114,7 +118,8 @@ func TestMCPAuth(t *testing.T) {
 	cfg := config.ServerConfig{ClientKey: "secret", RequestTimeout: 5 * time.Second}
 	metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
 	mcpReg := mcpbroker.NewRegistry(cfg.RequestTimeout)
-	handler := server.New(reg, metricsReg, sched, mcpReg, cfg)
+	stateReg := serverstate.NewRegistry()
+	handler := server.New(reg, metricsReg, sched, mcpReg, cfg, stateReg, []plugin.Plugin{})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
@@ -153,7 +158,8 @@ func TestMCPAuth(t *testing.T) {
 
 	// unexpected key when server has none
 	cfg = config.ServerConfig{RequestTimeout: 5 * time.Second}
-	handler = server.New(reg, metricsReg, sched, mcpReg, cfg)
+	stateReg = serverstate.NewRegistry()
+	handler = server.New(reg, metricsReg, sched, mcpReg, cfg, stateReg, []plugin.Plugin{})
 	srv2 := httptest.NewServer(handler)
 	defer srv2.Close()
 	wsURL2 := strings.Replace(srv2.URL, "http", "ws", 1) + "/api/mcp/connect"
