@@ -12,7 +12,7 @@ import (
 
 	"github.com/gaspardpetit/nfrx/internal/config"
 	ctrl "github.com/gaspardpetit/nfrx/internal/ctrl"
-	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
+	llmplugin "github.com/gaspardpetit/nfrx/internal/llmplugin"
 	mcpbroker "github.com/gaspardpetit/nfrx/internal/mcpbroker"
 	"github.com/gaspardpetit/nfrx/internal/plugin"
 	"github.com/gaspardpetit/nfrx/internal/server"
@@ -20,12 +20,11 @@ import (
 )
 
 func TestHeartbeatPrune(t *testing.T) {
-	reg := ctrlsrv.NewRegistry()
-	sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
 	cfg := config.ServerConfig{ClientKey: "secret", RequestTimeout: 5 * time.Second}
-	metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
+	mcpReg := mcpbroker.NewRegistry(cfg.RequestTimeout)
 	stateReg := serverstate.NewRegistry()
-	handler := server.New(reg, metricsReg, sched, mcpbroker.NewRegistry(cfg.RequestTimeout), cfg, stateReg, []plugin.Plugin{})
+	llm := llmplugin.New(cfg, "test", "", "", mcpReg)
+	handler := server.New(mcpReg, cfg, stateReg, []plugin.Plugin{llm})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
@@ -44,16 +43,16 @@ func TestHeartbeatPrune(t *testing.T) {
 
 	// ensure registration
 	for i := 0; i < 50; i++ {
-		if len(reg.Models()) > 0 {
+		if len(llm.Registry().Models()) > 0 {
 			break
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
 
 	// prune immediately
-	reg.PruneExpired(0)
+	llm.Registry().PruneExpired(0)
 
-	if len(reg.Models()) != 0 {
+	if len(llm.Registry().Models()) != 0 {
 		t.Fatalf("expected models pruned")
 	}
 }

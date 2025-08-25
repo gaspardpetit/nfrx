@@ -13,7 +13,7 @@ import (
 
 	"github.com/gaspardpetit/nfrx/internal/config"
 	ctrl "github.com/gaspardpetit/nfrx/internal/ctrl"
-	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
+	llmplugin "github.com/gaspardpetit/nfrx/internal/llmplugin"
 	mcpbroker "github.com/gaspardpetit/nfrx/internal/mcpbroker"
 	"github.com/gaspardpetit/nfrx/internal/plugin"
 	"github.com/gaspardpetit/nfrx/internal/server"
@@ -21,12 +21,11 @@ import (
 )
 
 func TestWorkerAuth(t *testing.T) {
-	reg := ctrlsrv.NewRegistry()
-	sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
 	cfg := config.ServerConfig{ClientKey: "secret", RequestTimeout: 5 * time.Second}
-	metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
+	mcpReg := mcpbroker.NewRegistry(cfg.RequestTimeout)
 	stateReg := serverstate.NewRegistry()
-	handler := server.New(reg, metricsReg, sched, mcpbroker.NewRegistry(cfg.RequestTimeout), cfg, stateReg, []plugin.Plugin{})
+	llm := llmplugin.New(cfg, "test", "", "", mcpReg)
+	handler := server.New(mcpReg, cfg, stateReg, []plugin.Plugin{llm})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
@@ -50,7 +49,7 @@ func TestWorkerAuth(t *testing.T) {
 	if err := connBad.Close(websocket.StatusNormalClosure, ""); err != nil {
 		t.Logf("close bad: %v", err)
 	}
-	if len(reg.Models()) != 0 {
+	if len(llm.Registry().Models()) != 0 {
 		t.Fatalf("unexpected worker registered")
 	}
 
@@ -70,7 +69,7 @@ func TestWorkerAuth(t *testing.T) {
 
 	// wait for registration
 	for i := 0; i < 50; i++ {
-		if len(reg.Models()) > 0 {
+		if len(llm.Registry().Models()) > 0 {
 			break
 		}
 		time.Sleep(20 * time.Millisecond)
@@ -86,12 +85,11 @@ func TestWorkerAuth(t *testing.T) {
 }
 
 func TestWorkerClientKeyUnexpected(t *testing.T) {
-	reg := ctrlsrv.NewRegistry()
-	sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
 	cfg := config.ServerConfig{RequestTimeout: 5 * time.Second}
-	metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
+	mcpReg := mcpbroker.NewRegistry(cfg.RequestTimeout)
 	stateReg := serverstate.NewRegistry()
-	handler := server.New(reg, metricsReg, sched, mcpbroker.NewRegistry(cfg.RequestTimeout), cfg, stateReg, []plugin.Plugin{})
+	llm := llmplugin.New(cfg, "test", "", "", mcpReg)
+	handler := server.New(mcpReg, cfg, stateReg, []plugin.Plugin{llm})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
@@ -113,13 +111,11 @@ func TestWorkerClientKeyUnexpected(t *testing.T) {
 }
 
 func TestMCPAuth(t *testing.T) {
-	reg := ctrlsrv.NewRegistry()
-	sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
 	cfg := config.ServerConfig{ClientKey: "secret", RequestTimeout: 5 * time.Second}
-	metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
 	mcpReg := mcpbroker.NewRegistry(cfg.RequestTimeout)
 	stateReg := serverstate.NewRegistry()
-	handler := server.New(reg, metricsReg, sched, mcpReg, cfg, stateReg, []plugin.Plugin{})
+	llm := llmplugin.New(cfg, "test", "", "", mcpReg)
+	handler := server.New(mcpReg, cfg, stateReg, []plugin.Plugin{llm})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
@@ -159,7 +155,8 @@ func TestMCPAuth(t *testing.T) {
 	// unexpected key when server has none
 	cfg = config.ServerConfig{RequestTimeout: 5 * time.Second}
 	stateReg = serverstate.NewRegistry()
-	handler = server.New(reg, metricsReg, sched, mcpReg, cfg, stateReg, []plugin.Plugin{})
+	llm = llmplugin.New(cfg, "test", "", "", mcpReg)
+	handler = server.New(mcpReg, cfg, stateReg, []plugin.Plugin{llm})
 	srv2 := httptest.NewServer(handler)
 	defer srv2.Close()
 	wsURL2 := strings.Replace(srv2.URL, "http", "ws", 1) + "/api/mcp/connect"

@@ -59,7 +59,7 @@ You may then choose to expose an LLM provider, an MCP server and/or a RAG system
 
 ```bash
 docker run --rm \
-  -e SERVER_URL="wss://${MY_SERVER_ADDR}/api/llm/connect" \
+  -e SERVER_URL="wss://${MY_SERVER_ADDR}/api/workers/connect" \
   -e CLIENT_KEY="${MY_CLIENT_KEY}" \
   -e COMPLETION_BASE_URL="http://host.docker.internal:11434/v1" \
   ghcr.io/gaspardpetit/nfrx-llm:main
@@ -68,7 +68,7 @@ docker run --rm \
 ##### Bare (Linux)
 
 ```bash
-SERVER_URL="wss://${MY_SERVER_ADDR}/api/llm/connect" \
+SERVER_URL="wss://${MY_SERVER_ADDR}/api/workers/connect" \
 CLIENT_KEY="${MY_CLIENT_KEY}" \
 COMPLETION_BASE_URL="http://127.0.0.1:11434/v1" \
 nfrx-llm   # or: go run ./cmd/nfrx-llm

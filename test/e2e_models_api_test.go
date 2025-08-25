@@ -13,7 +13,7 @@ import (
 
 	"github.com/gaspardpetit/nfrx/internal/config"
 	ctrl "github.com/gaspardpetit/nfrx/internal/ctrl"
-	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
+	llmplugin "github.com/gaspardpetit/nfrx/internal/llmplugin"
 	mcpbroker "github.com/gaspardpetit/nfrx/internal/mcpbroker"
 	"github.com/gaspardpetit/nfrx/internal/plugin"
 	"github.com/gaspardpetit/nfrx/internal/server"
@@ -21,12 +21,11 @@ import (
 )
 
 func TestModelsAPI(t *testing.T) {
-	reg := ctrlsrv.NewRegistry()
-	sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
 	cfg := config.ServerConfig{RequestTimeout: 5 * time.Second}
-	metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
+	mcpReg := mcpbroker.NewRegistry(cfg.RequestTimeout)
 	stateReg := serverstate.NewRegistry()
-	handler := server.New(reg, metricsReg, sched, mcpbroker.NewRegistry(cfg.RequestTimeout), cfg, stateReg, []plugin.Plugin{})
+	llm := llmplugin.New(cfg, "test", "", "", mcpReg)
+	handler := server.New(mcpReg, cfg, stateReg, []plugin.Plugin{llm})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 

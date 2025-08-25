@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/gaspardpetit/nfrx/internal/config"
-	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
+	llmplugin "github.com/gaspardpetit/nfrx/internal/llmplugin"
 	mcpbroker "github.com/gaspardpetit/nfrx/internal/mcpbroker"
 	"github.com/gaspardpetit/nfrx/internal/plugin"
 	"github.com/gaspardpetit/nfrx/internal/server"
@@ -23,12 +23,11 @@ import (
 )
 
 func TestE2EChatCompletionsProxy(t *testing.T) {
-	reg := ctrlsrv.NewRegistry()
-	sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
 	cfg := config.ServerConfig{ClientKey: "secret", APIKey: "apikey", RequestTimeout: 5 * time.Second}
-	metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
+	mcpReg := mcpbroker.NewRegistry(cfg.RequestTimeout)
 	stateReg := serverstate.NewRegistry()
-	handler := server.New(reg, metricsReg, sched, mcpbroker.NewRegistry(cfg.RequestTimeout), cfg, stateReg, []plugin.Plugin{})
+	llm := llmplugin.New(cfg, "test", "", "", mcpReg)
+	handler := server.New(mcpReg, cfg, stateReg, []plugin.Plugin{llm})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
@@ -124,7 +123,7 @@ func TestE2EChatCompletionsProxy(t *testing.T) {
 		t.Fatalf("auth %q", auth)
 	}
 
-	snap := metricsReg.Snapshot()
+	snap := llm.MetricsRegistry().Snapshot()
 	if len(snap.Workers) != 1 {
 		t.Fatalf("expected one worker")
 	}
