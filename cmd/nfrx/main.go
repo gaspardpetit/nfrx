@@ -18,7 +18,7 @@ import (
 	"github.com/gaspardpetit/nfrx/internal/config"
 	llmplugin "github.com/gaspardpetit/nfrx/internal/llmplugin"
 	"github.com/gaspardpetit/nfrx/internal/logx"
-	mcpbroker "github.com/gaspardpetit/nfrx/internal/mcpbroker"
+	mcpplugin "github.com/gaspardpetit/nfrx/internal/mcpplugin"
 	"github.com/gaspardpetit/nfrx/internal/plugin"
 	"github.com/gaspardpetit/nfrx/internal/server"
 	"github.com/gaspardpetit/nfrx/internal/serverstate"
@@ -68,11 +68,11 @@ func main() {
 		logx.Log.Info().Str("addr", cfg.RedisAddr).Msg("using redis state store")
 	}
 
-	mcpReg := mcpbroker.NewRegistry(cfg.RequestTimeout)
+	mcp := mcpplugin.New(cfg)
 	stateReg := serverstate.NewRegistry()
-	llm := llmplugin.New(cfg, version, buildSHA, buildDate, mcpReg)
-	plugins := []plugin.Plugin{llm}
-	handler := server.New(mcpReg, cfg, stateReg, plugins)
+	llm := llmplugin.New(cfg, version, buildSHA, buildDate, mcp.Registry())
+	plugins := []plugin.Plugin{mcp, llm}
+	handler := server.New(cfg, stateReg, plugins)
 	srv := &http.Server{Addr: fmt.Sprintf(":%d", cfg.Port), Handler: handler}
 	var metricsSrv *http.Server
 	if cfg.MetricsAddr != fmt.Sprintf(":%d", cfg.Port) {
