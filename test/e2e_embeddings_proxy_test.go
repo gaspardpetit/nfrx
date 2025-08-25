@@ -15,7 +15,9 @@ import (
 	"github.com/gaspardpetit/nfrx/internal/config"
 	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
 	mcpbroker "github.com/gaspardpetit/nfrx/internal/mcpbroker"
+	"github.com/gaspardpetit/nfrx/internal/plugin"
 	"github.com/gaspardpetit/nfrx/internal/server"
+	"github.com/gaspardpetit/nfrx/internal/serverstate"
 	"github.com/gaspardpetit/nfrx/internal/worker"
 )
 
@@ -24,7 +26,8 @@ func TestE2EEmbeddingsProxy(t *testing.T) {
 	sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
 	cfg := config.ServerConfig{ClientKey: "secret", APIKey: "apikey", RequestTimeout: 5 * time.Second}
 	metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
-	handler := server.New(reg, metricsReg, sched, mcpbroker.NewRegistry(cfg.RequestTimeout), cfg)
+	stateReg := serverstate.NewRegistry()
+	handler := server.New(reg, metricsReg, sched, mcpbroker.NewRegistry(cfg.RequestTimeout), cfg, stateReg, []plugin.Plugin{})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 

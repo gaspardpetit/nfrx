@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/gaspardpetit/nfrx/api/generated"
@@ -14,10 +15,12 @@ import (
 	"github.com/gaspardpetit/nfrx/internal/config"
 	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
 	mcpbroker "github.com/gaspardpetit/nfrx/internal/mcpbroker"
+	"github.com/gaspardpetit/nfrx/internal/plugin"
+	"github.com/gaspardpetit/nfrx/internal/serverstate"
 )
 
 // New constructs the HTTP handler for the server.
-func New(reg *ctrlsrv.Registry, metrics *ctrlsrv.MetricsRegistry, sched ctrlsrv.Scheduler, mcpReg *mcpbroker.Registry, cfg config.ServerConfig) http.Handler {
+func New(reg *ctrlsrv.Registry, metrics *ctrlsrv.MetricsRegistry, sched ctrlsrv.Scheduler, mcpReg *mcpbroker.Registry, cfg config.ServerConfig, stateReg *serverstate.Registry, plugins []plugin.Plugin) http.Handler {
 	r := chi.NewRouter()
 	if len(cfg.AllowedOrigins) > 0 {
 		r.Use(cors.Handler(cors.Options{
@@ -29,6 +32,12 @@ func New(reg *ctrlsrv.Registry, metrics *ctrlsrv.MetricsRegistry, sched ctrlsrv.
 	for _, m := range api.MiddlewareChain() {
 		r.Use(m)
 	}
+
+	if stateReg == nil {
+		stateReg = serverstate.NewRegistry()
+	}
+	preg, _ := prometheus.DefaultRegisterer.(*prometheus.Registry)
+	plugin.Load(plugin.Context{Router: r, Metrics: preg, State: stateReg}, plugins)
 
 	impl := &api.API{Reg: reg, Metrics: metrics, MCP: mcpReg, Sched: sched, Timeout: cfg.RequestTimeout, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
 	wrapper := generated.ServerInterfaceWrapper{Handler: impl}

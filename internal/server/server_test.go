@@ -10,6 +10,8 @@ import (
 	"github.com/gaspardpetit/nfrx/internal/config"
 	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
 	mcpbroker "github.com/gaspardpetit/nfrx/internal/mcpbroker"
+	"github.com/gaspardpetit/nfrx/internal/plugin"
+	"github.com/gaspardpetit/nfrx/internal/serverstate"
 )
 
 func TestMetricsEndpointDefaultPort(t *testing.T) {
@@ -17,7 +19,8 @@ func TestMetricsEndpointDefaultPort(t *testing.T) {
 	metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
 	sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
 	cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":8080", RequestTimeout: time.Second}
-	h := New(reg, metricsReg, sched, mcpbroker.NewRegistry(time.Second), cfg)
+	stateReg := serverstate.NewRegistry()
+	h := New(reg, metricsReg, sched, mcpbroker.NewRegistry(time.Second), cfg, stateReg, []plugin.Plugin{})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
 
@@ -35,7 +38,8 @@ func TestMetricsEndpointSeparatePort(t *testing.T) {
 	metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
 	sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
 	cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":9090", RequestTimeout: time.Second}
-	h := New(reg, metricsReg, sched, mcpbroker.NewRegistry(time.Second), cfg)
+	stateReg := serverstate.NewRegistry()
+	h := New(reg, metricsReg, sched, mcpbroker.NewRegistry(time.Second), cfg, stateReg, []plugin.Plugin{})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
 
@@ -53,7 +57,8 @@ func TestStatePage(t *testing.T) {
 	metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
 	sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
 	cfg := config.ServerConfig{Port: 8080, RequestTimeout: time.Second}
-	h := New(reg, metricsReg, sched, mcpbroker.NewRegistry(time.Second), cfg)
+	stateReg := serverstate.NewRegistry()
+	h := New(reg, metricsReg, sched, mcpbroker.NewRegistry(time.Second), cfg, stateReg, []plugin.Plugin{})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
 
@@ -75,7 +80,8 @@ func TestCORSAllowedOrigins(t *testing.T) {
 	metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
 	sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
 	cfg := config.ServerConfig{Port: 8080, RequestTimeout: time.Second, AllowedOrigins: []string{"https://example.com"}}
-	h := New(reg, metricsReg, sched, mcpbroker.NewRegistry(time.Second), cfg)
+	stateReg := serverstate.NewRegistry()
+	h := New(reg, metricsReg, sched, mcpbroker.NewRegistry(time.Second), cfg, stateReg, []plugin.Plugin{})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
 

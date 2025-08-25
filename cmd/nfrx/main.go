@@ -21,6 +21,7 @@ import (
 	"github.com/gaspardpetit/nfrx/internal/logx"
 	mcpbroker "github.com/gaspardpetit/nfrx/internal/mcpbroker"
 	"github.com/gaspardpetit/nfrx/internal/metrics"
+	"github.com/gaspardpetit/nfrx/internal/plugin"
 	"github.com/gaspardpetit/nfrx/internal/server"
 	"github.com/gaspardpetit/nfrx/internal/serverstate"
 )
@@ -75,7 +76,9 @@ func main() {
 	metrics.SetServerBuildInfo(version, buildSHA, buildDate)
 	sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
 	mcpReg := mcpbroker.NewRegistry(cfg.RequestTimeout)
-	handler := server.New(reg, metricsReg, sched, mcpReg, cfg)
+	stateReg := serverstate.NewRegistry()
+	plugins := []plugin.Plugin{}
+	handler := server.New(reg, metricsReg, sched, mcpReg, cfg, stateReg, plugins)
 	srv := &http.Server{Addr: fmt.Sprintf(":%d", cfg.Port), Handler: handler}
 	var metricsSrv *http.Server
 	if cfg.MetricsAddr != fmt.Sprintf(":%d", cfg.Port) {
