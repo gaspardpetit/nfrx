@@ -11,13 +11,12 @@ import (
 
 	"github.com/gaspardpetit/nfrx/internal/api"
 	"github.com/gaspardpetit/nfrx/internal/config"
-	mcpbroker "github.com/gaspardpetit/nfrx/internal/mcpbroker"
 	"github.com/gaspardpetit/nfrx/internal/plugin"
 	"github.com/gaspardpetit/nfrx/internal/serverstate"
 )
 
 // New constructs the HTTP handler for the server.
-func New(mcpReg *mcpbroker.Registry, cfg config.ServerConfig, stateReg *serverstate.Registry, plugins []plugin.Plugin) http.Handler {
+func New(cfg config.ServerConfig, stateReg *serverstate.Registry, plugins []plugin.Plugin) http.Handler {
 	r := chi.NewRouter()
 	if len(cfg.AllowedOrigins) > 0 {
 		r.Use(cors.Handler(cors.Options{
@@ -40,12 +39,11 @@ func New(mcpReg *mcpbroker.Registry, cfg config.ServerConfig, stateReg *serverst
 	for _, wp := range pregistry.WorkerProviders() {
 		wp.RegisterWebSocket(r)
 	}
+	for _, rp := range pregistry.RelayProviders() {
+		rp.RegisterRelayEndpoints(r)
+	}
 
 	r.Get("/state", StateHandler())
-	if mcpReg != nil {
-		r.Post("/api/mcp/id/{id}", mcpReg.HTTPHandler())
-		r.Handle("/api/mcp/connect", mcpReg.WSHandler(cfg.ClientKey))
-	}
 
 	if cfg.MetricsAddr == fmt.Sprintf(":%d", cfg.Port) {
 		r.Handle("/metrics", promhttp.HandlerFor(preg, promhttp.HandlerOpts{}))

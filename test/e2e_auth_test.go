@@ -14,7 +14,7 @@ import (
 	"github.com/gaspardpetit/nfrx/internal/config"
 	ctrl "github.com/gaspardpetit/nfrx/internal/ctrl"
 	llmplugin "github.com/gaspardpetit/nfrx/internal/llmplugin"
-	mcpbroker "github.com/gaspardpetit/nfrx/internal/mcpbroker"
+	mcpplugin "github.com/gaspardpetit/nfrx/internal/mcpplugin"
 	"github.com/gaspardpetit/nfrx/internal/plugin"
 	"github.com/gaspardpetit/nfrx/internal/server"
 	"github.com/gaspardpetit/nfrx/internal/serverstate"
@@ -22,10 +22,10 @@ import (
 
 func TestWorkerAuth(t *testing.T) {
 	cfg := config.ServerConfig{ClientKey: "secret", RequestTimeout: 5 * time.Second}
-	mcpReg := mcpbroker.NewRegistry(cfg.RequestTimeout)
+	mcp := mcpplugin.New(cfg)
 	stateReg := serverstate.NewRegistry()
-	llm := llmplugin.New(cfg, "test", "", "", mcpReg)
-	handler := server.New(mcpReg, cfg, stateReg, []plugin.Plugin{llm})
+	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry())
+	handler := server.New(cfg, stateReg, []plugin.Plugin{mcp, llm})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
@@ -86,10 +86,10 @@ func TestWorkerAuth(t *testing.T) {
 
 func TestWorkerClientKeyUnexpected(t *testing.T) {
 	cfg := config.ServerConfig{RequestTimeout: 5 * time.Second}
-	mcpReg := mcpbroker.NewRegistry(cfg.RequestTimeout)
+	mcp := mcpplugin.New(cfg)
 	stateReg := serverstate.NewRegistry()
-	llm := llmplugin.New(cfg, "test", "", "", mcpReg)
-	handler := server.New(mcpReg, cfg, stateReg, []plugin.Plugin{llm})
+	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry())
+	handler := server.New(cfg, stateReg, []plugin.Plugin{mcp, llm})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
@@ -112,10 +112,10 @@ func TestWorkerClientKeyUnexpected(t *testing.T) {
 
 func TestMCPAuth(t *testing.T) {
 	cfg := config.ServerConfig{ClientKey: "secret", RequestTimeout: 5 * time.Second}
-	mcpReg := mcpbroker.NewRegistry(cfg.RequestTimeout)
+	mcp := mcpplugin.New(cfg)
 	stateReg := serverstate.NewRegistry()
-	llm := llmplugin.New(cfg, "test", "", "", mcpReg)
-	handler := server.New(mcpReg, cfg, stateReg, []plugin.Plugin{llm})
+	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry())
+	handler := server.New(cfg, stateReg, []plugin.Plugin{mcp, llm})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
@@ -154,9 +154,10 @@ func TestMCPAuth(t *testing.T) {
 
 	// unexpected key when server has none
 	cfg = config.ServerConfig{RequestTimeout: 5 * time.Second}
+	mcpReg := mcpplugin.New(cfg)
 	stateReg = serverstate.NewRegistry()
-	llm = llmplugin.New(cfg, "test", "", "", mcpReg)
-	handler = server.New(mcpReg, cfg, stateReg, []plugin.Plugin{llm})
+	llm = llmplugin.New(cfg, "test", "", "", mcpReg.Registry())
+	handler = server.New(cfg, stateReg, []plugin.Plugin{mcpReg, llm})
 	srv2 := httptest.NewServer(handler)
 	defer srv2.Close()
 	wsURL2 := strings.Replace(srv2.URL, "http", "ws", 1) + "/api/mcp/connect"

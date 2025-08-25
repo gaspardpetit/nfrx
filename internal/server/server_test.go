@@ -9,17 +9,17 @@ import (
 
 	"github.com/gaspardpetit/nfrx/internal/config"
 	llmplugin "github.com/gaspardpetit/nfrx/internal/llmplugin"
-	mcpbroker "github.com/gaspardpetit/nfrx/internal/mcpbroker"
+	mcpplugin "github.com/gaspardpetit/nfrx/internal/mcpplugin"
 	"github.com/gaspardpetit/nfrx/internal/plugin"
 	"github.com/gaspardpetit/nfrx/internal/serverstate"
 )
 
 func TestMetricsEndpointDefaultPort(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":8080", RequestTimeout: time.Second}
-	mcpReg := mcpbroker.NewRegistry(time.Second)
+	mcp := mcpplugin.New(cfg)
 	stateReg := serverstate.NewRegistry()
-	llm := llmplugin.New(cfg, "test", "", "", mcpReg)
-	h := New(mcpReg, cfg, stateReg, []plugin.Plugin{llm})
+	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry())
+	h := New(cfg, stateReg, []plugin.Plugin{mcp, llm})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
 
@@ -34,10 +34,10 @@ func TestMetricsEndpointDefaultPort(t *testing.T) {
 
 func TestMetricsEndpointSeparatePort(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":9090", RequestTimeout: time.Second}
-	mcpReg := mcpbroker.NewRegistry(time.Second)
+	mcp := mcpplugin.New(cfg)
 	stateReg := serverstate.NewRegistry()
-	llm := llmplugin.New(cfg, "test", "", "", mcpReg)
-	h := New(mcpReg, cfg, stateReg, []plugin.Plugin{llm})
+	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry())
+	h := New(cfg, stateReg, []plugin.Plugin{mcp, llm})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
 
@@ -52,10 +52,10 @@ func TestMetricsEndpointSeparatePort(t *testing.T) {
 
 func TestStatePage(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, RequestTimeout: time.Second}
-	mcpReg := mcpbroker.NewRegistry(time.Second)
+	mcp := mcpplugin.New(cfg)
 	stateReg := serverstate.NewRegistry()
-	llm := llmplugin.New(cfg, "test", "", "", mcpReg)
-	h := New(mcpReg, cfg, stateReg, []plugin.Plugin{llm})
+	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry())
+	h := New(cfg, stateReg, []plugin.Plugin{mcp, llm})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
 
@@ -74,10 +74,10 @@ func TestStatePage(t *testing.T) {
 
 func TestCORSAllowedOrigins(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, RequestTimeout: time.Second, AllowedOrigins: []string{"https://example.com"}}
-	mcpReg := mcpbroker.NewRegistry(time.Second)
+	mcp := mcpplugin.New(cfg)
 	stateReg := serverstate.NewRegistry()
-	llm := llmplugin.New(cfg, "test", "", "", mcpReg)
-	h := New(mcpReg, cfg, stateReg, []plugin.Plugin{llm})
+	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry())
+	h := New(cfg, stateReg, []plugin.Plugin{mcp, llm})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
 
