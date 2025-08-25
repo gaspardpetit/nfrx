@@ -13,14 +13,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/gaspardpetit/nfrx/internal/config"
-	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
+	llmplugin "github.com/gaspardpetit/nfrx/internal/llmplugin"
 	"github.com/gaspardpetit/nfrx/internal/logx"
 	mcpbroker "github.com/gaspardpetit/nfrx/internal/mcpbroker"
-	"github.com/gaspardpetit/nfrx/internal/metrics"
 	"github.com/gaspardpetit/nfrx/internal/plugin"
 	"github.com/gaspardpetit/nfrx/internal/server"
 	"github.com/gaspardpetit/nfrx/internal/serverstate"
@@ -70,15 +68,11 @@ func main() {
 		logx.Log.Info().Str("addr", cfg.RedisAddr).Msg("using redis state store")
 	}
 
-	reg := ctrlsrv.NewRegistry()
-	metricsReg := ctrlsrv.NewMetricsRegistry(version, buildSHA, buildDate)
-	metrics.Register(prometheus.DefaultRegisterer)
-	metrics.SetServerBuildInfo(version, buildSHA, buildDate)
-	sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
 	mcpReg := mcpbroker.NewRegistry(cfg.RequestTimeout)
 	stateReg := serverstate.NewRegistry()
-	plugins := []plugin.Plugin{}
-	handler := server.New(reg, metricsReg, sched, mcpReg, cfg, stateReg, plugins)
+	llm := llmplugin.New(cfg, version, buildSHA, buildDate, mcpReg)
+	plugins := []plugin.Plugin{llm}
+	handler := server.New(mcpReg, cfg, stateReg, plugins)
 	srv := &http.Server{Addr: fmt.Sprintf(":%d", cfg.Port), Handler: handler}
 	var metricsSrv *http.Server
 	if cfg.MetricsAddr != fmt.Sprintf(":%d", cfg.Port) {
