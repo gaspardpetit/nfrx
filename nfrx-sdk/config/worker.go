@@ -32,6 +32,8 @@ type WorkerConfig struct {
 	Reconnect          bool
 	RequestTimeout     time.Duration
 	LogLevel           string
+	ControlGRPCAddr    string `yaml:"control_grpc_addr"`
+	ControlGRPCSocket  string `yaml:"control_grpc_socket"`
 }
 
 func (c *WorkerConfig) BindFlags() {
@@ -42,6 +44,8 @@ func (c *WorkerConfig) BindFlags() {
 
 	c.ServerURL = getEnv("SERVER_URL", "ws://localhost:8080/api/workers/connect")
 	c.ClientKey = getEnv("CLIENT_KEY", "")
+	c.ControlGRPCAddr = getEnv("CONTROL_GRPC_ADDR", "")
+	c.ControlGRPCSocket = getEnv("CONTROL_GRPC_SOCKET", "")
 	base := getEnv("COMPLETION_BASE_URL", "http://127.0.0.1:11434/v1")
 	c.CompletionBaseURL = base
 	c.CompletionAPIKey = getEnv("COMPLETION_API_KEY", getEnv("OLLAMA_API_KEY", ""))
@@ -89,6 +93,8 @@ func (c *WorkerConfig) BindFlags() {
 
 	flag.StringVar(&c.ServerURL, "server-url", c.ServerURL, "server WebSocket URL for registration (e.g. ws://localhost:8080/api/workers/connect)")
 	flag.StringVar(&c.ClientKey, "client-key", c.ClientKey, "shared secret for authenticating with the server")
+	flag.StringVar(&c.ControlGRPCAddr, "control-grpc-addr", c.ControlGRPCAddr, "control plane gRPC address")
+	flag.StringVar(&c.ControlGRPCSocket, "control-grpc-socket", c.ControlGRPCSocket, "control plane gRPC unix socket path")
 	flag.StringVar(&c.CompletionBaseURL, "completion-base-url", c.CompletionBaseURL, "base URL of the completion API (e.g. http://127.0.0.1:11434/v1)")
 	flag.StringVar(&c.CompletionAPIKey, "completion-api-key", c.CompletionAPIKey, "API key for the completion API; leave empty for no auth")
 	flag.IntVar(&c.MaxConcurrency, "max-concurrency", c.MaxConcurrency, "maximum number of jobs processed concurrently")

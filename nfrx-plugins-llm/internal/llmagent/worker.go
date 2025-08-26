@@ -60,9 +60,15 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 	if err != nil {
 		return err
 	}
-	host := u.Hostname()
-	port, _ := strconv.Atoi(u.Port())
-	grpcAddr := host + ":" + strconv.Itoa(port+1)
+	grpcAddr := cfg.ControlGRPCAddr
+	if cfg.ControlGRPCSocket != "" {
+		grpcAddr = "unix://" + cfg.ControlGRPCSocket
+	}
+	if grpcAddr == "" {
+		host := u.Hostname()
+		port, _ := strconv.Atoi(u.Port())
+		grpcAddr = host + ":" + strconv.Itoa(port+1)
+	}
 	agentClient, err := agent.Dial(ctx, grpcAddr)
 	if err != nil {
 		return err
@@ -84,6 +90,9 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 		},
 	}
 	if err := agentClient.Register(ctx, req, 5*time.Second); err != nil {
+		return err
+	}
+	if err := agentClient.StartHeartbeat(ctx, cfg.ClientID, 5*time.Second); err != nil {
 		return err
 	}
 
@@ -194,24 +203,6 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg conf
 	}
 	sb, _ := json.Marshal(st)
 	sendMsg(connCtx, sendCh, sb)
-
-	senderWG.Add(1)
-	go func() {
-		defer senderWG.Done()
-		ticker := time.NewTicker(5 * time.Second)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-connCtx.Done():
-				return
-			case t := <-ticker.C:
-				hb := ctrl.HeartbeatMessage{Type: "heartbeat", TS: t.Unix()}
-				bb, _ := json.Marshal(hb)
-				sendMsg(connCtx, sendCh, bb)
-				SetLastHeartbeat(t)
-			}
-		}
-	}()
 
 	checkDrain := func() {
 		if IsDraining() && GetState().CurrentJobs == 0 {

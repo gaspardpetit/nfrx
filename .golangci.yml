@@ -1,0 +1,12 @@
+version: "2"
+linters:
+  enable:
+    - depguard
+linters-settings:
+  depguard:
+    rules:
+      Main:
+        files:
+          - "$all"
+        allow:
+          - "$all"
