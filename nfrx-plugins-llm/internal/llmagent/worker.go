@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -11,6 +13,7 @@ import (
 	"github.com/coder/websocket"
 	"github.com/google/uuid"
 
+	agent "github.com/gaspardpetit/nfrx-plugins-llm/internal/agent"
 	"github.com/gaspardpetit/nfrx-plugins-llm/internal/llmbackend"
 	"github.com/gaspardpetit/nfrx-plugins-llm/internal/relay"
 	"github.com/gaspardpetit/nfrx-sdk/config"
@@ -53,6 +56,37 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 		}
 	}
 
+	u, err := url.Parse(cfg.ServerURL)
+	if err != nil {
+		return err
+	}
+	host := u.Hostname()
+	port, _ := strconv.Atoi(u.Port())
+	grpcAddr := host + ":" + strconv.Itoa(port+1)
+	agentClient, err := agent.Dial(ctx, grpcAddr)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = agentClient.Close() }()
+	vi := GetVersionInfo()
+	req := &ctrl.RegisterRequest{
+		WorkerId:        cfg.ClientID,
+		ProtocolVersion: ctrl.ProtocolVersion,
+		Capabilities:    []string{"llm"},
+		Metadata: map[string]string{
+			"worker_name":          cfg.ClientName,
+			"client_key":           cfg.ClientKey,
+			"max_concurrency":      strconv.Itoa(cfg.MaxConcurrency),
+			"embedding_batch_size": strconv.Itoa(cfg.EmbeddingBatchSize),
+			"version":              vi.Version,
+			"build_sha":            vi.BuildSHA,
+			"build_date":           vi.BuildDate,
+		},
+	}
+	if err := agentClient.Register(ctx, req, 5*time.Second); err != nil {
+		return err
+	}
+
 	attempt := 0
 	for {
 		SetState("connecting")
@@ -78,7 +112,20 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 
 func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg config.WorkerConfig, client *llmbackend.Client, statusUpdates <-chan ctrl.StatusUpdateMessage) (bool, error) {
 	connCtx, cancelConn := context.WithCancel(ctx)
-	ws, _, err := websocket.Dial(connCtx, cfg.ServerURL, nil)
+	u, err := url.Parse(cfg.ServerURL)
+	if err != nil {
+		cancelConn()
+		SetLastError(err.Error())
+		SetState("error")
+		return false, err
+	}
+	q := u.Query()
+	q.Set("id", cfg.ClientID)
+	if cfg.ClientKey != "" {
+		q.Set("key", cfg.ClientKey)
+	}
+	u.RawQuery = q.Encode()
+	ws, _, err := websocket.Dial(connCtx, u.String(), nil)
 	if err != nil {
 		cancelConn()
 		SetLastError(err.Error())
@@ -99,28 +146,6 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg conf
 	SetLastError("")
 
 	_ = probeBackend(connCtx, client, cfg, nil)
-	vi := GetVersionInfo()
-	regMsg := ctrl.RegisterMessage{
-		Type:               "register",
-		WorkerID:           cfg.ClientID,
-		WorkerName:         cfg.ClientName,
-		ClientKey:          cfg.ClientKey,
-		Models:             GetState().Models,
-		MaxConcurrency:     GetState().MaxConcurrency,
-		EmbeddingBatchSize: GetState().EmbeddingBatchSize,
-		Version:            vi.Version,
-		BuildSHA:           vi.BuildSHA,
-		BuildDate:          vi.BuildDate,
-		ProtocolVersion:    ctrl.ProtocolVersion,
-		Capabilities:       []string{"llm"},
-	}
-	b, _ := json.Marshal(regMsg)
-	if err := ws.Write(connCtx, websocket.MessageText, b); err != nil {
-		cancelConn()
-		SetLastError(err.Error())
-		SetState("error")
-		return false, err
-	}
 
 	sendCh := make(chan []byte, 16)
 	var senderWG sync.WaitGroup

@@ -29,7 +29,7 @@ These endpoints are present when the `llm` extension is enabled.
 
 | Verb & Endpoint | Parameters | Description | Auth |
 | --- | --- | --- | --- |
-| `GET /api/workers/connect` (WS) | Initial message `{ type: "register", client_key?: string, worker_id?: string, worker_name?: string, models?: [string], max_concurrency?: int, embedding_batch_size?: int }` | Worker connects to server. | Client key |
+| `GET /api/workers/connect?id={worker_id}&key={client_key}` (WS) | – | Worker attaches job channel after gRPC registration. | Client key |
 
 ### Client Usage
 

@@ -109,7 +109,7 @@ func main() {
 	var grpcSrv *grpc.Server
 	if llm != nil {
 		grpcSrv = grpc.NewServer()
-		ctrlpb.RegisterControlServer(grpcSrv, controlgrpc.New(llm.Registry()))
+		ctrlpb.RegisterControlServer(grpcSrv, controlgrpc.New(llm.Registry(), llm.MetricsRegistry(), cfg.ClientKey))
 		go func() {
 			addr := fmt.Sprintf(":%d", cfg.Port+1)
 			lis, err := net.Listen("tcp", addr)

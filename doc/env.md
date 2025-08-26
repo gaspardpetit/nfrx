@@ -49,7 +49,7 @@ The worker optionally reads settings from a YAML config file. Defaults:
 |----------|------------|---------|---------|----------|
 | `CONFIG_FILE` | — | worker config file path | OS-specific | `--config` |
 | `LOG_DIR` | — | directory for worker log files | OS-specific (none on Linux) | `--log-dir` |
-| `SERVER_URL` | `server_url` | server WebSocket URL for registration | `ws://localhost:8080/api/workers/connect` | `--server-url` |
+| `SERVER_URL` | `server_url` | server WebSocket URL for job channel | `ws://localhost:8080/api/workers/connect` | `--server-url` |
 | `CLIENT_KEY` | `client_key` | shared secret for authenticating with the server | unset | `--client-key` |
 | `COMPLETION_BASE_URL` | `completion_base_url` | base URL of the completion API | `http://127.0.0.1:11434/v1` | `--completion-base-url` |
 | `COMPLETION_API_KEY` | — | API key for the completion API | unset | `--completion-api-key` |
