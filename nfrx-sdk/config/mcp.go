@@ -13,17 +13,19 @@ import (
 
 // MCPConfig holds configuration for the MCP relay.
 type MCPConfig struct {
-	ServerURL      string
-	ClientKey      string
-	ClientID       string
-	ClientName     string
-	ProviderURL    string
-	AuthToken      string
-	MetricsAddr    string
-	RequestTimeout time.Duration
-	Reconnect      bool
-	ConfigFile     string
-	LogLevel       string
+	ServerURL         string
+	ClientKey         string
+	ClientID          string
+	ClientName        string
+	ProviderURL       string
+	AuthToken         string
+	MetricsAddr       string
+	RequestTimeout    time.Duration
+	Reconnect         bool
+	ConfigFile        string
+	LogLevel          string
+	ControlGRPCAddr   string `yaml:"control_grpc_addr"`
+	ControlGRPCSocket string `yaml:"control_grpc_socket"`
 }
 
 // BindFlags populates the struct with defaults from environment variables and
@@ -35,6 +37,8 @@ func (c *MCPConfig) BindFlags() {
 
 	c.ServerURL = getEnv("SERVER_URL", "ws://localhost:8080/api/mcp/connect")
 	c.ClientKey = getEnv("CLIENT_KEY", "")
+	c.ControlGRPCAddr = getEnv("CONTROL_GRPC_ADDR", "")
+	c.ControlGRPCSocket = getEnv("CONTROL_GRPC_SOCKET", "")
 	c.ProviderURL = getEnv("PROVIDER_URL", "http://127.0.0.1:7777/")
 	c.AuthToken = getEnv("AUTH_TOKEN", "")
 	mp := getEnv("METRICS_PORT", "")
@@ -61,6 +65,8 @@ func (c *MCPConfig) BindFlags() {
 	flag.StringVar(&c.LogLevel, "log-level", c.LogLevel, "log verbosity (all, debug, info, warn, error, fatal, none)")
 	flag.StringVar(&c.ServerURL, "server-url", c.ServerURL, "broker WebSocket URL (e.g. ws://localhost:8080/api/mcp/connect)")
 	flag.StringVar(&c.ClientKey, "client-key", c.ClientKey, "shared secret for authenticating with the server")
+	flag.StringVar(&c.ControlGRPCAddr, "control-grpc-addr", c.ControlGRPCAddr, "control plane gRPC address")
+	flag.StringVar(&c.ControlGRPCSocket, "control-grpc-socket", c.ControlGRPCSocket, "control plane gRPC unix socket path")
 	flag.StringVar(&c.ProviderURL, "provider-url", c.ProviderURL, "MCP provider URL")
 	flag.StringVar(&c.AuthToken, "auth-token", c.AuthToken, "authorization token for broker requests")
 	flag.StringVar(&c.MetricsAddr, "metrics-port", c.MetricsAddr, "Prometheus metrics listen address or port (disabled when empty; e.g. 127.0.0.1:9090 or 9090)")

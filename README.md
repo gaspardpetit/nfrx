@@ -73,6 +73,7 @@ PORT=${MY_SERVER_PORT} CLIENT_KEY="${MY_CLIENT_KEY}" API_KEY="${MY_API_KEY}" \
 ```
 
 The server also starts a gRPC control endpoint on `PORT+1` for agent registration and heartbeats.
+Agents default to dialing this address based on `SERVER_URL`, but it can be overridden via `CONTROL_GRPC_ADDR` or `CONTROL_GRPC_SOCKET`.
 
 You may then choose to expose an LLM provider, an MCP server and/or a RAG system from private hardware behind a NAT/Firewall.
 
