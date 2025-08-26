@@ -1,0 +1,26 @@
+syntax = "proto3";
+package ctrl;
+option go_package = "github.com/gaspardpetit/nfrx-sdk/ctrl;ctrl";
+
+message RegisterRequest {
+  string worker_id = 1;
+  string protocol_version = 2;
+  repeated string capabilities = 3;
+  map<string,string> metadata = 4;
+}
+
+message RegisterResponse {
+  string assigned_id = 1;
+  bool accepted = 2;
+}
+
+message ControlHeartbeat {
+  string worker_id = 1;
+  bool draining = 2;
+  int32 load = 3;
+}
+
+service Control {
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  rpc Heartbeat(stream ControlHeartbeat) returns (stream ControlHeartbeat);
+}

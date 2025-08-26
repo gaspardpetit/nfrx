@@ -72,6 +72,8 @@ PORT=${MY_SERVER_PORT} CLIENT_KEY="${MY_CLIENT_KEY}" API_KEY="${MY_API_KEY}" \
   nfrx   # or: go run ./nfrx-server/cmd/nfrx
 ```
 
+The server also starts a gRPC control endpoint on `PORT+1` for agent registration and heartbeats.
+
 You may then choose to expose an LLM provider, an MCP server and/or a RAG system from private hardware behind a NAT/Firewall.
 
 Set `PLUGINS` to control which modules load (`llm` and/or `mcp`; defaults to both). For example, `PLUGINS=llm` disables the MCP relay.
