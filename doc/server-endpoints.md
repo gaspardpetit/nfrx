@@ -23,6 +23,8 @@ The JSON snapshot includes `server.state` which reports `ready`, `not_ready`, or
 
 ## Inference API
 
+These endpoints are present when the `llm` plugin is enabled.
+
 ### Worker Registration
 
 | Verb & Endpoint | Parameters | Description | Auth |
@@ -39,6 +41,8 @@ The JSON snapshot includes `server.state` which reports `ready`, `not_ready`, or
 | `GET /api/v1/models/{id}` | Path `{id}` | Get model details. | API key |
 
 ## MCP API
+
+These endpoints are present when the `mcp` plugin is enabled.
 
 ### MCP Registration
 

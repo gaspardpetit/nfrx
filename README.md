@@ -53,6 +53,8 @@ PORT=${MY_SERVER_PORT} CLIENT_KEY="${MY_CLIENT_KEY}" API_KEY="${MY_API_KEY}" \
 
 You may then choose to expose an LLM provider, an MCP server and/or a RAG system from private hardware behind a NAT/Firewall.
 
+Set `PLUGINS` to control which modules load (`llm` and/or `mcp`; defaults to both). For example, `PLUGINS=llm` disables the MCP relay.
+
 ### Expose a local LLM worker (Ollama shown)
 
 ##### Docker

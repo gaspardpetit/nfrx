@@ -27,14 +27,15 @@ type Plugin struct {
 	metrics *ctrlsrv.MetricsRegistry
 	sched   ctrlsrv.Scheduler
 	mcp     *mcpbroker.Registry
+	opts    map[string]string
 }
 
 // New constructs a new LLM plugin.
-func New(cfg config.ServerConfig, version, sha, date string, mcp *mcpbroker.Registry) *Plugin {
+func New(cfg config.ServerConfig, version, sha, date string, mcp *mcpbroker.Registry, opts map[string]string) *Plugin {
 	reg := ctrlsrv.NewRegistry()
 	metricsReg := ctrlsrv.NewMetricsRegistry(version, sha, date)
 	sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
-	return &Plugin{cfg: cfg, version: version, sha: sha, date: date, reg: reg, metrics: metricsReg, sched: sched, mcp: mcp}
+	return &Plugin{cfg: cfg, version: version, sha: sha, date: date, reg: reg, metrics: metricsReg, sched: sched, mcp: mcp, opts: opts}
 }
 
 func (p *Plugin) ID() string { return "llm" }

@@ -18,6 +18,7 @@ import (
 	"github.com/gaspardpetit/nfrx/internal/config"
 	llmplugin "github.com/gaspardpetit/nfrx/internal/llmplugin"
 	"github.com/gaspardpetit/nfrx/internal/logx"
+	mcpbroker "github.com/gaspardpetit/nfrx/internal/mcpbroker"
 	mcpplugin "github.com/gaspardpetit/nfrx/internal/mcpplugin"
 	"github.com/gaspardpetit/nfrx/internal/plugin"
 	"github.com/gaspardpetit/nfrx/internal/server"
@@ -36,6 +37,15 @@ func binaryName() string {
 		return strings.TrimPrefix(b, "nfrx-")
 	}
 	return b
+}
+
+func hasPlugin(list []string, name string) bool {
+	for _, p := range list {
+		if p == name {
+			return true
+		}
+	}
+	return false
 }
 
 func main() {
@@ -68,10 +78,21 @@ func main() {
 		logx.Log.Info().Str("addr", cfg.RedisAddr).Msg("using redis state store")
 	}
 
-	mcp := mcpplugin.New(cfg)
 	stateReg := serverstate.NewRegistry()
-	llm := llmplugin.New(cfg, version, buildSHA, buildDate, mcp.Registry())
-	plugins := []plugin.Plugin{mcp, llm}
+	var plugins []plugin.Plugin
+	var mcpReg *mcpplugin.Plugin
+	if hasPlugin(cfg.Plugins, "mcp") {
+		mcpReg = mcpplugin.New(cfg, cfg.PluginOptions["mcp"])
+		plugins = append(plugins, mcpReg)
+	}
+	var mcpBroker *mcpbroker.Registry
+	if mcpReg != nil {
+		mcpBroker = mcpReg.Registry()
+	}
+	if hasPlugin(cfg.Plugins, "llm") {
+		llm := llmplugin.New(cfg, version, buildSHA, buildDate, mcpBroker, cfg.PluginOptions["llm"])
+		plugins = append(plugins, llm)
+	}
 	handler := server.New(cfg, stateReg, plugins)
 	srv := &http.Server{Addr: fmt.Sprintf(":%d", cfg.Port), Handler: handler}
 	var metricsSrv *http.Server

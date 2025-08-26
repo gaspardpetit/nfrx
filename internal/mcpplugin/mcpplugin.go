@@ -14,12 +14,13 @@ import (
 type Plugin struct {
 	cfg    config.ServerConfig
 	broker *mcpbroker.Registry
+	opts   map[string]string
 }
 
 // New constructs a new MCP plugin.
-func New(cfg config.ServerConfig) *Plugin {
+func New(cfg config.ServerConfig, opts map[string]string) *Plugin {
 	reg := mcpbroker.NewRegistry(cfg.RequestTimeout)
-	return &Plugin{cfg: cfg, broker: reg}
+	return &Plugin{cfg: cfg, broker: reg, opts: opts}
 }
 
 func (p *Plugin) ID() string { return "mcp" }

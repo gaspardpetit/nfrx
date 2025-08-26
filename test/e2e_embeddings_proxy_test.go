@@ -23,9 +23,9 @@ import (
 
 func TestE2EEmbeddingsProxy(t *testing.T) {
 	cfg := config.ServerConfig{ClientKey: "secret", APIKey: "apikey", RequestTimeout: 5 * time.Second}
-	mcp := mcpplugin.New(cfg)
+	mcp := mcpplugin.New(cfg, nil)
 	stateReg := serverstate.NewRegistry()
-	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry())
+	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry(), nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcp, llm})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
