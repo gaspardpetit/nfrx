@@ -4,8 +4,6 @@ go 1.24.3
 
 replace github.com/gaspardpetit/nfrx-sdk => ../nfrx-sdk
 
-replace github.com/gaspardpetit/nfrx-plugins-mcp => ../nfrx-plugins-mcp
-
 require (
 	github.com/alicebob/miniredis/v2 v2.35.0
 	github.com/coder/websocket v1.8.13
