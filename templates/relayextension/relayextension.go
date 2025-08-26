@@ -1,11 +1,11 @@
 package relayextension
 
 import (
-	"github.com/gaspardpetit/nfrx/internal/extension"
+	"github.com/gaspardpetit/nfrx-server/internal/extension"
 	"github.com/go-chi/chi/v5"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/gaspardpetit/nfrx/internal/serverstate"
+	"github.com/gaspardpetit/nfrx-server/internal/serverstate"
 )
 
 // Extension is a minimal example implementing extension.Plugin and extension.RelayProvider.

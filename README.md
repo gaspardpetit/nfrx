@@ -48,7 +48,7 @@ docker run --rm \
 
 ```bash
 PORT=${MY_SERVER_PORT} CLIENT_KEY="${MY_CLIENT_KEY}" API_KEY="${MY_API_KEY}" \
-  nfrx   # or: go run ./cmd/nfrx
+  nfrx   # or: go run ./nfrx-server/cmd/nfrx
 ```
 
 You may then choose to expose an LLM provider, an MCP server and/or a RAG system from private hardware behind a NAT/Firewall.
@@ -73,7 +73,7 @@ docker run --rm \
 SERVER_URL="wss://${MY_SERVER_ADDR}/api/workers/connect" \
 CLIENT_KEY="${MY_CLIENT_KEY}" \
 COMPLETION_BASE_URL="http://127.0.0.1:11434/v1" \
-nfrx-llm   # or: go run ./cmd/nfrx-llm
+nfrx-llm   # or: go run ./nfrx-plugins-llm/cmd/nfrx-llm
 ```
 
 After connecting, you can reach your private instance from the public endpoint:
@@ -354,8 +354,8 @@ make build
 
 On Windows:
 ```
-go build -o .\bin\nfrx.exe .\cmd\nfrx
-go build -o .\bin\nfrx-llm.exe .\cmd\nfrx-llm
+go build -o .\bin\nfrx.exe .\nfrx-server\cmd\nfrx
+go build -o .\bin\nfrx-llm.exe .\nfrx-plugins-llm\cmd\nfrx-llm
 ```
 
 ### Version
@@ -377,9 +377,9 @@ The same version information appears at the top of `--help` output.
 On Linux:
 
 ```bash
-PORT=8080 CLIENT_KEY=secret API_KEY=test123 go run ./cmd/nfrx
+PORT=8080 CLIENT_KEY=secret API_KEY=test123 go run ./nfrx-server/cmd/nfrx
 # or to expose metrics on a different port:
-# PORT=8080 METRICS_PORT=9090 CLIENT_KEY=secret API_KEY=test123 go run ./cmd/nfrx
+# PORT=8080 METRICS_PORT=9090 CLIENT_KEY=secret API_KEY=test123 go run ./nfrx-server/cmd/nfrx
 ```
 
 Workers register with the server at `/api/workers/connect`.
@@ -393,7 +393,7 @@ On Windows (CMD)
 set PORT=8080
 set CLIENT_KEY=secret
 set API_KEY=test123
-go run .\cmd\nfrx
+go run .\nfrx-server\cmd\nfrx
 REM or if you built:
 .\bin\nfrx.exe
 ```
@@ -402,7 +402,7 @@ On Windows (Powershell)
 
 ```
 $env:PORT = "8080"; $env:CLIENT_KEY = "secret"; $env:API_KEY = "test123"
-go run .\cmd\nfrx
+go run .\nfrx-server\cmd\nfrx
 # or if you built:
 .\bin\nfrx.exe
 ```
@@ -413,7 +413,7 @@ go run .\cmd\nfrx
 On Linux:
 
 ```bash
-SERVER_URL=ws://localhost:8080/api/workers/connect CLIENT_KEY=secret COMPLETION_BASE_URL=http://127.0.0.1:11434/v1 CLIENT_NAME=Alpha go run ./cmd/nfrx-llm
+SERVER_URL=ws://localhost:8080/api/workers/connect CLIENT_KEY=secret COMPLETION_BASE_URL=http://127.0.0.1:11434/v1 CLIENT_NAME=Alpha go run ./nfrx-plugins-llm/cmd/nfrx-llm
 ```
 Optionally set `COMPLETION_API_KEY` to forward an API key to the backend. The worker proxies requests to `${COMPLETION_BASE_URL}/chat/completions`.
 
@@ -423,7 +423,7 @@ On Windows (CMD)
 set SERVER_URL=ws://localhost:8080/api/workers/connect
 set CLIENT_KEY=secret
 set COMPLETION_BASE_URL=http://127.0.0.1:11434/v1
-go run .\cmd\nfrx-llm
+go run .\nfrx-plugins-llm\cmd\nfrx-llm
 REM or if you built:
 .\bin\nfrx-llm.exe
 ```
@@ -435,7 +435,7 @@ $env:SERVER_URL = "ws://localhost:8080/api/workers/connect"
 $env:CLIENT_KEY = "secret"
 $env:COMPLETION_BASE_URL = "http://127.0.0.1:11434/v1"
 $env:CLIENT_NAME = "Alpha"
-go run .\cmd\nfrx-llm
+go run .\nfrx-plugins-llm\cmd\nfrx-llm
 # or:
 .\bin\nfrx-llm.exe
 ```
