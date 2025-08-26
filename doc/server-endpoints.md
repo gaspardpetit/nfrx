@@ -23,7 +23,7 @@ The JSON snapshot includes `server.state` which reports `ready`, `not_ready`, or
 
 ## Inference API
 
-These endpoints are present when the `llm` plugin is enabled.
+These endpoints are present when the `llm` extension is enabled.
 
 ### Worker Registration
 
@@ -42,7 +42,7 @@ These endpoints are present when the `llm` plugin is enabled.
 
 ## MCP API
 
-These endpoints are present when the `mcp` plugin is enabled.
+These endpoints are present when the `mcp` extension is enabled.
 
 ### MCP Registration
 

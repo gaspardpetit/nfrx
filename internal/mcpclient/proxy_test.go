@@ -10,7 +10,7 @@ import (
 	"github.com/mark3labs/mcp-go/client/transport"
 	"github.com/mark3labs/mcp-go/mcp"
 
-	"github.com/gaspardpetit/nfrx/internal/mcpbridge"
+	"github.com/gaspardpetit/nfrx/internal/mcpwire"
 )
 
 type fakeWSConn struct {
@@ -63,7 +63,7 @@ func TestProxyHandleRequest(t *testing.T) {
 	ws := &fakeWSConn{writeCh: make(chan []byte, 1)}
 	p := &Proxy{conn: ws, sessions: map[string]*sessionState{"sess": {conn: conn}}}
 
-	frame := mcpbridge.Frame{Type: mcpbridge.TypeRequest, ID: "corr", SessionID: "sess", Payload: reqJSON}
+	frame := mcpwire.BridgeFrame{Type: mcpwire.TypeRequest, ID: "corr", SessionID: "sess", Payload: reqJSON}
 	if err := p.handleFrame(context.Background(), frame); err != nil {
 		t.Fatalf("handle: %v", err)
 	}
@@ -75,7 +75,7 @@ func TestProxyHandleRequest(t *testing.T) {
 		t.Fatalf("request mismatch: %v vs %v", gotReq, wantReq)
 	}
 	outBytes := <-ws.writeCh
-	var outFrame mcpbridge.Frame
+	var outFrame mcpwire.BridgeFrame
 	if err := json.Unmarshal(outBytes, &outFrame); err != nil {
 		t.Fatalf("unmarshal frame: %v", err)
 	}
@@ -103,26 +103,26 @@ func TestProxyHandleStream(t *testing.T) {
 	ws := &fakeWSConn{writeCh: make(chan []byte, 3)}
 	p := &Proxy{conn: ws, sessions: map[string]*sessionState{"sess": {conn: conn}}}
 
-	frame := mcpbridge.Frame{Type: mcpbridge.TypeRequest, ID: "corr", SessionID: "sess", Payload: reqJSON}
+	frame := mcpwire.BridgeFrame{Type: mcpwire.TypeRequest, ID: "corr", SessionID: "sess", Payload: reqJSON}
 	if err := p.handleFrame(context.Background(), frame); err != nil {
 		t.Fatalf("handle: %v", err)
 	}
 	for i := 0; i < 2; i++ {
 		outBytes := <-ws.writeCh
-		var f mcpbridge.Frame
+		var f mcpwire.BridgeFrame
 		if err := json.Unmarshal(outBytes, &f); err != nil {
 			t.Fatalf("unmarshal: %v", err)
 		}
-		if f.Type != mcpbridge.TypeStreamEvent || f.ID != "corr" {
+		if f.Type != mcpwire.TypeStreamEvent || f.ID != "corr" {
 			t.Fatalf("unexpected frame: %+v", f)
 		}
 	}
 	respBytes := <-ws.writeCh
-	var respFrame mcpbridge.Frame
+	var respFrame mcpwire.BridgeFrame
 	if err := json.Unmarshal(respBytes, &respFrame); err != nil {
 		t.Fatalf("unmarshal resp: %v", err)
 	}
-	if respFrame.Type != mcpbridge.TypeResponse {
+	if respFrame.Type != mcpwire.TypeResponse {
 		t.Fatalf("expected response frame got %s", respFrame.Type)
 	}
 }
@@ -148,16 +148,16 @@ func TestProxyServerRequest(t *testing.T) {
 	}()
 
 	out := <-ws.writeCh
-	var f mcpbridge.Frame
+	var f mcpwire.BridgeFrame
 	if err := json.Unmarshal(out, &f); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if f.Type != mcpbridge.TypeServerRequest {
+	if f.Type != mcpwire.TypeServerRequest {
 		t.Fatalf("expected server_request got %s", f.Type)
 	}
 	respPayload := transport.JSONRPCResponse{JSONRPC: "2.0", ID: mcp.NewRequestId(1)}
 	b, _ := json.Marshal(respPayload)
-	frame := mcpbridge.Frame{Type: mcpbridge.TypeServerResponse, ID: f.ID, SessionID: "sess", Payload: b}
+	frame := mcpwire.BridgeFrame{Type: mcpwire.TypeServerResponse, ID: f.ID, SessionID: "sess", Payload: b}
 	if err := p.handleFrame(context.Background(), frame); err != nil {
 		t.Fatalf("handleFrame: %v", err)
 	}

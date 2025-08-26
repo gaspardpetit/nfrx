@@ -13,20 +13,20 @@ import (
 	"time"
 
 	"github.com/gaspardpetit/nfrx/internal/config"
-	llmplugin "github.com/gaspardpetit/nfrx/internal/llmplugin"
-	mcpplugin "github.com/gaspardpetit/nfrx/internal/mcpplugin"
-	"github.com/gaspardpetit/nfrx/internal/plugin"
+	"github.com/gaspardpetit/nfrx/internal/extension"
+	"github.com/gaspardpetit/nfrx/internal/llmagent"
+	llmserver "github.com/gaspardpetit/nfrx/internal/llmserver"
+	mcpserver "github.com/gaspardpetit/nfrx/internal/mcpserver"
 	"github.com/gaspardpetit/nfrx/internal/server"
 	"github.com/gaspardpetit/nfrx/internal/serverstate"
-	"github.com/gaspardpetit/nfrx/internal/worker"
 )
 
 func TestE2EEmbeddingsProxy(t *testing.T) {
 	cfg := config.ServerConfig{ClientKey: "secret", APIKey: "apikey", RequestTimeout: 5 * time.Second}
-	mcp := mcpplugin.New(cfg, nil)
+	mcp := mcpserver.New(cfg, nil)
 	stateReg := serverstate.NewRegistry()
-	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry(), nil)
-	handler := server.New(cfg, stateReg, []plugin.Plugin{mcp, llm})
+	llm := llmserver.New(cfg, "test", "", "", mcp.Registry(), nil)
+	handler := server.New(cfg, stateReg, []extension.Plugin{mcp, llm})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
@@ -54,7 +54,7 @@ func TestE2EEmbeddingsProxy(t *testing.T) {
 	defer cancel()
 	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/api/workers/connect"
 	go func() {
-		_ = worker.Run(ctx, config.WorkerConfig{ServerURL: wsURL, ClientKey: "secret", CompletionBaseURL: ollama.URL + "/v1", CompletionAPIKey: "secret-123", ClientID: "w1", ClientName: "w1", MaxConcurrency: 2, EmbeddingBatchSize: 0})
+		_ = llmagent.Run(ctx, config.WorkerConfig{ServerURL: wsURL, ClientKey: "secret", CompletionBaseURL: ollama.URL + "/v1", CompletionAPIKey: "secret-123", ClientID: "w1", ClientName: "w1", MaxConcurrency: 2, EmbeddingBatchSize: 0})
 	}()
 
 	for i := 0; i < 20; i++ {

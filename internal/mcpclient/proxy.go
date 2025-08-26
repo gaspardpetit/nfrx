@@ -13,7 +13,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/gaspardpetit/nfrx/internal/logx"
-	"github.com/gaspardpetit/nfrx/internal/mcpbridge"
+	"github.com/gaspardpetit/nfrx/internal/mcpwire"
 )
 
 // wsConn abstracts a minimal websocket connection for testing.
@@ -54,7 +54,7 @@ func (p *Proxy) Run(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		var f mcpbridge.Frame
+		var f mcpwire.BridgeFrame
 		if json.Unmarshal(data, &f) != nil {
 			continue
 		}
@@ -64,14 +64,14 @@ func (p *Proxy) Run(ctx context.Context) error {
 	}
 }
 
-func (p *Proxy) handleFrame(ctx context.Context, f mcpbridge.Frame) error {
+func (p *Proxy) handleFrame(ctx context.Context, f mcpwire.BridgeFrame) error {
 	sess, err := p.getSession(ctx, f.SessionID)
 	if err != nil {
 		return err
 	}
 	t := sess.conn.Transport()
 	switch f.Type {
-	case mcpbridge.TypeRequest:
+	case mcpwire.TypeRequest:
 		start := time.Now()
 		var req transport.JSONRPCRequest
 		if err := json.Unmarshal(f.Payload, &req); err != nil {
@@ -82,7 +82,7 @@ func (p *Proxy) handleFrame(ctx context.Context, f mcpbridge.Frame) error {
 		t.SetNotificationHandler(func(n mcp.JSONRPCNotification) {
 			streamCount++
 			b, _ := json.Marshal(n)
-			out := mcpbridge.Frame{Type: mcpbridge.TypeStreamEvent, ID: f.ID, SessionID: f.SessionID, Payload: b}
+			out := mcpwire.BridgeFrame{Type: mcpwire.TypeStreamEvent, ID: f.ID, SessionID: f.SessionID, Payload: b}
 			ob, _ := json.Marshal(out)
 			_ = p.conn.Write(context.Background(), websocket.MessageText, ob)
 		})
@@ -93,16 +93,16 @@ func (p *Proxy) handleFrame(ctx context.Context, f mcpbridge.Frame) error {
 		}
 		b, _ := json.Marshal(resp)
 		logx.Log.Info().Str("session", f.SessionID).Int("req_bytes", len(f.Payload)).Int("resp_bytes", len(b)).Int("stream_events", streamCount).Dur("duration", time.Since(start)).Msg("mcp request")
-		out := mcpbridge.Frame{Type: mcpbridge.TypeResponse, ID: f.ID, SessionID: f.SessionID, Payload: b}
+		out := mcpwire.BridgeFrame{Type: mcpwire.TypeResponse, ID: f.ID, SessionID: f.SessionID, Payload: b}
 		ob, _ := json.Marshal(out)
 		return p.conn.Write(ctx, websocket.MessageText, ob)
-	case mcpbridge.TypeNotification:
+	case mcpwire.TypeNotification:
 		var n mcp.JSONRPCNotification
 		if err := json.Unmarshal(f.Payload, &n); err != nil {
 			return err
 		}
 		return t.SendNotification(ctx, n)
-	case mcpbridge.TypeServerResponse:
+	case mcpwire.TypeServerResponse:
 		sess.mu.Lock()
 		ch := sess.pending[f.ID]
 		if ch != nil {
@@ -133,7 +133,7 @@ func (p *Proxy) getSession(ctx context.Context, id string) (*sessionState, error
 	t := c.Transport()
 	handler := func(n mcp.JSONRPCNotification) {
 		b, _ := json.Marshal(n)
-		f := mcpbridge.Frame{Type: mcpbridge.TypeNotification, SessionID: id, Payload: b}
+		f := mcpwire.BridgeFrame{Type: mcpwire.TypeNotification, SessionID: id, Payload: b}
 		ob, _ := json.Marshal(f)
 		_ = p.conn.Write(context.Background(), websocket.MessageText, ob)
 	}
@@ -152,7 +152,7 @@ func (p *Proxy) getSession(ctx context.Context, id string) (*sessionState, error
 			st.mu.Lock()
 			st.pending[corrID] = ch
 			st.mu.Unlock()
-			frame := mcpbridge.Frame{Type: mcpbridge.TypeServerRequest, ID: corrID, SessionID: id, Payload: b}
+			frame := mcpwire.BridgeFrame{Type: mcpwire.TypeServerRequest, ID: corrID, SessionID: id, Payload: b}
 			ob, _ := json.Marshal(frame)
 			if err := p.conn.Write(context.Background(), websocket.MessageText, ob); err != nil {
 				st.mu.Lock()

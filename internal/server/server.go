@@ -11,12 +11,12 @@ import (
 
 	"github.com/gaspardpetit/nfrx/internal/api"
 	"github.com/gaspardpetit/nfrx/internal/config"
-	"github.com/gaspardpetit/nfrx/internal/plugin"
+	"github.com/gaspardpetit/nfrx/internal/extension"
 	"github.com/gaspardpetit/nfrx/internal/serverstate"
 )
 
 // New constructs the HTTP handler for the server.
-func New(cfg config.ServerConfig, stateReg *serverstate.Registry, plugins []plugin.Plugin) http.Handler {
+func New(cfg config.ServerConfig, stateReg *serverstate.Registry, plugins []extension.Plugin) http.Handler {
 	r := chi.NewRouter()
 	if len(cfg.AllowedOrigins) > 0 {
 		r.Use(cors.Handler(cors.Options{
@@ -35,7 +35,7 @@ func New(cfg config.ServerConfig, stateReg *serverstate.Registry, plugins []plug
 	preg := prometheus.NewRegistry()
 	prometheus.DefaultRegisterer = preg
 	prometheus.DefaultGatherer = preg
-	pregistry := plugin.Load(plugin.Context{Router: r, Metrics: preg, State: stateReg}, plugins)
+	pregistry := extension.Load(extension.Context{Router: r, Metrics: preg, State: stateReg}, plugins)
 	for _, wp := range pregistry.WorkerProviders() {
 		wp.RegisterWebSocket(r)
 	}

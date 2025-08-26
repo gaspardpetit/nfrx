@@ -11,7 +11,7 @@ import (
 
 	"github.com/gaspardpetit/nfrx/internal/config"
 	"github.com/gaspardpetit/nfrx/internal/logx"
-	"github.com/gaspardpetit/nfrx/internal/mcp"
+	mcprelay "github.com/gaspardpetit/nfrx/internal/mcprelay"
 )
 
 var (
@@ -38,7 +38,7 @@ func main() {
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
-	if err := mcp.Run(ctx, cfg); err != nil {
+	if err := mcprelay.Run(ctx, cfg); err != nil {
 		logx.Log.Fatal().Err(err).Msg("relay stopped")
 	}
 }

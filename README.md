@@ -175,9 +175,9 @@ A typical deployment looks like this:
 
 ## Developing Plugins
 
-nfrx exposes a small plugin interface so new modules can register routes,
+nfrx exposes a small extension interface so new modules can register routes,
 metrics and state. Skeleton implementations for worker-based and relay-based
-plugins live under [templates/](templates/).
+extensions live under [templates/](templates/).
 
 ## macOS Menu Bar App
 
