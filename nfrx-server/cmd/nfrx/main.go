@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -14,9 +15,12 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"google.golang.org/grpc"
 
 	"github.com/gaspardpetit/nfrx-sdk/config"
+	ctrlpb "github.com/gaspardpetit/nfrx-sdk/ctrl"
 	"github.com/gaspardpetit/nfrx-sdk/logx"
+	"github.com/gaspardpetit/nfrx-server/internal/controlgrpc"
 	"github.com/gaspardpetit/nfrx-server/internal/extension"
 	llmserver "github.com/gaspardpetit/nfrx-server/internal/llmserver"
 	mcphub "github.com/gaspardpetit/nfrx-server/internal/mcphub"
@@ -89,8 +93,9 @@ func main() {
 	if mcpReg != nil {
 		mcpHub = mcpReg.Registry()
 	}
+	var llm *llmserver.Plugin
 	if hasPlugin(cfg.Plugins, "llm") {
-		llm := llmserver.New(cfg, version, buildSHA, buildDate, mcpHub, cfg.PluginOptions["llm"])
+		llm = llmserver.New(cfg, version, buildSHA, buildDate, mcpHub, cfg.PluginOptions["llm"])
 		plugins = append(plugins, llm)
 	}
 	handler := server.New(cfg, stateReg, plugins)
@@ -100,6 +105,22 @@ func main() {
 		mux := http.NewServeMux()
 		mux.Handle("/metrics", promhttp.Handler())
 		metricsSrv = &http.Server{Addr: cfg.MetricsAddr, Handler: mux}
+	}
+	var grpcSrv *grpc.Server
+	if llm != nil {
+		grpcSrv = grpc.NewServer()
+		ctrlpb.RegisterControlServer(grpcSrv, controlgrpc.New(llm.Registry()))
+		go func() {
+			addr := fmt.Sprintf(":%d", cfg.Port+1)
+			lis, err := net.Listen("tcp", addr)
+			if err != nil {
+				logx.Log.Fatal().Err(err).Msg("control grpc listen")
+			}
+			logx.Log.Info().Str("addr", addr).Msg("control grpc starting")
+			if err := grpcSrv.Serve(lis); err != nil {
+				logx.Log.Error().Err(err).Msg("control grpc error")
+			}
+		}()
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -131,6 +152,9 @@ func main() {
 		<-ctx.Done()
 		if err := srv.Shutdown(context.Background()); err != nil {
 			logx.Log.Error().Err(err).Msg("server shutdown")
+		}
+		if grpcSrv != nil {
+			grpcSrv.GracefulStop()
 		}
 	}()
 	if metricsSrv != nil {
