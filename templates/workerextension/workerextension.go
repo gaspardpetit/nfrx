@@ -1,12 +1,12 @@
 package workerextension
 
 import (
-	"github.com/gaspardpetit/nfrx/internal/extension"
+	"github.com/gaspardpetit/nfrx-server/internal/extension"
 	"github.com/go-chi/chi/v5"
 	"github.com/prometheus/client_golang/prometheus"
 
-	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
-	"github.com/gaspardpetit/nfrx/internal/serverstate"
+	ctrlsrv "github.com/gaspardpetit/nfrx-server/internal/ctrlsrv"
+	"github.com/gaspardpetit/nfrx-server/internal/serverstate"
 )
 
 // Extension is a minimal example implementing extension.Plugin and extension.WorkerProvider.

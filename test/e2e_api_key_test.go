@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gaspardpetit/nfrx/internal/config"
-	"github.com/gaspardpetit/nfrx/internal/extension"
-	llmserver "github.com/gaspardpetit/nfrx/internal/llmserver"
-	mcpserver "github.com/gaspardpetit/nfrx/internal/mcpserver"
-	"github.com/gaspardpetit/nfrx/internal/server"
-	"github.com/gaspardpetit/nfrx/internal/serverstate"
+	"github.com/gaspardpetit/nfrx-sdk/config"
+	"github.com/gaspardpetit/nfrx-server/internal/extension"
+	llmserver "github.com/gaspardpetit/nfrx-server/internal/llmserver"
+	mcpserver "github.com/gaspardpetit/nfrx-server/internal/mcpserver"
+	"github.com/gaspardpetit/nfrx-server/internal/server"
+	"github.com/gaspardpetit/nfrx-server/internal/serverstate"
 )
 
 func TestAPIKeyEnforcement(t *testing.T) {
