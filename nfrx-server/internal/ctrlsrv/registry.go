@@ -17,12 +17,14 @@ type Worker struct {
 	ID                 string
 	Name               string
 	Models             map[string]bool
+	Capabilities       map[string]bool
 	MaxConcurrency     int
 	EmbeddingBatchSize int
 	InFlight           int
 	LastHeartbeat      time.Time
 	Send               chan interface{}
 	Jobs               map[string]chan interface{}
+	ProtocolVersion    string
 	mu                 sync.Mutex
 }
 

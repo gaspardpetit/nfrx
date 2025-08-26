@@ -111,6 +111,8 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg conf
 		Version:            vi.Version,
 		BuildSHA:           vi.BuildSHA,
 		BuildDate:          vi.BuildDate,
+		ProtocolVersion:    ctrl.ProtocolVersion,
+		Capabilities:       []string{"llm"},
 	}
 	b, _ := json.Marshal(regMsg)
 	if err := ws.Write(connCtx, websocket.MessageText, b); err != nil {

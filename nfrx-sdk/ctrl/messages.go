@@ -2,6 +2,8 @@ package ctrl
 
 import "encoding/json"
 
+const ProtocolVersion = "1"
+
 type RegisterMessage struct {
 	Type               string   `json:"type"`
 	WorkerID           string   `json:"worker_id"`
@@ -14,6 +16,8 @@ type RegisterMessage struct {
 	Version            string   `json:"version,omitempty"`
 	BuildSHA           string   `json:"build_sha,omitempty"`
 	BuildDate          string   `json:"build_date,omitempty"`
+	ProtocolVersion    string   `json:"protocol_version,omitempty"`
+	Capabilities       []string `json:"capabilities,omitempty"`
 }
 
 type StatusUpdateMessage struct {

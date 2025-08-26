@@ -72,15 +72,20 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string) http.H
 			ID:                 rm.WorkerID,
 			Name:               name,
 			Models:             map[string]bool{},
+			Capabilities:       map[string]bool{},
 			MaxConcurrency:     rm.MaxConcurrency,
 			EmbeddingBatchSize: rm.EmbeddingBatchSize,
 			InFlight:           0,
 			LastHeartbeat:      time.Now(),
 			Send:               make(chan interface{}, 32),
 			Jobs:               make(map[string]chan interface{}),
+			ProtocolVersion:    rm.ProtocolVersion,
 		}
 		for _, m := range rm.Models {
 			wk.Models[m] = true
+		}
+		for _, ccap := range rm.Capabilities {
+			wk.Capabilities[ccap] = true
 		}
 		reg.Add(wk)
 		metrics.UpsertWorker(wk.ID, wk.Name, rm.Version, rm.BuildSHA, rm.BuildDate, rm.MaxConcurrency, rm.EmbeddingBatchSize, rm.Models)
