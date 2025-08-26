@@ -4,12 +4,33 @@
 
 # nfrx
 
-nfrx lets you expose your private AI services (LLM runtimes, tools, RAG processes) through a secure, public, OpenAI-compatible API — without exposing your local machines.
+nfrx lets you expose private AI services (LLM runtimes, tools, RAG processes) through a public gateway.
 
-- **Run locally:** Keep Ollama, vLLM, MCP servers, or custom RAG processes on your own Macs, PCs, or servers.
+- **Run locally:** Keep Ollama, vLLM, MCP servers, docling, or custom RAG processes on your own Macs, PCs, or servers.
 - **Connect out:** Each worker/tool connects outbound to a single public **nfrx** server (no inbound connections to your LAN).
 - **Use securely:** Clients and commercial LLMs (e.g., OpenAI, Claude) talk to **nfrx** via standard OpenAI endpoints or MCP URLs.
 - **Scale flexibly:** Add multiple heterogeneous machines; **nfrx** routes requests to the right one, queues when busy, and supports graceful draining for maintenance.
+
+Two main usage patterns are covered:
+
+## Worker agents
+
+ Registering worker agents configured for specific tasks, ex.
+   - llm agents providing services for listed models;
+   - document transformer providing OCR or conversion to text or markdown; and
+   - transcription of audio files.
+
+These can be implemented to support compatibility routing, load balancing and workload distribution.
+Workers can be added dynamically or drained/removed to scale up and down as needed.
+The workers can be on private hardware, behind NAT, since connection is achieved with a local agent running next to the local LLM.
+
+## Private Resources
+
+Exposing private resources such as documents, ex. 
+ - Allowing a public LLM to search through local documents (RAGs); and
+ - Allowing a public LLM to execute functions on a local MCP serve.
+
+This is achieved by having a local agent connecting to the nfrx server an opening a route using a private id and secret.
 
 ## Getting Started
 
