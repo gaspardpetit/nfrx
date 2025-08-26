@@ -173,6 +173,12 @@ A typical deployment looks like this:
 - **`nfrx-llm`** runs on private machines (e.g., a Mac Studio or personal GPU workstation) alongside an LLM service.
   When a worker connects, its available models are registered with the server and become accessible via the public API.
 
+## Developing Plugins
+
+nfrx exposes a small plugin interface so new modules can register routes,
+metrics and state. Skeleton implementations for worker-based and relay-based
+plugins live under [templates/](templates/).
+
 ## macOS Menu Bar App
 
 An early-stage macOS menu bar companion lives under `desktop/macos/nfrx/`. It polls `http://127.0.0.1:4555/status` every two seconds to display live worker status and can manage a per-user LaunchAgent to start or stop a local `nfrx-llm` and toggle launching at login. A simple preferences window lets you edit worker connection settings which are written to `~/Library/Application Support/nfrx/worker.yaml`, and the menu offers quick links to open the config and logs folders, view live logs, copy diagnostics to the Desktop, and check for updates via Sparkle.
