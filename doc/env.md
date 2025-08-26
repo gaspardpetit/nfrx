@@ -28,11 +28,14 @@ The server optionally reads settings from a YAML config file. Defaults:
 | `ALLOWED_ORIGINS` | — | comma separated list of allowed CORS origins | unset (deny all) | `--allowed-origins` |
 | `REDIS_ADDR` | `redis_addr` | Redis connection URL for server state (e.g. `redis://:pass@host:6379/0`, `redis-sentinel://host:26379/mymaster`) | unset | `--redis-addr` |
 | `MAX_PARALLEL_EMBEDDINGS` | `max_parallel_embeddings` | maximum number of workers to split embeddings across | `8` | `--max-parallel-embeddings` |
+| `PLUGINS` | `plugins` | comma separated list of plugins to enable (`llm`, `mcp`) | `llm,mcp` | `--plugins` |
 | `BROKER_MAX_REQ_BYTES` | — | maximum MCP request size in bytes | `10485760` | — |
 | `BROKER_MAX_RESP_BYTES` | — | maximum MCP response size in bytes | `10485760` | — |
 | `BROKER_WS_HEARTBEAT_MS` | — | MCP WebSocket heartbeat interval in milliseconds | `15000` | — |
 | `BROKER_WS_DEAD_AFTER_MS` | — | MCP WebSocket idle timeout in milliseconds | `45000` | — |
 | `BROKER_MAX_CONCURRENCY_PER_CLIENT` | — | maximum concurrent MCP sessions per client | `16` | — |
+
+Plugin-specific options can be supplied in YAML under `plugin_options.<plugin>.<key>` and are passed directly to that plugin.
 
 ## nfrx-llm
 

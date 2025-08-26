@@ -24,6 +24,8 @@ type ServerConfig struct {
 	LogLevel              string
 	RedisAddr             string
 	MaxParallelEmbeddings int
+	Plugins               []string                     `yaml:"plugins"`
+	PluginOptions         map[string]map[string]string `yaml:"plugin_options"`
 }
 
 // BindFlags populates the struct with defaults from environment variables and
@@ -62,6 +64,11 @@ func (c *ServerConfig) BindFlags() {
 		c.DrainTimeout = 5 * time.Minute
 	}
 	c.AllowedOrigins = splitComma(getEnv("ALLOWED_ORIGINS", strings.Join(c.AllowedOrigins, ",")))
+	if p := getEnv("PLUGINS", ""); p != "" {
+		c.Plugins = splitComma(p)
+	} else if c.Plugins == nil {
+		c.Plugins = []string{"llm", "mcp"}
+	}
 
 	flag.StringVar(&c.ConfigFile, "config", c.ConfigFile, "server config file path")
 	flag.StringVar(&c.LogLevel, "log-level", c.LogLevel, "log verbosity (all, debug, info, warn, error, fatal, none)")
@@ -71,6 +78,10 @@ func (c *ServerConfig) BindFlags() {
 	flag.StringVar(&c.ClientKey, "client-key", c.ClientKey, "shared key clients must present when registering")
 	flag.StringVar(&c.RedisAddr, "redis-addr", c.RedisAddr, "redis connection URL for server state")
 	flag.IntVar(&c.MaxParallelEmbeddings, "max-parallel-embeddings", c.MaxParallelEmbeddings, "maximum number of workers to split embeddings across")
+	flag.Func("plugins", "comma separated list of enabled plugins", func(v string) error {
+		c.Plugins = splitComma(v)
+		return nil
+	})
 	flag.Func("request-timeout", "request timeout in seconds without worker activity", func(v string) error {
 		f, err := strconv.ParseFloat(v, 64)
 		if err != nil {

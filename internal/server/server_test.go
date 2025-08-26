@@ -1,6 +1,7 @@
 package server
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -16,9 +17,9 @@ import (
 
 func TestMetricsEndpointDefaultPort(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":8080", RequestTimeout: time.Second}
-	mcp := mcpplugin.New(cfg)
+	mcp := mcpplugin.New(cfg, nil)
 	stateReg := serverstate.NewRegistry()
-	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry())
+	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry(), nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcp, llm})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
@@ -34,9 +35,9 @@ func TestMetricsEndpointDefaultPort(t *testing.T) {
 
 func TestMetricsEndpointSeparatePort(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":9090", RequestTimeout: time.Second}
-	mcp := mcpplugin.New(cfg)
+	mcp := mcpplugin.New(cfg, nil)
 	stateReg := serverstate.NewRegistry()
-	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry())
+	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry(), nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcp, llm})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
@@ -52,9 +53,9 @@ func TestMetricsEndpointSeparatePort(t *testing.T) {
 
 func TestStatePage(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, RequestTimeout: time.Second}
-	mcp := mcpplugin.New(cfg)
+	mcp := mcpplugin.New(cfg, nil)
 	stateReg := serverstate.NewRegistry()
-	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry())
+	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry(), nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcp, llm})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
@@ -74,9 +75,9 @@ func TestStatePage(t *testing.T) {
 
 func TestCORSAllowedOrigins(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, RequestTimeout: time.Second, AllowedOrigins: []string{"https://example.com"}}
-	mcp := mcpplugin.New(cfg)
+	mcp := mcpplugin.New(cfg, nil)
 	stateReg := serverstate.NewRegistry()
-	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry())
+	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry(), nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcp, llm})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
@@ -99,5 +100,51 @@ func TestCORSAllowedOrigins(t *testing.T) {
 	}
 	if ao := resp2.Header.Get("Access-Control-Allow-Origin"); ao != "" {
 		t.Fatalf("expected no allowed origin header, got %q", ao)
+	}
+}
+
+func TestDisableLLMPlugin(t *testing.T) {
+	cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":8080", RequestTimeout: time.Second}
+	mcp := mcpplugin.New(cfg, nil)
+	stateReg := serverstate.NewRegistry()
+	h := New(cfg, stateReg, []plugin.Plugin{mcp})
+	ts := httptest.NewServer(h)
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/api/v1/models")
+	if err != nil {
+		t.Fatalf("GET /api/v1/models: %v", err)
+	}
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", resp.StatusCode)
+	}
+
+	resp2, err := http.Get(ts.URL + "/metrics")
+	if err != nil {
+		t.Fatalf("GET /metrics: %v", err)
+	}
+	data, _ := io.ReadAll(resp2.Body)
+	if err := resp2.Body.Close(); err != nil {
+		t.Fatalf("close metrics body: %v", err)
+	}
+	if strings.Contains(string(data), "nfrx_server_build_info") {
+		t.Fatalf("unexpected llm metrics present")
+	}
+}
+
+func TestDisableMCPPlugin(t *testing.T) {
+	cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":8080", RequestTimeout: time.Second}
+	llm := llmplugin.New(cfg, "test", "", "", nil, nil)
+	stateReg := serverstate.NewRegistry()
+	h := New(cfg, stateReg, []plugin.Plugin{llm})
+	ts := httptest.NewServer(h)
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/api/mcp/connect")
+	if err != nil {
+		t.Fatalf("GET /api/mcp/connect: %v", err)
+	}
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", resp.StatusCode)
 	}
 }

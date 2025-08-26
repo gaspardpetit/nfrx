@@ -22,9 +22,9 @@ import (
 
 func TestWorkerAuth(t *testing.T) {
 	cfg := config.ServerConfig{ClientKey: "secret", RequestTimeout: 5 * time.Second}
-	mcp := mcpplugin.New(cfg)
+	mcp := mcpplugin.New(cfg, nil)
 	stateReg := serverstate.NewRegistry()
-	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry())
+	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry(), nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcp, llm})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -86,9 +86,9 @@ func TestWorkerAuth(t *testing.T) {
 
 func TestWorkerClientKeyUnexpected(t *testing.T) {
 	cfg := config.ServerConfig{RequestTimeout: 5 * time.Second}
-	mcp := mcpplugin.New(cfg)
+	mcp := mcpplugin.New(cfg, nil)
 	stateReg := serverstate.NewRegistry()
-	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry())
+	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry(), nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcp, llm})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -112,9 +112,9 @@ func TestWorkerClientKeyUnexpected(t *testing.T) {
 
 func TestMCPAuth(t *testing.T) {
 	cfg := config.ServerConfig{ClientKey: "secret", RequestTimeout: 5 * time.Second}
-	mcp := mcpplugin.New(cfg)
+	mcp := mcpplugin.New(cfg, nil)
 	stateReg := serverstate.NewRegistry()
-	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry())
+	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry(), nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcp, llm})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -154,9 +154,9 @@ func TestMCPAuth(t *testing.T) {
 
 	// unexpected key when server has none
 	cfg = config.ServerConfig{RequestTimeout: 5 * time.Second}
-	mcpReg := mcpplugin.New(cfg)
+	mcpReg := mcpplugin.New(cfg, nil)
 	stateReg = serverstate.NewRegistry()
-	llm = llmplugin.New(cfg, "test", "", "", mcpReg.Registry())
+	llm = llmplugin.New(cfg, "test", "", "", mcpReg.Registry(), nil)
 	handler = server.New(cfg, stateReg, []plugin.Plugin{mcpReg, llm})
 	srv2 := httptest.NewServer(handler)
 	defer srv2.Close()
