@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strings"
-	"time"
 
 	"github.com/coder/websocket"
 
@@ -21,90 +19,31 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string) http.H
 			http.Error(w, "draining", http.StatusServiceUnavailable)
 			return
 		}
+		id := r.URL.Query().Get("id")
+		key := r.URL.Query().Get("key")
+		if clientKey != "" && key != clientKey {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		wk, ok := reg.Get(id)
+		if !ok {
+			http.Error(w, "unknown worker", http.StatusNotFound)
+			return
+		}
 		c, err := websocket.Accept(w, r, nil)
 		if err != nil {
 			return
 		}
 		ctx := r.Context()
 		defer func() {
-			_ = c.Close(websocket.StatusInternalError, "server error")
-		}()
-
-		_, data, err := c.Read(ctx)
-		if err != nil {
-			return
-		}
-		var env struct {
-			Type string `json:"type"`
-		}
-		if err := json.Unmarshal(data, &env); err != nil || env.Type != "register" {
-			_ = c.Close(websocket.StatusPolicyViolation, "expected register")
-			return
-		}
-		var rm ctrl.RegisterMessage
-		if err := json.Unmarshal(data, &rm); err != nil {
-			return
-		}
-		key := rm.ClientKey
-		if key == "" && rm.Token != "" {
-			logx.Log.Warn().Msg("register message 'token' field is deprecated; use 'client_key'")
-			key = rm.Token
-		}
-		if clientKey == "" && key != "" {
-			_ = c.Close(websocket.StatusPolicyViolation, "unauthorized")
-			return
-		}
-		if clientKey != "" && key != clientKey {
-			_ = c.Close(websocket.StatusPolicyViolation, "unauthorized")
-			return
-		}
-		name := rm.WorkerName
-		if name == "" {
-			if len(rm.WorkerID) >= 8 {
-				name = rm.WorkerID[:8]
-			} else if rm.WorkerID != "" {
-				name = rm.WorkerID
-			} else {
-				name = strings.Split(r.RemoteAddr, ":")[0]
-			}
-		}
-		wk := &Worker{
-			ID:                 rm.WorkerID,
-			Name:               name,
-			Models:             map[string]bool{},
-			Capabilities:       map[string]bool{},
-			MaxConcurrency:     rm.MaxConcurrency,
-			EmbeddingBatchSize: rm.EmbeddingBatchSize,
-			InFlight:           0,
-			LastHeartbeat:      time.Now(),
-			Send:               make(chan interface{}, 32),
-			Jobs:               make(map[string]chan interface{}),
-			ProtocolVersion:    rm.ProtocolVersion,
-		}
-		for _, m := range rm.Models {
-			wk.Models[m] = true
-		}
-		for _, ccap := range rm.Capabilities {
-			wk.Capabilities[ccap] = true
-		}
-		reg.Add(wk)
-		metrics.UpsertWorker(wk.ID, wk.Name, rm.Version, rm.BuildSHA, rm.BuildDate, rm.MaxConcurrency, rm.EmbeddingBatchSize, rm.Models)
-		status := StatusIdle
-		if rm.MaxConcurrency == 0 {
-			status = StatusNotReady
-		}
-		metrics.SetWorkerStatus(wk.ID, status)
-		logx.Log.Info().Str("worker_id", wk.ID).Str("worker_name", wk.Name).Int("model_count", len(wk.Models)).Msg("registered")
-		if reg.WorkerCount() == 1 {
-			serverstate.SetState("ready")
-		}
-		defer func() {
 			reg.Remove(wk.ID)
 			metrics.RemoveWorker(wk.ID)
 			if reg.WorkerCount() == 0 {
 				serverstate.SetState("not_ready")
 			}
+			_ = c.Close(websocket.StatusInternalError, "server error")
 		}()
+		logx.Log.Info().Str("worker_id", wk.ID).Str("worker_name", wk.Name).Msg("worker connected")
 
 		go func() {
 			for msg := range wk.Send {

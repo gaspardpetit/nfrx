@@ -74,6 +74,13 @@ func (r *Registry) WorkerCount() int {
 	return len(r.workers)
 }
 
+func (r *Registry) Get(id string) (*Worker, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	w, ok := r.workers[id]
+	return w, ok
+}
+
 func (r *Registry) UpdateHeartbeat(id string) {
 	r.mu.Lock()
 	if w, ok := r.workers[id]; ok {
