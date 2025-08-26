@@ -7,19 +7,19 @@ import (
 	"time"
 
 	"github.com/gaspardpetit/nfrx/internal/config"
-	llmplugin "github.com/gaspardpetit/nfrx/internal/llmplugin"
-	mcpplugin "github.com/gaspardpetit/nfrx/internal/mcpplugin"
-	"github.com/gaspardpetit/nfrx/internal/plugin"
+	"github.com/gaspardpetit/nfrx/internal/extension"
+	llmserver "github.com/gaspardpetit/nfrx/internal/llmserver"
+	mcpserver "github.com/gaspardpetit/nfrx/internal/mcpserver"
 	"github.com/gaspardpetit/nfrx/internal/server"
 	"github.com/gaspardpetit/nfrx/internal/serverstate"
 )
 
 func TestAPIKeyEnforcement(t *testing.T) {
 	cfg := config.ServerConfig{APIKey: "test123", RequestTimeout: 5 * time.Second}
-	mcp := mcpplugin.New(cfg, nil)
+	mcp := mcpserver.New(cfg, nil)
 	stateReg := serverstate.NewRegistry()
-	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry(), nil)
-	handler := server.New(cfg, stateReg, []plugin.Plugin{mcp, llm})
+	llm := llmserver.New(cfg, "test", "", "", mcp.Registry(), nil)
+	handler := server.New(cfg, stateReg, []extension.Plugin{mcp, llm})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 

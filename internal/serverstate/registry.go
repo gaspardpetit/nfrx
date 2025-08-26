@@ -2,14 +2,14 @@ package serverstate
 
 import "sync"
 
-// Element represents a plugin-contributed state element.
+// Element represents a extension-contributed state element.
 type Element struct {
 	ID   string
 	Data func() interface{}
 	HTML func() string
 }
 
-// Registry collects state elements provided by plugins.
+// Registry collects state elements provided by extensions.
 type Registry struct {
 	mu      sync.RWMutex
 	entries map[string]Element

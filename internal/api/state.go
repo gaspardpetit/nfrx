@@ -7,13 +7,13 @@ import (
 
 	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
 	"github.com/gaspardpetit/nfrx/internal/logx"
-	mcpbroker "github.com/gaspardpetit/nfrx/internal/mcpbroker"
+	mcphub "github.com/gaspardpetit/nfrx/internal/mcphub"
 )
 
 // StateHandler serves state snapshots and streams.
 type StateHandler struct {
 	Metrics *ctrlsrv.MetricsRegistry
-	MCP     *mcpbroker.Registry
+	MCP     *mcphub.Registry
 }
 
 // GetState returns a JSON snapshot of metrics.

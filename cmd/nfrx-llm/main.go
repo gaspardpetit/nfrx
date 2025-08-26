@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/gaspardpetit/nfrx/internal/config"
+	"github.com/gaspardpetit/nfrx/internal/llmagent"
 	"github.com/gaspardpetit/nfrx/internal/logx"
-	"github.com/gaspardpetit/nfrx/internal/worker"
 )
 
 var (
@@ -52,27 +52,27 @@ func main() {
 	}
 	logx.Configure(cfg.LogLevel)
 
-	worker.SetBuildInfo(version, buildSHA, buildDate)
+	llmagent.SetBuildInfo(version, buildSHA, buildDate)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		for range sigCh {
-			if worker.IsDraining() || cfg.DrainTimeout == 0 {
+			if llmagent.IsDraining() || cfg.DrainTimeout == 0 {
 				logx.Log.Warn().Msg("termination requested")
-				worker.SetState("terminating")
+				llmagent.SetState("terminating")
 				cancel()
 				return
 			}
-			worker.StartDrain()
+			llmagent.StartDrain()
 			if cfg.DrainTimeout > 0 {
 				logx.Log.Info().Dur("timeout", cfg.DrainTimeout).Msg("draining; send SIGTERM again to terminate immediately")
 				go func(d time.Duration) {
 					time.Sleep(d)
-					if worker.IsDraining() {
+					if llmagent.IsDraining() {
 						logx.Log.Warn().Msg("drain timeout exceeded; terminating")
-						worker.SetState("terminating")
+						llmagent.SetState("terminating")
 						cancel()
 					}
 				}(cfg.DrainTimeout)
@@ -86,9 +86,9 @@ func main() {
 	if cfg.ClientKey != "" {
 		log = log.Bool("auth", true)
 	}
-	log.Msg("worker starting")
+	log.Msg("llmagent starting")
 
-	if err := worker.Run(ctx, cfg); err != nil {
-		logx.Log.Fatal().Err(err).Msg("worker exited")
+	if err := llmagent.Run(ctx, cfg); err != nil {
+		logx.Log.Fatal().Err(err).Msg("llmagent exited")
 	}
 }

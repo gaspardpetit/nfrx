@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gaspardpetit/nfrx/internal/mcp"
+	mcprelay "github.com/gaspardpetit/nfrx/internal/mcprelay"
 )
 
 func TestProbeProviderSetsAcceptHeader(t *testing.T) {
@@ -21,7 +21,7 @@ func TestProbeProviderSetsAcceptHeader(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	if err := mcp.ProbeProvider(context.Background(), srv.URL); err != nil {
+	if err := mcprelay.ProbeProvider(context.Background(), srv.URL); err != nil {
 		t.Fatalf("probeProvider returned error: %v", err)
 	}
 }
@@ -33,7 +33,7 @@ func TestProbeProviderReturnsBodyOnError(t *testing.T) {
 		_, _ = w.Write([]byte(msg))
 	}))
 	defer srv.Close()
-	err := mcp.ProbeProvider(context.Background(), srv.URL)
+	err := mcprelay.ProbeProvider(context.Background(), srv.URL)
 	if err == nil || !strings.Contains(err.Error(), msg) {
 		t.Fatalf("expected error containing %q got %v", msg, err)
 	}

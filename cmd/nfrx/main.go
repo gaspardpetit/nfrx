@@ -16,11 +16,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/gaspardpetit/nfrx/internal/config"
-	llmplugin "github.com/gaspardpetit/nfrx/internal/llmplugin"
+	"github.com/gaspardpetit/nfrx/internal/extension"
+	llmserver "github.com/gaspardpetit/nfrx/internal/llmserver"
 	"github.com/gaspardpetit/nfrx/internal/logx"
-	mcpbroker "github.com/gaspardpetit/nfrx/internal/mcpbroker"
-	mcpplugin "github.com/gaspardpetit/nfrx/internal/mcpplugin"
-	"github.com/gaspardpetit/nfrx/internal/plugin"
+	mcphub "github.com/gaspardpetit/nfrx/internal/mcphub"
+	mcpserver "github.com/gaspardpetit/nfrx/internal/mcpserver"
 	"github.com/gaspardpetit/nfrx/internal/server"
 	"github.com/gaspardpetit/nfrx/internal/serverstate"
 )
@@ -79,18 +79,18 @@ func main() {
 	}
 
 	stateReg := serverstate.NewRegistry()
-	var plugins []plugin.Plugin
-	var mcpReg *mcpplugin.Plugin
+	var plugins []extension.Plugin
+	var mcpReg *mcpserver.Plugin
 	if hasPlugin(cfg.Plugins, "mcp") {
-		mcpReg = mcpplugin.New(cfg, cfg.PluginOptions["mcp"])
+		mcpReg = mcpserver.New(cfg, cfg.PluginOptions["mcp"])
 		plugins = append(plugins, mcpReg)
 	}
-	var mcpBroker *mcpbroker.Registry
+	var mcpHub *mcphub.Registry
 	if mcpReg != nil {
-		mcpBroker = mcpReg.Registry()
+		mcpHub = mcpReg.Registry()
 	}
 	if hasPlugin(cfg.Plugins, "llm") {
-		llm := llmplugin.New(cfg, version, buildSHA, buildDate, mcpBroker, cfg.PluginOptions["llm"])
+		llm := llmserver.New(cfg, version, buildSHA, buildDate, mcpHub, cfg.PluginOptions["llm"])
 		plugins = append(plugins, llm)
 	}
 	handler := server.New(cfg, stateReg, plugins)
