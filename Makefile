@@ -3,8 +3,8 @@ BUILD_SHA ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 BUILD_DATE ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 
 
-OPENAPI=api/openapi.yaml
-GENDIR=api/generated
+OPENAPI=nfrx-server/api/openapi.yaml
+GENDIR=nfrx-server/api/generated
 
 .PHONY: build test lint generate check
 
@@ -12,15 +12,15 @@ LDFLAGS ?= -s -w -X main.version=$(VERSION) -X main.buildSHA=$(BUILD_SHA) -X mai
 GOFLAGS ?= -trimpath
 
 build:
-	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./cmd/nfrx
-	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./cmd/nfrx-llm
-	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./cmd/nfrx-mcp
+	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./nfrx-server/cmd/nfrx
+	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./nfrx-plugins-llm/cmd/nfrx-llm
+	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./nfrx-plugins-mcp/cmd/nfrx-mcp
 
 test:
-	go test ./... -race -count=1
+	go test ./nfrx-server/... ./nfrx-plugins-llm/... ./nfrx-plugins-mcp/... ./nfrx-sdk/... -race -count=1
 
 lint:
-	golangci-lint run
+	golangci-lint run ./nfrx-server/... ./nfrx-plugins-llm/... ./nfrx-plugins-mcp/... ./nfrx-sdk/...
 
 generate:
 	rm -rf $(GENDIR) && mkdir -p $(GENDIR)

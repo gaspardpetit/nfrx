@@ -1,12 +1,15 @@
 FROM --platform=$BUILDPLATFORM golang:1.24 AS build
 WORKDIR /src
-COPY go.mod go.sum ./
-RUN go mod download
 COPY . .
+RUN go work sync && \
+    (cd nfrx-server && go mod download) && \
+    (cd nfrx-plugins-llm && go mod download) && \
+    (cd nfrx-plugins-mcp && go mod download) && \
+    (cd nfrx-sdk && go mod download)
 ARG TARGETOS TARGETARCH VERSION=dev GIT_SHA=unknown BUILD_DATE=unknown
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
     go build -ldflags "-s -w -X main.version=${VERSION} -X main.buildSHA=${GIT_SHA} -X main.buildDate=${BUILD_DATE}" \
-      -o /out/nfrx-llm ./cmd/nfrx-llm
+      -o /out/nfrx-llm ./nfrx-plugins-llm/cmd/nfrx-llm
 
 FROM gcr.io/distroless/base-debian12
 COPY --from=build /out/nfrx-llm /nfrx-llm

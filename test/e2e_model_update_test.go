@@ -11,13 +11,13 @@ import (
 
 	"github.com/coder/websocket"
 
-	"github.com/gaspardpetit/nfrx/internal/config"
-	ctrl "github.com/gaspardpetit/nfrx/internal/ctrl"
-	"github.com/gaspardpetit/nfrx/internal/extension"
-	llmserver "github.com/gaspardpetit/nfrx/internal/llmserver"
-	mcpserver "github.com/gaspardpetit/nfrx/internal/mcpserver"
-	"github.com/gaspardpetit/nfrx/internal/server"
-	"github.com/gaspardpetit/nfrx/internal/serverstate"
+	"github.com/gaspardpetit/nfrx-sdk/config"
+	ctrl "github.com/gaspardpetit/nfrx-sdk/ctrl"
+	"github.com/gaspardpetit/nfrx-server/internal/extension"
+	llmserver "github.com/gaspardpetit/nfrx-server/internal/llmserver"
+	mcpserver "github.com/gaspardpetit/nfrx-server/internal/mcpserver"
+	"github.com/gaspardpetit/nfrx-server/internal/server"
+	"github.com/gaspardpetit/nfrx-server/internal/serverstate"
 )
 
 func TestWorkerModelRefresh(t *testing.T) {

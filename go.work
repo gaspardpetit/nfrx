@@ -1,0 +1,8 @@
+go 1.24.3
+
+use (
+	./nfrx-plugins-llm
+	./nfrx-plugins-mcp
+	./nfrx-sdk
+	./nfrx-server
+)

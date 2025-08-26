@@ -42,6 +42,14 @@ jobs:
           go-version: '1.23'
           cache: true
 
+      - name: Download deps
+        run: |
+          go work sync
+          (cd nfrx-server && go mod download)
+          (cd nfrx-plugins-llm && go mod download)
+          (cd nfrx-plugins-mcp && go mod download)
+          (cd nfrx-sdk && go mod download)
+
       - name: Build
         shell: bash
         env:
@@ -52,9 +60,9 @@ jobs:
           EXT=""
           [ "$GOOS" = "windows" ] && EXT=".exe"
           mkdir -p dist
-          go build -trimpath -ldflags "$LDFLAGS" -o "dist/nfrx${EXT}" ./cmd/nfrx
-          go build -trimpath -ldflags "$LDFLAGS" -o "dist/nfrx-llm${EXT}" ./cmd/nfrx-llm
-          go build -trimpath -ldflags "$LDFLAGS" -o "dist/nfrx-mcp${EXT}" ./cmd/nfrx-mcp
+          go build -trimpath -ldflags "$LDFLAGS" -o "dist/nfrx${EXT}" ./nfrx-server/cmd/nfrx
+          go build -trimpath -ldflags "$LDFLAGS" -o "dist/nfrx-llm${EXT}" ./nfrx-plugins-llm/cmd/nfrx-llm
+          go build -trimpath -ldflags "$LDFLAGS" -o "dist/nfrx-mcp${EXT}" ./nfrx-plugins-mcp/cmd/nfrx-mcp
       
       - name: Package
         id: pkg
