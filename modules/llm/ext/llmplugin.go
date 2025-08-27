@@ -1,4 +1,4 @@
-package llmplugin
+package ext
 
 import (
 	"time"

@@ -9,16 +9,16 @@ import (
 	"time"
 
 	"github.com/gaspardpetit/nfrx/internal/config"
-	llmplugin "github.com/gaspardpetit/nfrx/internal/llmplugin"
 	"github.com/gaspardpetit/nfrx/internal/plugin"
 	"github.com/gaspardpetit/nfrx/internal/serverstate"
+	llmext "github.com/gaspardpetit/nfrx/modules/llm/ext"
 )
 
 func TestMetricsEndpointDefaultPort(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":8080", RequestTimeout: time.Second}
 	mcp := mcpext.New(cfg, nil)
 	stateReg := serverstate.NewRegistry()
-	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry(), nil)
+	llm := llmext.New(cfg, "test", "", "", mcp.Registry(), nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcp, llm})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
@@ -36,7 +36,7 @@ func TestMetricsEndpointSeparatePort(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":9090", RequestTimeout: time.Second}
 	mcp := mcpext.New(cfg, nil)
 	stateReg := serverstate.NewRegistry()
-	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry(), nil)
+	llm := llmext.New(cfg, "test", "", "", mcp.Registry(), nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcp, llm})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
@@ -54,7 +54,7 @@ func TestStatePage(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, RequestTimeout: time.Second}
 	mcp := mcpext.New(cfg, nil)
 	stateReg := serverstate.NewRegistry()
-	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry(), nil)
+	llm := llmext.New(cfg, "test", "", "", mcp.Registry(), nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcp, llm})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
@@ -76,7 +76,7 @@ func TestCORSAllowedOrigins(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, RequestTimeout: time.Second, AllowedOrigins: []string{"https://example.com"}}
 	mcp := mcpext.New(cfg, nil)
 	stateReg := serverstate.NewRegistry()
-	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry(), nil)
+	llm := llmext.New(cfg, "test", "", "", mcp.Registry(), nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcp, llm})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
@@ -133,7 +133,7 @@ func TestDisableLLMPlugin(t *testing.T) {
 
 func TestDisableMCPPlugin(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":8080", RequestTimeout: time.Second}
-	llm := llmplugin.New(cfg, "test", "", "", nil, nil)
+	llm := llmext.New(cfg, "test", "", "", nil, nil)
 	stateReg := serverstate.NewRegistry()
 	h := New(cfg, stateReg, []plugin.Plugin{llm})
 	ts := httptest.NewServer(h)

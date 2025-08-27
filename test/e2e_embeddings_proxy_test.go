@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/gaspardpetit/nfrx/internal/config"
-	llmplugin "github.com/gaspardpetit/nfrx/internal/llmplugin"
 	"github.com/gaspardpetit/nfrx/internal/plugin"
 	"github.com/gaspardpetit/nfrx/internal/server"
 	"github.com/gaspardpetit/nfrx/internal/serverstate"
@@ -24,7 +23,7 @@ func TestE2EEmbeddingsProxy(t *testing.T) {
 	cfg := config.ServerConfig{ClientKey: "secret", APIKey: "apikey", RequestTimeout: 5 * time.Second}
 	mcp := mcpext.New(cfg, nil)
 	stateReg := serverstate.NewRegistry()
-	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry(), nil)
+	llm := llmext.New(cfg, "test", "", "", mcp.Registry(), nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcp, llm})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()

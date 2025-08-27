@@ -16,11 +16,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/gaspardpetit/nfrx/internal/config"
-	llmplugin "github.com/gaspardpetit/nfrx/internal/llmplugin"
 	"github.com/gaspardpetit/nfrx/internal/logx"
 	"github.com/gaspardpetit/nfrx/internal/plugin"
 	"github.com/gaspardpetit/nfrx/internal/server"
 	"github.com/gaspardpetit/nfrx/internal/serverstate"
+	llmext "github.com/gaspardpetit/nfrx/modules/llm/ext"
 	mcpext "github.com/gaspardpetit/nfrx/modules/mcp/ext"
 	mcpbroker "github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
 )
@@ -90,7 +90,7 @@ func main() {
 		mcpBroker = mcpReg.Registry()
 	}
 	if hasPlugin(cfg.Plugins, "llm") {
-		llm := llmplugin.New(cfg, version, buildSHA, buildDate, mcpBroker, cfg.PluginOptions["llm"])
+		llm := llmext.New(cfg, version, buildSHA, buildDate, mcpBroker, cfg.PluginOptions["llm"])
 		plugins = append(plugins, llm)
 	}
 	handler := server.New(cfg, stateReg, plugins)
