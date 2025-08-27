@@ -7,10 +7,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/gaspardpetit/nfrx/api/generated"
+	"github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
+	"github.com/gaspardpetit/nfrx/server/internal/adapters"
 	"github.com/gaspardpetit/nfrx/server/internal/api"
 	"github.com/gaspardpetit/nfrx/server/internal/config"
 	ctrlsrv "github.com/gaspardpetit/nfrx/server/internal/ctrlsrv"
-	"github.com/gaspardpetit/nfrx/server/internal/llm/openai"
 	mcpbroker "github.com/gaspardpetit/nfrx/server/internal/mcp/mcpbroker"
 	"github.com/gaspardpetit/nfrx/server/internal/metrics"
 	"github.com/gaspardpetit/nfrx/server/internal/plugin"
@@ -52,7 +53,13 @@ func (p *Plugin) RegisterRoutes(r chi.Router) {
 			apiGroup.Use(api.APIKeyMiddleware(p.cfg.APIKey))
 		}
 		apiGroup.Route("/v1", func(v1 chi.Router) {
-			openai.Mount(v1, p.reg, p.sched, p.metrics, p.cfg.RequestTimeout, p.cfg.MaxParallelEmbeddings)
+			openai.Mount(
+				v1,
+				adapters.NewWorkerRegistry(p.reg),
+				adapters.NewScheduler(p.sched),
+				adapters.NewMetrics(p.metrics),
+				openai.Options{RequestTimeout: p.cfg.RequestTimeout, MaxParallelEmbeddings: p.cfg.MaxParallelEmbeddings},
+			)
 		})
 		apiGroup.Get("/state", wrapper.GetApiState)
 		apiGroup.Get("/state/stream", wrapper.GetApiStateStream)

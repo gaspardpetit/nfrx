@@ -17,18 +17,12 @@ import (
 
 	ctrl "github.com/gaspardpetit/nfrx-sdk/contracts/control"
 	"github.com/gaspardpetit/nfrx/modules/common/logx"
-	ctrlsrv "github.com/gaspardpetit/nfrx/server/internal/ctrlsrv"
-	"github.com/gaspardpetit/nfrx/server/internal/metrics"
-	"github.com/gaspardpetit/nfrx/server/internal/serverstate"
+	"github.com/gaspardpetit/nfrx/modules/common/spi"
 )
 
 // EmbeddingsHandler handles POST /api/v1/embeddings as a pass-through.
-func EmbeddingsHandler(reg *ctrlsrv.Registry, sched ctrlsrv.Scheduler, metricsReg *ctrlsrv.MetricsRegistry, timeout time.Duration, maxParallel int) http.HandlerFunc {
+func EmbeddingsHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics spi.Metrics, timeout time.Duration, maxParallel int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if serverstate.IsDraining() {
-			http.Error(w, "server draining", http.StatusServiceUnavailable)
-			return
-		}
 		if r.Body == nil {
 			http.Error(w, "bad request", http.StatusBadRequest)
 			return
@@ -53,7 +47,7 @@ func EmbeddingsHandler(reg *ctrlsrv.Registry, sched ctrlsrv.Scheduler, metricsRe
 		if raw, ok := payload["input"]; ok {
 			var inputs []json.RawMessage
 			if err := json.Unmarshal(raw, &inputs); err == nil && len(inputs) > 0 {
-				handleEmbeddingBatches(w, r, reg, metricsReg, timeout, meta.Model, payload, inputs, maxParallel)
+				handleEmbeddingBatches(w, r, reg, metrics, timeout, meta.Model, payload, inputs, maxParallel)
 				return
 			}
 		}
@@ -68,15 +62,15 @@ func EmbeddingsHandler(reg *ctrlsrv.Registry, sched ctrlsrv.Scheduler, metricsRe
 		}
 		if len(exact) == 0 {
 			if key, ok := ctrl.AliasKey(meta.Model); ok {
-				logx.Log.Info().Str("event", "alias_fallback").Str("requested_id", meta.Model).Str("alias_key", key).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Msg("alias fallback")
+				logx.Log.Info().Str("event", "alias_fallback").Str("requested_id", meta.Model).Str("alias_key", key).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Msg("alias fallback")
 			}
 		}
-		reg.IncInFlight(worker.ID)
-		defer reg.DecInFlight(worker.ID)
+		reg.IncInFlight(worker.ID())
+		defer reg.DecInFlight(worker.ID())
 
 		reqID := uuid.NewString()
 		logID := chiMiddleware.GetReqID(r.Context())
-		logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", meta.Model).Msg("dispatch")
+		logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Str("model", meta.Model).Msg("dispatch")
 		ch := make(chan interface{}, 16)
 		worker.AddJob(reqID, ch)
 		defer worker.RemoveJob(reqID)
@@ -109,11 +103,11 @@ func EmbeddingsHandler(reg *ctrlsrv.Registry, sched ctrlsrv.Scheduler, metricsRe
 			Body:      body,
 		}
 		select {
-		case worker.Send <- msg:
-			metricsReg.RecordJobStart(worker.ID)
-			metricsReg.SetWorkerStatus(worker.ID, ctrlsrv.StatusWorking)
+		case worker.SendChan() <- msg:
+			metrics.RecordJobStart(worker.ID())
+			metrics.SetWorkerStatus(worker.ID(), spi.StatusWorking)
 		default:
-			logx.Log.Warn().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", meta.Model).Msg("worker busy")
+			logx.Log.Warn().Str("request_id", logID).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Str("model", meta.Model).Msg("worker busy")
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusServiceUnavailable)
 			if _, err := w.Write([]byte(`{"error":"worker_busy"}`)); err != nil {
@@ -140,13 +134,13 @@ func EmbeddingsHandler(reg *ctrlsrv.Registry, sched ctrlsrv.Scheduler, metricsRe
 
 		defer func() {
 			dur := time.Since(start)
-			metricsReg.RecordJobEnd(worker.ID, meta.Model, dur, 0, 0, embeddingsCount, success, errMsg)
-			metricsReg.SetWorkerStatus(worker.ID, ctrlsrv.StatusIdle)
-			metrics.ObserveRequestDuration(worker.ID, meta.Model, dur)
+			metrics.RecordJobEnd(worker.ID(), meta.Model, dur, 0, 0, embeddingsCount, success, errMsg)
+			metrics.SetWorkerStatus(worker.ID(), spi.StatusIdle)
+			metrics.ObserveRequestDuration(worker.ID(), meta.Model, dur)
 			metrics.RecordModelRequest(meta.Model, success)
 			if success {
-				metrics.RecordWorkerEmbeddingProcessingTime(worker.ID, dur)
-				metrics.RecordWorkerEmbeddings(worker.ID, embeddingsCount)
+				metrics.RecordWorkerEmbeddingProcessingTime(worker.ID(), dur)
+				metrics.RecordWorkerEmbeddings(worker.ID(), embeddingsCount)
 				metrics.RecordModelEmbeddings(meta.Model, embeddingsCount)
 			}
 		}()
@@ -154,17 +148,17 @@ func EmbeddingsHandler(reg *ctrlsrv.Registry, sched ctrlsrv.Scheduler, metricsRe
 			select {
 			case <-ctx.Done():
 				select {
-				case worker.Send <- ctrl.HTTPProxyCancelMessage{Type: "http_proxy_cancel", RequestID: reqID}:
+				case worker.SendChan() <- ctrl.HTTPProxyCancelMessage{Type: "http_proxy_cancel", RequestID: reqID}:
 				default:
 				}
 				return
 			case <-timeoutCh:
-				hb := worker.LastHeartbeat
+				hb := worker.LastHeartbeat()
 				since := time.Since(hb)
 				if since > timeout {
 					errMsg = "timeout"
 					select {
-					case worker.Send <- ctrl.HTTPProxyCancelMessage{Type: "http_proxy_cancel", RequestID: reqID}:
+					case worker.SendChan() <- ctrl.HTTPProxyCancelMessage{Type: "http_proxy_cancel", RequestID: reqID}:
 					default:
 					}
 					if !headersSent {
@@ -215,7 +209,7 @@ func EmbeddingsHandler(reg *ctrlsrv.Registry, sched ctrlsrv.Scheduler, metricsRe
 						if m.Status >= http.StatusInternalServerError || m.Status == http.StatusUnauthorized || m.Status == http.StatusForbidden {
 							lvl = logx.Log.Error()
 						}
-						lvl.Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", meta.Model).Int("status", m.Status).Msg("upstream response")
+						lvl.Str("request_id", logID).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Str("model", meta.Model).Int("status", m.Status).Msg("upstream response")
 					}
 					if flusher != nil {
 						flusher.Flush()
@@ -241,11 +235,11 @@ func EmbeddingsHandler(reg *ctrlsrv.Registry, sched ctrlsrv.Scheduler, metricsRe
 							logx.Log.Error().Err(err).Msg("write upstream error")
 						}
 						errMsg = m.Error.Message
-						logx.Log.Error().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", meta.Model).Str("error_code", m.Error.Code).Str("error", m.Error.Message).Msg("upstream error")
+						logx.Log.Error().Str("request_id", logID).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Str("model", meta.Model).Str("error_code", m.Error.Code).Str("error", m.Error.Message).Msg("upstream error")
 					} else {
 						success = true
 					}
-					logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", meta.Model).Dur("duration", time.Since(start)).Msg("complete")
+					logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Str("model", meta.Model).Dur("duration", time.Since(start)).Msg("complete")
 					return
 				}
 			}
@@ -265,7 +259,7 @@ type embeddingResponse struct {
 	Usage  embeddingUsage    `json:"usage"`
 }
 
-func handleEmbeddingBatches(w http.ResponseWriter, r *http.Request, reg *ctrlsrv.Registry, metricsReg *ctrlsrv.MetricsRegistry, timeout time.Duration, model string, payload map[string]json.RawMessage, inputs []json.RawMessage, maxParallel int) {
+func handleEmbeddingBatches(w http.ResponseWriter, r *http.Request, reg spi.WorkerRegistry, metrics spi.Metrics, timeout time.Duration, model string, payload map[string]json.RawMessage, inputs []json.RawMessage, maxParallel int) {
 	ctx := r.Context()
 	var cancel context.CancelFunc
 	logID := chiMiddleware.GetReqID(ctx)
@@ -309,10 +303,10 @@ func handleEmbeddingBatches(w http.ResponseWriter, r *http.Request, reg *ctrlsrv
 		return
 	}
 	sort.Slice(workers, func(i, j int) bool {
-		if workers[i].InFlight == workers[j].InFlight {
-			return workers[i].EmbeddingBatchSize > workers[j].EmbeddingBatchSize
+		if workers[i].InFlight() == workers[j].InFlight() {
+			return workers[i].EmbeddingBatchSize() > workers[j].EmbeddingBatchSize()
 		}
-		return workers[i].InFlight < workers[j].InFlight
+		return workers[i].InFlight() < workers[j].InFlight()
 	})
 	if len(workers) > maxParallel {
 		workers = workers[:maxParallel]
@@ -322,7 +316,7 @@ func handleEmbeddingBatches(w http.ResponseWriter, r *http.Request, reg *ctrlsrv
 	}
 	if len(exact) == 0 {
 		if key, ok := ctrl.AliasKey(model); ok {
-			logx.Log.Info().Str("event", "alias_fallback").Str("requested_id", model).Str("alias_key", key).Str("worker_id", workers[0].ID).Str("worker_name", workers[0].Name).Msg("alias fallback")
+			logx.Log.Info().Str("event", "alias_fallback").Str("requested_id", model).Str("alias_key", key).Str("worker_id", workers[0].ID()).Str("worker_name", workers[0].Name()).Msg("alias fallback")
 		}
 	}
 
@@ -334,7 +328,7 @@ func handleEmbeddingBatches(w http.ResponseWriter, r *http.Request, reg *ctrlsrv
 		var usage embeddingUsage
 		var respModel string
 		for len(remaining) > 0 {
-			batch := worker.EmbeddingBatchSize
+			batch := worker.EmbeddingBatchSize()
 			if batch <= 0 || batch > len(remaining) {
 				batch = len(remaining)
 			}
@@ -345,11 +339,11 @@ func handleEmbeddingBatches(w http.ResponseWriter, r *http.Request, reg *ctrlsrv
 			}
 			mp["input"] = b
 			body, _ := json.Marshal(mp)
-			reg.IncInFlight(worker.ID)
+			reg.IncInFlight(worker.ID())
 			reqID := uuid.NewString()
-			logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", model).Msg("dispatch")
-			respBody, status, success, errMsg := proxyEmbeddingOnce(ctx, worker, reqID, logID, model, headers, body, metricsReg, batch, timeout)
-			reg.DecInFlight(worker.ID)
+			logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Str("model", model).Msg("dispatch")
+			respBody, status, success, errMsg := proxyEmbeddingOnce(ctx, worker, reqID, logID, model, headers, body, metrics, batch, timeout)
+			reg.DecInFlight(worker.ID())
 			worker.RemoveJob(reqID)
 			if !success {
 				w.Header().Set("Content-Type", "application/json")
@@ -392,7 +386,7 @@ func handleEmbeddingBatches(w http.ResponseWriter, r *http.Request, reg *ctrlsrv
 	totalWeight := 0
 	weights := make([]int, len(workers))
 	for i, wkr := range workers {
-		weight := wkr.EmbeddingBatchSize
+		weight := wkr.EmbeddingBatchSize()
 		if weight <= 0 {
 			weight = len(inputs)
 		}
@@ -441,17 +435,17 @@ func handleEmbeddingBatches(w http.ResponseWriter, r *http.Request, reg *ctrlsrv
 	used := make(map[string]bool)
 	cond := sync.NewCond(&mu)
 	for _, wkr := range workers {
-		used[wkr.ID] = true
+		used[wkr.ID()] = true
 	}
-	acquire := func(exclude map[string]bool) (*ctrlsrv.Worker, error) {
+	acquire := func(exclude map[string]bool) (spi.WorkerRef, error) {
 		mu.Lock()
 		defer mu.Unlock()
 		for {
 			for _, w := range workers {
-				if used[w.ID] || exclude[w.ID] {
+				if used[w.ID()] || exclude[w.ID()] {
 					continue
 				}
-				used[w.ID] = true
+				used[w.ID()] = true
 				return w, nil
 			}
 			if len(exclude) >= len(workers) {
@@ -460,9 +454,9 @@ func handleEmbeddingBatches(w http.ResponseWriter, r *http.Request, reg *ctrlsrv
 			cond.Wait()
 		}
 	}
-	release := func(wk *ctrlsrv.Worker) {
+	release := func(wk spi.WorkerRef) {
 		mu.Lock()
-		delete(used, wk.ID)
+		delete(used, wk.ID())
 		mu.Unlock()
 		cond.Signal()
 	}
@@ -471,12 +465,12 @@ func handleEmbeddingBatches(w http.ResponseWriter, r *http.Request, reg *ctrlsrv
 	for i, wk := range workers {
 		t := tasks[i]
 		wg.Add(1)
-		go func(t batchTask, wk *ctrlsrv.Worker) {
+		go func(t batchTask, wk spi.WorkerRef) {
 			defer wg.Done()
 			current := wk
 			for {
 				reqID := uuid.NewString()
-				reg.IncInFlight(current.ID)
+				reg.IncInFlight(current.ID())
 				b, _ := json.Marshal(t.inputs)
 				mp := make(map[string]json.RawMessage, len(basePayload)+1)
 				for k, v := range basePayload {
@@ -484,9 +478,9 @@ func handleEmbeddingBatches(w http.ResponseWriter, r *http.Request, reg *ctrlsrv
 				}
 				mp["input"] = b
 				body, _ := json.Marshal(mp)
-				logx.Log.Info().Str("request_id", logID).Str("worker_id", current.ID).Str("worker_name", current.Name).Str("model", model).Msg("dispatch")
-				respBody, status, success, errMsg := proxyEmbeddingOnce(ctx, current, reqID, logID, model, headers, body, metricsReg, len(t.inputs), timeout)
-				reg.DecInFlight(current.ID)
+				logx.Log.Info().Str("request_id", logID).Str("worker_id", current.ID()).Str("worker_name", current.Name()).Str("model", model).Msg("dispatch")
+				respBody, status, success, errMsg := proxyEmbeddingOnce(ctx, current, reqID, logID, model, headers, body, metrics, len(t.inputs), timeout)
+				reg.DecInFlight(current.ID())
 				current.RemoveJob(reqID)
 				if success {
 					var resp embeddingResponse
@@ -495,7 +489,7 @@ func handleEmbeddingBatches(w http.ResponseWriter, r *http.Request, reg *ctrlsrv
 					release(current)
 					return
 				}
-				t.attempted[current.ID] = true
+				t.attempted[current.ID()] = true
 				release(current)
 				if len(t.attempted) >= len(workers) {
 					resCh <- taskResult{start: t.start, status: status, body: respBody, errMsg: errMsg, failed: true}
@@ -567,7 +561,7 @@ func handleEmbeddingBatches(w http.ResponseWriter, r *http.Request, reg *ctrlsrv
 	}
 }
 
-func proxyEmbeddingOnce(ctx context.Context, worker *ctrlsrv.Worker, reqID, logID, model string, headers map[string]string, body []byte, metricsReg *ctrlsrv.MetricsRegistry, embeddings int, timeout time.Duration) ([]byte, int, bool, string) {
+func proxyEmbeddingOnce(ctx context.Context, worker spi.WorkerRef, reqID, logID, model string, headers map[string]string, body []byte, metrics spi.Metrics, embeddings int, timeout time.Duration) ([]byte, int, bool, string) {
 	ch := make(chan interface{}, 16)
 	worker.AddJob(reqID, ch)
 
@@ -581,11 +575,11 @@ func proxyEmbeddingOnce(ctx context.Context, worker *ctrlsrv.Worker, reqID, logI
 		Body:      body,
 	}
 	select {
-	case worker.Send <- msg:
-		metricsReg.RecordJobStart(worker.ID)
-		metricsReg.SetWorkerStatus(worker.ID, ctrlsrv.StatusWorking)
+	case worker.SendChan() <- msg:
+		metrics.RecordJobStart(worker.ID())
+		metrics.SetWorkerStatus(worker.ID(), spi.StatusWorking)
 	default:
-		logx.Log.Warn().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", model).Msg("worker busy")
+		logx.Log.Warn().Str("request_id", logID).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Str("model", model).Msg("worker busy")
 		return []byte(`{"error":"worker_busy"}`), http.StatusServiceUnavailable, false, "worker_busy"
 	}
 
@@ -605,27 +599,27 @@ func proxyEmbeddingOnce(ctx context.Context, worker *ctrlsrv.Worker, reqID, logI
 		select {
 		case <-ctx.Done():
 			select {
-			case worker.Send <- ctrl.HTTPProxyCancelMessage{Type: "http_proxy_cancel", RequestID: reqID}:
+			case worker.SendChan() <- ctrl.HTTPProxyCancelMessage{Type: "http_proxy_cancel", RequestID: reqID}:
 			default:
 			}
 			errMsg = "canceled"
-			metricsReg.RecordJobEnd(worker.ID, model, time.Since(start), 0, 0, 0, success, errMsg)
-			metricsReg.SetWorkerStatus(worker.ID, ctrlsrv.StatusIdle)
-			metrics.ObserveRequestDuration(worker.ID, model, time.Since(start))
+			metrics.RecordJobEnd(worker.ID(), model, time.Since(start), 0, 0, 0, success, errMsg)
+			metrics.SetWorkerStatus(worker.ID(), spi.StatusIdle)
+			metrics.ObserveRequestDuration(worker.ID(), model, time.Since(start))
 			metrics.RecordModelRequest(model, false)
 			return nil, status, false, errMsg
 		case <-timeoutCh:
-			hb := worker.LastHeartbeat
+			hb := worker.LastHeartbeat()
 			since := time.Since(hb)
 			if since > timeout {
 				errMsg = "timeout"
 				select {
-				case worker.Send <- ctrl.HTTPProxyCancelMessage{Type: "http_proxy_cancel", RequestID: reqID}:
+				case worker.SendChan() <- ctrl.HTTPProxyCancelMessage{Type: "http_proxy_cancel", RequestID: reqID}:
 				default:
 				}
-				metricsReg.RecordJobEnd(worker.ID, model, time.Since(start), 0, 0, 0, false, errMsg)
-				metricsReg.SetWorkerStatus(worker.ID, ctrlsrv.StatusIdle)
-				metrics.ObserveRequestDuration(worker.ID, model, time.Since(start))
+				metrics.RecordJobEnd(worker.ID(), model, time.Since(start), 0, 0, 0, false, errMsg)
+				metrics.SetWorkerStatus(worker.ID(), spi.StatusIdle)
+				metrics.ObserveRequestDuration(worker.ID(), model, time.Since(start))
 				metrics.RecordModelRequest(model, false)
 				return nil, http.StatusGatewayTimeout, false, errMsg
 			}
@@ -636,9 +630,9 @@ func proxyEmbeddingOnce(ctx context.Context, worker *ctrlsrv.Worker, reqID, logI
 		case msg, ok := <-ch:
 			if !ok {
 				errMsg = "closed"
-				metricsReg.RecordJobEnd(worker.ID, model, time.Since(start), 0, 0, 0, false, errMsg)
-				metricsReg.SetWorkerStatus(worker.ID, ctrlsrv.StatusIdle)
-				metrics.ObserveRequestDuration(worker.ID, model, time.Since(start))
+				metrics.RecordJobEnd(worker.ID(), model, time.Since(start), 0, 0, 0, false, errMsg)
+				metrics.SetWorkerStatus(worker.ID(), spi.StatusIdle)
+				metrics.ObserveRequestDuration(worker.ID(), model, time.Since(start))
 				metrics.RecordModelRequest(model, false)
 				return nil, http.StatusBadGateway, false, errMsg
 			}
@@ -659,7 +653,7 @@ func proxyEmbeddingOnce(ctx context.Context, worker *ctrlsrv.Worker, reqID, logI
 			case ctrl.HTTPProxyResponseEndMessage:
 				if m.Error != nil {
 					errMsg = m.Error.Message
-					logx.Log.Error().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", model).Str("error_code", m.Error.Code).Str("error", m.Error.Message).Msg("upstream error")
+					logx.Log.Error().Str("request_id", logID).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Str("model", model).Str("error_code", m.Error.Code).Str("error", m.Error.Message).Msg("upstream error")
 				} else {
 					success = status < http.StatusBadRequest
 				}
@@ -668,16 +662,16 @@ func proxyEmbeddingOnce(ctx context.Context, worker *ctrlsrv.Worker, reqID, logI
 				if success {
 					embCount = uint64(embeddings)
 				}
-				metricsReg.RecordJobEnd(worker.ID, model, dur, 0, 0, embCount, success, errMsg)
+				metrics.RecordJobEnd(worker.ID(), model, dur, 0, 0, embCount, success, errMsg)
 				if success {
-					metrics.RecordWorkerEmbeddingProcessingTime(worker.ID, dur)
-					metrics.RecordWorkerEmbeddings(worker.ID, embCount)
+					metrics.RecordWorkerEmbeddingProcessingTime(worker.ID(), dur)
+					metrics.RecordWorkerEmbeddings(worker.ID(), embCount)
 					metrics.RecordModelEmbeddings(model, embCount)
 				}
-				metricsReg.SetWorkerStatus(worker.ID, ctrlsrv.StatusIdle)
-				metrics.ObserveRequestDuration(worker.ID, model, dur)
+				metrics.SetWorkerStatus(worker.ID(), spi.StatusIdle)
+				metrics.ObserveRequestDuration(worker.ID(), model, dur)
 				metrics.RecordModelRequest(model, success)
-				logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", model).Dur("duration", dur).Msg("complete")
+				logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Str("model", model).Dur("duration", dur).Msg("complete")
 				return buf.Bytes(), status, success && errMsg == "", errMsg
 			}
 		}
