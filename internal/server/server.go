@@ -42,7 +42,7 @@ func New(cfg config.ServerConfig, stateReg *serverstate.Registry, plugins []plug
 	for _, rp := range pregistry.RelayProviders() {
 		rp.RegisterRelayEndpoints(r)
 		if rws, ok := rp.(plugin.RelayWS); ok {
-			r.Handle("/api/mcp/relay/connect", rws.WSHandler(cfg.ClientKey))
+			r.Handle("/api/mcp/connect", rws.WSHandler(cfg.ClientKey))
 		}
 	}
 
