@@ -1,4 +1,4 @@
-package api
+package openai
 
 import (
 	"bytes"

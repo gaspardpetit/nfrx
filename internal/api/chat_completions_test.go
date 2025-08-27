@@ -10,6 +10,7 @@ import (
 
 	ctrl "github.com/gaspardpetit/nfrx-sdk/contracts/control"
 	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
+	openai "github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
 )
 
 type flushRecorder struct {
@@ -27,7 +28,7 @@ func TestChatCompletionsHeaders(t *testing.T) {
 	metricsReg := ctrlsrv.NewMetricsRegistry("", "", "")
 	metricsReg.UpsertWorker("w1", "w1", "", "", "", 1, 0, []string{"m"})
 	metricsReg.SetWorkerStatus("w1", ctrlsrv.StatusConnected)
-	h := ChatCompletionsHandler(reg, sched, metricsReg, time.Second)
+	h := openai.ChatCompletionsHandler(reg, sched, metricsReg, time.Second)
 
 	go func() {
 		msg := <-wk.Send
@@ -63,7 +64,7 @@ func TestChatCompletionsOpaque(t *testing.T) {
 	wk := &ctrlsrv.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
 	reg.Add(wk)
 	metricsReg := ctrlsrv.NewMetricsRegistry("", "", "")
-	h := ChatCompletionsHandler(reg, sched, metricsReg, time.Second)
+	h := openai.ChatCompletionsHandler(reg, sched, metricsReg, time.Second)
 
 	go func() {
 		msg := <-wk.Send
@@ -90,7 +91,7 @@ func TestChatCompletionsEarlyError(t *testing.T) {
 	wk := &ctrlsrv.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
 	reg.Add(wk)
 	metricsReg := ctrlsrv.NewMetricsRegistry("", "", "")
-	h := ChatCompletionsHandler(reg, sched, metricsReg, time.Second)
+	h := openai.ChatCompletionsHandler(reg, sched, metricsReg, time.Second)
 
 	go func() {
 		msg := <-wk.Send
