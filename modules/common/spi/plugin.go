@@ -13,10 +13,5 @@ type Plugin interface {
 }
 
 type WorkerProvider interface {
-	RegisterWebSocket(r chi.Router)
 	Scheduler() Scheduler
-}
-
-type RelayProvider interface {
-	RegisterRelayEndpoints(r chi.Router)
 }

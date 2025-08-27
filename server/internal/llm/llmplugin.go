@@ -6,7 +6,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/gaspardpetit/nfrx/api/generated"
 	"github.com/gaspardpetit/nfrx/modules/common/spi"
 	"github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
 	mcpbroker "github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
@@ -44,10 +43,7 @@ func (p *Plugin) ID() string { return "llm" }
 
 // RegisterRoutes wires the HTTP endpoints.
 func (p *Plugin) RegisterRoutes(r chi.Router) {
-	impl := &api.API{Reg: p.reg, Metrics: p.metrics, MCP: p.mcp, Sched: p.sched, Timeout: p.cfg.RequestTimeout, MaxParallelEmbeddings: p.cfg.MaxParallelEmbeddings}
-	wrapper := generated.ServerInterfaceWrapper{Handler: impl}
-
-	r.Get("/healthz", wrapper.GetHealthz)
+	r.Handle("/connect", ctrlsrv.WSHandler(p.reg, p.metrics, p.cfg.ClientKey))
 	r.Group(func(g chi.Router) {
 		if p.cfg.APIKey != "" {
 			g.Use(api.APIKeyMiddleware(p.cfg.APIKey))
@@ -61,12 +57,6 @@ func (p *Plugin) RegisterRoutes(r chi.Router) {
 				openai.Options{RequestTimeout: p.cfg.RequestTimeout, MaxParallelEmbeddings: p.cfg.MaxParallelEmbeddings},
 			)
 		})
-		g.Get("/state", wrapper.GetApiState)
-		g.Get("/state/stream", wrapper.GetApiStateStream)
-	})
-	r.Route("/client", func(r chi.Router) {
-		r.Get("/openapi.json", api.OpenAPIHandler())
-		r.Get("/*", api.SwaggerHandler())
 	})
 
 	go func() {
@@ -75,11 +65,6 @@ func (p *Plugin) RegisterRoutes(r chi.Router) {
 			p.reg.PruneExpired(ctrlsrv.HeartbeatExpiry)
 		}
 	}()
-}
-
-// RegisterWebSocket attaches the worker connect endpoint.
-func (p *Plugin) RegisterWebSocket(r chi.Router) {
-	r.Handle("/connect", ctrlsrv.WSHandler(p.reg, p.metrics, p.cfg.ClientKey))
 }
 
 // Scheduler returns the plugin's scheduler.
