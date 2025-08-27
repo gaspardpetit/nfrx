@@ -1,9 +1,6 @@
 package relayplugin
 
 import (
-	"github.com/go-chi/chi/v5"
-	"github.com/prometheus/client_golang/prometheus"
-
 	"github.com/gaspardpetit/nfrx/modules/common/spi"
 )
 
@@ -17,13 +14,13 @@ func New() *Plugin { return &Plugin{} }
 func (p *Plugin) ID() string { return "relay-template" }
 
 // RegisterRoutes installs HTTP routes served by this plugin.
-func (p *Plugin) RegisterRoutes(r chi.Router) {
+func (p *Plugin) RegisterRoutes(r spi.Router) {
 	// r.Post("/api/relay", p.handleRequest)
 	// r.Handle("/api/relay/connect", p.handleRelay)
 }
 
 // RegisterMetrics adds Prometheus collectors.
-func (p *Plugin) RegisterMetrics(reg *prometheus.Registry) {
+func (p *Plugin) RegisterMetrics(reg spi.MetricsRegistry) {
 	// reg.MustRegister(myCollector)
 }
 

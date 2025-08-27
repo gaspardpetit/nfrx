@@ -3,9 +3,6 @@ package llm
 import (
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/prometheus/client_golang/prometheus"
-
 	"github.com/gaspardpetit/nfrx/modules/common/spi"
 	"github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
 	mcpbroker "github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
@@ -14,7 +11,6 @@ import (
 	"github.com/gaspardpetit/nfrx/server/internal/config"
 	ctrlsrv "github.com/gaspardpetit/nfrx/server/internal/ctrlsrv"
 	"github.com/gaspardpetit/nfrx/server/internal/metrics"
-	"github.com/gaspardpetit/nfrx/server/internal/plugin"
 )
 
 // Plugin implements the llm subsystem as a plugin.
@@ -42,13 +38,13 @@ func New(cfg config.ServerConfig, version, sha, date string, mcp *mcpbroker.Regi
 func (p *Plugin) ID() string { return "llm" }
 
 // RegisterRoutes wires the HTTP endpoints.
-func (p *Plugin) RegisterRoutes(r chi.Router) {
+func (p *Plugin) RegisterRoutes(r spi.Router) {
 	r.Handle("/connect", ctrlsrv.WSHandler(p.reg, p.metrics, p.cfg.ClientKey))
-	r.Group(func(g chi.Router) {
+	r.Group(func(g spi.Router) {
 		if p.cfg.APIKey != "" {
 			g.Use(api.APIKeyMiddleware(p.cfg.APIKey))
 		}
-		g.Route("/v1", func(v1 chi.Router) {
+		g.Route("/v1", func(v1 spi.Router) {
 			openai.Mount(
 				v1,
 				adapters.NewWorkerRegistry(p.reg),
@@ -71,7 +67,7 @@ func (p *Plugin) RegisterRoutes(r chi.Router) {
 func (p *Plugin) Scheduler() spi.Scheduler { return adapters.NewScheduler(p.sched) }
 
 // RegisterMetrics registers Prometheus collectors.
-func (p *Plugin) RegisterMetrics(reg *prometheus.Registry) {
+func (p *Plugin) RegisterMetrics(reg spi.MetricsRegistry) {
 	metrics.Register(reg)
 	metrics.SetServerBuildInfo(p.version, p.sha, p.date)
 }
@@ -90,5 +86,5 @@ func (p *Plugin) MetricsRegistry() *ctrlsrv.MetricsRegistry { return p.metrics }
 // Sched exposes scheduler for tests.
 func (p *Plugin) Sched() ctrlsrv.Scheduler { return p.sched }
 
-var _ plugin.Plugin = (*Plugin)(nil)
-var _ plugin.WorkerProvider = (*Plugin)(nil)
+var _ spi.Plugin = (*Plugin)(nil)
+var _ spi.WorkerProvider = (*Plugin)(nil)

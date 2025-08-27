@@ -177,7 +177,9 @@ A typical deployment looks like this:
 
 nfrx exposes a small plugin interface so new modules can register routes,
 metrics and state. Skeleton implementations for worker-based and relay-based
-plugins live under [templates/](templates/).
+plugins live under [templates/](templates/). Plugins receive generic
+`spi.Router` and `spi.MetricsRegistry` abstractions for HTTP wiring and
+metrics registration, keeping them decoupled from specific frameworks.
 
 ## macOS Menu Bar App
 
