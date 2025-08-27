@@ -17,14 +17,14 @@ import (
 
 func TestAPIKeyEnforcement(t *testing.T) {
 	cfg := config.ServerConfig{APIKey: "test123", RequestTimeout: 5 * time.Second}
-	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout}, nil)
+	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg := serverstate.NewRegistry()
 	llmPlugin := llm.New(cfg, "test", "", "", mcpPlugin.Registry(), nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
-	resp, err := http.Get(srv.URL + "/api/v1/models")
+	resp, err := http.Get(srv.URL + "/api/llm/v1/models")
 	if err != nil {
 		t.Fatalf("get without key: %v", err)
 	}
@@ -35,7 +35,7 @@ func TestAPIKeyEnforcement(t *testing.T) {
 		t.Fatalf("close body: %v", err)
 	}
 
-	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/api/v1/models", nil)
+	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/api/llm/v1/models", nil)
 	req.Header.Set("Authorization", "Bearer test123")
 	resp, err = http.DefaultClient.Do(req)
 	if err != nil {

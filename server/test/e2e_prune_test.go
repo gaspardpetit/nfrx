@@ -22,7 +22,7 @@ import (
 
 func TestHeartbeatPrune(t *testing.T) {
 	cfg := config.ServerConfig{ClientKey: "secret", RequestTimeout: 5 * time.Second}
-	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout}, nil)
+	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg := serverstate.NewRegistry()
 	llmPlugin := llm.New(cfg, "test", "", "", mcpPlugin.Registry(), nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
@@ -30,7 +30,7 @@ func TestHeartbeatPrune(t *testing.T) {
 	defer srv.Close()
 
 	ctx := context.Background()
-	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/api/workers/connect"
+	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/api/llm/connect"
 	conn, _, err := websocket.Dial(ctx, wsURL, nil)
 	if err != nil {
 		t.Fatalf("dial: %v", err)

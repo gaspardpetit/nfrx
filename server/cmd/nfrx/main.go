@@ -83,7 +83,7 @@ func main() {
 	var plugins []plugin.Plugin
 	var mcpReg *mcp.Plugin
 	if hasPlugin(cfg.Plugins, "mcp") {
-		mcpReg = mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout}, cfg.PluginOptions["mcp"])
+		mcpReg = mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, cfg.PluginOptions["mcp"])
 		plugins = append(plugins, mcpReg)
 	}
 	var mcpBroker *mcpbroker.Registry

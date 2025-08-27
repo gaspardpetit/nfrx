@@ -29,16 +29,16 @@ These endpoints are present when the `llm` plugin is enabled.
 
 | Verb & Endpoint | Parameters | Description | Auth |
 | --- | --- | --- | --- |
-| `GET /api/workers/connect` (WS) | Initial message `{ type: "register", client_key?: string, worker_id?: string, worker_name?: string, models?: [string], max_concurrency?: int, embedding_batch_size?: int }` | Worker connects to server. | Client key |
+| `GET /api/llm/connect` (WS) | Initial message `{ type: "register", client_key?: string, worker_id?: string, worker_name?: string, models?: [string], max_concurrency?: int, embedding_batch_size?: int }` | Worker connects to server. | Client key |
 
 ### Client Usage
 
 | Verb & Endpoint | Parameters | Description | Auth |
 | --- | --- | --- | --- |
-| `POST /api/v1/chat/completions` | Body `{ model: string, messages: [{role: string, content: string}], stream?: bool, ... }` | Proxy OpenAI chat completions. | API key |
-| `POST /api/v1/embeddings` | Body `{ model: string, input: any, ... }` | Proxy OpenAI embeddings; large input arrays are automatically batched per worker. | API key |
-| `GET /api/v1/models` | – | List models. | API key |
-| `GET /api/v1/models/{id}` | Path `{id}` | Get model details. | API key |
+| `POST /api/llm/v1/chat/completions` | Body `{ model: string, messages: [{role: string, content: string}], stream?: bool, ... }` | Proxy OpenAI chat completions. | API key |
+| `POST /api/llm/v1/embeddings` | Body `{ model: string, input: any, ... }` | Proxy OpenAI embeddings; large input arrays are automatically batched per worker. | API key |
+| `GET /api/llm/v1/models` | – | List models. | API key |
+| `GET /api/llm/v1/models/{id}` | Path `{id}` | Get model details. | API key |
 
 ## MCP API
 

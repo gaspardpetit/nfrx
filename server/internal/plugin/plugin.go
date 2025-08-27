@@ -16,10 +16,9 @@ type WorkerProvider = spi.WorkerProvider
 // RelayProvider is implemented by plugins that manage client relays.
 type RelayProvider = spi.RelayProvider
 
-type RelayWS = spi.RelayWS
-
-// Context groups common facilities passed to plugins.
-type Context struct {
+// SurfaceMount represents a mounted plugin surface.
+type SurfaceMount struct {
+	Path    string
 	Router  chi.Router
 	Metrics *prometheus.Registry
 	State   spi.StateRegistry
@@ -32,20 +31,37 @@ type Registry struct {
 	relays  []RelayProvider
 }
 
+// RegisterSurface mounts a plugin under /api/{id} and wires optional capabilities.
+func RegisterSurface(parent chi.Router, p Plugin, preg *prometheus.Registry, state spi.StateRegistry) SurfaceMount {
+	path := "/api/" + p.ID()
+	sub := chi.NewRouter()
+	parent.Mount(path, sub)
+
+	p.RegisterRoutes(sub)
+	if wp, ok := p.(WorkerProvider); ok {
+		wp.RegisterWebSocket(sub)
+	}
+	if rp, ok := p.(RelayProvider); ok {
+		rp.RegisterRelayEndpoints(sub)
+	}
+	p.RegisterMetrics(preg)
+	p.RegisterState(state)
+
+	return SurfaceMount{Path: path, Router: sub, Metrics: preg, State: state}
+}
+
 // Load initializes plugins and returns a Registry describing their capabilities.
-func Load(ctx Context, plugins []Plugin) *Registry {
+func Load(parent chi.Router, preg *prometheus.Registry, state spi.StateRegistry, plugins []Plugin) *Registry {
 	reg := &Registry{}
 	for _, p := range plugins {
-		p.RegisterRoutes(ctx.Router)
-		p.RegisterMetrics(ctx.Metrics)
-		p.RegisterState(ctx.State)
-		reg.plugins = append(reg.plugins, p)
+		RegisterSurface(parent, p, preg, state)
 		if wp, ok := p.(WorkerProvider); ok {
 			reg.workers = append(reg.workers, wp)
 		}
 		if rp, ok := p.(RelayProvider); ok {
 			reg.relays = append(reg.relays, rp)
 		}
+		reg.plugins = append(reg.plugins, p)
 	}
 	return reg
 }

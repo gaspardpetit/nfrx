@@ -41,7 +41,7 @@ func (c *WorkerConfig) BindFlags() {
 	c.LogDir = commoncfg.GetEnv("LOG_DIR", logDir)
 	c.LogLevel = commoncfg.GetEnv("LOG_LEVEL", "info")
 
-	c.ServerURL = commoncfg.GetEnv("SERVER_URL", "ws://localhost:8080/api/workers/connect")
+	c.ServerURL = commoncfg.GetEnv("SERVER_URL", "ws://localhost:8080/api/llm/connect")
 	c.ClientKey = commoncfg.GetEnv("CLIENT_KEY", "")
 	base := commoncfg.GetEnv("COMPLETION_BASE_URL", "http://127.0.0.1:11434/v1")
 	c.CompletionBaseURL = base
@@ -88,7 +88,7 @@ func (c *WorkerConfig) BindFlags() {
 		c.Reconnect = b
 	}
 
-	flag.StringVar(&c.ServerURL, "server-url", c.ServerURL, "server WebSocket URL for registration (e.g. ws://localhost:8080/api/workers/connect)")
+	flag.StringVar(&c.ServerURL, "server-url", c.ServerURL, "server WebSocket URL for registration (e.g. ws://localhost:8080/api/llm/connect)")
 	flag.StringVar(&c.ClientKey, "client-key", c.ClientKey, "shared secret for authenticating with the server")
 	flag.StringVar(&c.CompletionBaseURL, "completion-base-url", c.CompletionBaseURL, "base URL of the completion API (e.g. http://127.0.0.1:11434/v1)")
 	flag.StringVar(&c.CompletionAPIKey, "completion-api-key", c.CompletionAPIKey, "API key for the completion API; leave empty for no auth")

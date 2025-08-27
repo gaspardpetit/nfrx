@@ -25,7 +25,7 @@ services:
     image: ghcr.io/gaspardpetit/nfrx-llm:main
     environment:
       <<: *common_env
-      SERVER_URL: "ws://server:8080/api/workers/connect"
+      SERVER_URL: "ws://server:8080/api/llm/connect"
       COMPLETION_BASE_URL: "http://ollama:11434/v1"
       CLIENT_NAME: "Alpha"
       STATUS_ADDR: "0.0.0.0:4555"

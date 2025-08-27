@@ -61,7 +61,7 @@ Set `PLUGINS` to control which modules load (`llm` and/or `mcp`; defaults to bot
 
 ```bash
 docker run --rm \
-  -e SERVER_URL="wss://${MY_SERVER_ADDR}/api/workers/connect" \
+  -e SERVER_URL="wss://${MY_SERVER_ADDR}/api/llm/connect" \
   -e CLIENT_KEY="${MY_CLIENT_KEY}" \
   -e COMPLETION_BASE_URL="http://host.docker.internal:11434/v1" \
   ghcr.io/gaspardpetit/nfrx-llm:main
@@ -70,7 +70,7 @@ docker run --rm \
 ##### Bare (Linux)
 
 ```bash
-SERVER_URL="wss://${MY_SERVER_ADDR}/api/workers/connect" \
+SERVER_URL="wss://${MY_SERVER_ADDR}/api/llm/connect" \
 CLIENT_KEY="${MY_CLIENT_KEY}" \
 COMPLETION_BASE_URL="http://127.0.0.1:11434/v1" \
 nfrx-llm   # or: go run ./modules/llm/agent/cmd/nfrx-llm
@@ -79,7 +79,7 @@ nfrx-llm   # or: go run ./modules/llm/agent/cmd/nfrx-llm
 After connecting, you can reach your private instance from the public endpoint:
 
 ```bash
-curl -N -X POST "https://${MY_SERVER_ADDR}/api/v1/chat/completions" \
+curl -N -X POST "https://${MY_SERVER_ADDR}/api/llm/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${MY_API_KEY}" \
   -d '{
@@ -215,7 +215,7 @@ The Windows service runs `nfrx-llm` with the `--reconnect` flag and shuts down i
   - Separate authentication keys for API clients (`API_KEY`) and workers or MCP relays (`CLIENT_KEY`).
   - Workers typically run behind firewalls and connect outbound over HTTPS/WSS.
   - All traffic is encrypted end-to-end.
-- **Protocol compatibility** – OpenAI-compatible endpoints are available under `/api/v1/*` without altering JSON payloads.
+- **Protocol compatibility** – OpenAI-compatible endpoints are available under `/api/llm/v1/*` without altering JSON payloads.
 
 ### How it works
 - The **server** accepts incoming HTTP requests from clients, authenticates them, and routes them to workers via WebSocket connections.
@@ -236,9 +236,9 @@ The Windows service runs `nfrx-llm` with the `--reconnect` flag and shuts down i
 │                                                                       │
 │  ┌──────────────────────────┐                     ┌───────────────┐   │
 │  │  OpenAI-compatible API   │                     │  Observability│   │
-│  │  /api/v1/chat/completions│                     │  /metrics     │   │
-│  │  /api/v1/embeddings      │                     └───────────────┘   │
-│  │  /api/v1/models (+/{id}) │                                         │
+│  │  /api/llm/v1/chat/completions│                  │  /metrics     │   │
+│  │  /api/llm/v1/embeddings      │                  └───────────────┘   │
+│  │  /api/llm/v1/models (+/{id}) │                                      │
 │  └──────────────┬────────── ┘                                         │
 │                 │                                                     │
 │          ┌──────▼──────────────────────────────────────────────────┐  │
@@ -268,10 +268,10 @@ The Windows service runs `nfrx-llm` with the `--reconnect` flag and shuts down i
 
 - Health: `GET /healthz`
 - OpenAI Models:
-  - `GET /api/v1/models`
-  - `GET /api/v1/models/{id}`
-- OpenAI Chat Completions: `POST /api/v1/chat/completions`
-- OpenAI Embeddings: `POST /api/v1/embeddings`
+  - `GET /api/llm/v1/models`
+  - `GET /api/llm/v1/models/{id}`
+- OpenAI Chat Completions: `POST /api/llm/v1/chat/completions`
+- OpenAI Embeddings: `POST /api/llm/v1/embeddings`
 - nfrx API:
   - **State (JSON):** `GET /api/state`
   - **State (SSE):** `GET /api/state/stream`
@@ -285,7 +285,7 @@ The Windows service runs `nfrx-llm` with the `--reconnect` flag and shuts down i
 
 ## Security
 
-- **Client authentication**: `API_KEY` required for `/api` routes (including `/api/v1`) via `Authorization: Bearer <API_KEY>`.
+- **Client authentication**: `API_KEY` required for `/api` routes (including `/api/llm/v1`) via `Authorization: Bearer <API_KEY>`.
 - **Client authentication**: `CLIENT_KEY` required for worker or MCP WebSocket registration.
 - **Transport**: run behind TLS (HTTPS/WSS) via reverse proxy or terminate TLS in-process.
 - **CORS**: cross-origin requests are denied unless explicitly allowed via `ALLOWED_ORIGINS` (comma separated) or the `--allowed-origins` flag.
@@ -387,7 +387,7 @@ PORT=8080 CLIENT_KEY=secret API_KEY=test123 go run ./server/cmd/nfrx
 # PORT=8080 METRICS_PORT=9090 CLIENT_KEY=secret API_KEY=test123 go run ./server/cmd/nfrx
 ```
 
-Workers register with the server at `/api/workers/connect`.
+Workers register with the server at `/api/llm/connect`.
 `nfrx-mcp` connects to the server at `ws://<server>/api/mcp/connect` and receives a unique id which is used by clients when calling `POST /api/mcp/id/{id}`.
 
 Sending `SIGTERM` to the server stops acceptance of new worker, MCP, and inference requests while allowing in-flight work to complete. The server waits up to `--drain-timeout` (default 5m) before shutting down.
@@ -418,14 +418,14 @@ go run .\server\cmd\nfrx
 On Linux:
 
 ```bash
-SERVER_URL=ws://localhost:8080/api/workers/connect CLIENT_KEY=secret COMPLETION_BASE_URL=http://127.0.0.1:11434/v1 CLIENT_NAME=Alpha go run ./modules/llm/agent/cmd/nfrx-llm
+SERVER_URL=ws://localhost:8080/api/llm/connect CLIENT_KEY=secret COMPLETION_BASE_URL=http://127.0.0.1:11434/v1 CLIENT_NAME=Alpha go run ./modules/llm/agent/cmd/nfrx-llm
 ```
 Optionally set `COMPLETION_API_KEY` to forward an API key to the backend. The worker proxies requests to `${COMPLETION_BASE_URL}/chat/completions`.
 
 On Windows (CMD)
 
 ```
-set SERVER_URL=ws://localhost:8080/api/workers/connect
+set SERVER_URL=ws://localhost:8080/api/llm/connect
 set CLIENT_KEY=secret
 set COMPLETION_BASE_URL=http://127.0.0.1:11434/v1
 go run .\server\cmd\nfrx-llm
@@ -436,7 +436,7 @@ REM or if you built:
 On Windows (Powershell)
 
 ```
-$env:SERVER_URL = "ws://localhost:8080/api/workers/connect"
+$env:SERVER_URL = "ws://localhost:8080/api/llm/connect"
 $env:CLIENT_KEY = "secret"
 $env:COMPLETION_BASE_URL = "http://127.0.0.1:11434/v1"
 $env:CLIENT_NAME = "Alpha"
@@ -470,7 +470,7 @@ docker run --rm -p 8080:8080 -e CLIENT_KEY=secret -e API_KEY=test123 \
 
 ```bash
 docker run --rm \
-  -e SERVER_URL=ws://localhost:8080/api/workers/connect \
+  -e SERVER_URL=ws://localhost:8080/api/llm/connect \
   -e CLIENT_KEY=secret \
   -e COMPLETION_BASE_URL=http://host.docker.internal:11434/v1 \
   ghcr.io/gaspardpetit/nfrx-llm:main
@@ -493,7 +493,7 @@ without waiting or `--drain-timeout=-1` to wait indefinitely.
 The worker polls the local Ollama instance (default every 1m) so that
 `connected_to_backend` and `models` stay current in the `/status` output.
 If the model list changes, the worker proactively notifies the server so
-`/api/v1/models` reflects the latest information. Configure the poll interval
+`/api/llm/v1/models` reflects the latest information. Configure the poll interval
 with `MODEL_POLL_INTERVAL` or `--model-poll-interval`.
 
 Control endpoints require an `X-Auth-Token` header. The token is generated on
@@ -534,7 +534,7 @@ Ollama instance. If the model is missing, the server responds with `no worker`.
 On Linux:
 
 ```bash
-curl -N -X POST http://localhost:8080/api/v1/chat/completions \
+curl -N -X POST http://localhost:8080/api/llm/v1/chat/completions \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer test123' \
   -d '{"model":"llama3","messages":[{"role":"user","content":"Hello"}],"stream":true}'
@@ -543,7 +543,7 @@ curl -N -X POST http://localhost:8080/api/v1/chat/completions \
 On Windows (CMD):
 
 ```
-curl -N -X POST "http://localhost:8080/api/v1/chat/completions" ^
+curl -N -X POST "http://localhost:8080/api/llm/v1/chat/completions" ^
   -H "Content-Type: application/json" ^
   -H "Authorization: Bearer test123" ^
   -d "{ \"model\": \"llama3\", \"messages\": [ { \"role\": \"user\", \"content\": \"Hello\" } ], \"stream\": true }"
@@ -552,7 +552,7 @@ curl -N -X POST "http://localhost:8080/api/v1/chat/completions" ^
 On Windows (Powershell):
 
 ```
-curl -N -X POST http://localhost:8080/api/v1/chat/completions `
+curl -N -X POST http://localhost:8080/api/llm/v1/chat/completions `
   -H "Content-Type: application/json" `
   -H "Authorization: Bearer test123" `
   -d '{ "model": "llama3", "messages": [ { "role": "user", "content": "Hello" } ], "stream": true }'
@@ -582,8 +582,8 @@ The HTML dashboard at `/state` visualizes workers and reports per-worker token t
 The server also exposes OpenAI-style model listing endpoints:
 
 ```bash
-curl -H "Authorization: Bearer test123" http://localhost:8080/api/v1/models
-curl -H "Authorization: Bearer test123" http://localhost:8080/api/v1/models/llama3:8b
+curl -H "Authorization: Bearer test123" http://localhost:8080/api/llm/v1/models
+curl -H "Authorization: Bearer test123" http://localhost:8080/api/llm/v1/models/llama3:8b
 ```
 
 For a full list of server endpoints, see [doc/server-endpoints.md](doc/server-endpoints.md).
@@ -623,12 +623,12 @@ For manual end-to-end verification on a clean VM, see [desktop/windows/ACCEPTANC
 
 | Feature | Supported | Notes |
 | --- | --- | --- |
-| OpenAI-compatible `POST /api/v1/chat/completions` | ✅ | Proxied to workers without payload mutation |
-| OpenAI-compatible `POST /api/v1/embeddings` | ✅ | Requests with large input arrays are split and processed in parallel across workers respecting each worker's ideal embedding batch size |
 | Multiple worker registration | ✅ | Workers can join/leave dynamically; models registered on connect |
 | Model-based routing (least-busy) | ✅ | `LeastBusyScheduler` selects worker by current load |
 | Model alias fallback | ✅ | Falls back to base model when exact quantization not available |
-| API key authentication for clients | ✅ | `Authorization: Bearer <API_KEY>` for `/api` (including `/api/v1`) |
+| OpenAI-compatible `POST /api/llm/v1/chat/completions` | ✅ | Proxied to workers without payload mutation |
+| OpenAI-compatible `POST /api/llm/v1/embeddings` | ✅ | Requests with large input arrays are split and processed in parallel across workers respecting each worker's ideal embedding batch size |
+| API key authentication for clients | ✅ | `Authorization: Bearer <API_KEY>` for `/api` (including `/api/llm/v1`) |
 | Client key authentication | ✅ | Workers authenticate over WebSocket using `CLIENT_KEY` |
 | Dynamic model discovery | ✅ | Workers advertise supported models; server aggregates |
 | HTTPS/WSS transport | ✅ | Use TLS terminator or run behind reverse proxy; WS path configurable |

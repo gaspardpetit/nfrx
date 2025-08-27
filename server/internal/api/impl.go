@@ -45,7 +45,3 @@ func (a *API) GetApiState(w http.ResponseWriter, r *http.Request) {
 func (a *API) GetApiStateStream(w http.ResponseWriter, r *http.Request) {
 	(&StateHandler{Metrics: a.Metrics, MCP: a.MCP}).GetStateStream(w, r)
 }
-
-func (a *API) GetApiWorkersConnect(w http.ResponseWriter, r *http.Request) {
-	http.NotFound(w, r)
-}
