@@ -24,7 +24,10 @@ func New(state spi.ServerState, opts Options, pluginOpts map[string]string) *Plu
 func (p *Plugin) ID() string { return "mcp" }
 
 // RegisterRoutes registers HTTP routes; MCP uses relay endpoints only.
-func (p *Plugin) RegisterRoutes(r chi.Router) {}
+func (p *Plugin) RegisterRoutes(r chi.Router) {
+	r.Handle("/connect", p.broker.WSHandler(p.clientKey))
+	r.Handle("/id/{id}", p.broker.HTTPHandler())
+}
 
 // RegisterMetrics registers Prometheus collectors; MCP has none currently.
 func (p *Plugin) RegisterMetrics(reg *prometheus.Registry) {}
@@ -34,14 +37,7 @@ func (p *Plugin) RegisterState(reg spi.StateRegistry) {
 	reg.Add(spi.StateElement{ID: "mcp", Data: func() any { return p.broker.Snapshot() }})
 }
 
-// RegisterRelayEndpoints wires MCP relay HTTP/WS endpoints.
-func (p *Plugin) RegisterRelayEndpoints(r chi.Router) {
-	r.Handle("/connect", p.broker.WSHandler(p.clientKey))
-	r.Handle("/id/{id}", p.broker.HTTPHandler())
-}
-
 // Registry exposes the underlying broker for tests.
 func (p *Plugin) Registry() *mcpbroker.Registry { return p.broker }
 
 var _ spi.Plugin = (*Plugin)(nil)
-var _ spi.RelayProvider = (*Plugin)(nil)

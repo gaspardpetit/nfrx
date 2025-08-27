@@ -7,7 +7,7 @@ import (
 	"github.com/gaspardpetit/nfrx/modules/common/spi"
 )
 
-// Plugin is a minimal example implementing plugin.Plugin and plugin.RelayProvider.
+// Plugin is a minimal example implementing plugin.Plugin.
 type Plugin struct{}
 
 // New returns a new instance of the plugin.
@@ -19,6 +19,7 @@ func (p *Plugin) ID() string { return "relay-template" }
 // RegisterRoutes installs HTTP routes served by this plugin.
 func (p *Plugin) RegisterRoutes(r chi.Router) {
 	// r.Post("/api/relay", p.handleRequest)
+	// r.Handle("/api/relay/connect", p.handleRelay)
 }
 
 // RegisterMetrics adds Prometheus collectors.
@@ -29,9 +30,4 @@ func (p *Plugin) RegisterMetrics(reg *prometheus.Registry) {
 // RegisterState exposes values under /state.
 func (p *Plugin) RegisterState(reg spi.StateRegistry) {
 	// reg.Add(spi.StateElement{ID: "relay", Data: func() any { return "ok" }})
-}
-
-// RegisterRelayEndpoints attaches relay-specific routes.
-func (p *Plugin) RegisterRelayEndpoints(r chi.Router) {
-	// r.HandleFunc("/api/relay/connect", p.handleRelay)
 }
