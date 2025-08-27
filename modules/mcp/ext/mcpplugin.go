@@ -1,6 +1,8 @@
-package mcpplugin
+package ext
 
 import (
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -38,8 +40,11 @@ func (p *Plugin) RegisterState(reg *serverstate.Registry) {
 
 // RegisterRelayEndpoints wires MCP relay HTTP/WS endpoints.
 func (p *Plugin) RegisterRelayEndpoints(r chi.Router) {
-	r.Handle("/api/mcp/connect", p.broker.WSHandler(p.cfg.ClientKey))
-	r.Post("/api/mcp/id/{id}", p.broker.HTTPHandler())
+	r.Handle("/api/mcp/id/{id}", p.broker.HTTPHandler())
+}
+
+func (p *Plugin) WSHandler(clientKey string) http.Handler {
+	return p.broker.WSHandler(clientKey)
 }
 
 // Registry exposes the underlying broker for tests.

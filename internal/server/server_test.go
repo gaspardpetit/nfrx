@@ -10,14 +10,13 @@ import (
 
 	"github.com/gaspardpetit/nfrx/internal/config"
 	llmplugin "github.com/gaspardpetit/nfrx/internal/llmplugin"
-	mcpplugin "github.com/gaspardpetit/nfrx/internal/mcpplugin"
 	"github.com/gaspardpetit/nfrx/internal/plugin"
 	"github.com/gaspardpetit/nfrx/internal/serverstate"
 )
 
 func TestMetricsEndpointDefaultPort(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":8080", RequestTimeout: time.Second}
-	mcp := mcpplugin.New(cfg, nil)
+	mcp := mcpext.New(cfg, nil)
 	stateReg := serverstate.NewRegistry()
 	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry(), nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcp, llm})
@@ -35,7 +34,7 @@ func TestMetricsEndpointDefaultPort(t *testing.T) {
 
 func TestMetricsEndpointSeparatePort(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":9090", RequestTimeout: time.Second}
-	mcp := mcpplugin.New(cfg, nil)
+	mcp := mcpext.New(cfg, nil)
 	stateReg := serverstate.NewRegistry()
 	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry(), nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcp, llm})
@@ -53,7 +52,7 @@ func TestMetricsEndpointSeparatePort(t *testing.T) {
 
 func TestStatePage(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, RequestTimeout: time.Second}
-	mcp := mcpplugin.New(cfg, nil)
+	mcp := mcpext.New(cfg, nil)
 	stateReg := serverstate.NewRegistry()
 	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry(), nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcp, llm})
@@ -75,7 +74,7 @@ func TestStatePage(t *testing.T) {
 
 func TestCORSAllowedOrigins(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, RequestTimeout: time.Second, AllowedOrigins: []string{"https://example.com"}}
-	mcp := mcpplugin.New(cfg, nil)
+	mcp := mcpext.New(cfg, nil)
 	stateReg := serverstate.NewRegistry()
 	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry(), nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcp, llm})
@@ -105,7 +104,7 @@ func TestCORSAllowedOrigins(t *testing.T) {
 
 func TestDisableLLMPlugin(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":8080", RequestTimeout: time.Second}
-	mcp := mcpplugin.New(cfg, nil)
+	mcp := mcpext.New(cfg, nil)
 	stateReg := serverstate.NewRegistry()
 	h := New(cfg, stateReg, []plugin.Plugin{mcp})
 	ts := httptest.NewServer(h)

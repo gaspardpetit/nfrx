@@ -1,6 +1,8 @@
 package plugin
 
 import (
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -25,6 +27,10 @@ type WorkerProvider interface {
 // RelayProvider is implemented by plugins that manage client relays.
 type RelayProvider interface {
 	RegisterRelayEndpoints(r chi.Router)
+}
+
+type RelayWS interface {
+	WSHandler(clientKey string) http.Handler
 }
 
 // Context groups common facilities passed to plugins.

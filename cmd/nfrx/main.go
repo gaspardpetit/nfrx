@@ -18,10 +18,10 @@ import (
 	"github.com/gaspardpetit/nfrx/internal/config"
 	llmplugin "github.com/gaspardpetit/nfrx/internal/llmplugin"
 	"github.com/gaspardpetit/nfrx/internal/logx"
-	mcpplugin "github.com/gaspardpetit/nfrx/internal/mcpplugin"
 	"github.com/gaspardpetit/nfrx/internal/plugin"
 	"github.com/gaspardpetit/nfrx/internal/server"
 	"github.com/gaspardpetit/nfrx/internal/serverstate"
+	mcpext "github.com/gaspardpetit/nfrx/modules/mcp/ext"
 	mcpbroker "github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
 )
 
@@ -80,9 +80,9 @@ func main() {
 
 	stateReg := serverstate.NewRegistry()
 	var plugins []plugin.Plugin
-	var mcpReg *mcpplugin.Plugin
+	var mcpReg *mcpext.Plugin
 	if hasPlugin(cfg.Plugins, "mcp") {
-		mcpReg = mcpplugin.New(cfg, cfg.PluginOptions["mcp"])
+		mcpReg = mcpext.New(cfg, cfg.PluginOptions["mcp"])
 		plugins = append(plugins, mcpReg)
 	}
 	var mcpBroker *mcpbroker.Registry
