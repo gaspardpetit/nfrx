@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	commoncfg "github.com/gaspardpetit/nfrx/modules/common/config"
 	"github.com/google/uuid"
 	"gopkg.in/yaml.v3"
 )
@@ -36,43 +37,43 @@ type WorkerConfig struct {
 
 func (c *WorkerConfig) BindFlags() {
 	cfgPath, logDir := defaultWorkerPaths()
-	c.ConfigFile = getEnv("CONFIG_FILE", cfgPath)
-	c.LogDir = getEnv("LOG_DIR", logDir)
-	c.LogLevel = getEnv("LOG_LEVEL", "info")
+	c.ConfigFile = commoncfg.GetEnv("CONFIG_FILE", cfgPath)
+	c.LogDir = commoncfg.GetEnv("LOG_DIR", logDir)
+	c.LogLevel = commoncfg.GetEnv("LOG_LEVEL", "info")
 
-	c.ServerURL = getEnv("SERVER_URL", "ws://localhost:8080/api/workers/connect")
-	c.ClientKey = getEnv("CLIENT_KEY", "")
-	base := getEnv("COMPLETION_BASE_URL", "http://127.0.0.1:11434/v1")
+	c.ServerURL = commoncfg.GetEnv("SERVER_URL", "ws://localhost:8080/api/workers/connect")
+	c.ClientKey = commoncfg.GetEnv("CLIENT_KEY", "")
+	base := commoncfg.GetEnv("COMPLETION_BASE_URL", "http://127.0.0.1:11434/v1")
 	c.CompletionBaseURL = base
-	c.CompletionAPIKey = getEnv("COMPLETION_API_KEY", getEnv("OLLAMA_API_KEY", ""))
-	mc := getEnv("MAX_CONCURRENCY", "2")
+	c.CompletionAPIKey = commoncfg.GetEnv("COMPLETION_API_KEY", commoncfg.GetEnv("OLLAMA_API_KEY", ""))
+	mc := commoncfg.GetEnv("MAX_CONCURRENCY", "2")
 	if v, err := strconv.Atoi(mc); err == nil {
 		c.MaxConcurrency = v
 	} else {
 		c.MaxConcurrency = 2
 	}
-	eb := getEnv("EMBEDDING_BATCH_SIZE", "0")
+	eb := commoncfg.GetEnv("EMBEDDING_BATCH_SIZE", "0")
 	if v, err := strconv.Atoi(eb); err == nil {
 		c.EmbeddingBatchSize = v
 	}
-	c.ClientID = getEnv("CLIENT_ID", "")
-	c.StatusAddr = getEnv("STATUS_ADDR", "")
-	mp := getEnv("METRICS_PORT", "")
+	c.ClientID = commoncfg.GetEnv("CLIENT_ID", "")
+	c.StatusAddr = commoncfg.GetEnv("STATUS_ADDR", "")
+	mp := commoncfg.GetEnv("METRICS_PORT", "")
 	if mp != "" && !strings.Contains(mp, ":") {
 		mp = ":" + mp
 	}
 	c.MetricsAddr = mp
-	if d, err := time.ParseDuration(getEnv("DRAIN_TIMEOUT", "1m")); err == nil {
+	if d, err := time.ParseDuration(commoncfg.GetEnv("DRAIN_TIMEOUT", "1m")); err == nil {
 		c.DrainTimeout = d
 	} else {
 		c.DrainTimeout = time.Minute
 	}
-	if d, err := time.ParseDuration(getEnv("MODEL_POLL_INTERVAL", "1m")); err == nil {
+	if d, err := time.ParseDuration(commoncfg.GetEnv("MODEL_POLL_INTERVAL", "1m")); err == nil {
 		c.ModelPollInterval = d
 	} else {
 		c.ModelPollInterval = time.Minute
 	}
-	if v, err := strconv.ParseFloat(getEnv("REQUEST_TIMEOUT", "300"), 64); err == nil {
+	if v, err := strconv.ParseFloat(commoncfg.GetEnv("REQUEST_TIMEOUT", "300"), 64); err == nil {
 		c.RequestTimeout = time.Duration(v * float64(time.Second))
 	} else {
 		c.RequestTimeout = 5 * time.Minute
@@ -82,8 +83,8 @@ func (c *WorkerConfig) BindFlags() {
 	if err != nil || host == "" {
 		host = "worker-" + uuid.NewString()[:8]
 	}
-	c.ClientName = getEnv("CLIENT_NAME", host)
-	if b, err := strconv.ParseBool(getEnv("RECONNECT", "false")); err == nil {
+	c.ClientName = commoncfg.GetEnv("CLIENT_NAME", host)
+	if b, err := strconv.ParseBool(commoncfg.GetEnv("RECONNECT", "false")); err == nil {
 		c.Reconnect = b
 	}
 
@@ -121,7 +122,7 @@ func defaultWorkerPaths() (configFile, logDir string) {
 }
 
 func resolveWorkerPaths(goos, home, programData string) (configFile, logDir string) {
-	configFile = ResolveConfigPath(goos, home, programData, "worker.yaml")
+	configFile = commoncfg.ResolveConfigPath(goos, home, programData, "worker.yaml")
 	switch goos {
 	case "darwin":
 		logDir = filepath.Join(home, "Library", "Logs", "nfrx")

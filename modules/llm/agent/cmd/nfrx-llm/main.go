@@ -12,8 +12,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gaspardpetit/nfrx/internal/config"
 	"github.com/gaspardpetit/nfrx/modules/common/logx"
+	aconfig "github.com/gaspardpetit/nfrx/modules/llm/agent/internal/config"
 	"github.com/gaspardpetit/nfrx/modules/llm/agent/internal/worker"
 )
 
@@ -33,7 +33,7 @@ func binaryName() string {
 
 func main() {
 	showVersion := flag.Bool("version", false, "print version and exit")
-	var cfg config.WorkerConfig
+	var cfg aconfig.WorkerConfig
 	cfg.BindFlags()
 	flag.Usage = func() {
 		_, _ = fmt.Fprintf(flag.CommandLine.Output(), "nfrx-%s version=%s sha=%s date=%s\n\n", binaryName(), version, buildSHA, buildDate)

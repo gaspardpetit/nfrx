@@ -11,12 +11,12 @@ import (
 	"time"
 
 	ctrl "github.com/gaspardpetit/nfrx-sdk/contracts/control"
-	"github.com/gaspardpetit/nfrx/internal/config"
 	"github.com/gaspardpetit/nfrx/modules/common/logx"
+	aconfig "github.com/gaspardpetit/nfrx/modules/llm/agent/internal/config"
 	"github.com/rs/zerolog"
 )
 
-func handleHTTPProxy(ctx context.Context, cfg config.WorkerConfig, sendCh chan []byte, req ctrl.HTTPProxyRequestMessage, cancels map[string]context.CancelFunc, mu *sync.Mutex, onDone func()) {
+func handleHTTPProxy(ctx context.Context, cfg aconfig.WorkerConfig, sendCh chan []byte, req ctrl.HTTPProxyRequestMessage, cancels map[string]context.CancelFunc, mu *sync.Mutex, onDone func()) {
 	reqCtx, cancel := context.WithCancel(ctx)
 	mu.Lock()
 	cancels[req.RequestID] = cancel

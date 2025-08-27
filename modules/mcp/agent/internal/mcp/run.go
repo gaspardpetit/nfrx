@@ -12,15 +12,15 @@ import (
 
 	"github.com/coder/websocket"
 
-	"github.com/gaspardpetit/nfrx/internal/config"
-	"github.com/gaspardpetit/nfrx/modules/common/logx"
 	reconnect "github.com/gaspardpetit/nfrx/internal/reconnect"
+	"github.com/gaspardpetit/nfrx/modules/common/logx"
+	aconfig "github.com/gaspardpetit/nfrx/modules/mcp/agent/internal/config"
 )
 
 // Run starts the MCP relay client and blocks until the context is canceled or a
 // non-recoverable error occurs. It manages connection retries, provider
 // availability checks, and optional metrics.
-func Run(ctx context.Context, cfg config.MCPConfig) error {
+func Run(ctx context.Context, cfg aconfig.MCPConfig) error {
 	if cfg.MetricsAddr != "" {
 		if _, err := StartMetricsServer(ctx, cfg.MetricsAddr); err != nil {
 			return err

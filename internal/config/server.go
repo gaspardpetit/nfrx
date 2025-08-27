@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	commoncfg "github.com/gaspardpetit/nfrx/modules/common/config"
 	"gopkg.in/yaml.v3"
 )
 
@@ -31,13 +32,13 @@ type ServerConfig struct {
 // BindFlags populates the struct with defaults from environment variables and
 // binds command line flags so main can call flag.Parse().
 func (c *ServerConfig) BindFlags() {
-	cfgPath := DefaultConfigPath("server.yaml")
-	c.ConfigFile = getEnv("CONFIG_FILE", cfgPath)
-	c.LogLevel = getEnv("LOG_LEVEL", "info")
+	cfgPath := commoncfg.DefaultConfigPath("server.yaml")
+	c.ConfigFile = commoncfg.GetEnv("CONFIG_FILE", cfgPath)
+	c.LogLevel = commoncfg.GetEnv("LOG_LEVEL", "info")
 
-	port, _ := strconv.Atoi(getEnv("PORT", "8080"))
+	port, _ := strconv.Atoi(commoncfg.GetEnv("PORT", "8080"))
 	c.Port = port
-	mp := getEnv("METRICS_PORT", "")
+	mp := commoncfg.GetEnv("METRICS_PORT", "")
 	if mp == "" {
 		c.MetricsAddr = fmt.Sprintf(":%d", port)
 	} else if strings.Contains(mp, ":") {
@@ -45,26 +46,26 @@ func (c *ServerConfig) BindFlags() {
 	} else {
 		c.MetricsAddr = ":" + mp
 	}
-	c.APIKey = getEnv("API_KEY", "")
-	c.ClientKey = getEnv("CLIENT_KEY", "")
-	c.RedisAddr = getEnv("REDIS_ADDR", "")
-	if v, err := strconv.Atoi(getEnv("MAX_PARALLEL_EMBEDDINGS", "8")); err == nil {
+	c.APIKey = commoncfg.GetEnv("API_KEY", "")
+	c.ClientKey = commoncfg.GetEnv("CLIENT_KEY", "")
+	c.RedisAddr = commoncfg.GetEnv("REDIS_ADDR", "")
+	if v, err := strconv.Atoi(commoncfg.GetEnv("MAX_PARALLEL_EMBEDDINGS", "8")); err == nil {
 		c.MaxParallelEmbeddings = v
 	} else {
 		c.MaxParallelEmbeddings = 8
 	}
-	if v, err := strconv.ParseFloat(getEnv("REQUEST_TIMEOUT", "120"), 64); err == nil {
+	if v, err := strconv.ParseFloat(commoncfg.GetEnv("REQUEST_TIMEOUT", "120"), 64); err == nil {
 		c.RequestTimeout = time.Duration(v * float64(time.Second))
 	} else {
 		c.RequestTimeout = 120 * time.Second
 	}
-	if d, err := time.ParseDuration(getEnv("DRAIN_TIMEOUT", "5m")); err == nil {
+	if d, err := time.ParseDuration(commoncfg.GetEnv("DRAIN_TIMEOUT", "5m")); err == nil {
 		c.DrainTimeout = d
 	} else {
 		c.DrainTimeout = 5 * time.Minute
 	}
-	c.AllowedOrigins = splitComma(getEnv("ALLOWED_ORIGINS", strings.Join(c.AllowedOrigins, ",")))
-	if p := getEnv("PLUGINS", ""); p != "" {
+	c.AllowedOrigins = splitComma(commoncfg.GetEnv("ALLOWED_ORIGINS", strings.Join(c.AllowedOrigins, ",")))
+	if p := commoncfg.GetEnv("PLUGINS", ""); p != "" {
 		c.Plugins = splitComma(p)
 	} else if c.Plugins == nil {
 		c.Plugins = []string{"llm", "mcp"}

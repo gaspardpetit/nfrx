@@ -12,15 +12,15 @@ import (
 	"github.com/google/uuid"
 
 	ctrl "github.com/gaspardpetit/nfrx-sdk/contracts/control"
-	"github.com/gaspardpetit/nfrx/internal/config"
-	"github.com/gaspardpetit/nfrx/modules/common/logx"
 	reconnect "github.com/gaspardpetit/nfrx/internal/reconnect"
 	"github.com/gaspardpetit/nfrx/internal/relay"
+	"github.com/gaspardpetit/nfrx/modules/common/logx"
+	aconfig "github.com/gaspardpetit/nfrx/modules/llm/agent/internal/config"
 	"github.com/gaspardpetit/nfrx/modules/llm/agent/internal/ollama"
 )
 
 // Run starts the worker agent.
-func Run(ctx context.Context, cfg config.WorkerConfig) error {
+func Run(ctx context.Context, cfg aconfig.WorkerConfig) error {
 	if cfg.ClientID == "" {
 		cfg.ClientID = uuid.NewString()
 	}
@@ -76,7 +76,7 @@ func Run(ctx context.Context, cfg config.WorkerConfig) error {
 	}
 }
 
-func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg config.WorkerConfig, client *ollama.Client, statusUpdates <-chan ctrl.StatusUpdateMessage) (bool, error) {
+func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg aconfig.WorkerConfig, client *ollama.Client, statusUpdates <-chan ctrl.StatusUpdateMessage) (bool, error) {
 	connCtx, cancelConn := context.WithCancel(ctx)
 	ws, _, err := websocket.Dial(connCtx, cfg.ServerURL, nil)
 	if err != nil {
@@ -287,11 +287,11 @@ type healthClient interface {
 	Health(context.Context) ([]string, error)
 }
 
-func startBackendMonitor(ctx context.Context, cfg config.WorkerConfig, client healthClient, ch chan<- ctrl.StatusUpdateMessage, interval time.Duration) {
+func startBackendMonitor(ctx context.Context, cfg aconfig.WorkerConfig, client healthClient, ch chan<- ctrl.StatusUpdateMessage, interval time.Duration) {
 	go monitorBackend(ctx, cfg, client, ch, interval)
 }
 
-func monitorBackend(ctx context.Context, cfg config.WorkerConfig, client healthClient, ch chan<- ctrl.StatusUpdateMessage, interval time.Duration) {
+func monitorBackend(ctx context.Context, cfg aconfig.WorkerConfig, client healthClient, ch chan<- ctrl.StatusUpdateMessage, interval time.Duration) {
 	attempt := 0
 	for {
 		err := probeBackend(ctx, client, cfg, ch)
@@ -320,7 +320,7 @@ func monitorBackend(ctx context.Context, cfg config.WorkerConfig, client healthC
 // probeBackend checks health, updates state, and (importantly) only emits a status
 // update when either (a) connectivity flips, or (b) the models list actually changes.
 // On error, it always emits a not_ready status update.
-func probeBackend(ctx context.Context, client healthClient, cfg config.WorkerConfig, ch chan<- ctrl.StatusUpdateMessage) error {
+func probeBackend(ctx context.Context, client healthClient, cfg aconfig.WorkerConfig, ch chan<- ctrl.StatusUpdateMessage) error {
 	models, err := client.Health(ctx)
 	if err != nil {
 		wasConnected := GetState().ConnectedToBackend

@@ -9,8 +9,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/gaspardpetit/nfrx/internal/config"
 	"github.com/gaspardpetit/nfrx/modules/common/logx"
+	aconfig "github.com/gaspardpetit/nfrx/modules/mcp/agent/internal/config"
 	"github.com/gaspardpetit/nfrx/modules/mcp/agent/internal/mcp"
 )
 
@@ -22,7 +22,7 @@ var (
 
 func main() {
 	showVersion := flag.Bool("version", false, "print version and exit")
-	var cfg config.MCPConfig
+	var cfg aconfig.MCPConfig
 	cfg.BindFlags()
 	flag.Parse()
 	if *showVersion {
