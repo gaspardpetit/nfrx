@@ -8,19 +8,28 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gaspardpetit/nfrx/modules/common/spi"
+	openai "github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
 	mcp "github.com/gaspardpetit/nfrx/modules/mcp/ext"
 	"github.com/gaspardpetit/nfrx/server/internal/adapters"
 	"github.com/gaspardpetit/nfrx/server/internal/config"
 	llm "github.com/gaspardpetit/nfrx/server/internal/llm"
 	"github.com/gaspardpetit/nfrx/server/internal/plugin"
 	"github.com/gaspardpetit/nfrx/server/internal/serverstate"
+	"github.com/go-chi/chi/v5"
 )
+
+func openAIMount(cfg config.ServerConfig) llm.APIMount {
+	return func(v1 chi.Router, reg spi.WorkerRegistry, sched spi.Scheduler, metrics spi.Metrics) {
+		openai.Mount(v1, reg, sched, metrics, openai.Options{RequestTimeout: cfg.RequestTimeout, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings})
+	}
+}
 
 func TestMetricsEndpointDefaultPort(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":8080", RequestTimeout: time.Second}
 	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout}, nil)
 	stateReg := serverstate.NewRegistry()
-	llmPlugin := llm.New(cfg, "test", "", "", mcpPlugin.Registry(), nil)
+	llmPlugin := llm.New(cfg, "test", "", "", mcpPlugin.Registry(), openAIMount(cfg), nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
@@ -38,7 +47,7 @@ func TestMetricsEndpointSeparatePort(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":9090", RequestTimeout: time.Second}
 	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout}, nil)
 	stateReg := serverstate.NewRegistry()
-	llmPlugin := llm.New(cfg, "test", "", "", mcpPlugin.Registry(), nil)
+	llmPlugin := llm.New(cfg, "test", "", "", mcpPlugin.Registry(), openAIMount(cfg), nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
@@ -56,7 +65,7 @@ func TestStatePage(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, RequestTimeout: time.Second}
 	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout}, nil)
 	stateReg := serverstate.NewRegistry()
-	llmPlugin := llm.New(cfg, "test", "", "", mcpPlugin.Registry(), nil)
+	llmPlugin := llm.New(cfg, "test", "", "", mcpPlugin.Registry(), openAIMount(cfg), nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
@@ -78,7 +87,7 @@ func TestCORSAllowedOrigins(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, RequestTimeout: time.Second, AllowedOrigins: []string{"https://example.com"}}
 	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout}, nil)
 	stateReg := serverstate.NewRegistry()
-	llmPlugin := llm.New(cfg, "test", "", "", mcpPlugin.Registry(), nil)
+	llmPlugin := llm.New(cfg, "test", "", "", mcpPlugin.Registry(), openAIMount(cfg), nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
@@ -135,7 +144,7 @@ func TestDisableLLMPlugin(t *testing.T) {
 
 func TestDisableMCPPlugin(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":8080", RequestTimeout: time.Second}
-	llmPlugin := llm.New(cfg, "test", "", "", nil, nil)
+	llmPlugin := llm.New(cfg, "test", "", "", nil, openAIMount(cfg), nil)
 	stateReg := serverstate.NewRegistry()
 	h := New(cfg, stateReg, []plugin.Plugin{llmPlugin})
 	ts := httptest.NewServer(h)

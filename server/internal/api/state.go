@@ -6,14 +6,14 @@ import (
 	"time"
 
 	"github.com/gaspardpetit/nfrx/modules/common/logx"
-	mcpbroker "github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
+	"github.com/gaspardpetit/nfrx/modules/common/spi"
 	ctrlsrv "github.com/gaspardpetit/nfrx/server/internal/ctrlsrv"
 )
 
 // StateHandler serves state snapshots and streams.
 type StateHandler struct {
 	Metrics *ctrlsrv.MetricsRegistry
-	MCP     *mcpbroker.Registry
+	MCP     spi.MCPStateProvider
 }
 
 // GetState returns a JSON snapshot of metrics.

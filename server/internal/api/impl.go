@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gaspardpetit/nfrx/api/generated"
-	mcpbroker "github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
+	"github.com/gaspardpetit/nfrx/modules/common/spi"
 	ctrlsrv "github.com/gaspardpetit/nfrx/server/internal/ctrlsrv"
 )
 
@@ -17,7 +17,7 @@ type HealthChecker interface {
 type API struct {
 	Reg                   *ctrlsrv.Registry
 	Metrics               *ctrlsrv.MetricsRegistry
-	MCP                   *mcpbroker.Registry
+	MCP                   spi.MCPStateProvider
 	Sched                 ctrlsrv.Scheduler
 	Timeout               time.Duration
 	MaxParallelEmbeddings int

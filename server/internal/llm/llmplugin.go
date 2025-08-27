@@ -8,8 +8,6 @@ import (
 
 	"github.com/gaspardpetit/nfrx/api/generated"
 	"github.com/gaspardpetit/nfrx/modules/common/spi"
-	"github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
-	mcpbroker "github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
 	"github.com/gaspardpetit/nfrx/server/internal/adapters"
 	"github.com/gaspardpetit/nfrx/server/internal/api"
 	"github.com/gaspardpetit/nfrx/server/internal/config"
@@ -17,6 +15,8 @@ import (
 	"github.com/gaspardpetit/nfrx/server/internal/metrics"
 	"github.com/gaspardpetit/nfrx/server/internal/plugin"
 )
+
+type APIMount func(v1 chi.Router, reg spi.WorkerRegistry, sched spi.Scheduler, metrics spi.Metrics)
 
 // Plugin implements the llm subsystem as a plugin.
 type Plugin struct {
@@ -28,16 +28,17 @@ type Plugin struct {
 	reg     *ctrlsrv.Registry
 	metrics *ctrlsrv.MetricsRegistry
 	sched   ctrlsrv.Scheduler
-	mcp     *mcpbroker.Registry
+	mcp     spi.MCPStateProvider
 	opts    map[string]string
+	mount   APIMount
 }
 
 // New constructs a new LLM plugin.
-func New(cfg config.ServerConfig, version, sha, date string, mcp *mcpbroker.Registry, opts map[string]string) *Plugin {
+func New(cfg config.ServerConfig, version, sha, date string, mcp spi.MCPStateProvider, mount APIMount, opts map[string]string) *Plugin {
 	reg := ctrlsrv.NewRegistry()
 	metricsReg := ctrlsrv.NewMetricsRegistry(version, sha, date)
 	sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
-	return &Plugin{cfg: cfg, version: version, sha: sha, date: date, reg: reg, metrics: metricsReg, sched: sched, mcp: mcp, opts: opts}
+	return &Plugin{cfg: cfg, version: version, sha: sha, date: date, reg: reg, metrics: metricsReg, sched: sched, mcp: mcp, opts: opts, mount: mount}
 }
 
 func (p *Plugin) ID() string { return "llm" }
@@ -53,13 +54,14 @@ func (p *Plugin) RegisterRoutes(r chi.Router) {
 			apiGroup.Use(api.APIKeyMiddleware(p.cfg.APIKey))
 		}
 		apiGroup.Route("/v1", func(v1 chi.Router) {
-			openai.Mount(
-				v1,
-				adapters.NewWorkerRegistry(p.reg),
-				adapters.NewScheduler(p.sched),
-				adapters.NewMetrics(p.metrics),
-				openai.Options{RequestTimeout: p.cfg.RequestTimeout, MaxParallelEmbeddings: p.cfg.MaxParallelEmbeddings},
-			)
+			if p.mount != nil {
+				p.mount(
+					v1,
+					adapters.NewWorkerRegistry(p.reg),
+					adapters.NewScheduler(p.sched),
+					adapters.NewMetrics(p.metrics),
+				)
+			}
 		})
 		apiGroup.Get("/state", wrapper.GetApiState)
 		apiGroup.Get("/state/stream", wrapper.GetApiStateStream)

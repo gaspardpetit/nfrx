@@ -19,7 +19,7 @@ func TestAPIKeyEnforcement(t *testing.T) {
 	cfg := config.ServerConfig{APIKey: "test123", RequestTimeout: 5 * time.Second}
 	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout}, nil)
 	stateReg := serverstate.NewRegistry()
-	llmPlugin := llm.New(cfg, "test", "", "", mcpPlugin.Registry(), nil)
+	llmPlugin := llm.New(cfg, "test", "", "", mcpPlugin.Registry(), openAIMount(cfg), nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()

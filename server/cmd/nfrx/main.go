@@ -16,14 +16,16 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/gaspardpetit/nfrx/modules/common/logx"
+	"github.com/gaspardpetit/nfrx/modules/common/spi"
+	openai "github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
 	mcp "github.com/gaspardpetit/nfrx/modules/mcp/ext"
-	mcpbroker "github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
 	"github.com/gaspardpetit/nfrx/server/internal/adapters"
 	"github.com/gaspardpetit/nfrx/server/internal/config"
 	llm "github.com/gaspardpetit/nfrx/server/internal/llm"
 	"github.com/gaspardpetit/nfrx/server/internal/plugin"
 	"github.com/gaspardpetit/nfrx/server/internal/server"
 	"github.com/gaspardpetit/nfrx/server/internal/serverstate"
+	"github.com/go-chi/chi/v5"
 )
 
 var (
@@ -86,12 +88,15 @@ func main() {
 		mcpReg = mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout}, cfg.PluginOptions["mcp"])
 		plugins = append(plugins, mcpReg)
 	}
-	var mcpBroker *mcpbroker.Registry
+	var mcpBroker spi.MCPStateProvider
 	if mcpReg != nil {
 		mcpBroker = mcpReg.Registry()
 	}
 	if hasPlugin(cfg.Plugins, "llm") {
-		llmPlugin := llm.New(cfg, version, buildSHA, buildDate, mcpBroker, cfg.PluginOptions["llm"])
+		mount := func(v1 chi.Router, reg spi.WorkerRegistry, sched spi.Scheduler, metrics spi.Metrics) {
+			openai.Mount(v1, reg, sched, metrics, openai.Options{RequestTimeout: cfg.RequestTimeout, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings})
+		}
+		llmPlugin := llm.New(cfg, version, buildSHA, buildDate, mcpBroker, mount, cfg.PluginOptions["llm"])
 		plugins = append(plugins, llmPlugin)
 	}
 	handler := server.New(cfg, stateReg, plugins)

@@ -90,3 +90,7 @@ type MCPState struct {
 	Clients  []MCPClientSnapshot  `json:"clients"`
 	Sessions []MCPSessionSnapshot `json:"sessions"`
 }
+
+type MCPStateProvider interface {
+	Snapshot() MCPState
+}
