@@ -1,7 +1,7 @@
 package relayplugin
 
 import (
-	"github.com/gaspardpetit/nfrx/modules/common/spi"
+	"github.com/gaspardpetit/nfrx-sdk/spi"
 )
 
 // Plugin is a minimal example implementing plugin.Plugin.

@@ -5,7 +5,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/gaspardpetit/nfrx/modules/common/spi"
+	"github.com/gaspardpetit/nfrx-sdk/spi"
 )
 
 var (

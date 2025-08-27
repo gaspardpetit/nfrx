@@ -1,7 +1,7 @@
 package adapters
 
 import (
-	"github.com/gaspardpetit/nfrx/modules/common/spi"
+	"github.com/gaspardpetit/nfrx-sdk/spi"
 	"github.com/gaspardpetit/nfrx/server/internal/serverstate"
 )
 

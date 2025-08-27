@@ -3,7 +3,7 @@ package adapters
 import (
 	"time"
 
-	"github.com/gaspardpetit/nfrx/modules/common/spi"
+	"github.com/gaspardpetit/nfrx-sdk/spi"
 	ctrlsrv "github.com/gaspardpetit/nfrx/server/internal/ctrlsrv"
 	"github.com/gaspardpetit/nfrx/server/internal/metrics"
 )
