@@ -1,0 +1,3 @@
+build/bin/nfrx-mcp usr/bin/
+debian/nfrx-mcp.service usr/lib/systemd/system/
+debian/examples/mcp.env etc/nfrx/mcp.env

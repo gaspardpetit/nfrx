@@ -18,3 +18,9 @@ Architecture: any
 Depends: ${misc:Depends}, adduser
 Description: nfrx worker component (daemon)
  The worker for nfrx.
+
+Package: nfrx-mcp
+Architecture: any
+Depends: ${misc:Depends}, adduser
+Description: nfrx mcp bridge component (daemon)
+ The mcp bridge for nfrx.
