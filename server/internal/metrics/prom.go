@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/gaspardpetit/nfrx/modules/common/spi"
 )
 
 var (
@@ -83,7 +85,7 @@ var (
 )
 
 // Register registers all metrics with the provided registerer.
-func Register(r prometheus.Registerer) {
+func Register(r spi.MetricsRegistry) {
 	r.MustRegister(buildInfo, modelRequests, modelTokens, requestDuration, workerTokens, workerProcessing, modelEmbeddings, workerEmbeddings, workerEmbeddingProcessing)
 }
 

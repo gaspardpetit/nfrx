@@ -1,6 +1,8 @@
 package plugin
 
 import (
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -33,8 +35,10 @@ func RegisterSurface(parent chi.Router, p Plugin, preg *prometheus.Registry, sta
 	sub := chi.NewRouter()
 	parent.Mount(path, sub)
 
-	p.RegisterRoutes(sub)
-	p.RegisterMetrics(preg)
+	sr := chiRouter{sub}
+	mr := promRegistry{preg}
+	p.RegisterRoutes(sr)
+	p.RegisterMetrics(mr)
 	p.RegisterState(state)
 
 	return SurfaceMount{Path: path, Router: sub, Metrics: preg, State: state}
@@ -58,3 +62,32 @@ func (r *Registry) Plugins() []Plugin { return r.plugins }
 
 // WorkerProviders returns plugins that implement WorkerProvider.
 func (r *Registry) WorkerProviders() []WorkerProvider { return r.workers }
+
+type chiRouter struct{ chi.Router }
+
+func (r chiRouter) Handle(pattern string, h http.Handler) { r.Router.Handle(pattern, h) }
+func (r chiRouter) Group(fn func(spi.Router)) {
+	r.Router.Group(func(c chi.Router) { fn(chiRouter{c}) })
+}
+func (r chiRouter) Route(pattern string, fn func(spi.Router)) {
+	r.Router.Route(pattern, func(c chi.Router) { fn(chiRouter{c}) })
+}
+func (r chiRouter) Use(mw ...spi.Middleware) {
+	cms := make([]func(http.Handler) http.Handler, 0, len(mw))
+	for _, m := range mw {
+		cms = append(cms, m)
+	}
+	r.Router.Use(cms...)
+}
+func (r chiRouter) Get(pattern string, h http.Handler)  { r.Method("GET", pattern, h) }
+func (r chiRouter) Post(pattern string, h http.Handler) { r.Method("POST", pattern, h) }
+
+type promRegistry struct{ *prometheus.Registry }
+
+func (r promRegistry) MustRegister(cs ...spi.Collector) {
+	collectors := make([]prometheus.Collector, 0, len(cs))
+	for _, c := range cs {
+		collectors = append(collectors, c.(prometheus.Collector))
+	}
+	r.Registry.MustRegister(collectors...)
+}

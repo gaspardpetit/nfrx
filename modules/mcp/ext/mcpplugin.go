@@ -1,9 +1,6 @@
 package mcp
 
 import (
-	"github.com/go-chi/chi/v5"
-	"github.com/prometheus/client_golang/prometheus"
-
 	"github.com/gaspardpetit/nfrx/modules/common/spi"
 	mcpbroker "github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
 )
@@ -24,13 +21,13 @@ func New(state spi.ServerState, opts Options, pluginOpts map[string]string) *Plu
 func (p *Plugin) ID() string { return "mcp" }
 
 // RegisterRoutes registers HTTP routes; MCP uses relay endpoints only.
-func (p *Plugin) RegisterRoutes(r chi.Router) {
+func (p *Plugin) RegisterRoutes(r spi.Router) {
 	r.Handle("/connect", p.broker.WSHandler(p.clientKey))
 	r.Handle("/id/{id}", p.broker.HTTPHandler())
 }
 
 // RegisterMetrics registers Prometheus collectors; MCP has none currently.
-func (p *Plugin) RegisterMetrics(reg *prometheus.Registry) {}
+func (p *Plugin) RegisterMetrics(reg spi.MetricsRegistry) {}
 
 // RegisterState registers MCP state elements.
 func (p *Plugin) RegisterState(reg spi.StateRegistry) {
