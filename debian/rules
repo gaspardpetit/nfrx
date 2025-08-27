@@ -40,10 +40,12 @@ GO_LDFLAGS := $(GO_STRIP_FLAGS) \
 	dh $@ --buildsystem=golang
 
 override_dh_auto_build:
-	# Build server
-	GOBIN=$(CURDIR)/build/bin go build -ldflags "$(GO_LDFLAGS)" -o build/bin/nfrx ./server/cmd/nfrx
-	# Build worker
-	GOBIN=$(CURDIR)/build/bin go build -ldflags "$(GO_LDFLAGS)" -o build/bin/nfrx-llm ./modules/llm/agent/cmd/nfrx-llm
+        # Build server
+        GOBIN=$(CURDIR)/build/bin go build -ldflags "$(GO_LDFLAGS)" -o build/bin/nfrx ./server/cmd/nfrx
+        # Build worker
+        GOBIN=$(CURDIR)/build/bin go build -ldflags "$(GO_LDFLAGS)" -o build/bin/nfrx-llm ./modules/llm/agent/cmd/nfrx-llm
+        # Build mcp bridge
+        GOBIN=$(CURDIR)/build/bin go build -ldflags "$(GO_LDFLAGS)" -o build/bin/nfrx-mcp ./modules/mcp/agent/cmd/nfrx-mcp
 
 override_dh_auto_install:
 	# Installation handled via .install files
