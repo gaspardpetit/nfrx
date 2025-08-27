@@ -24,12 +24,6 @@ paths:
                   status:
                     type: string
                 required: [status]
-  /api/workers/connect:
-    get:
-      summary: Worker connect (WebSocket)
-      responses:
-        '101':
-          description: Switching Protocols
   /api/state:
     get:
       security: [ { BearerAuth: [] } ]

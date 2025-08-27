@@ -20,7 +20,7 @@ import (
 	"github.com/gaspardpetit/nfrx/modules/common/spi"
 )
 
-// EmbeddingsHandler handles POST /api/v1/embeddings as a pass-through.
+// EmbeddingsHandler handles POST /api/llm/v1/embeddings as a pass-through.
 func EmbeddingsHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics spi.Metrics, timeout time.Duration, maxParallel int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Body == nil {

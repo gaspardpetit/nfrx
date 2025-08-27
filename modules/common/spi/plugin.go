@@ -1,8 +1,6 @@
 package spi
 
 import (
-	"net/http"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -21,8 +19,4 @@ type WorkerProvider interface {
 
 type RelayProvider interface {
 	RegisterRelayEndpoints(r chi.Router)
-}
-
-type RelayWS interface {
-	WSHandler(clientKey string) http.Handler
 }

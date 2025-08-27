@@ -36,16 +36,7 @@ func New(cfg config.ServerConfig, stateReg *serverstate.Registry, plugins []plug
 	preg := prometheus.NewRegistry()
 	prometheus.DefaultRegisterer = preg
 	prometheus.DefaultGatherer = preg
-	pregistry := plugin.Load(plugin.Context{Router: r, Metrics: preg, State: adapters.NewStateRegistry(stateReg)}, plugins)
-	for _, wp := range pregistry.WorkerProviders() {
-		wp.RegisterWebSocket(r)
-	}
-	for _, rp := range pregistry.RelayProviders() {
-		rp.RegisterRelayEndpoints(r)
-		if rws, ok := rp.(plugin.RelayWS); ok {
-			r.Handle("/api/mcp/connect", rws.WSHandler(cfg.ClientKey))
-		}
-	}
+	plugin.Load(r, preg, adapters.NewStateRegistry(stateReg), plugins)
 
 	r.Get("/state", StateHandler())
 
