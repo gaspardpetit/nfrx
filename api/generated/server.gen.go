@@ -9,7 +9,6 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/oapi-codegen/runtime"
 )
 
 // ServerInterface represents all server handlers.
@@ -20,18 +19,6 @@ type ServerInterface interface {
 	// Stream server state
 	// (GET /api/state/stream)
 	GetApiStateStream(w http.ResponseWriter, r *http.Request)
-	// Chat completions (proxy)
-	// (POST /api/v1/chat/completions)
-	PostApiV1ChatCompletions(w http.ResponseWriter, r *http.Request)
-	// Embeddings (proxy)
-	// (POST /api/v1/embeddings)
-	PostApiV1Embeddings(w http.ResponseWriter, r *http.Request)
-	// List models
-	// (GET /api/v1/models)
-	GetApiV1Models(w http.ResponseWriter, r *http.Request)
-	// Get model
-	// (GET /api/v1/models/{id})
-	GetApiV1ModelsId(w http.ResponseWriter, r *http.Request, id string)
 	// Worker connect (WebSocket)
 	// (GET /api/workers/connect)
 	GetApiWorkersConnect(w http.ResponseWriter, r *http.Request)
@@ -53,30 +40,6 @@ func (_ Unimplemented) GetApiState(w http.ResponseWriter, r *http.Request) {
 // Stream server state
 // (GET /api/state/stream)
 func (_ Unimplemented) GetApiStateStream(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// Chat completions (proxy)
-// (POST /api/v1/chat/completions)
-func (_ Unimplemented) PostApiV1ChatCompletions(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// Embeddings (proxy)
-// (POST /api/v1/embeddings)
-func (_ Unimplemented) PostApiV1Embeddings(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// List models
-// (GET /api/v1/models)
-func (_ Unimplemented) GetApiV1Models(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// Get model
-// (GET /api/v1/models/{id})
-func (_ Unimplemented) GetApiV1ModelsId(w http.ResponseWriter, r *http.Request, id string) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -132,97 +95,6 @@ func (siw *ServerInterfaceWrapper) GetApiStateStream(w http.ResponseWriter, r *h
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetApiStateStream(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// PostApiV1ChatCompletions operation middleware
-func (siw *ServerInterfaceWrapper) PostApiV1ChatCompletions(w http.ResponseWriter, r *http.Request) {
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostApiV1ChatCompletions(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// PostApiV1Embeddings operation middleware
-func (siw *ServerInterfaceWrapper) PostApiV1Embeddings(w http.ResponseWriter, r *http.Request) {
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostApiV1Embeddings(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// GetApiV1Models operation middleware
-func (siw *ServerInterfaceWrapper) GetApiV1Models(w http.ResponseWriter, r *http.Request) {
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetApiV1Models(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// GetApiV1ModelsId operation middleware
-func (siw *ServerInterfaceWrapper) GetApiV1ModelsId(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-
-	// ------------- Path parameter "id" -------------
-	var id string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
-		return
-	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetApiV1ModelsId(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -378,18 +250,6 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/state/stream", wrapper.GetApiStateStream)
-	})
-	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/api/v1/chat/completions", wrapper.PostApiV1ChatCompletions)
-	})
-	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/api/v1/embeddings", wrapper.PostApiV1Embeddings)
-	})
-	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/api/v1/models", wrapper.GetApiV1Models)
-	})
-	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/api/v1/models/{id}", wrapper.GetApiV1ModelsId)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/workers/connect", wrapper.GetApiWorkersConnect)

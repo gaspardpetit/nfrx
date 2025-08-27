@@ -6,15 +6,3 @@ package generated
 const (
 	BearerAuthScopes = "BearerAuth.Scopes"
 )
-
-// PostApiV1ChatCompletionsJSONBody defines parameters for PostApiV1ChatCompletions.
-type PostApiV1ChatCompletionsJSONBody map[string]interface{}
-
-// PostApiV1EmbeddingsJSONBody defines parameters for PostApiV1Embeddings.
-type PostApiV1EmbeddingsJSONBody map[string]interface{}
-
-// PostApiV1ChatCompletionsJSONRequestBody defines body for PostApiV1ChatCompletions for application/json ContentType.
-type PostApiV1ChatCompletionsJSONRequestBody PostApiV1ChatCompletionsJSONBody
-
-// PostApiV1EmbeddingsJSONRequestBody defines body for PostApiV1Embeddings for application/json ContentType.
-type PostApiV1EmbeddingsJSONRequestBody PostApiV1EmbeddingsJSONBody

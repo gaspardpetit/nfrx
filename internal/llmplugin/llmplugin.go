@@ -13,6 +13,7 @@ import (
 	"github.com/gaspardpetit/nfrx/internal/metrics"
 	"github.com/gaspardpetit/nfrx/internal/plugin"
 	"github.com/gaspardpetit/nfrx/internal/serverstate"
+	"github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
 	mcpbroker "github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
 )
 
@@ -51,10 +52,7 @@ func (p *Plugin) RegisterRoutes(r chi.Router) {
 			apiGroup.Use(api.APIKeyMiddleware(p.cfg.APIKey))
 		}
 		apiGroup.Route("/v1", func(v1 chi.Router) {
-			v1.Post("/chat/completions", wrapper.PostApiV1ChatCompletions)
-			v1.Post("/embeddings", wrapper.PostApiV1Embeddings)
-			v1.Get("/models", wrapper.GetApiV1Models)
-			v1.Get("/models/{id}", wrapper.GetApiV1ModelsId)
+			openai.Mount(v1, p.reg, p.sched, p.metrics, p.cfg.RequestTimeout, p.cfg.MaxParallelEmbeddings)
 		})
 		apiGroup.Get("/state", wrapper.GetApiState)
 		apiGroup.Get("/state/stream", wrapper.GetApiStateStream)

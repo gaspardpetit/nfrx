@@ -7,7 +7,6 @@ import (
 
 	"github.com/gaspardpetit/nfrx/api/generated"
 	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
-	openai "github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
 	mcpbroker "github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
 )
 
@@ -37,22 +36,6 @@ func (a *API) GetHealthz(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	_, _ = fmt.Fprintf(w, `{"status":"%s"}`, status)
-}
-
-func (a *API) PostApiV1ChatCompletions(w http.ResponseWriter, r *http.Request) {
-	openai.ChatCompletionsHandler(a.Reg, a.Sched, a.Metrics, a.Timeout)(w, r)
-}
-
-func (a *API) PostApiV1Embeddings(w http.ResponseWriter, r *http.Request) {
-	openai.EmbeddingsHandler(a.Reg, a.Sched, a.Metrics, a.Timeout, a.MaxParallelEmbeddings)(w, r)
-}
-
-func (a *API) GetApiV1Models(w http.ResponseWriter, r *http.Request) {
-	openai.ListModelsHandler(a.Reg)(w, r)
-}
-
-func (a *API) GetApiV1ModelsId(w http.ResponseWriter, r *http.Request, id string) {
-	openai.GetModelHandler(a.Reg)(w, r)
 }
 
 func (a *API) GetApiState(w http.ResponseWriter, r *http.Request) {
