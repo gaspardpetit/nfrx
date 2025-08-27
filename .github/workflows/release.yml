@@ -53,9 +53,9 @@ jobs:
           EXT=""
           if [ "$GOOS" = "windows" ]; then EXT=".exe"; fi
           mkdir -p dist
-          go build -ldflags "$LDFLAGS" -o dist/nfrx${EXT} ./cmd/nfrx
-          go build -ldflags "$LDFLAGS" -o dist/nfrx-llm${EXT} ./cmd/nfrx-llm
-          go build -ldflags "$LDFLAGS" -o dist/nfrx-mcp${EXT} ./cmd/nfrx-mcp
+          go build -ldflags "$LDFLAGS" -o dist/nfrx${EXT} ./server/cmd/nfrx
+          go build -ldflags "$LDFLAGS" -o dist/nfrx-llm${EXT} ./modules/llm/agent/cmd/nfrx-llm
+          go build -ldflags "$LDFLAGS" -o dist/nfrx-mcp${EXT} ./modules/mcp/agent/cmd/nfrx-mcp
       - name: Package
         id: pkg
         shell: bash
