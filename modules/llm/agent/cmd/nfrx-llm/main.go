@@ -14,7 +14,7 @@ import (
 
 	"github.com/gaspardpetit/nfrx/internal/config"
 	"github.com/gaspardpetit/nfrx/internal/logx"
-	"github.com/gaspardpetit/nfrx/internal/worker"
+	"github.com/gaspardpetit/nfrx/modules/llm/agent/internal/worker"
 )
 
 var (

@@ -14,7 +14,7 @@ import (
 
 	"github.com/gaspardpetit/nfrx/internal/config"
 	"github.com/gaspardpetit/nfrx/internal/ctrl"
-	"github.com/gaspardpetit/nfrx/internal/ollama"
+	"github.com/gaspardpetit/nfrx/modules/llm/agent/internal/ollama"
 )
 
 // fakeHealthClient implements healthClient for unit tests.

@@ -12,14 +12,15 @@ import (
 	"testing"
 	"time"
 
+	"sync/atomic"
+
 	"github.com/gaspardpetit/nfrx/internal/config"
 	llmplugin "github.com/gaspardpetit/nfrx/internal/llmplugin"
 	mcpplugin "github.com/gaspardpetit/nfrx/internal/mcpplugin"
 	"github.com/gaspardpetit/nfrx/internal/plugin"
 	"github.com/gaspardpetit/nfrx/internal/server"
 	"github.com/gaspardpetit/nfrx/internal/serverstate"
-	"github.com/gaspardpetit/nfrx/internal/worker"
-	"sync/atomic"
+	"github.com/gaspardpetit/nfrx/modules/llm/agent/internal/worker"
 )
 
 func TestE2EChatCompletionsProxy(t *testing.T) {

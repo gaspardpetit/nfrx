@@ -18,7 +18,7 @@ import (
 	"github.com/gaspardpetit/nfrx/internal/plugin"
 	"github.com/gaspardpetit/nfrx/internal/server"
 	"github.com/gaspardpetit/nfrx/internal/serverstate"
-	"github.com/gaspardpetit/nfrx/internal/worker"
+	"github.com/gaspardpetit/nfrx/modules/llm/agent/internal/worker"
 )
 
 func TestE2EEmbeddingsProxy(t *testing.T) {
