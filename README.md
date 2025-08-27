@@ -340,8 +340,12 @@ The Windows service runs `nfrx-llm` with the `--reconnect` flag and shuts down i
 
 ```bash
 wget https://github.com/gaspardpetit/nfrx/releases/download/v1.3.0/nfrx_1.3.0-1_amd64.deb
-sudo dpkg -i nfrx_1.3.0-1_amd64.deb
+wget https://github.com/gaspardpetit/nfrx/releases/download/v1.3.0/nfrx-llm_1.3.0-1_amd64.deb
+wget https://github.com/gaspardpetit/nfrx/releases/download/v1.3.0/nfrx-mcp_1.3.0-1_amd64.deb
+sudo dpkg -i nfrx_1.3.0-1_amd64.deb nfrx-llm_1.3.0-1_amd64.deb nfrx-mcp_1.3.0-1_amd64.deb
 sudo systemctl status nfrx
+sudo systemctl status nfrx-llm
+sudo systemctl status nfrx-mcp
 ```
 
 ## Build
@@ -354,8 +358,9 @@ make build
 
 On Windows:
 ```
-go build -o .\bin\nfrx.exe .\cmd\nfrx
-go build -o .\bin\nfrx-llm.exe .\cmd\nfrx-llm
+go build -o .\bin\nfrx.exe .\server\cmd\nfrx
+go build -o .\bin\nfrx-llm.exe .\modules\llm\agent\cmd\nfrx-llm
+go build -o .\bin\nfrx-mcp.exe .\modules\mcp\agent\cmd\nfrx-mcp
 ```
 
 ### Version
