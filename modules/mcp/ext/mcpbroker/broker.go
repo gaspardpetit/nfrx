@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
+	"github.com/gaspardpetit/nfrx-sdk/contracts/mcp"
 	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
 	"github.com/gaspardpetit/nfrx/internal/logx"
-	"github.com/gaspardpetit/nfrx/internal/mcp"
 	"github.com/gaspardpetit/nfrx/internal/serverstate"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"

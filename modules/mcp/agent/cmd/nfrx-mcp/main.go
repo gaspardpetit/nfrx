@@ -11,7 +11,7 @@ import (
 
 	"github.com/gaspardpetit/nfrx/internal/config"
 	"github.com/gaspardpetit/nfrx/internal/logx"
-	"github.com/gaspardpetit/nfrx/internal/mcp"
+	"github.com/gaspardpetit/nfrx/modules/mcp/agent/internal/mcp"
 )
 
 var (

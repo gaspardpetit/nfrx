@@ -5,9 +5,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/gaspardpetit/nfrx/internal/config"
-	mcpbroker "github.com/gaspardpetit/nfrx/internal/mcpbroker"
 	"github.com/gaspardpetit/nfrx/internal/plugin"
 	"github.com/gaspardpetit/nfrx/internal/serverstate"
+	mcpbroker "github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
 )
 
 // Plugin implements the MCP relay as a plugin.

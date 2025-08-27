@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gaspardpetit/nfrx/internal/mcp"
+	"github.com/gaspardpetit/nfrx/modules/mcp/agent/internal/mcp"
 )
 
 func TestProbeProviderSetsAcceptHeader(t *testing.T) {

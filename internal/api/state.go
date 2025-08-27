@@ -7,7 +7,7 @@ import (
 
 	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
 	"github.com/gaspardpetit/nfrx/internal/logx"
-	mcpbroker "github.com/gaspardpetit/nfrx/internal/mcpbroker"
+	mcpbroker "github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
 )
 
 // StateHandler serves state snapshots and streams.

@@ -10,10 +10,10 @@ import (
 	"github.com/gaspardpetit/nfrx/internal/api"
 	"github.com/gaspardpetit/nfrx/internal/config"
 	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
-	mcpbroker "github.com/gaspardpetit/nfrx/internal/mcpbroker"
 	"github.com/gaspardpetit/nfrx/internal/metrics"
 	"github.com/gaspardpetit/nfrx/internal/plugin"
 	"github.com/gaspardpetit/nfrx/internal/serverstate"
+	mcpbroker "github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
 )
 
 // Plugin implements the llm subsystem as a plugin.

@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
-	mcp "github.com/gaspardpetit/nfrx/internal/mcp"
+	mcpc "github.com/gaspardpetit/nfrx-sdk/contracts/mcp"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -44,7 +44,7 @@ func TestHTTPHandlerRelayOffline(t *testing.T) {
 func TestHTTPHandlerConcurrencyLimit(t *testing.T) {
 	reg := NewRegistry(time.Second)
 	reg.maxConc = 1
-	reg.relays["client"] = &Relay{pending: map[string]chan mcp.Frame{}, inflight: 1, methods: map[string]int{}, sessions: map[string]sessionInfo{}}
+	reg.relays["client"] = &Relay{pending: map[string]chan mcpc.Frame{}, inflight: 1, methods: map[string]int{}, sessions: map[string]sessionInfo{}}
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/mcp/id/client", bytes.NewReader([]byte(`{"jsonrpc":"2.0","id":1,"method":"initialize"}`)))
 	rctx := chi.NewRouteContext()

@@ -7,7 +7,7 @@ import (
 
 	"github.com/gaspardpetit/nfrx/api/generated"
 	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
-	mcpbroker "github.com/gaspardpetit/nfrx/internal/mcpbroker"
+	mcpbroker "github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
 )
 
 type HealthChecker interface {

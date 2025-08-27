@@ -18,11 +18,11 @@ import (
 	"github.com/gaspardpetit/nfrx/internal/config"
 	llmplugin "github.com/gaspardpetit/nfrx/internal/llmplugin"
 	"github.com/gaspardpetit/nfrx/internal/logx"
-	mcpbroker "github.com/gaspardpetit/nfrx/internal/mcpbroker"
 	mcpplugin "github.com/gaspardpetit/nfrx/internal/mcpplugin"
 	"github.com/gaspardpetit/nfrx/internal/plugin"
 	"github.com/gaspardpetit/nfrx/internal/server"
 	"github.com/gaspardpetit/nfrx/internal/serverstate"
+	mcpbroker "github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
 )
 
 var (

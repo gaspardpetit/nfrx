@@ -8,8 +8,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/coder/websocket"
 	"sync"
+
+	"github.com/coder/websocket"
+	mcpc "github.com/gaspardpetit/nfrx-sdk/contracts/mcp"
 )
 
 // RelayClient is a minimal MCP relay.
@@ -35,17 +37,17 @@ func (r *RelayClient) Run(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		var f Frame
+		var f mcpc.Frame
 		if json.Unmarshal(data, &f) != nil {
 			continue
 		}
 		switch f.T {
 		case "open":
 			if r.token != "" && f.Auth != r.token {
-				_ = r.send(ctx, Frame{T: "open.fail", SID: f.SID, Code: "MCP_UNAUTHORIZED", Msg: "unauthorized"})
+				_ = r.send(ctx, mcpc.Frame{T: "open.fail", SID: f.SID, Code: "MCP_UNAUTHORIZED", Msg: "unauthorized"})
 				continue
 			}
-			_ = r.send(ctx, Frame{T: "open.ok", SID: f.SID})
+			_ = r.send(ctx, mcpc.Frame{T: "open.ok", SID: f.SID})
 		case "rpc":
 			go r.handleRPC(ctx, f)
 		case "close":
@@ -56,14 +58,14 @@ func (r *RelayClient) Run(ctx context.Context) error {
 			}
 			r.mu.Unlock()
 		case "ping":
-			_ = r.send(ctx, Frame{T: "pong"})
+			_ = r.send(ctx, mcpc.Frame{T: "pong"})
 		case "pong":
 			// ignore
 		}
 	}
 }
 
-func (r *RelayClient) handleRPC(ctx context.Context, f Frame) {
+func (r *RelayClient) handleRPC(ctx context.Context, f mcpc.Frame) {
 	rpcCtx := ctx
 	var cancel context.CancelFunc
 	if r.requestTimeout > 0 {
@@ -98,8 +100,8 @@ func (r *RelayClient) handleRPC(ctx context.Context, f Frame) {
 		}
 		resp, _ = json.Marshal(errObj)
 	}
-	_ = r.send(ctx, Frame{T: "rpc", SID: f.SID, Payload: resp})
-	_ = r.send(ctx, Frame{T: "close", SID: f.SID, Msg: "done"})
+	_ = r.send(ctx, mcpc.Frame{T: "rpc", SID: f.SID, Payload: resp})
+	_ = r.send(ctx, mcpc.Frame{T: "close", SID: f.SID, Msg: "done"})
 }
 
 func (r *RelayClient) pingLoop(ctx context.Context) {
@@ -108,14 +110,14 @@ func (r *RelayClient) pingLoop(ctx context.Context) {
 	for {
 		select {
 		case <-ticker.C:
-			_ = r.send(ctx, Frame{T: "ping"})
+			_ = r.send(ctx, mcpc.Frame{T: "ping"})
 		case <-ctx.Done():
 			return
 		}
 	}
 }
 
-func (r *RelayClient) send(ctx context.Context, f Frame) error {
+func (r *RelayClient) send(ctx context.Context, f mcpc.Frame) error {
 	b, err := json.Marshal(f)
 	if err != nil {
 		return err
