@@ -41,7 +41,7 @@ func TestChatCompletionsHeaders(t *testing.T) {
 	}()
 
 	reqBody := `{"model":"m","stream":true}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/chat/completions", strings.NewReader(reqBody))
+	req := httptest.NewRequest(http.MethodPost, "/api/llm/v1/chat/completions", strings.NewReader(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	rec := &flushRecorder{ResponseRecorder: httptest.NewRecorder()}
 	h.ServeHTTP(rec, req)
@@ -77,7 +77,7 @@ func TestChatCompletionsOpaque(t *testing.T) {
 		ch <- ctrl.HTTPProxyResponseEndMessage{Type: "http_proxy_response_end", RequestID: req.RequestID}
 	}()
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/chat/completions", strings.NewReader(`{"model":"m"}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/llm/v1/chat/completions", strings.NewReader(`{"model":"m"}`))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -102,7 +102,7 @@ func TestChatCompletionsEarlyError(t *testing.T) {
 		ch <- ctrl.HTTPProxyResponseEndMessage{Type: "http_proxy_response_end", RequestID: req.RequestID, Error: &ctrl.HTTPProxyError{Code: "upstream_error", Message: "boom"}}
 	}()
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/chat/completions", bytes.NewReader([]byte(`{"model":"m"}`)))
+	req := httptest.NewRequest(http.MethodPost, "/api/llm/v1/chat/completions", bytes.NewReader([]byte(`{"model":"m"}`)))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)

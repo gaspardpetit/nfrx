@@ -11,7 +11,7 @@ import (
 	"github.com/gaspardpetit/nfrx/modules/common/spi"
 )
 
-// ListModelsHandler handles GET /api/v1/models.
+// ListModelsHandler handles GET /api/llm/v1/models.
 func ListModelsHandler(reg spi.WorkerRegistry) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		models := reg.AggregatedModels()
@@ -36,7 +36,7 @@ func ListModelsHandler(reg spi.WorkerRegistry) http.HandlerFunc {
 	}
 }
 
-// GetModelHandler handles GET /api/v1/models/{id}.
+// GetModelHandler handles GET /api/llm/v1/models/{id}.
 func GetModelHandler(reg spi.WorkerRegistry) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")

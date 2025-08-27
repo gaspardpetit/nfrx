@@ -18,7 +18,7 @@ import (
 
 func TestMetricsEndpointDefaultPort(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":8080", RequestTimeout: time.Second}
-	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout}, nil)
+	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg := serverstate.NewRegistry()
 	llmPlugin := llm.New(cfg, "test", "", "", mcpPlugin.Registry(), nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
@@ -36,7 +36,7 @@ func TestMetricsEndpointDefaultPort(t *testing.T) {
 
 func TestMetricsEndpointSeparatePort(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":9090", RequestTimeout: time.Second}
-	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout}, nil)
+	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg := serverstate.NewRegistry()
 	llmPlugin := llm.New(cfg, "test", "", "", mcpPlugin.Registry(), nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
@@ -54,7 +54,7 @@ func TestMetricsEndpointSeparatePort(t *testing.T) {
 
 func TestStatePage(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, RequestTimeout: time.Second}
-	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout}, nil)
+	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg := serverstate.NewRegistry()
 	llmPlugin := llm.New(cfg, "test", "", "", mcpPlugin.Registry(), nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
@@ -76,7 +76,7 @@ func TestStatePage(t *testing.T) {
 
 func TestCORSAllowedOrigins(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, RequestTimeout: time.Second, AllowedOrigins: []string{"https://example.com"}}
-	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout}, nil)
+	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg := serverstate.NewRegistry()
 	llmPlugin := llm.New(cfg, "test", "", "", mcpPlugin.Registry(), nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
@@ -106,15 +106,15 @@ func TestCORSAllowedOrigins(t *testing.T) {
 
 func TestDisableLLMPlugin(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":8080", RequestTimeout: time.Second}
-	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout}, nil)
+	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg := serverstate.NewRegistry()
 	h := New(cfg, stateReg, []plugin.Plugin{mcpPlugin})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
 
-	resp, err := http.Get(ts.URL + "/api/v1/models")
+	resp, err := http.Get(ts.URL + "/api/llm/v1/models")
 	if err != nil {
-		t.Fatalf("GET /api/v1/models: %v", err)
+		t.Fatalf("GET /api/llm/v1/models: %v", err)
 	}
 	if resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", resp.StatusCode)

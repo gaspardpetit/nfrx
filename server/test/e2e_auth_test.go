@@ -23,7 +23,7 @@ import (
 
 func TestWorkerAuth(t *testing.T) {
 	cfg := config.ServerConfig{ClientKey: "secret", RequestTimeout: 5 * time.Second}
-	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout}, nil)
+	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg := serverstate.NewRegistry()
 	llmPlugin := llm.New(cfg, "test", "", "", mcpPlugin.Registry(), nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
@@ -31,7 +31,7 @@ func TestWorkerAuth(t *testing.T) {
 	defer srv.Close()
 
 	ctx := context.Background()
-	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/api/workers/connect"
+	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/api/llm/connect"
 
 	// bad key
 	connBad, _, err := websocket.Dial(ctx, wsURL, nil)
@@ -75,7 +75,7 @@ func TestWorkerAuth(t *testing.T) {
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/api/v1/models", nil)
+	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/api/llm/v1/models", nil)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil || resp.StatusCode != http.StatusOK {
 		t.Fatalf("models: %v %d", err, resp.StatusCode)
@@ -87,7 +87,7 @@ func TestWorkerAuth(t *testing.T) {
 
 func TestWorkerClientKeyUnexpected(t *testing.T) {
 	cfg := config.ServerConfig{RequestTimeout: 5 * time.Second}
-	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout}, nil)
+	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg := serverstate.NewRegistry()
 	llmPlugin := llm.New(cfg, "test", "", "", mcpPlugin.Registry(), nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
@@ -95,7 +95,7 @@ func TestWorkerClientKeyUnexpected(t *testing.T) {
 	defer srv.Close()
 
 	ctx := context.Background()
-	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/api/workers/connect"
+	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/api/llm/connect"
 	conn, _, err := websocket.Dial(ctx, wsURL, nil)
 	if err != nil {
 		t.Fatalf("dial: %v", err)
@@ -113,7 +113,7 @@ func TestWorkerClientKeyUnexpected(t *testing.T) {
 
 func TestMCPAuth(t *testing.T) {
 	cfg := config.ServerConfig{ClientKey: "secret", RequestTimeout: 5 * time.Second}
-	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout}, nil)
+	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg := serverstate.NewRegistry()
 	llmPlugin := llm.New(cfg, "test", "", "", mcpPlugin.Registry(), nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
@@ -155,7 +155,7 @@ func TestMCPAuth(t *testing.T) {
 
 	// unexpected key when server has none
 	cfg = config.ServerConfig{RequestTimeout: 5 * time.Second}
-	mcpReg := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout}, nil)
+	mcpReg := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg = serverstate.NewRegistry()
 	llmPlugin = llm.New(cfg, "test", "", "", mcpReg.Registry(), nil)
 	handler = server.New(cfg, stateReg, []plugin.Plugin{mcpReg, llmPlugin})

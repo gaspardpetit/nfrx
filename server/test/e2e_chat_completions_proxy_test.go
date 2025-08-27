@@ -26,7 +26,7 @@ import (
 
 func TestE2EChatCompletionsProxy(t *testing.T) {
 	cfg := config.ServerConfig{ClientKey: "secret", APIKey: "apikey", RequestTimeout: 5 * time.Second}
-	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout}, nil)
+	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg := serverstate.NewRegistry()
 	llmPlugin := llm.New(cfg, "test", "", "", mcpPlugin.Registry(), nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
@@ -67,14 +67,14 @@ func TestE2EChatCompletionsProxy(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/api/workers/connect"
+	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/api/llm/connect"
 	go func() {
 		_ = worker.Run(ctx, worker.Config{ServerURL: wsURL, ClientKey: "secret", CompletionBaseURL: ollama.URL + "/v1", CompletionAPIKey: "secret-123", ClientID: "w1", ClientName: "w1", MaxConcurrency: 2, EmbeddingBatchSize: 0})
 	}()
 
 	// wait for worker registration
 	for i := 0; i < 20; i++ {
-		resp, err := http.Get(srv.URL + "/api/v1/models")
+		resp, err := http.Get(srv.URL + "/api/llm/v1/models")
 		if err == nil {
 			var v struct {
 				Data []struct {
@@ -93,7 +93,7 @@ func TestE2EChatCompletionsProxy(t *testing.T) {
 	}
 
 	reqBody := []byte(`{"model":"llama3","stream":true}`)
-	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/api/v1/chat/completions", bytes.NewReader(reqBody))
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/api/llm/v1/chat/completions", bytes.NewReader(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer apikey")
 	resp, err := http.DefaultClient.Do(req)

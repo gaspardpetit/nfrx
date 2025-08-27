@@ -1,8 +1,6 @@
 package mcp
 
 import (
-	"net/http"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -12,14 +10,15 @@ import (
 
 // Plugin implements the MCP relay as a plugin.
 type Plugin struct {
-	broker *mcpbroker.Registry
-	opts   map[string]string
+	broker     *mcpbroker.Registry
+	pluginOpts map[string]string
+	clientKey  string
 }
 
 // New constructs a new MCP plugin.
 func New(state spi.ServerState, opts Options, pluginOpts map[string]string) *Plugin {
 	reg := mcpbroker.NewRegistry(opts.RequestTimeout, state)
-	return &Plugin{broker: reg, opts: pluginOpts}
+	return &Plugin{broker: reg, pluginOpts: pluginOpts, clientKey: opts.ClientKey}
 }
 
 func (p *Plugin) ID() string { return "mcp" }
@@ -37,11 +36,8 @@ func (p *Plugin) RegisterState(reg spi.StateRegistry) {
 
 // RegisterRelayEndpoints wires MCP relay HTTP/WS endpoints.
 func (p *Plugin) RegisterRelayEndpoints(r chi.Router) {
-	r.Handle("/api/mcp/id/{id}", p.broker.HTTPHandler())
-}
-
-func (p *Plugin) WSHandler(clientKey string) http.Handler {
-	return p.broker.WSHandler(clientKey)
+	r.Handle("/connect", p.broker.WSHandler(p.clientKey))
+	r.Handle("/id/{id}", p.broker.HTTPHandler())
 }
 
 // Registry exposes the underlying broker for tests.
@@ -49,4 +45,3 @@ func (p *Plugin) Registry() *mcpbroker.Registry { return p.broker }
 
 var _ spi.Plugin = (*Plugin)(nil)
 var _ spi.RelayProvider = (*Plugin)(nil)
-var _ spi.RelayWS = (*Plugin)(nil)

@@ -34,7 +34,7 @@ func TestEmbeddings(t *testing.T) {
 		ch <- ctrl.HTTPProxyResponseEndMessage{Type: "http_proxy_response_end", RequestID: req.RequestID}
 	}()
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/embeddings", strings.NewReader(`{"model":"m"}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/llm/v1/embeddings", strings.NewReader(`{"model":"m"}`))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -62,7 +62,7 @@ func TestEmbeddingsEarlyError(t *testing.T) {
 		ch <- ctrl.HTTPProxyResponseEndMessage{Type: "http_proxy_response_end", RequestID: req.RequestID, Error: &ctrl.HTTPProxyError{Code: "upstream_error", Message: "boom"}}
 	}()
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/embeddings", bytes.NewReader([]byte(`{"model":"m"}`)))
+	req := httptest.NewRequest(http.MethodPost, "/api/llm/v1/embeddings", bytes.NewReader([]byte(`{"model":"m"}`)))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -104,7 +104,7 @@ func TestEmbeddingsBatching(t *testing.T) {
 		}
 	}()
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/embeddings", bytes.NewReader([]byte(`{"model":"m","input":["a","b"]}`)))
+	req := httptest.NewRequest(http.MethodPost, "/api/llm/v1/embeddings", bytes.NewReader([]byte(`{"model":"m","input":["a","b"]}`)))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -191,7 +191,7 @@ func TestEmbeddingsParallelSplit(t *testing.T) {
 		errCh <- nil
 	}()
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/embeddings", bytes.NewReader([]byte(`{"model":"m","input":["a","b","c","d","e","f"]}`)))
+	req := httptest.NewRequest(http.MethodPost, "/api/llm/v1/embeddings", bytes.NewReader([]byte(`{"model":"m","input":["a","b","c","d","e","f"]}`)))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)

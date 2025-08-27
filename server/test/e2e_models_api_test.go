@@ -23,7 +23,7 @@ import (
 
 func TestModelsAPI(t *testing.T) {
 	cfg := config.ServerConfig{RequestTimeout: 5 * time.Second}
-	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout}, nil)
+	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg := serverstate.NewRegistry()
 	llmPlugin := llm.New(cfg, "test", "", "", mcpPlugin.Registry(), nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
@@ -31,7 +31,7 @@ func TestModelsAPI(t *testing.T) {
 	defer srv.Close()
 
 	ctx := context.Background()
-	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/api/workers/connect"
+	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/api/llm/connect"
 
 	// Worker Alpha
 	connA, _, err := websocket.Dial(ctx, wsURL, nil)
@@ -57,7 +57,7 @@ func TestModelsAPI(t *testing.T) {
 
 	// wait for registration
 	for i := 0; i < 50; i++ {
-		resp, err := http.Get(srv.URL + "/api/v1/models")
+		resp, err := http.Get(srv.URL + "/api/llm/v1/models")
 		if err == nil {
 			var lr struct {
 				Data []struct {
@@ -76,7 +76,7 @@ func TestModelsAPI(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 	}
 
-	resp, err := http.Get(srv.URL + "/api/v1/models")
+	resp, err := http.Get(srv.URL + "/api/llm/v1/models")
 	if err != nil {
 		t.Fatalf("list models: %v", err)
 	}
@@ -100,12 +100,12 @@ func TestModelsAPI(t *testing.T) {
 		}
 	}
 
-	resp, err = http.Get(srv.URL + "/api/v1/models/llama3:8b")
+	resp, err = http.Get(srv.URL + "/api/llm/v1/models/llama3:8b")
 	if err != nil || resp.StatusCode != http.StatusOK {
 		t.Fatalf("get model: %v %d", err, resp.StatusCode)
 	}
 	_ = resp.Body.Close()
-	resp, err = http.Get(srv.URL + "/api/v1/models/doesnotexist")
+	resp, err = http.Get(srv.URL + "/api/llm/v1/models/doesnotexist")
 	if err != nil || resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("missing model: %v %d", err, resp.StatusCode)
 	}
@@ -114,7 +114,7 @@ func TestModelsAPI(t *testing.T) {
 	_ = connB.Close(websocket.StatusNormalClosure, "")
 	// wait for deregistration
 	for i := 0; i < 50; i++ {
-		resp, err := http.Get(srv.URL + "/api/v1/models")
+		resp, err := http.Get(srv.URL + "/api/llm/v1/models")
 		if err == nil {
 			var lr struct {
 				Data []struct {
@@ -133,7 +133,7 @@ func TestModelsAPI(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 	}
 
-	resp, err = http.Get(srv.URL + "/api/v1/models")
+	resp, err = http.Get(srv.URL + "/api/llm/v1/models")
 	if err != nil {
 		t.Fatalf("list after disconnect: %v", err)
 	}

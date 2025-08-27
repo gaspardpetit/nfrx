@@ -15,7 +15,7 @@ import (
 	"github.com/gaspardpetit/nfrx/modules/common/spi"
 )
 
-// ChatCompletionsHandler handles POST /api/v1/chat/completions as a pass-through.
+// ChatCompletionsHandler handles POST /api/llm/v1/chat/completions as a pass-through.
 func ChatCompletionsHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics spi.Metrics, timeout time.Duration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Body == nil {

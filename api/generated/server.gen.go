@@ -19,9 +19,6 @@ type ServerInterface interface {
 	// Stream server state
 	// (GET /api/state/stream)
 	GetApiStateStream(w http.ResponseWriter, r *http.Request)
-	// Worker connect (WebSocket)
-	// (GET /api/workers/connect)
-	GetApiWorkersConnect(w http.ResponseWriter, r *http.Request)
 	// Health check
 	// (GET /healthz)
 	GetHealthz(w http.ResponseWriter, r *http.Request)
@@ -40,12 +37,6 @@ func (_ Unimplemented) GetApiState(w http.ResponseWriter, r *http.Request) {
 // Stream server state
 // (GET /api/state/stream)
 func (_ Unimplemented) GetApiStateStream(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// Worker connect (WebSocket)
-// (GET /api/workers/connect)
-func (_ Unimplemented) GetApiWorkersConnect(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -95,20 +86,6 @@ func (siw *ServerInterfaceWrapper) GetApiStateStream(w http.ResponseWriter, r *h
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetApiStateStream(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// GetApiWorkersConnect operation middleware
-func (siw *ServerInterfaceWrapper) GetApiWorkersConnect(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetApiWorkersConnect(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -250,9 +227,6 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/state/stream", wrapper.GetApiStateStream)
-	})
-	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/api/workers/connect", wrapper.GetApiWorkersConnect)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/healthz", wrapper.GetHealthz)
