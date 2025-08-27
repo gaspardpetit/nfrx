@@ -12,7 +12,7 @@ import (
 
 	ctrl "github.com/gaspardpetit/nfrx-sdk/contracts/control"
 	"github.com/gaspardpetit/nfrx/internal/config"
-	"github.com/gaspardpetit/nfrx/internal/logx"
+	"github.com/gaspardpetit/nfrx/modules/common/logx"
 	"github.com/rs/zerolog"
 )
 

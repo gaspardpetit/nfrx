@@ -6,7 +6,7 @@ import (
 	"time"
 
 	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
-	"github.com/gaspardpetit/nfrx/internal/logx"
+	"github.com/gaspardpetit/nfrx/modules/common/logx"
 	mcpbroker "github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
 )
 

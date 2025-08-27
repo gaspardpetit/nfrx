@@ -13,7 +13,7 @@ import (
 	"github.com/coder/websocket"
 
 	"github.com/gaspardpetit/nfrx/internal/config"
-	"github.com/gaspardpetit/nfrx/internal/logx"
+	"github.com/gaspardpetit/nfrx/modules/common/logx"
 	reconnect "github.com/gaspardpetit/nfrx/internal/reconnect"
 )
 

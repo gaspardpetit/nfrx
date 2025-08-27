@@ -17,7 +17,7 @@ import (
 
 	ctrl "github.com/gaspardpetit/nfrx-sdk/contracts/control"
 	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
-	"github.com/gaspardpetit/nfrx/internal/logx"
+	"github.com/gaspardpetit/nfrx/modules/common/logx"
 	"github.com/gaspardpetit/nfrx/internal/metrics"
 	"github.com/gaspardpetit/nfrx/internal/serverstate"
 )

@@ -9,7 +9,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/rs/zerolog"
 
-	"github.com/gaspardpetit/nfrx/internal/logx"
+	"github.com/gaspardpetit/nfrx/modules/common/logx"
 )
 
 // Orchestrator attempts connections using multiple transports until one succeeds.

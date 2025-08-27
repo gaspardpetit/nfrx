@@ -8,7 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
-	"github.com/gaspardpetit/nfrx/internal/logx"
+	"github.com/gaspardpetit/nfrx/modules/common/logx"
 )
 
 // ListModelsHandler handles GET /api/v1/models.
