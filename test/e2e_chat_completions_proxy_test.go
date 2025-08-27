@@ -12,22 +12,22 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gaspardpetit/nfrx-plugins-llm/internal/llmagent"
-	"github.com/gaspardpetit/nfrx-sdk/config"
-	"github.com/gaspardpetit/nfrx-server/internal/extension"
-	llmserver "github.com/gaspardpetit/nfrx-server/internal/llmserver"
-	mcpserver "github.com/gaspardpetit/nfrx-server/internal/mcpserver"
-	"github.com/gaspardpetit/nfrx-server/internal/server"
-	"github.com/gaspardpetit/nfrx-server/internal/serverstate"
+	"github.com/gaspardpetit/nfrx/internal/config"
+	llmplugin "github.com/gaspardpetit/nfrx/internal/llmplugin"
+	mcpplugin "github.com/gaspardpetit/nfrx/internal/mcpplugin"
+	"github.com/gaspardpetit/nfrx/internal/plugin"
+	"github.com/gaspardpetit/nfrx/internal/server"
+	"github.com/gaspardpetit/nfrx/internal/serverstate"
+	"github.com/gaspardpetit/nfrx/internal/worker"
 	"sync/atomic"
 )
 
 func TestE2EChatCompletionsProxy(t *testing.T) {
 	cfg := config.ServerConfig{ClientKey: "secret", APIKey: "apikey", RequestTimeout: 5 * time.Second}
-	mcp := mcpserver.New(cfg, nil)
+	mcp := mcpplugin.New(cfg, nil)
 	stateReg := serverstate.NewRegistry()
-	llm := llmserver.New(cfg, "test", "", "", mcp.Registry(), nil)
-	handler := server.New(cfg, stateReg, []extension.Plugin{mcp, llm})
+	llm := llmplugin.New(cfg, "test", "", "", mcp.Registry(), nil)
+	handler := server.New(cfg, stateReg, []plugin.Plugin{mcp, llm})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
@@ -67,7 +67,7 @@ func TestE2EChatCompletionsProxy(t *testing.T) {
 	defer cancel()
 	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/api/workers/connect"
 	go func() {
-		_ = llmagent.Run(ctx, config.WorkerConfig{ServerURL: wsURL, ClientKey: "secret", CompletionBaseURL: ollama.URL + "/v1", CompletionAPIKey: "secret-123", ClientID: "w1", ClientName: "w1", MaxConcurrency: 2, EmbeddingBatchSize: 0})
+		_ = worker.Run(ctx, config.WorkerConfig{ServerURL: wsURL, ClientKey: "secret", CompletionBaseURL: ollama.URL + "/v1", CompletionAPIKey: "secret-123", ClientID: "w1", ClientName: "w1", MaxConcurrency: 2, EmbeddingBatchSize: 0})
 	}()
 
 	// wait for worker registration

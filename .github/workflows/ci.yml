@@ -29,7 +29,7 @@ jobs:
           echo "date=${DATE}"         >> $GITHUB_OUTPUT
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.22'
       - name: Cache modules
         uses: actions/cache@v4
         with:
@@ -40,19 +40,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
       - name: Download deps
-        run: |
-          go work sync
-          (cd nfrx-server && go mod download)
-          (cd nfrx-plugins-llm && go mod download)
-          (cd nfrx-plugins-mcp && go mod download)
-          (cd nfrx-sdk && go mod download)
+        run: go mod download
       - name: Build
         env:
           LDFLAGS: >-
             -s -w -X main.version=${{ steps.meta.outputs.version }} -X main.buildSHA=${{ steps.meta.outputs.sha }} -X main.buildDate=${{ steps.meta.outputs.date }}
         run: make build
       - name: Test (race+coverage)
-        run: go test -race -coverprofile=coverage.out ./nfrx-server/... ./nfrx-plugins-llm/... ./nfrx-plugins-mcp/... ./nfrx-sdk/...
+        run: go test ./... -race -coverprofile=coverage.out
       - name: Upload coverage
         uses: actions/upload-artifact@v4
         with:

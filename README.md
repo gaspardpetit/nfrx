@@ -4,33 +4,12 @@
 
 # nfrx
 
-nfrx lets you expose private AI services (LLM runtimes, tools, RAG processes) through a public gateway.
+nfrx lets you expose your private AI services (LLM runtimes, tools, RAG processes) through a secure, public, OpenAI-compatible API — without exposing your local machines.
 
-- **Run locally:** Keep Ollama, vLLM, MCP servers, docling, or custom RAG processes on your own Macs, PCs, or servers.
+- **Run locally:** Keep Ollama, vLLM, MCP servers, or custom RAG processes on your own Macs, PCs, or servers.
 - **Connect out:** Each worker/tool connects outbound to a single public **nfrx** server (no inbound connections to your LAN).
 - **Use securely:** Clients and commercial LLMs (e.g., OpenAI, Claude) talk to **nfrx** via standard OpenAI endpoints or MCP URLs.
 - **Scale flexibly:** Add multiple heterogeneous machines; **nfrx** routes requests to the right one, queues when busy, and supports graceful draining for maintenance.
-
-Two main usage patterns are covered:
-
-## Worker agents
-
- Registering worker agents configured for specific tasks, ex.
-   - llm agents providing services for listed models;
-   - document transformer providing OCR or conversion to text or markdown; and
-   - transcription of audio files.
-
-These can be implemented to support compatibility routing, load balancing and workload distribution.
-Workers can be added dynamically or drained/removed to scale up and down as needed.
-The workers can be on private hardware, behind NAT, since connection is achieved with a local agent running next to the local LLM.
-
-## Private Resources
-
-Exposing private resources such as documents, ex. 
- - Allowing a public LLM to search through local documents (RAGs); and
- - Allowing a public LLM to execute functions on a local MCP serve.
-
-This is achieved by having a local agent connecting to the nfrx server an opening a route using a private id and secret.
 
 ## Getting Started
 
@@ -69,11 +48,8 @@ docker run --rm \
 
 ```bash
 PORT=${MY_SERVER_PORT} CLIENT_KEY="${MY_CLIENT_KEY}" API_KEY="${MY_API_KEY}" \
-  nfrx   # or: go run ./nfrx-server/cmd/nfrx
+  nfrx   # or: go run ./cmd/nfrx
 ```
-
-The server also starts a gRPC control endpoint on `PORT+1` for agent registration and heartbeats.
-Agents default to dialing this address based on `SERVER_URL`, but it can be overridden via `CONTROL_GRPC_ADDR` or `CONTROL_GRPC_SOCKET`.
 
 You may then choose to expose an LLM provider, an MCP server and/or a RAG system from private hardware behind a NAT/Firewall.
 
@@ -97,7 +73,7 @@ docker run --rm \
 SERVER_URL="wss://${MY_SERVER_ADDR}/api/workers/connect" \
 CLIENT_KEY="${MY_CLIENT_KEY}" \
 COMPLETION_BASE_URL="http://127.0.0.1:11434/v1" \
-nfrx-llm   # or: go run ./nfrx-plugins-llm/cmd/nfrx-llm
+nfrx-llm   # or: go run ./cmd/nfrx-llm
 ```
 
 After connecting, you can reach your private instance from the public endpoint:
@@ -199,9 +175,9 @@ A typical deployment looks like this:
 
 ## Developing Plugins
 
-nfrx exposes a small extension interface so new modules can register routes,
+nfrx exposes a small plugin interface so new modules can register routes,
 metrics and state. Skeleton implementations for worker-based and relay-based
-extensions live under [templates/](templates/).
+plugins live under [templates/](templates/).
 
 ## macOS Menu Bar App
 
@@ -378,8 +354,8 @@ make build
 
 On Windows:
 ```
-go build -o .\bin\nfrx.exe .\nfrx-server\cmd\nfrx
-go build -o .\bin\nfrx-llm.exe .\nfrx-plugins-llm\cmd\nfrx-llm
+go build -o .\bin\nfrx.exe .\cmd\nfrx
+go build -o .\bin\nfrx-llm.exe .\cmd\nfrx-llm
 ```
 
 ### Version
@@ -401,9 +377,9 @@ The same version information appears at the top of `--help` output.
 On Linux:
 
 ```bash
-PORT=8080 CLIENT_KEY=secret API_KEY=test123 go run ./nfrx-server/cmd/nfrx
+PORT=8080 CLIENT_KEY=secret API_KEY=test123 go run ./cmd/nfrx
 # or to expose metrics on a different port:
-# PORT=8080 METRICS_PORT=9090 CLIENT_KEY=secret API_KEY=test123 go run ./nfrx-server/cmd/nfrx
+# PORT=8080 METRICS_PORT=9090 CLIENT_KEY=secret API_KEY=test123 go run ./cmd/nfrx
 ```
 
 Workers register with the server at `/api/workers/connect`.
@@ -417,7 +393,7 @@ On Windows (CMD)
 set PORT=8080
 set CLIENT_KEY=secret
 set API_KEY=test123
-go run .\nfrx-server\cmd\nfrx
+go run .\cmd\nfrx
 REM or if you built:
 .\bin\nfrx.exe
 ```
@@ -426,7 +402,7 @@ On Windows (Powershell)
 
 ```
 $env:PORT = "8080"; $env:CLIENT_KEY = "secret"; $env:API_KEY = "test123"
-go run .\nfrx-server\cmd\nfrx
+go run .\cmd\nfrx
 # or if you built:
 .\bin\nfrx.exe
 ```
@@ -437,7 +413,7 @@ go run .\nfrx-server\cmd\nfrx
 On Linux:
 
 ```bash
-SERVER_URL=ws://localhost:8080/api/workers/connect CLIENT_KEY=secret COMPLETION_BASE_URL=http://127.0.0.1:11434/v1 CLIENT_NAME=Alpha go run ./nfrx-plugins-llm/cmd/nfrx-llm
+SERVER_URL=ws://localhost:8080/api/workers/connect CLIENT_KEY=secret COMPLETION_BASE_URL=http://127.0.0.1:11434/v1 CLIENT_NAME=Alpha go run ./cmd/nfrx-llm
 ```
 Optionally set `COMPLETION_API_KEY` to forward an API key to the backend. The worker proxies requests to `${COMPLETION_BASE_URL}/chat/completions`.
 
@@ -447,7 +423,7 @@ On Windows (CMD)
 set SERVER_URL=ws://localhost:8080/api/workers/connect
 set CLIENT_KEY=secret
 set COMPLETION_BASE_URL=http://127.0.0.1:11434/v1
-go run .\nfrx-plugins-llm\cmd\nfrx-llm
+go run .\cmd\nfrx-llm
 REM or if you built:
 .\bin\nfrx-llm.exe
 ```
@@ -459,7 +435,7 @@ $env:SERVER_URL = "ws://localhost:8080/api/workers/connect"
 $env:CLIENT_KEY = "secret"
 $env:COMPLETION_BASE_URL = "http://127.0.0.1:11434/v1"
 $env:CLIENT_NAME = "Alpha"
-go run .\nfrx-plugins-llm\cmd\nfrx-llm
+go run .\cmd\nfrx-llm
 # or:
 .\bin\nfrx-llm.exe
 ```

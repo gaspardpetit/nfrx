@@ -37,21 +37,12 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.23'
-
-      - name: Download deps
-        shell: bash
-        run: |
-          go work sync
-          (cd nfrx-server && go mod download)
-          (cd nfrx-plugins-llm && go mod download)
-          (cd nfrx-plugins-mcp && go mod download)
-          (cd nfrx-sdk && go mod download)
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
       - name: Build worker
         run: |
-          go build -trimpath -o nfrx-plugins-llm/cmd/nfrx-llm/nfrx-llm.exe -ldflags "-s -w -X main.version=${{ steps.meta.outputs.version }} -X main.buildSHA=${{ steps.meta.outputs.sha }} -X main.buildDate=${{ steps.meta.outputs.date }}" ./nfrx-plugins-llm/cmd/nfrx-llm
+          go build -trimpath -o cmd/nfrx-llm/nfrx-llm.exe -ldflags "-s -w -X main.version=${{ steps.meta.outputs.version }} -X main.buildSHA=${{ steps.meta.outputs.sha }} -X main.buildDate=${{ steps.meta.outputs.date }}" ./cmd/nfrx-llm
       - name: Build .NET projects
         run: dotnet build desktop/windows/Nfrx.Windows.sln -c Release
       - name: Install WiX
@@ -63,7 +54,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Path build | Out-Null
           wix build desktop/windows/Installer/Product.wxs `
-            -d:WorkerExe="nfrx-plugins-llm\cmd\nfrx-llm\nfrx-llm.exe" `
+            -d:WorkerExe="cmd\nfrx-llm\nfrx-llm.exe" `
             -d:ServiceExe="desktop\windows\WindowsService\bin\Release\net8.0-windows\WindowsService.exe" `
             -d:TrayExe="desktop\windows\TrayApp\bin\Release\net8.0-windows\TrayApp.exe" `
             -d:DefaultConfig="desktop\windows\Installer\worker.yaml" `
@@ -82,7 +73,7 @@ jobs:
         run: |
           signtool sign /f build\codesign.pfx /p %PFX_PASS% /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 desktop\windows\TrayApp\bin\Release\net8.0-windows\TrayApp.exe
           signtool sign /f build\codesign.pfx /p %PFX_PASS% /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 desktop\windows\WindowsService\bin\Release\net8.0-windows\WindowsService.exe
-          signtool sign /f build\codesign.pfx /p %PFX_PASS% /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 nfrx-plugins-llm\cmd\nfrx-llm\nfrx-llm.exe
+          signtool sign /f build\codesign.pfx /p %PFX_PASS% /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 cmd\nfrx-llm\nfrx-llm.exe
           signtool sign /f build\codesign.pfx /p %PFX_PASS% /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 build\nfrx.msi
       
       - name: Install cosign
@@ -101,7 +92,7 @@ jobs:
             "build/nfrx.msi",
             "desktop/windows/TrayApp/bin/Release/net8.0-windows/TrayApp.exe",
             "desktop/windows/WindowsService/bin/Release/net8.0-windows/WindowsService.exe",
-            "nfrx-plugins-llm/cmd/nfrx-llm/nfrx-llm.exe"
+            "cmd/nfrx-llm/nfrx-llm.exe"
           )
           foreach ($f in $files) {
             if (Test-Path $f) {

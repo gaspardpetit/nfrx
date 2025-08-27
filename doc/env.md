@@ -49,10 +49,8 @@ The worker optionally reads settings from a YAML config file. Defaults:
 |----------|------------|---------|---------|----------|
 | `CONFIG_FILE` | — | worker config file path | OS-specific | `--config` |
 | `LOG_DIR` | — | directory for worker log files | OS-specific (none on Linux) | `--log-dir` |
-| `SERVER_URL` | `server_url` | server WebSocket URL for job channel | `ws://localhost:8080/api/workers/connect` | `--server-url` |
+| `SERVER_URL` | `server_url` | server WebSocket URL for registration | `ws://localhost:8080/api/workers/connect` | `--server-url` |
 | `CLIENT_KEY` | `client_key` | shared secret for authenticating with the server | unset | `--client-key` |
-| `CONTROL_GRPC_ADDR` | `control_grpc_addr` | gRPC control plane address | derived from `SERVER_URL` | `--control-grpc-addr` |
-| `CONTROL_GRPC_SOCKET` | `control_grpc_socket` | gRPC control plane unix socket path | unset | `--control-grpc-socket` |
 | `COMPLETION_BASE_URL` | `completion_base_url` | base URL of the completion API | `http://127.0.0.1:11434/v1` | `--completion-base-url` |
 | `COMPLETION_API_KEY` | — | API key for the completion API | unset | `--completion-api-key` |
 | `MAX_CONCURRENCY` | `max_concurrency` | maximum number of jobs processed concurrently | `2` | `--max-concurrency` |
@@ -84,8 +82,6 @@ The worker optionally reads settings from a YAML config file. Defaults:
 | `PROVIDER_URL` | — | MCP provider URL | `http://127.0.0.1:7777/` | — |
 | `AUTH_TOKEN` | — | authorization token for broker requests | unset | — |
 | `CLIENT_KEY` | — | shared secret for authenticating with the server | unset | `--client-key` |
-| `CONTROL_GRPC_ADDR` | `control_grpc_addr` | gRPC control plane address | derived from `SERVER_URL` | `--control-grpc-addr` |
-| `CONTROL_GRPC_SOCKET` | `control_grpc_socket` | gRPC control plane unix socket path | unset | `--control-grpc-socket` |
 | `CONFIG_FILE` | — | path to YAML config file | OS-specific | `--config` |
 | `METRICS_PORT` | `metrics_addr` | Prometheus metrics listen address or port | unset (disabled) | `--metrics-port` |
 | `REQUEST_TIMEOUT` | — | seconds to wait for MCP provider responses | `300` | `--request-timeout` |
