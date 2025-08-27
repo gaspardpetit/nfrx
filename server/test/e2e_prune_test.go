@@ -1,0 +1,59 @@
+package test
+
+import (
+	"context"
+	"encoding/json"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/coder/websocket"
+
+	ctrl "github.com/gaspardpetit/nfrx-sdk/contracts/control"
+	mcp "github.com/gaspardpetit/nfrx/modules/mcp/ext"
+	"github.com/gaspardpetit/nfrx/server/internal/adapters"
+	"github.com/gaspardpetit/nfrx/server/internal/config"
+	llm "github.com/gaspardpetit/nfrx/server/internal/llm"
+	"github.com/gaspardpetit/nfrx/server/internal/plugin"
+	"github.com/gaspardpetit/nfrx/server/internal/server"
+	"github.com/gaspardpetit/nfrx/server/internal/serverstate"
+)
+
+func TestHeartbeatPrune(t *testing.T) {
+	cfg := config.ServerConfig{ClientKey: "secret", RequestTimeout: 5 * time.Second}
+	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout}, nil)
+	stateReg := serverstate.NewRegistry()
+	llmPlugin := llm.New(cfg, "test", "", "", mcpPlugin.Registry(), nil)
+	handler := server.New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
+	ctx := context.Background()
+	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/api/workers/connect"
+	conn, _, err := websocket.Dial(ctx, wsURL, nil)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer func() { _ = conn.Close(websocket.StatusNormalClosure, "") }()
+	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w1", ClientKey: "secret", Models: []string{"m"}, MaxConcurrency: 1, EmbeddingBatchSize: 0}
+	b, _ := json.Marshal(regMsg)
+	if err := conn.Write(ctx, websocket.MessageText, b); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	// ensure registration
+	for i := 0; i < 50; i++ {
+		if len(llmPlugin.Registry().Models()) > 0 {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+
+	// prune immediately
+	llmPlugin.Registry().PruneExpired(0)
+
+	if len(llmPlugin.Registry().Models()) != 0 {
+		t.Fatalf("expected models pruned")
+	}
+}

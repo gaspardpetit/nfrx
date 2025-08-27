@@ -12,7 +12,7 @@ import (
 	"github.com/mark3labs/mcp-go/client/transport"
 	"github.com/mark3labs/mcp-go/mcp"
 
-	reconnect "github.com/gaspardpetit/nfrx/internal/reconnect"
+	reconnect "github.com/gaspardpetit/nfrx/modules/common/reconnect"
 )
 
 type fakeInitTransport struct {

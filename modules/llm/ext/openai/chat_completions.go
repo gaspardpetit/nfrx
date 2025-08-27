@@ -11,19 +11,13 @@ import (
 	"github.com/google/uuid"
 
 	ctrl "github.com/gaspardpetit/nfrx-sdk/contracts/control"
-	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
 	"github.com/gaspardpetit/nfrx/modules/common/logx"
-	"github.com/gaspardpetit/nfrx/internal/metrics"
-	"github.com/gaspardpetit/nfrx/internal/serverstate"
+	"github.com/gaspardpetit/nfrx/modules/common/spi"
 )
 
 // ChatCompletionsHandler handles POST /api/v1/chat/completions as a pass-through.
-func ChatCompletionsHandler(reg *ctrlsrv.Registry, sched ctrlsrv.Scheduler, metricsReg *ctrlsrv.MetricsRegistry, timeout time.Duration) http.HandlerFunc {
+func ChatCompletionsHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics spi.Metrics, timeout time.Duration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if serverstate.IsDraining() {
-			http.Error(w, "server draining", http.StatusServiceUnavailable)
-			return
-		}
 		if r.Body == nil {
 			http.Error(w, "bad request", http.StatusBadRequest)
 			return
@@ -51,15 +45,15 @@ func ChatCompletionsHandler(reg *ctrlsrv.Registry, sched ctrlsrv.Scheduler, metr
 		}
 		if len(exact) == 0 {
 			if key, ok := ctrl.AliasKey(meta.Model); ok {
-				logx.Log.Info().Str("event", "alias_fallback").Str("requested_id", meta.Model).Str("alias_key", key).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Msg("alias fallback")
+				logx.Log.Info().Str("event", "alias_fallback").Str("requested_id", meta.Model).Str("alias_key", key).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Msg("alias fallback")
 			}
 		}
-		reg.IncInFlight(worker.ID)
-		defer reg.DecInFlight(worker.ID)
+		reg.IncInFlight(worker.ID())
+		defer reg.DecInFlight(worker.ID())
 
 		reqID := uuid.NewString()
 		logID := chiMiddleware.GetReqID(r.Context())
-		logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", meta.Model).Bool("stream", meta.Stream).Msg("dispatch")
+		logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Str("model", meta.Model).Bool("stream", meta.Stream).Msg("dispatch")
 		ch := make(chan interface{}, 16)
 		worker.AddJob(reqID, ch)
 		defer worker.RemoveJob(reqID)
@@ -92,11 +86,11 @@ func ChatCompletionsHandler(reg *ctrlsrv.Registry, sched ctrlsrv.Scheduler, metr
 			Body:      body,
 		}
 		select {
-		case worker.Send <- msg:
-			metricsReg.RecordJobStart(worker.ID)
-			metricsReg.SetWorkerStatus(worker.ID, ctrlsrv.StatusWorking)
+		case worker.SendChan() <- msg:
+			metrics.RecordJobStart(worker.ID())
+			metrics.SetWorkerStatus(worker.ID(), spi.StatusWorking)
 		default:
-			logx.Log.Warn().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", meta.Model).Msg("worker busy")
+			logx.Log.Warn().Str("request_id", logID).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Str("model", meta.Model).Msg("worker busy")
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusServiceUnavailable)
 			if _, err := w.Write([]byte(`{"error":"worker_busy"}`)); err != nil {
@@ -125,35 +119,35 @@ func ChatCompletionsHandler(reg *ctrlsrv.Registry, sched ctrlsrv.Scheduler, metr
 
 		defer func() {
 			dur := time.Since(start)
-			metricsReg.RecordJobEnd(worker.ID, meta.Model, dur, tokensIn, tokensOut, 0, success, errMsg)
-			metricsReg.SetWorkerStatus(worker.ID, ctrlsrv.StatusIdle)
-			metrics.ObserveRequestDuration(worker.ID, meta.Model, dur)
-			metrics.RecordWorkerProcessingTime(worker.ID, dur)
+			metrics.RecordJobEnd(worker.ID(), meta.Model, dur, tokensIn, tokensOut, 0, success, errMsg)
+			metrics.SetWorkerStatus(worker.ID(), spi.StatusIdle)
+			metrics.ObserveRequestDuration(worker.ID(), meta.Model, dur)
+			metrics.RecordWorkerProcessingTime(worker.ID(), dur)
 			metrics.RecordModelRequest(meta.Model, success)
 			if tokensIn > 0 {
 				metrics.RecordModelTokens(meta.Model, "in", tokensIn)
-				metrics.RecordWorkerTokens(worker.ID, "in", tokensIn)
+				metrics.RecordWorkerTokens(worker.ID(), "in", tokensIn)
 			}
 			if tokensOut > 0 {
 				metrics.RecordModelTokens(meta.Model, "out", tokensOut)
-				metrics.RecordWorkerTokens(worker.ID, "out", tokensOut)
+				metrics.RecordWorkerTokens(worker.ID(), "out", tokensOut)
 			}
 		}()
 		for {
 			select {
 			case <-ctx.Done():
 				select {
-				case worker.Send <- ctrl.HTTPProxyCancelMessage{Type: "http_proxy_cancel", RequestID: reqID}:
+				case worker.SendChan() <- ctrl.HTTPProxyCancelMessage{Type: "http_proxy_cancel", RequestID: reqID}:
 				default:
 				}
 				return
 			case <-timeoutCh:
-				hb := worker.LastHeartbeat
+				hb := worker.LastHeartbeat()
 				since := time.Since(hb)
 				if since > timeout {
 					errMsg = "timeout"
 					select {
-					case worker.Send <- ctrl.HTTPProxyCancelMessage{Type: "http_proxy_cancel", RequestID: reqID}:
+					case worker.SendChan() <- ctrl.HTTPProxyCancelMessage{Type: "http_proxy_cancel", RequestID: reqID}:
 					default:
 					}
 					if !headersSent {
@@ -204,7 +198,7 @@ func ChatCompletionsHandler(reg *ctrlsrv.Registry, sched ctrlsrv.Scheduler, metr
 						if m.Status >= http.StatusInternalServerError || m.Status == http.StatusUnauthorized || m.Status == http.StatusForbidden {
 							lvl = logx.Log.Error()
 						}
-						lvl.Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", meta.Model).Int("status", m.Status).Msg("upstream response")
+						lvl.Str("request_id", logID).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Str("model", meta.Model).Int("status", m.Status).Msg("upstream response")
 					}
 					if flusher != nil {
 						flusher.Flush()
@@ -279,11 +273,11 @@ func ChatCompletionsHandler(reg *ctrlsrv.Registry, sched ctrlsrv.Scheduler, metr
 							logx.Log.Error().Err(err).Msg("write upstream error")
 						}
 						errMsg = m.Error.Message
-						logx.Log.Error().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", meta.Model).Str("error_code", m.Error.Code).Str("error", m.Error.Message).Msg("upstream error")
+						logx.Log.Error().Str("request_id", logID).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Str("model", meta.Model).Str("error_code", m.Error.Code).Str("error", m.Error.Message).Msg("upstream error")
 					} else {
 						success = true
 					}
-					logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID).Str("worker_name", worker.Name).Str("model", meta.Model).Bool("stream", meta.Stream).Dur("duration", time.Since(start)).Msg("complete")
+					logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Str("model", meta.Model).Bool("stream", meta.Stream).Dur("duration", time.Since(start)).Msg("complete")
 					return
 				}
 			}

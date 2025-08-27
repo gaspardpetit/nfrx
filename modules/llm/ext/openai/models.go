@@ -7,12 +7,12 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
 	"github.com/gaspardpetit/nfrx/modules/common/logx"
+	"github.com/gaspardpetit/nfrx/modules/common/spi"
 )
 
 // ListModelsHandler handles GET /api/v1/models.
-func ListModelsHandler(reg *ctrlsrv.Registry) http.HandlerFunc {
+func ListModelsHandler(reg spi.WorkerRegistry) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		models := reg.AggregatedModels()
 		type item struct {
@@ -37,7 +37,7 @@ func ListModelsHandler(reg *ctrlsrv.Registry) http.HandlerFunc {
 }
 
 // GetModelHandler handles GET /api/v1/models/{id}.
-func GetModelHandler(reg *ctrlsrv.Registry) http.HandlerFunc {
+func GetModelHandler(reg spi.WorkerRegistry) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
 		m, ok := reg.AggregatedModel(id)

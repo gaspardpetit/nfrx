@@ -1,4 +1,4 @@
-package ext
+package mcp
 
 import (
 	"net/http"
@@ -6,23 +6,20 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/gaspardpetit/nfrx/internal/config"
-	"github.com/gaspardpetit/nfrx/internal/plugin"
-	"github.com/gaspardpetit/nfrx/internal/serverstate"
+	"github.com/gaspardpetit/nfrx/modules/common/spi"
 	mcpbroker "github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
 )
 
 // Plugin implements the MCP relay as a plugin.
 type Plugin struct {
-	cfg    config.ServerConfig
 	broker *mcpbroker.Registry
 	opts   map[string]string
 }
 
 // New constructs a new MCP plugin.
-func New(cfg config.ServerConfig, opts map[string]string) *Plugin {
-	reg := mcpbroker.NewRegistry(cfg.RequestTimeout)
-	return &Plugin{cfg: cfg, broker: reg, opts: opts}
+func New(state spi.ServerState, opts Options, pluginOpts map[string]string) *Plugin {
+	reg := mcpbroker.NewRegistry(opts.RequestTimeout, state)
+	return &Plugin{broker: reg, opts: pluginOpts}
 }
 
 func (p *Plugin) ID() string { return "mcp" }
@@ -34,8 +31,8 @@ func (p *Plugin) RegisterRoutes(r chi.Router) {}
 func (p *Plugin) RegisterMetrics(reg *prometheus.Registry) {}
 
 // RegisterState registers MCP state elements.
-func (p *Plugin) RegisterState(reg *serverstate.Registry) {
-	reg.Add(serverstate.Element{ID: "mcp", Data: func() interface{} { return p.broker.Snapshot() }})
+func (p *Plugin) RegisterState(reg spi.StateRegistry) {
+	reg.Add(spi.StateElement{ID: "mcp", Data: func() any { return p.broker.Snapshot() }})
 }
 
 // RegisterRelayEndpoints wires MCP relay HTTP/WS endpoints.
@@ -50,5 +47,6 @@ func (p *Plugin) WSHandler(clientKey string) http.Handler {
 // Registry exposes the underlying broker for tests.
 func (p *Plugin) Registry() *mcpbroker.Registry { return p.broker }
 
-var _ plugin.Plugin = (*Plugin)(nil)
-var _ plugin.RelayProvider = (*Plugin)(nil)
+var _ spi.Plugin = (*Plugin)(nil)
+var _ spi.RelayProvider = (*Plugin)(nil)
+var _ spi.RelayWS = (*Plugin)(nil)

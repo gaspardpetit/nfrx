@@ -13,9 +13,8 @@ import (
 
 	"github.com/coder/websocket"
 	"github.com/gaspardpetit/nfrx-sdk/contracts/mcp"
-	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
 	"github.com/gaspardpetit/nfrx/modules/common/logx"
-	"github.com/gaspardpetit/nfrx/internal/serverstate"
+	"github.com/gaspardpetit/nfrx/modules/common/spi"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
@@ -47,16 +46,17 @@ type Registry struct {
 	heartbeat      time.Duration
 	deadAfter      time.Duration
 	maxConc        int
+	state          spi.ServerState
 }
 
 // NewRegistry constructs a Registry using environment variables for configuration.
-func NewRegistry(timeout time.Duration) *Registry {
+func NewRegistry(timeout time.Duration, state spi.ServerState) *Registry {
 	maxReqBytes := int64(parseInt(getEnv("BROKER_MAX_REQ_BYTES", "10485760")))
 	maxRespBytes := int64(parseInt(getEnv("BROKER_MAX_RESP_BYTES", "10485760")))
 	heartbeat := time.Duration(parseInt(getEnv("BROKER_WS_HEARTBEAT_MS", "15000"))) * time.Millisecond
 	deadAfter := time.Duration(parseInt(getEnv("BROKER_WS_DEAD_AFTER_MS", "45000"))) * time.Millisecond
 	maxConc := parseInt(getEnv("BROKER_MAX_CONCURRENCY_PER_CLIENT", "16"))
-	return &Registry{relays: map[string]*Relay{}, maxReqBytes: maxReqBytes, maxRespBytes: maxRespBytes, requestTimeout: timeout, heartbeat: heartbeat, deadAfter: deadAfter, maxConc: maxConc}
+	return &Registry{relays: map[string]*Relay{}, maxReqBytes: maxReqBytes, maxRespBytes: maxRespBytes, requestTimeout: timeout, heartbeat: heartbeat, deadAfter: deadAfter, maxConc: maxConc, state: state}
 }
 
 func parseInt(v string) int {
@@ -74,7 +74,7 @@ func getEnv(k, d string) string {
 // WSHandler handles relay websocket connections.
 func (r *Registry) WSHandler(clientKey string) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		if serverstate.IsDraining() {
+		if r.state != nil && r.state.IsDraining() {
 			http.Error(w, "draining", http.StatusServiceUnavailable)
 			return
 		}
@@ -191,10 +191,10 @@ func (r *Registry) getRelay(clientID string) *Relay {
 }
 
 // Snapshot returns a snapshot of connected relays and active sessions.
-func (r *Registry) Snapshot() ctrlsrv.MCPState {
+func (r *Registry) Snapshot() spi.MCPState {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	state := ctrlsrv.MCPState{}
+	state := spi.MCPState{}
 	for id, rl := range r.relays {
 		rl.mu.Lock()
 		funcs := make(map[string]int, len(rl.methods))
@@ -205,7 +205,7 @@ func (r *Registry) Snapshot() ctrlsrv.MCPState {
 		if rl.inflight > 0 {
 			status = "active"
 		}
-		state.Clients = append(state.Clients, ctrlsrv.MCPClientSnapshot{
+		state.Clients = append(state.Clients, spi.MCPClientSnapshot{
 			ID:        id,
 			Name:      rl.name,
 			Status:    status,
@@ -213,7 +213,7 @@ func (r *Registry) Snapshot() ctrlsrv.MCPState {
 			Functions: funcs,
 		})
 		for sid, s := range rl.sessions {
-			state.Sessions = append(state.Sessions, ctrlsrv.MCPSessionSnapshot{
+			state.Sessions = append(state.Sessions, spi.MCPSessionSnapshot{
 				ID:         sid,
 				ClientID:   id,
 				Method:     s.method,
@@ -255,7 +255,7 @@ func (rl *Relay) write(ctx context.Context, f mcp.Frame) error {
 // HTTPHandler handles host JSON-RPC requests.
 func (r *Registry) HTTPHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		if serverstate.IsDraining() {
+		if r.state != nil && r.state.IsDraining() {
 			http.Error(w, "draining", http.StatusServiceUnavailable)
 			return
 		}

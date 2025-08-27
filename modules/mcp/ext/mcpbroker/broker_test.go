@@ -16,8 +16,12 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+type fakeState struct{}
+
+func (fakeState) IsDraining() bool { return false }
+
 func TestHTTPHandlerRelayOffline(t *testing.T) {
-	reg := NewRegistry(time.Second)
+	reg := NewRegistry(time.Second, fakeState{})
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/mcp/id/client", bytes.NewReader([]byte(`{"jsonrpc":"2.0","id":1,"method":"initialize"}`)))
 	rctx := chi.NewRouteContext()
@@ -43,7 +47,7 @@ func TestHTTPHandlerRelayOffline(t *testing.T) {
 }
 
 func TestHTTPHandlerConcurrencyLimit(t *testing.T) {
-	reg := NewRegistry(time.Second)
+	reg := NewRegistry(time.Second, fakeState{})
 	reg.maxConc = 1
 	reg.relays["client"] = &Relay{pending: map[string]chan mcpc.Frame{}, inflight: 1, methods: map[string]int{}, sessions: map[string]sessionInfo{}}
 	rr := httptest.NewRecorder()
@@ -71,7 +75,7 @@ func TestHTTPHandlerConcurrencyLimit(t *testing.T) {
 }
 
 func TestHTTPHandlerUnauthorized(t *testing.T) {
-	reg := NewRegistry(time.Second)
+	reg := NewRegistry(time.Second, fakeState{})
 	r := chi.NewRouter()
 	r.Handle("/api/mcp/connect", reg.WSHandler(""))
 	r.Post("/api/mcp/id/{id}", reg.HTTPHandler())

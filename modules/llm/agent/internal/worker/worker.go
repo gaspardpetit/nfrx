@@ -12,11 +12,11 @@ import (
 	"github.com/google/uuid"
 
 	ctrl "github.com/gaspardpetit/nfrx-sdk/contracts/control"
-	reconnect "github.com/gaspardpetit/nfrx/internal/reconnect"
-	"github.com/gaspardpetit/nfrx/internal/relay"
 	"github.com/gaspardpetit/nfrx/modules/common/logx"
+	reconnect "github.com/gaspardpetit/nfrx/modules/common/reconnect"
 	aconfig "github.com/gaspardpetit/nfrx/modules/llm/agent/internal/config"
 	"github.com/gaspardpetit/nfrx/modules/llm/agent/internal/ollama"
+	"github.com/gaspardpetit/nfrx/modules/llm/agent/internal/relay"
 )
 
 // Run starts the worker agent.

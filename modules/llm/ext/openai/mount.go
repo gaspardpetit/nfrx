@@ -1,15 +1,13 @@
 package openai
 
 import (
-	"time"
-
-	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
+	"github.com/gaspardpetit/nfrx/modules/common/spi"
 	"github.com/go-chi/chi/v5"
 )
 
-func Mount(v1 chi.Router, reg *ctrlsrv.Registry, sched ctrlsrv.Scheduler, metrics *ctrlsrv.MetricsRegistry, timeout time.Duration, maxParallel int) {
-	v1.Post("/chat/completions", ChatCompletionsHandler(reg, sched, metrics, timeout))
-	v1.Post("/embeddings", EmbeddingsHandler(reg, sched, metrics, timeout, maxParallel))
+func Mount(v1 chi.Router, reg spi.WorkerRegistry, sched spi.Scheduler, metrics spi.Metrics, opts Options) {
+	v1.Post("/chat/completions", ChatCompletionsHandler(reg, sched, metrics, opts.RequestTimeout))
+	v1.Post("/embeddings", EmbeddingsHandler(reg, sched, metrics, opts.RequestTimeout, opts.MaxParallelEmbeddings))
 	v1.Get("/models", ListModelsHandler(reg))
 	v1.Get("/models/{id}", GetModelHandler(reg))
 }
