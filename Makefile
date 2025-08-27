@@ -13,8 +13,8 @@ GOFLAGS ?= -trimpath
 
 build:
 	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./cmd/nfrx
-	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./cmd/nfrx-llm
-	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./cmd/nfrx-mcp
+	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./modules/llm/agent/cmd/nfrx-llm
+	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./modules/mcp/agent/cmd/nfrx-mcp
 
 test:
 	go test ./... -race -count=1
