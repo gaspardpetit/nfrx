@@ -13,6 +13,7 @@ import (
 
 	ctrl "github.com/gaspardpetit/nfrx-sdk/contracts/control"
 	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
+	openai "github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
 )
 
 func TestEmbeddings(t *testing.T) {
@@ -21,7 +22,7 @@ func TestEmbeddings(t *testing.T) {
 	wk := &ctrlsrv.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
 	reg.Add(wk)
 	metricsReg := ctrlsrv.NewMetricsRegistry("", "", "")
-	h := EmbeddingsHandler(reg, sched, metricsReg, time.Second, 8)
+	h := openai.EmbeddingsHandler(reg, sched, metricsReg, time.Second, 8)
 
 	go func() {
 		msg := <-wk.Send
@@ -50,7 +51,7 @@ func TestEmbeddingsEarlyError(t *testing.T) {
 	wk := &ctrlsrv.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
 	reg.Add(wk)
 	metricsReg := ctrlsrv.NewMetricsRegistry("", "", "")
-	h := EmbeddingsHandler(reg, sched, metricsReg, time.Second, 8)
+	h := openai.EmbeddingsHandler(reg, sched, metricsReg, time.Second, 8)
 
 	go func() {
 		msg := <-wk.Send
@@ -78,7 +79,7 @@ func TestEmbeddingsBatching(t *testing.T) {
 	wk := &ctrlsrv.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{}), EmbeddingBatchSize: 1}
 	reg.Add(wk)
 	metricsReg := ctrlsrv.NewMetricsRegistry("", "", "")
-	h := EmbeddingsHandler(reg, sched, metricsReg, time.Second, 8)
+	h := openai.EmbeddingsHandler(reg, sched, metricsReg, time.Second, 8)
 
 	errCh := make(chan error, 1)
 	go func() {
@@ -140,7 +141,7 @@ func TestEmbeddingsParallelSplit(t *testing.T) {
 	reg.Add(w1)
 	reg.Add(w2)
 	metricsReg := ctrlsrv.NewMetricsRegistry("", "", "")
-	h := EmbeddingsHandler(reg, sched, metricsReg, time.Second, 8)
+	h := openai.EmbeddingsHandler(reg, sched, metricsReg, time.Second, 8)
 
 	errCh := make(chan error, 2)
 	go func() {

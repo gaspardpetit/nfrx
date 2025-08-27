@@ -16,7 +16,9 @@ import (
 	"github.com/gaspardpetit/nfrx/internal/plugin"
 	"github.com/gaspardpetit/nfrx/internal/server"
 	"github.com/gaspardpetit/nfrx/internal/serverstate"
-	"github.com/gaspardpetit/nfrx/modules/llm/agent/internal/worker"
+	"github.com/gaspardpetit/nfrx/modules/llm/agent/worker"
+	llmext "github.com/gaspardpetit/nfrx/modules/llm/ext"
+	mcpext "github.com/gaspardpetit/nfrx/modules/mcp/ext"
 )
 
 func TestE2EEmbeddingsProxy(t *testing.T) {
@@ -52,7 +54,7 @@ func TestE2EEmbeddingsProxy(t *testing.T) {
 	defer cancel()
 	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/api/workers/connect"
 	go func() {
-		_ = worker.Run(ctx, config.WorkerConfig{ServerURL: wsURL, ClientKey: "secret", CompletionBaseURL: ollama.URL + "/v1", CompletionAPIKey: "secret-123", ClientID: "w1", ClientName: "w1", MaxConcurrency: 2, EmbeddingBatchSize: 0})
+		_ = worker.Run(ctx, worker.Config{ServerURL: wsURL, ClientKey: "secret", CompletionBaseURL: ollama.URL + "/v1", CompletionAPIKey: "secret-123", ClientID: "w1", ClientName: "w1", MaxConcurrency: 2, EmbeddingBatchSize: 0})
 	}()
 
 	for i := 0; i < 20; i++ {

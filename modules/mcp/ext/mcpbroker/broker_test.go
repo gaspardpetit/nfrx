@@ -12,6 +12,7 @@ import (
 
 	"github.com/coder/websocket"
 	mcpc "github.com/gaspardpetit/nfrx-sdk/contracts/mcp"
+	mcp "github.com/gaspardpetit/nfrx/modules/mcp/agent/mcp"
 	"github.com/go-chi/chi/v5"
 )
 

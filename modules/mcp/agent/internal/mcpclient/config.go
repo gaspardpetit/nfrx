@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gaspardpetit/nfrx/internal/config"
+	commoncfg "github.com/gaspardpetit/nfrx/modules/common/config"
 	"github.com/mark3labs/mcp-go/client/transport"
 	"gopkg.in/yaml.v3"
 )
@@ -89,7 +89,7 @@ func (c *Config) BindFlags() {
 	if c.HTTP.Timeout == 0 {
 		c.HTTP.Timeout = 30 * time.Second
 	}
-	cfgPath := config.DefaultConfigPath("mcp.yaml")
+	cfgPath := commoncfg.DefaultConfigPath("mcp.yaml")
 	c.ConfigFile = getEnv("CONFIG_FILE", cfgPath)
 	c.Order = splitComma(getEnv("MCP_TRANSPORT_ORDER", strings.Join(c.Order, ",")))
 	c.InitTimeout = parseDuration(getEnv("MCP_INIT_TIMEOUT", c.InitTimeout.String()))

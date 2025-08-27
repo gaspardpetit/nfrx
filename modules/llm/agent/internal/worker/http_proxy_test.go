@@ -8,8 +8,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/gaspardpetit/nfrx/internal/config"
-	"github.com/gaspardpetit/nfrx/internal/ctrl"
+	ctrl "github.com/gaspardpetit/nfrx-sdk/contracts/control"
+	aconfig "github.com/gaspardpetit/nfrx/modules/llm/agent/internal/config"
 )
 
 func TestHandleHTTPProxyAuthAndStream(t *testing.T) {
@@ -45,7 +45,7 @@ func TestHandleHTTPProxyAuthAndStream(t *testing.T) {
 	}))
 	defer ollama.Close()
 
-	cfg := config.WorkerConfig{CompletionBaseURL: ollama.URL + "/v1", CompletionAPIKey: "secret-123", EmbeddingBatchSize: 0}
+	cfg := aconfig.WorkerConfig{CompletionBaseURL: ollama.URL + "/v1", CompletionAPIKey: "secret-123", EmbeddingBatchSize: 0}
 	sendCh := make(chan []byte, 16)
 	cancels := make(map[string]context.CancelFunc)
 	var mu sync.Mutex

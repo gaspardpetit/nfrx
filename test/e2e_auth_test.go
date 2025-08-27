@@ -120,7 +120,7 @@ func TestMCPAuth(t *testing.T) {
 	defer srv.Close()
 
 	ctx := context.Background()
-	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/api/mcp/connect"
+	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/api/mcp/relay/connect"
 
 	connBad, _, err := websocket.Dial(ctx, wsURL, nil)
 	if err != nil {
@@ -160,7 +160,7 @@ func TestMCPAuth(t *testing.T) {
 	handler = server.New(cfg, stateReg, []plugin.Plugin{mcpReg, llm})
 	srv2 := httptest.NewServer(handler)
 	defer srv2.Close()
-	wsURL2 := strings.Replace(srv2.URL, "http", "ws", 1) + "/api/mcp/connect"
+	wsURL2 := strings.Replace(srv2.URL, "http", "ws", 1) + "/api/mcp/relay/connect"
 	conn2, _, err := websocket.Dial(ctx, wsURL2, nil)
 	if err != nil {
 		t.Fatalf("dial2: %v", err)

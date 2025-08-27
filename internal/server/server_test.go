@@ -12,6 +12,7 @@ import (
 	"github.com/gaspardpetit/nfrx/internal/plugin"
 	"github.com/gaspardpetit/nfrx/internal/serverstate"
 	llmext "github.com/gaspardpetit/nfrx/modules/llm/ext"
+	mcpext "github.com/gaspardpetit/nfrx/modules/mcp/ext"
 )
 
 func TestMetricsEndpointDefaultPort(t *testing.T) {

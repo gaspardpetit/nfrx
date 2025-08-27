@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"sync/atomic"
 
-	"github.com/gaspardpetit/nfrx/internal/config"
-	"github.com/gaspardpetit/nfrx/internal/ctrl"
+	ctrl "github.com/gaspardpetit/nfrx-sdk/contracts/control"
+	aconfig "github.com/gaspardpetit/nfrx/modules/llm/agent/internal/config"
 	"github.com/gaspardpetit/nfrx/modules/llm/agent/internal/ollama"
 )
 
@@ -29,7 +29,7 @@ func (f fakeHealthClient) Health(ctx context.Context) ([]string, error) {
 
 func TestProbeBackendUpdatesState(t *testing.T) {
 	resetState()
-	cfg := config.WorkerConfig{ClientID: "w1", ClientName: "n", MaxConcurrency: 1, EmbeddingBatchSize: 0}
+	cfg := aconfig.WorkerConfig{ClientID: "w1", ClientName: "n", MaxConcurrency: 1, EmbeddingBatchSize: 0}
 	if err := probeBackend(context.Background(), fakeHealthClient{models: []string{"m1"}}, cfg, nil); err != nil {
 		t.Fatalf("probe healthy: %v", err)
 	}
@@ -57,7 +57,7 @@ func TestProbeBackendSendsUpdates(t *testing.T) {
 	resetState()
 	SetWorkerInfo("w1", "n", 1, 0, []string{"m1"})
 	SetConnectedToBackend(true)
-	cfg := config.WorkerConfig{ClientID: "w1", ClientName: "n", MaxConcurrency: 1, EmbeddingBatchSize: 0}
+	cfg := aconfig.WorkerConfig{ClientID: "w1", ClientName: "n", MaxConcurrency: 1, EmbeddingBatchSize: 0}
 
 	// We now use the status update channel, and probeOllama only emits when something changes.
 	ch := make(chan ctrl.StatusUpdateMessage, 1)
@@ -117,7 +117,7 @@ func TestHealthProbeIntegration(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	cfgFile := filepath.Join(t.TempDir(), "worker.yaml")
-	cfg := config.WorkerConfig{ClientID: "w1", ClientName: "n", MaxConcurrency: 1, EmbeddingBatchSize: 0}
+	cfg := aconfig.WorkerConfig{ClientID: "w1", ClientName: "n", MaxConcurrency: 1, EmbeddingBatchSize: 0}
 	addr, err := StartStatusServer(ctx, "127.0.0.1:0", cfgFile, time.Second, cancel)
 	if err != nil {
 		t.Fatalf("start status server: %v", err)

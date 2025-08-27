@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
-	"github.com/gaspardpetit/nfrx/internal/config"
-	"github.com/gaspardpetit/nfrx/internal/ctrl"
+	ctrl "github.com/gaspardpetit/nfrx-sdk/contracts/control"
 	"github.com/gaspardpetit/nfrx/internal/relay"
+	aconfig "github.com/gaspardpetit/nfrx/modules/llm/agent/internal/config"
 )
 
 func TestDrainAndTerminate(t *testing.T) {
@@ -54,7 +54,7 @@ func TestDrainAndTerminate(t *testing.T) {
 	statusAddr := ln.Addr().String()
 	_ = ln.Close()
 
-	cfg := config.WorkerConfig{ServerURL: wsURL, CompletionBaseURL: ollama.URL + "/v1", MaxConcurrency: 1, EmbeddingBatchSize: 0, StatusAddr: statusAddr, ConfigFile: filepath.Join(t.TempDir(), "worker.yaml")}
+	cfg := aconfig.WorkerConfig{ServerURL: wsURL, CompletionBaseURL: ollama.URL + "/v1", MaxConcurrency: 1, EmbeddingBatchSize: 0, StatusAddr: statusAddr, ConfigFile: filepath.Join(t.TempDir(), "worker.yaml")}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	errCh := make(chan error, 1)
@@ -151,7 +151,7 @@ func TestDrainTerminatesWhenIdle(t *testing.T) {
 	defer srv.Close()
 	wsURL := "ws://" + srv.Listener.Addr().String()
 
-	cfg := config.WorkerConfig{ServerURL: wsURL, CompletionBaseURL: ollama.URL + "/v1", MaxConcurrency: 1, EmbeddingBatchSize: 0}
+	cfg := aconfig.WorkerConfig{ServerURL: wsURL, CompletionBaseURL: ollama.URL + "/v1", MaxConcurrency: 1, EmbeddingBatchSize: 0}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	errCh := make(chan error, 1)
