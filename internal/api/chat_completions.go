@@ -10,7 +10,7 @@ import (
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 
-	ctrl "github.com/gaspardpetit/nfrx/internal/ctrl"
+	ctrl "github.com/gaspardpetit/nfrx-sdk/contracts/control"
 	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
 	"github.com/gaspardpetit/nfrx/internal/logx"
 	"github.com/gaspardpetit/nfrx/internal/metrics"

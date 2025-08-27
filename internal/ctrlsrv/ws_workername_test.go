@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
-	ctrl "github.com/gaspardpetit/nfrx/internal/ctrl"
+	ctrl "github.com/gaspardpetit/nfrx-sdk/contracts/control"
 )
 
 func TestRegisterStoresWorkerName(t *testing.T) {

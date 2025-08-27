@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	ctrl "github.com/gaspardpetit/nfrx/internal/ctrl"
+	ctrl "github.com/gaspardpetit/nfrx-sdk/contracts/control"
 	"github.com/gaspardpetit/nfrx/internal/logx"
 )
 

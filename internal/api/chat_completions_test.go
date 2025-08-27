@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	ctrl "github.com/gaspardpetit/nfrx/internal/ctrl"
+	ctrl "github.com/gaspardpetit/nfrx-sdk/contracts/control"
 	ctrlsrv "github.com/gaspardpetit/nfrx/internal/ctrlsrv"
 )
 

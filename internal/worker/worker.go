@@ -11,8 +11,8 @@ import (
 	"github.com/coder/websocket"
 	"github.com/google/uuid"
 
+	ctrl "github.com/gaspardpetit/nfrx-sdk/contracts"
 	"github.com/gaspardpetit/nfrx/internal/config"
-	"github.com/gaspardpetit/nfrx/internal/ctrl"
 	"github.com/gaspardpetit/nfrx/internal/logx"
 	"github.com/gaspardpetit/nfrx/internal/ollama"
 	reconnect "github.com/gaspardpetit/nfrx/internal/reconnect"
