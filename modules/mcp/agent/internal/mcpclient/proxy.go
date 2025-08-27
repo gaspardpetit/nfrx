@@ -13,7 +13,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/gaspardpetit/nfrx/modules/common/logx"
-	"github.com/gaspardpetit/nfrx/internal/mcpbridge"
+	"github.com/gaspardpetit/nfrx/modules/mcp/agent/internal/mcpbridge"
 )
 
 // wsConn abstracts a minimal websocket connection for testing.

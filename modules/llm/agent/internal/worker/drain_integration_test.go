@@ -12,8 +12,8 @@ import (
 
 	"github.com/coder/websocket"
 	ctrl "github.com/gaspardpetit/nfrx-sdk/contracts/control"
-	"github.com/gaspardpetit/nfrx/internal/relay"
 	aconfig "github.com/gaspardpetit/nfrx/modules/llm/agent/internal/config"
+	"github.com/gaspardpetit/nfrx/modules/llm/agent/internal/relay"
 )
 
 func TestDrainAndTerminate(t *testing.T) {

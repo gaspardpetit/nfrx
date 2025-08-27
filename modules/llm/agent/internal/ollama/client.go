@@ -8,7 +8,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/gaspardpetit/nfrx/internal/relay"
+	"github.com/gaspardpetit/nfrx/modules/llm/agent/internal/relay"
 )
 
 // Client is a tiny HTTP client for talking to local Ollama.

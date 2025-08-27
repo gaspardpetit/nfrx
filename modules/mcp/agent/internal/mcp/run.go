@@ -12,8 +12,8 @@ import (
 
 	"github.com/coder/websocket"
 
-	reconnect "github.com/gaspardpetit/nfrx/internal/reconnect"
 	"github.com/gaspardpetit/nfrx/modules/common/logx"
+	reconnect "github.com/gaspardpetit/nfrx/modules/common/reconnect"
 	aconfig "github.com/gaspardpetit/nfrx/modules/mcp/agent/internal/config"
 )
 
