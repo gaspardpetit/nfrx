@@ -3,7 +3,7 @@ package llm
 import (
 	"time"
 
-	"github.com/gaspardpetit/nfrx/modules/common/spi"
+	"github.com/gaspardpetit/nfrx-sdk/spi"
 	"github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
 	mcpbroker "github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
 	"github.com/gaspardpetit/nfrx/server/internal/adapters"

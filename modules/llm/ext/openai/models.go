@@ -7,8 +7,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/gaspardpetit/nfrx-sdk/spi"
 	"github.com/gaspardpetit/nfrx/modules/common/logx"
-	"github.com/gaspardpetit/nfrx/modules/common/spi"
 )
 
 // ListModelsHandler handles GET /api/llm/v1/models.
