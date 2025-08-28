@@ -28,7 +28,7 @@ import (
 
 func TestE2EChatCompletionsProxy(t *testing.T) {
     cfg := config.ServerConfig{ClientKey: "secret", APIKey: "apikey", RequestTimeout: 5 * time.Second}
-    mcpPlugin := mcp.New(adapters.ServerState{}, spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey})
+	mcpPlugin := mcp.New(adapters.ServerState{}, nil, nil, nil, nil, nil, "test", "", "", spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg := serverstate.NewRegistry()
     reg := ctrlsrv.NewRegistry()
     metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
@@ -39,7 +39,7 @@ func TestE2EChatCompletionsProxy(t *testing.T) {
     mx := adapters.NewMetrics(metricsReg)
     stateProvider := func() any { return metricsReg.Snapshot() }
     srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
-    llmPlugin := llm.New(connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
+    llmPlugin := llm.New(adapters.ServerState{}, connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()

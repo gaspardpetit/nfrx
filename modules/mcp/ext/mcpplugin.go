@@ -1,6 +1,7 @@
 package mcp
 
 import (
+    "net/http"
     mcpbroker "github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
     "github.com/gaspardpetit/nfrx/sdk/spi"
 )
@@ -13,7 +14,17 @@ type Plugin struct {
 }
 
 // New constructs a new MCP plugin using the common server options.
-func New(state spi.ServerState, opts spi.Options) *Plugin {
+func New(
+    state spi.ServerState,
+    connect http.Handler,
+    workers spi.WorkerRegistry,
+    sched spi.Scheduler,
+    metrics spi.Metrics,
+    stateProvider func() any,
+    version, sha, date string,
+    opts spi.Options,
+    authMW spi.Middleware,
+) *Plugin {
     reg := mcpbroker.NewRegistry(opts.RequestTimeout, state)
     return &Plugin{broker: reg, pluginOpts: opts, clientKey: opts.ClientKey}
 }
