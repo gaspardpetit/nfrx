@@ -1,12 +1,11 @@
 package ctrlsrv
 
 import (
-	"sort"
-	"sync"
-	"time"
+    "sort"
+    "sync"
+    "time"
 
-    "github.com/gaspardpetit/nfrx/sdk/spi"
-	"github.com/gaspardpetit/nfrx/server/internal/serverstate"
+    "github.com/gaspardpetit/nfrx/server/internal/serverstate"
 )
 
 // WorkerStatus represents the current state of a worker.
@@ -89,18 +88,12 @@ type ModelCount struct {
 	Workers int    `json:"workers"`
 }
 
-// Re-export MCP snapshot types from the SPI package for compatibility.
-type MCPClientSnapshot = spi.MCPClientSnapshot
-type MCPSessionSnapshot = spi.MCPSessionSnapshot
-type MCPState = spi.MCPState
-
 // StateResponse is the top-level snapshot returned to clients.
 type StateResponse struct {
-	Server         ServerSnapshot   `json:"server"`
-	WorkersSummary WorkersSummary   `json:"workers_summary"`
-	Models         []ModelCount     `json:"models"`
-	Workers        []WorkerSnapshot `json:"workers"`
-	MCP            MCPState         `json:"mcp"`
+    Server         ServerSnapshot   `json:"server"`
+    WorkersSummary WorkersSummary   `json:"workers_summary"`
+    Models         []ModelCount     `json:"models"`
+    Workers        []WorkerSnapshot `json:"workers"`
 }
 
 // MetricsRegistry maintains metrics about the server and workers.

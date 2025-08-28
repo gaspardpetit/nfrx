@@ -69,6 +69,7 @@ func New(cfg config.ServerConfig, stateReg *serverstate.Registry, plugins []plug
 			}
 			g.Get("/state", wrapper.GetApiState)
 			g.Get("/state/stream", wrapper.GetApiStateStream)
+            g.Get("/state/view/{id}.html", StateViewHTML(stateReg))
 		})
 	})
 

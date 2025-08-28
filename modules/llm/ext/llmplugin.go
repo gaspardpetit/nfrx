@@ -55,7 +55,10 @@ func (p *Plugin) RegisterState(reg spi.StateRegistry) {
     if sf == nil {
         sf = func() any { return nil }
     }
-    reg.Add(spi.StateElement{ID: "llm", Data: sf})
+    reg.Add(spi.StateElement{ID: "llm", Data: sf, HTML: func() string {
+        // Minimal placeholder; dashboard JS can still render from JSON envelope
+        return "<div><strong>LLM</strong> view loaded.</div>"
+    }})
 }
 
 var _ spi.Plugin = (*Plugin)(nil)

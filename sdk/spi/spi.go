@@ -58,8 +58,12 @@ const (
 )
 
 type StateElement struct {
-	ID   string
-	Data func() any
+    ID   string
+    Data func() any
+    // HTML is an optional function returning an HTML fragment that renders the
+    // plugin's state on the state dashboard. Return empty string or leave nil
+    // if no custom view is provided.
+    HTML func() string
 }
 
 type StateRegistry interface {
