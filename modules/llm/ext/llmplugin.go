@@ -55,7 +55,68 @@ func (p *Plugin) RegisterState(reg spi.StateRegistry) {
     if sf == nil {
         sf = func() any { return nil }
     }
-    reg.Add(spi.StateElement{ID: "llm", Data: sf})
+    reg.Add(spi.StateElement{ID: "llm", Data: sf, HTML: func() string {
+        return `
+<div class="llm-view">
+  <div class="llm-workers"></div>
+  <script>(function(){
+    function statusColor(w){
+      if (w.last_error) return 'red';
+      if (Date.now() - new Date(w.last_heartbeat).getTime() > 15000) return 'orange';
+      if (w.inflight > 0) return 'gold';
+      return 'green';
+    }
+    function sortWorkers(list, sortBy){
+      return list.slice().sort(function(a,b){
+        switch (sortBy){
+          case 'youngest': return new Date(b.connected_at) - new Date(a.connected_at);
+          case 'busyness': {
+            var ba = (a.inflight + a.queue_len) / (a.max_concurrency || 1);
+            var bb = (b.inflight + b.queue_len) / (b.max_concurrency || 1);
+            return bb - ba;
+          }
+          case 'name': return (a.name||'').localeCompare(b.name||'');
+          case 'completed': return (b.processed_total|0) - (a.processed_total|0);
+          case 'errors': return (b.failures_total|0) - (a.failures_total|0);
+          case 'oldest': default: return new Date(a.connected_at) - new Date(b.connected_at);
+        }
+      });
+    }
+    function render(state, container){
+      var host = container.querySelector('.llm-workers');
+      if (!host) return;
+      var workers = (state && state.workers) || [];
+      var sortSel = document.getElementById('sort');
+      var sortBy = sortSel ? sortSel.value : 'oldest';
+      var list = sortWorkers(workers, sortBy);
+      host.innerHTML='';
+      list.forEach(function(w){
+        var div=document.createElement('div');
+        div.className='worker';
+        var status=statusColor(w);
+        var busy=Math.min(1, (w.inflight + w.queue_len) / (w.max_concurrency || 1));
+        div.innerHTML=
+          '<div class="busy-bar"><div class="fill" style="height:'+Math.round(busy*100)+'%"></div></div>'+
+          '<div class="emoji">🦙</div>'+
+          '<div class="name"><span class="status-dot" style="background:'+status+'"></span>'+(w.name||w.id)+'</div>'+
+          '<div>'+w.status+'</div>'+
+          '<div>inflight: '+w.inflight+'</div>'+
+          '<div>embed batch: '+w.embedding_batch_size+'</div>'+
+          '<div>tokens in/out: '+(w.tokens_in_total||0)+'/'+(w.tokens_out_total||0)+'</div>'+
+          '<div>total tokens: '+((w.tokens_total)||((w.tokens_in_total||0)+(w.tokens_out_total||0)))+'</div>'+
+          '<div>avg rate: '+(((w.avg_tokens_per_second)||0).toFixed? (w.avg_tokens_per_second).toFixed(2): w.avg_tokens_per_second)+' tok/s</div>'+
+          '<div>embeddings: '+(w.embeddings_total||0)+'</div>'+
+          '<div>avg embed rate: '+(((w.avg_embeddings_per_second)||0).toFixed? (w.avg_embeddings_per_second).toFixed(2): w.avg_embeddings_per_second)+' emb/s</div>';
+        host.appendChild(div);
+      });
+    }
+    if (!window.NFRX) window.NFRX = { _renderers:{}, registerRenderer:function(id,fn){ this._renderers[id]=fn; } };
+    var section = (document.currentScript && document.currentScript.closest('section')) || null;
+    var id = (section && section.dataset && section.dataset.pluginId) || 'llm';
+    window.NFRX.registerRenderer(id, function(state, container, envelope){ render(state, container); });
+  })();</script>
+</div>`
+    }})
 }
 
 var _ spi.Plugin = (*Plugin)(nil)

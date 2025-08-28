@@ -42,7 +42,9 @@ func (p *Plugin) RegisterMetrics(reg spi.MetricsRegistry) {}
 
 // RegisterState registers MCP state elements.
 func (p *Plugin) RegisterState(reg spi.StateRegistry) {
-	reg.Add(spi.StateElement{ID: "mcp", Data: func() any { return p.broker.Snapshot() }})
+    reg.Add(spi.StateElement{ID: "mcp", Data: func() any { return p.broker.Snapshot() }, HTML: func() string {
+        return "<div><strong>MCP</strong> view loaded.</div>"
+    }})
 }
 
 // Registry exposes the underlying broker for tests.

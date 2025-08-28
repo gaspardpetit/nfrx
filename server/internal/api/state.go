@@ -6,44 +6,32 @@ import (
     "time"
 
     "github.com/gaspardpetit/nfrx/modules/common/logx"
-    mcpbroker "github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
-    ctrlsrv "github.com/gaspardpetit/nfrx/server/internal/ctrlsrv"
     "github.com/gaspardpetit/nfrx/server/internal/serverstate"
-    "github.com/gaspardpetit/nfrx/sdk/spi"
 )
 
 // StateHandler serves state snapshots and streams.
 type StateHandler struct {
-    // New path: use aggregated plugin state
+    // Aggregated plugin state from serverstate.Registry
     State *serverstate.Registry
-    // Legacy path: direct registries for metrics and MCP
-    Metrics *ctrlsrv.MetricsRegistry
-    MCP     *mcpbroker.Registry
+}
+
+// PluginsEnvelope is the generic, plugin-agnostic state payload.
+type PluginsEnvelope struct {
+    Plugins map[string]any `json:"plugins"`
 }
 
 // GetState returns a JSON snapshot of metrics.
 func (h *StateHandler) GetState(w http.ResponseWriter, r *http.Request) {
-    var state ctrlsrv.StateResponse
+    env := PluginsEnvelope{Plugins: map[string]any{}}
     if h.State != nil {
-        if el, ok := h.State.Get("llm"); ok && el.Data != nil {
-            if v, ok := el.Data().(ctrlsrv.StateResponse); ok {
-                state = v
+        for _, el := range h.State.Elements() {
+            if el.Data != nil {
+                env.Plugins[el.ID] = el.Data()
             }
-        }
-        if el, ok := h.State.Get("mcp"); ok && el.Data != nil {
-            if v, ok := el.Data().(spi.MCPState); ok {
-                state.MCP = v
-            }
-        }
-    } else if h.Metrics != nil {
-        // Legacy fallback
-        state = h.Metrics.Snapshot()
-        if h.MCP != nil {
-            state.MCP = h.MCP.Snapshot()
         }
     }
     w.Header().Set("Content-Type", "application/json")
-    if err := json.NewEncoder(w).Encode(state); err != nil {
+    if err := json.NewEncoder(w).Encode(env); err != nil {
         // ignore write error but log
         logx.Log.Error().Err(err).Msg("encode state")
     }
@@ -51,51 +39,40 @@ func (h *StateHandler) GetState(w http.ResponseWriter, r *http.Request) {
 
 // GetStateStream streams state snapshots as Server-Sent Events.
 func (h *StateHandler) GetStateStream(w http.ResponseWriter, r *http.Request) {
-    w.Header().Set("Content-Type", "text/event-stream")
-    w.Header().Set("Cache-Control", "no-cache")
-    w.Header().Set("Connection", "keep-alive")
-    flusher, ok := w.(http.Flusher)
-    if !ok {
-        http.Error(w, "streaming unsupported", http.StatusInternalServerError)
-        return
-    }
-    ticker := time.NewTicker(2 * time.Second)
-    defer ticker.Stop()
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
     for {
         select {
         case <-r.Context().Done():
             return
         case <-ticker.C:
-            var state ctrlsrv.StateResponse
+            env := PluginsEnvelope{Plugins: map[string]any{}}
             if h.State != nil {
-                if el, ok := h.State.Get("llm"); ok && el.Data != nil {
-                    if v, ok := el.Data().(ctrlsrv.StateResponse); ok {
-                        state = v
+                for _, el := range h.State.Elements() {
+                    if el.Data != nil {
+                        env.Plugins[el.ID] = el.Data()
                     }
-                }
-                if el, ok := h.State.Get("mcp"); ok && el.Data != nil {
-                    if v, ok := el.Data().(spi.MCPState); ok {
-                        state.MCP = v
-                    }
-                }
-            } else if h.Metrics != nil {
-                // Legacy fallback
-                state = h.Metrics.Snapshot()
-                if h.MCP != nil {
-                    state.MCP = h.MCP.Snapshot()
                 }
             }
-            b, _ := json.Marshal(state)
+            b, _ := json.Marshal(env)
             if _, err := w.Write([]byte("data: ")); err != nil {
                 return
             }
             if _, err := w.Write(b); err != nil {
-				return
-			}
-			if _, err := w.Write([]byte("\n\n")); err != nil {
-				return
-			}
-			flusher.Flush()
-		}
-	}
+                return
+            }
+            if _, err := w.Write([]byte("\n\n")); err != nil {
+                return
+            }
+            flusher.Flush()
+        }
+    }
 }

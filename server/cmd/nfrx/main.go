@@ -9,6 +9,7 @@ import (
     "os"
     "os/signal"
     "path/filepath"
+    "sort"
     "strings"
     "syscall"
     "time"
@@ -115,7 +116,12 @@ func main() {
         }
     }()
 
-    for _, id := range cfg.Plugins {
+    ids := cfg.Plugins
+    if len(ids) == 1 && ids[0] == "*" {
+        ids = plugin.IDs()
+        sort.Strings(ids)
+    }
+    for _, id := range ids {
         if f, ok := plugin.Get(id); ok {
             p := f(adapters.ServerState{}, connect, wr, sc, mx, stateProvider, version, buildSHA, buildDate, commonOpts, authMW)
             plugins = append(plugins, p)
