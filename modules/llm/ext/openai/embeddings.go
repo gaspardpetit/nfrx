@@ -18,6 +18,7 @@ import (
     ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
     "github.com/gaspardpetit/nfrx/sdk/api/spi"
     "github.com/gaspardpetit/nfrx/core/logx"
+    llmmetrics "github.com/gaspardpetit/nfrx/modules/llm/ext/metrics"
 )
 
 // EmbeddingsHandler handles POST /api/llm/v1/embeddings as a pass-through.
@@ -132,18 +133,18 @@ func EmbeddingsHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics spi.
 			defer idle.Stop()
 		}
 
-		defer func() {
-			dur := time.Since(start)
-			metrics.RecordJobEnd(worker.ID(), meta.Model, dur, 0, 0, embeddingsCount, success, errMsg)
-			metrics.SetWorkerStatus(worker.ID(), spi.StatusIdle)
-			metrics.ObserveRequestDuration(worker.ID(), meta.Model, dur)
-			metrics.RecordModelRequest(meta.Model, success)
-			if success {
-				metrics.RecordWorkerEmbeddingProcessingTime(worker.ID(), dur)
-				metrics.RecordWorkerEmbeddings(worker.ID(), embeddingsCount)
-				metrics.RecordModelEmbeddings(meta.Model, embeddingsCount)
-			}
-		}()
+        defer func() {
+            dur := time.Since(start)
+            metrics.RecordJobEnd(worker.ID(), meta.Model, dur, 0, 0, embeddingsCount, success, errMsg)
+            metrics.SetWorkerStatus(worker.ID(), spi.StatusIdle)
+            llmmetrics.ObserveRequestDuration(worker.ID(), meta.Model, dur)
+            llmmetrics.RecordModelRequest(meta.Model, success)
+            if success {
+                llmmetrics.RecordWorkerEmbeddingProcessingTime(worker.ID(), dur)
+                llmmetrics.RecordWorkerEmbeddings(worker.ID(), embeddingsCount)
+                llmmetrics.RecordModelEmbeddings(meta.Model, embeddingsCount)
+            }
+        }()
 		for {
 			select {
 			case <-ctx.Done():
@@ -603,11 +604,11 @@ func proxyEmbeddingOnce(ctx context.Context, worker spi.WorkerRef, reqID, logID,
 			default:
 			}
 			errMsg = "canceled"
-			metrics.RecordJobEnd(worker.ID(), model, time.Since(start), 0, 0, 0, success, errMsg)
-			metrics.SetWorkerStatus(worker.ID(), spi.StatusIdle)
-			metrics.ObserveRequestDuration(worker.ID(), model, time.Since(start))
-			metrics.RecordModelRequest(model, false)
-			return nil, status, false, errMsg
+            metrics.RecordJobEnd(worker.ID(), model, time.Since(start), 0, 0, 0, success, errMsg)
+            metrics.SetWorkerStatus(worker.ID(), spi.StatusIdle)
+            llmmetrics.ObserveRequestDuration(worker.ID(), model, time.Since(start))
+            llmmetrics.RecordModelRequest(model, false)
+            return nil, status, false, errMsg
 		case <-timeoutCh:
 			hb := worker.LastHeartbeat()
 			since := time.Since(hb)
@@ -617,11 +618,11 @@ func proxyEmbeddingOnce(ctx context.Context, worker spi.WorkerRef, reqID, logID,
 				case worker.SendChan() <- ctrl.HTTPProxyCancelMessage{Type: "http_proxy_cancel", RequestID: reqID}:
 				default:
 				}
-				metrics.RecordJobEnd(worker.ID(), model, time.Since(start), 0, 0, 0, false, errMsg)
-				metrics.SetWorkerStatus(worker.ID(), spi.StatusIdle)
-				metrics.ObserveRequestDuration(worker.ID(), model, time.Since(start))
-				metrics.RecordModelRequest(model, false)
-				return nil, http.StatusGatewayTimeout, false, errMsg
+            metrics.RecordJobEnd(worker.ID(), model, time.Since(start), 0, 0, 0, false, errMsg)
+            metrics.SetWorkerStatus(worker.ID(), spi.StatusIdle)
+            llmmetrics.ObserveRequestDuration(worker.ID(), model, time.Since(start))
+            llmmetrics.RecordModelRequest(model, false)
+            return nil, http.StatusGatewayTimeout, false, errMsg
 			}
 			if idle != nil {
 				idle.Reset(timeout - since)
@@ -630,11 +631,11 @@ func proxyEmbeddingOnce(ctx context.Context, worker spi.WorkerRef, reqID, logID,
 		case msg, ok := <-ch:
 			if !ok {
 				errMsg = "closed"
-				metrics.RecordJobEnd(worker.ID(), model, time.Since(start), 0, 0, 0, false, errMsg)
-				metrics.SetWorkerStatus(worker.ID(), spi.StatusIdle)
-				metrics.ObserveRequestDuration(worker.ID(), model, time.Since(start))
-				metrics.RecordModelRequest(model, false)
-				return nil, http.StatusBadGateway, false, errMsg
+            metrics.RecordJobEnd(worker.ID(), model, time.Since(start), 0, 0, 0, false, errMsg)
+            metrics.SetWorkerStatus(worker.ID(), spi.StatusIdle)
+            llmmetrics.ObserveRequestDuration(worker.ID(), model, time.Since(start))
+            llmmetrics.RecordModelRequest(model, false)
+            return nil, http.StatusBadGateway, false, errMsg
 			}
 			if idle != nil {
 				if !idle.Stop() {
@@ -657,23 +658,23 @@ func proxyEmbeddingOnce(ctx context.Context, worker spi.WorkerRef, reqID, logID,
 				} else {
 					success = status < http.StatusBadRequest
 				}
-				dur := time.Since(start)
-				embCount := uint64(0)
-				if success {
-					embCount = uint64(embeddings)
-				}
-				metrics.RecordJobEnd(worker.ID(), model, dur, 0, 0, embCount, success, errMsg)
-				if success {
-					metrics.RecordWorkerEmbeddingProcessingTime(worker.ID(), dur)
-					metrics.RecordWorkerEmbeddings(worker.ID(), embCount)
-					metrics.RecordModelEmbeddings(model, embCount)
-				}
-				metrics.SetWorkerStatus(worker.ID(), spi.StatusIdle)
-				metrics.ObserveRequestDuration(worker.ID(), model, dur)
-				metrics.RecordModelRequest(model, success)
-				logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Str("model", model).Dur("duration", dur).Msg("complete")
-				return buf.Bytes(), status, success && errMsg == "", errMsg
-			}
+            dur := time.Since(start)
+            embCount := uint64(0)
+            if success {
+                embCount = uint64(embeddings)
+            }
+            metrics.RecordJobEnd(worker.ID(), model, dur, 0, 0, embCount, success, errMsg)
+            if success {
+                llmmetrics.RecordWorkerEmbeddingProcessingTime(worker.ID(), dur)
+                llmmetrics.RecordWorkerEmbeddings(worker.ID(), embCount)
+                llmmetrics.RecordModelEmbeddings(model, embCount)
+            }
+            metrics.SetWorkerStatus(worker.ID(), spi.StatusIdle)
+            llmmetrics.ObserveRequestDuration(worker.ID(), model, dur)
+            llmmetrics.RecordModelRequest(model, success)
+            logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Str("model", model).Dur("duration", dur).Msg("complete")
+            return buf.Bytes(), status, success && errMsg == "", errMsg
+        }
 		}
 	}
 }

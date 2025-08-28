@@ -1,10 +1,12 @@
 package server
 
 import (
+    "encoding/json"
     "net/http"
 
     "github.com/go-chi/chi/v5"
 
+    "github.com/gaspardpetit/nfrx/server/internal/plugin"
     "github.com/gaspardpetit/nfrx/server/internal/serverstate"
 )
 
@@ -36,5 +38,14 @@ func StateViewHTML(state *serverstate.Registry) http.HandlerFunc {
         }
         w.Header().Set("Content-Type", "text/html; charset=utf-8")
         _, _ = w.Write([]byte(html))
+    }
+}
+
+// StateDescriptors returns the registered plugin descriptors as JSON.
+func StateDescriptors() http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        w.Header().Set("Content-Type", "application/json")
+        d := plugin.Descriptors()
+        _ = json.NewEncoder(w).Encode(d)
     }
 }

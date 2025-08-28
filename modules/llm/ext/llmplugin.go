@@ -6,6 +6,7 @@ import (
     "github.com/gaspardpetit/nfrx/sdk/api/spi"
     opt "github.com/gaspardpetit/nfrx/core/options"
     "github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
+    llmmetrics "github.com/gaspardpetit/nfrx/modules/llm/ext/metrics"
 )
 
 // Plugin implements the llm subsystem as a plugin.
@@ -46,8 +47,10 @@ func (p *Plugin) RegisterRoutes(r spi.Router) {
 // Scheduler returns the plugin's scheduler.
 func (p *Plugin) Scheduler() spi.Scheduler { return p.sch }
 
-// RegisterMetrics registers Prometheus collectors.
-func (p *Plugin) RegisterMetrics(reg spi.MetricsRegistry) {}
+// RegisterMetrics registers LLM extension metrics collectors.
+func (p *Plugin) RegisterMetrics(reg spi.MetricsRegistry) {
+    llmmetrics.Register(reg)
+}
 
 // RegisterState registers state elements.
 func (p *Plugin) RegisterState(reg spi.StateRegistry) {
