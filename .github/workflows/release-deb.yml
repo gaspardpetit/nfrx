@@ -77,6 +77,9 @@ jobs:
 
           cp debian/changelog /tmp/debian.changelog
 
+          # Reset working tree to allow switching branches
+          git reset --hard
+
           git fetch origin "$BRANCH" --depth=1
           git checkout "$BRANCH"
 
