@@ -1,21 +1,21 @@
 package mcp
 
 import (
+    mcpbroker "github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
     "github.com/gaspardpetit/nfrx/sdk/spi"
-	mcpbroker "github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
 )
 
 // Plugin implements the MCP relay as a plugin.
 type Plugin struct {
-	broker     *mcpbroker.Registry
-	pluginOpts map[string]string
-	clientKey  string
+    broker     *mcpbroker.Registry
+    pluginOpts spi.Options
+    clientKey  string
 }
 
-// New constructs a new MCP plugin.
-func New(state spi.ServerState, opts Options, pluginOpts map[string]string) *Plugin {
-	reg := mcpbroker.NewRegistry(opts.RequestTimeout, state)
-	return &Plugin{broker: reg, pluginOpts: pluginOpts, clientKey: opts.ClientKey}
+// New constructs a new MCP plugin using the common server options.
+func New(state spi.ServerState, opts spi.Options) *Plugin {
+    reg := mcpbroker.NewRegistry(opts.RequestTimeout, state)
+    return &Plugin{broker: reg, pluginOpts: opts, clientKey: opts.ClientKey}
 }
 
 func (p *Plugin) ID() string { return "mcp" }
