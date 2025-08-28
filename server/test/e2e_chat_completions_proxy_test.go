@@ -133,7 +133,7 @@ func TestE2EChatCompletionsProxy(t *testing.T) {
     req2.Header.Set("Authorization", "Bearer "+cfg.APIKey)
     resp2, err := http.DefaultClient.Do(req2)
     if err != nil { t.Fatalf("get state: %v", err) }
-    defer resp2.Body.Close()
+    defer func(){ _ = resp2.Body.Close() }()
     var env struct{ Plugins map[string]any `json:"plugins"` }
     if err := json.NewDecoder(resp2.Body).Decode(&env); err != nil { t.Fatalf("decode state: %v", err) }
     raw, ok := env.Plugins["llm"]

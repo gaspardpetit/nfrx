@@ -186,14 +186,44 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg acon
 		}
 	}()
 
-	checkDrain := func() {
-		if IsDraining() && GetState().CurrentJobs == 0 {
-			SetState("terminating")
-			go func() { _ = ws.Close(websocket.StatusNormalClosure, "drained") }()
-			cancelConn()
-			cancelAll()
-		}
-	}
+    checkDrain := func() {
+        // If the connection context is already canceled, avoid any attempts
+        // to send on the websocket channel or proceed with shutdown logic here.
+        if connCtx.Err() != nil {
+            return
+        }
+        if IsDraining() {
+            // Announce draining to the server so scheduler can stop assigning.
+            su := ctrl.StatusUpdateMessage{
+                Type:               "status_update",
+                Status:             "draining",
+                MaxConcurrency:     0,
+                EmbeddingBatchSize: GetState().EmbeddingBatchSize,
+                Models:             GetState().Models,
+            }
+            mb, _ := json.Marshal(su)
+            // Do not block drain if the send buffer is full or writer is stalled.
+            select {
+            case <-connCtx.Done():
+                // connection torn down; nothing to announce
+            case sendCh <- mb:
+                // queued
+            default:
+                // drop the announcement to avoid blocking drain; scheduler will learn on disconnect
+                logx.Log.Debug().Msg("drop draining status_update; send buffer full")
+            }
+        }
+        if IsDraining() && GetState().CurrentJobs == 0 {
+            SetState("terminating")
+            logx.Log.Info().Msg("agent drained; closing connection")
+            go func() { _ = ws.Close(websocket.StatusNormalClosure, "drained") }()
+            cancelConn()
+            cancelAll()
+        } else if IsDraining() {
+            // Still draining; waiting for in-flight jobs to complete
+            logx.Log.Info().Int("inflight", GetState().CurrentJobs).Msg("draining; waiting for jobs to complete")
+        }
+    }
 	setDrainCheck(checkDrain)
 	defer setDrainCheck(nil)
 	checkDrain()
@@ -387,10 +417,17 @@ func sendStatusUpdate(ch chan<- ctrl.StatusUpdateMessage, msg ctrl.StatusUpdateM
 }
 
 func sendMsg(ctx context.Context, ch chan<- []byte, msg []byte) {
-	select {
-	case ch <- msg:
-	case <-ctx.Done():
-	}
+    // Short-circuit if connection context is done to avoid races where the
+    // channel may be closing/closed and a send would panic.
+    select {
+    case <-ctx.Done():
+        return
+    default:
+    }
+    select {
+    case ch <- msg:
+    case <-ctx.Done():
+    }
 }
 
 func handleGenerate(ctx context.Context, client *ollama.Client, timeout time.Duration, sendCh chan []byte, jr ctrl.JobRequestMessage, cancels map[string]context.CancelFunc, mu *sync.Mutex, onDone func()) {
