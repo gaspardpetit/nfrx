@@ -202,7 +202,16 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg acon
                 Models:             GetState().Models,
             }
             mb, _ := json.Marshal(su)
-            sendMsg(connCtx, sendCh, mb)
+            // Do not block drain if the send buffer is full or writer is stalled.
+            select {
+            case <-connCtx.Done():
+                // connection torn down; nothing to announce
+            case sendCh <- mb:
+                // queued
+            default:
+                // drop the announcement to avoid blocking drain; scheduler will learn on disconnect
+                logx.Log.Debug().Msg("drop draining status_update; send buffer full")
+            }
         }
         if IsDraining() && GetState().CurrentJobs == 0 {
             SetState("terminating")
