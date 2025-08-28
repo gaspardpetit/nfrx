@@ -46,7 +46,7 @@ func New(cfg config.ServerConfig, stateReg *serverstate.Registry, plugins []plug
     wrapper := generated.ServerInterfaceWrapper{Handler: impl}
 
 	r.Get("/healthz", wrapper.GetHealthz)
-	r.Route("/api", func(ar chi.Router) {
+		r.Route("/api", func(ar chi.Router) {
 		ar.Route("/client", func(cr chi.Router) {
 			cr.Get("/openapi.json", api.OpenAPIHandler())
 			cr.Get("/*", api.SwaggerHandler())
@@ -58,6 +58,7 @@ func New(cfg config.ServerConfig, stateReg *serverstate.Registry, plugins []plug
 			g.Get("/state", wrapper.GetApiState)
 			g.Get("/state/stream", wrapper.GetApiStateStream)
             g.Get("/state/view/{id}.html", StateViewHTML(stateReg))
+            g.Get("/state/descriptors", StateDescriptors())
 		})
 	})
 
