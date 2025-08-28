@@ -68,34 +68,6 @@ jobs:
           .github/scripts/deb_changelog.sh
           head -40 debian/changelog || true
 
-      - name: Commit changelog back to default branch
-        shell: bash
-        run: |
-          set -euo pipefail
-          TAG="${{ steps.meta.outputs.tag }}"
-          BRANCH="${{ github.event.repository.default_branch }}"
-
-          cp debian/changelog /tmp/debian.changelog
-
-          git fetch origin "$BRANCH" --depth=1
-          git checkout "$BRANCH"
-
-          git pull --ff-only origin "$BRANCH" || true
-
-          mkdir -p debian
-          mv /tmp/debian.changelog debian/changelog
-
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          if ! git diff --quiet -- debian/changelog; then
-            git add debian/changelog
-            git commit -m "chore(debian): update changelog for ${TAG} [skip ci]"
-            git push origin "$BRANCH"
-          else
-            echo "No changelog changes to commit."
-          fi
-
       - name: Build (binary package only)
         env:
           DEB_HOST_ARCH: ${{ matrix.arch }}
