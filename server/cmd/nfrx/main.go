@@ -16,11 +16,9 @@ import (
     "github.com/prometheus/client_golang/prometheus/promhttp"
 
     "github.com/gaspardpetit/nfrx/modules/common/logx"
-    mcp "github.com/gaspardpetit/nfrx/modules/mcp/ext"
     "github.com/gaspardpetit/nfrx/server/internal/adapters"
     "github.com/gaspardpetit/nfrx/server/internal/api"
     "github.com/gaspardpetit/nfrx/server/internal/config"
-    llm "github.com/gaspardpetit/nfrx/modules/llm/ext"
     ctrlsrv "github.com/gaspardpetit/nfrx/server/internal/ctrlsrv"
     "github.com/gaspardpetit/nfrx/server/internal/metrics"
     "github.com/gaspardpetit/nfrx/server/internal/plugin"
@@ -86,7 +84,6 @@ func main() {
 
     stateReg := serverstate.NewRegistry()
     var plugins []plugin.Plugin
-    var mcpReg *mcp.Plugin
 
     // Build common server options for all extensions
     commonOpts := spicontracts.Options{
@@ -96,35 +93,35 @@ func main() {
         PluginOptions:         cfg.PluginOptions,
     }
 
-    if hasPlugin(cfg.Plugins, "mcp") {
-        mcpReg = mcp.New(adapters.ServerState{}, commonOpts)
-        plugins = append(plugins, mcpReg)
+    // Build common SPI dependencies (worker control plane) once; plugins may ignore what they don't use
+    reg := ctrlsrv.NewRegistry()
+    metricsReg := ctrlsrv.NewMetricsRegistry(version, buildSHA, buildDate)
+    sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
+    connect := ctrlsrv.WSHandler(reg, metricsReg, cfg.ClientKey)
+    wr := adapters.NewWorkerRegistry(reg)
+    sc := adapters.NewScheduler(sched)
+    mx := adapters.NewMetrics(metricsReg)
+    authMW := (func(http.Handler) http.Handler)(nil)
+    if cfg.APIKey != "" {
+        authMW = api.APIKeyMiddleware(cfg.APIKey)
     }
-    if hasPlugin(cfg.Plugins, "llm") {
-        // Build concrete dependencies and inject into the LLM plugin
-        reg := ctrlsrv.NewRegistry()
-        metricsReg := ctrlsrv.NewMetricsRegistry(version, buildSHA, buildDate)
-        sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
+    stateProvider := func() any { return metricsReg.Snapshot() }
 
-        connect := ctrlsrv.WSHandler(reg, metricsReg, cfg.ClientKey)
-        wr := adapters.NewWorkerRegistry(reg)
-        sc := adapters.NewScheduler(sched)
-        mx := adapters.NewMetrics(metricsReg)
-        authMW := (func(http.Handler) http.Handler)(nil)
-        if cfg.APIKey != "" {
-            authMW = api.APIKeyMiddleware(cfg.APIKey)
+    // Pruning loop for worker registry
+    go func() {
+        ticker := time.NewTicker(ctrlsrv.HeartbeatInterval)
+        for range ticker.C {
+            reg.PruneExpired(ctrlsrv.HeartbeatExpiry)
         }
-        stateProvider := func() any { return metricsReg.Snapshot() }
-        llmPlugin := llm.New(connect, wr, sc, mx, stateProvider, version, buildSHA, buildDate, commonOpts, authMW)
-        // Ownership of pruning loop moves here with injected deps
-        go func() {
-            ticker := time.NewTicker(ctrlsrv.HeartbeatInterval)
-            for range ticker.C {
-                reg.PruneExpired(ctrlsrv.HeartbeatExpiry)
-            }
-        }()
+    }()
 
-        plugins = append(plugins, llmPlugin)
+    for _, id := range cfg.Plugins {
+        if f, ok := plugin.Get(id); ok {
+            p := f(adapters.ServerState{}, connect, wr, sc, mx, stateProvider, version, buildSHA, buildDate, commonOpts, authMW)
+            plugins = append(plugins, p)
+        } else {
+            logx.Log.Warn().Str("plugin", id).Msg("unknown plugin; skipping")
+        }
     }
 	handler := server.New(cfg, stateReg, plugins)
 	srv := &http.Server{Addr: fmt.Sprintf(":%d", cfg.Port), Handler: handler}

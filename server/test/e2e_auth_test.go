@@ -25,7 +25,7 @@ import (
 
 func TestWorkerAuth(t *testing.T) {
 	cfg := config.ServerConfig{ClientKey: "secret", RequestTimeout: 5 * time.Second}
-	mcpPlugin := mcp.New(adapters.ServerState{}, spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey})
+	mcpPlugin := mcp.New(adapters.ServerState{}, nil, nil, nil, nil, nil, "test", "", "", spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg := serverstate.NewRegistry()
     reg := ctrlsrv.NewRegistry()
     metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
@@ -36,7 +36,7 @@ func TestWorkerAuth(t *testing.T) {
     mx := adapters.NewMetrics(metricsReg)
     stateProvider := func() any { return metricsReg.Snapshot() }
     srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
-    llmPlugin := llm.New(connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
+    llmPlugin := llm.New(adapters.ServerState{}, connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -98,7 +98,7 @@ func TestWorkerAuth(t *testing.T) {
 
 func TestWorkerClientKeyUnexpected(t *testing.T) {
 	cfg := config.ServerConfig{RequestTimeout: 5 * time.Second}
-	mcpPlugin := mcp.New(adapters.ServerState{}, spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey})
+	mcpPlugin := mcp.New(adapters.ServerState{}, nil, nil, nil, nil, nil, "test", "", "", spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg := serverstate.NewRegistry()
     reg := ctrlsrv.NewRegistry()
     metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
@@ -109,7 +109,7 @@ func TestWorkerClientKeyUnexpected(t *testing.T) {
     mx := adapters.NewMetrics(metricsReg)
     stateProvider := func() any { return metricsReg.Snapshot() }
     srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
-    llmPlugin := llm.New(connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
+    llmPlugin := llm.New(adapters.ServerState{}, connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -133,7 +133,7 @@ func TestWorkerClientKeyUnexpected(t *testing.T) {
 
 func TestMCPAuth(t *testing.T) {
 	cfg := config.ServerConfig{ClientKey: "secret", RequestTimeout: 5 * time.Second}
-    mcpPlugin := mcp.New(adapters.ServerState{}, spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey})
+	mcpPlugin := mcp.New(adapters.ServerState{}, nil, nil, nil, nil, nil, "test", "", "", spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
     stateReg := serverstate.NewRegistry()
     reg := ctrlsrv.NewRegistry()
     metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
@@ -144,7 +144,7 @@ func TestMCPAuth(t *testing.T) {
     mx := adapters.NewMetrics(metricsReg)
     stateProvider := func() any { return metricsReg.Snapshot() }
     srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
-    llmPlugin := llm.New(connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
+    llmPlugin := llm.New(adapters.ServerState{}, connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -184,7 +184,7 @@ func TestMCPAuth(t *testing.T) {
 
 	// unexpected key when server has none
 	cfg = config.ServerConfig{RequestTimeout: 5 * time.Second}
-	mcpReg := mcp.New(adapters.ServerState{}, spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey})
+	mcpReg := mcp.New(adapters.ServerState{}, nil, nil, nil, nil, nil, "test", "", "", spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg = serverstate.NewRegistry()
     // rebuild deps for second server
     reg2 := ctrlsrv.NewRegistry()
@@ -196,7 +196,7 @@ func TestMCPAuth(t *testing.T) {
     mx2 := adapters.NewMetrics(metricsReg2)
     stateProvider2 := func() any { return metricsReg2.Snapshot() }
     srvOpts2 := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
-    llmPlugin = llm.New(connect2, wr2, sc2, mx2, stateProvider2, "test", "", "", srvOpts2, nil)
+    llmPlugin = llm.New(adapters.ServerState{}, connect2, wr2, sc2, mx2, stateProvider2, "test", "", "", srvOpts2, nil)
 	handler = server.New(cfg, stateReg, []plugin.Plugin{mcpReg, llmPlugin})
 	srv2 := httptest.NewServer(handler)
 	defer srv2.Close()

@@ -65,6 +65,7 @@ var _ spi.WorkerProvider = (*Plugin)(nil)
 // New constructs a new LLM plugin using the common server options,
 // adapting them to the underlying OpenAI-specific configuration.
 func New(
+    state spi.ServerState,
     connect http.Handler,
     workers spi.WorkerRegistry,
     sched spi.Scheduler,
