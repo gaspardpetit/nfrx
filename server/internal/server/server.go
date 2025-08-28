@@ -1,23 +1,34 @@
 package server
 
 import (
-	"fmt"
-	"net/http"
+    "fmt"
+    "net/http"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/cors"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+    "github.com/go-chi/chi/v5"
+    "github.com/go-chi/cors"
+    "github.com/prometheus/client_golang/prometheus"
+    "github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/gaspardpetit/nfrx/api/generated"
-	"github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
-	"github.com/gaspardpetit/nfrx/server/internal/adapters"
-	"github.com/gaspardpetit/nfrx/server/internal/api"
-	"github.com/gaspardpetit/nfrx/server/internal/config"
-	ctrlsrv "github.com/gaspardpetit/nfrx/server/internal/ctrlsrv"
-	"github.com/gaspardpetit/nfrx/server/internal/plugin"
-	"github.com/gaspardpetit/nfrx/server/internal/serverstate"
+    "github.com/gaspardpetit/nfrx/api/generated"
+    "github.com/gaspardpetit/nfrx/sdk/spi"
+    "github.com/gaspardpetit/nfrx/server/internal/adapters"
+    "github.com/gaspardpetit/nfrx/server/internal/api"
+    "github.com/gaspardpetit/nfrx/server/internal/config"
+    "github.com/gaspardpetit/nfrx/server/internal/plugin"
+    "github.com/gaspardpetit/nfrx/server/internal/serverstate"
+    "github.com/gaspardpetit/nfrx/server/internal/metrics"
 )
+
+// promAdapter implements spi.MetricsRegistry backed by a Prometheus registry.
+type promAdapter struct{ *prometheus.Registry }
+
+func (r promAdapter) MustRegister(cs ...spi.Collector) {
+    collectors := make([]prometheus.Collector, 0, len(cs))
+    for _, c := range cs {
+        collectors = append(collectors, c.(prometheus.Collector))
+    }
+    r.Registry.MustRegister(collectors...)
+}
 
 // New constructs the HTTP handler for the server.
 func New(cfg config.ServerConfig, stateReg *serverstate.Registry, plugins []plugin.Plugin) http.Handler {
@@ -36,25 +47,15 @@ func New(cfg config.ServerConfig, stateReg *serverstate.Registry, plugins []plug
 	if stateReg == nil {
 		stateReg = serverstate.NewRegistry()
 	}
-	preg := prometheus.NewRegistry()
-	prometheus.DefaultRegisterer = preg
-	prometheus.DefaultGatherer = preg
-	plugin.Load(r, preg, adapters.NewStateRegistry(stateReg), plugins)
+    preg := prometheus.NewRegistry()
+    prometheus.DefaultRegisterer = preg
+    prometheus.DefaultGatherer = preg
+    // Register global collectors used by LLM runtime metrics
+    metrics.Register(promAdapter{preg})
+    plugin.Load(r, preg, adapters.NewStateRegistry(stateReg), plugins)
 
-	var metricsReg *ctrlsrv.MetricsRegistry
-	var mcpReg *mcpbroker.Registry
-	for _, p := range plugins {
-		if mp, ok := p.(interface {
-			MetricsRegistry() *ctrlsrv.MetricsRegistry
-		}); ok {
-			metricsReg = mp.MetricsRegistry()
-		}
-		if rp, ok := p.(interface{ Registry() *mcpbroker.Registry }); ok {
-			mcpReg = rp.Registry()
-		}
-	}
-	impl := &api.API{Metrics: metricsReg, MCP: mcpReg}
-	wrapper := generated.ServerInterfaceWrapper{Handler: impl}
+    impl := &api.API{StateReg: stateReg}
+    wrapper := generated.ServerInterfaceWrapper{Handler: impl}
 
 	r.Get("/healthz", wrapper.GetHealthz)
 	r.Route("/api", func(ar chi.Router) {

@@ -1,34 +1,45 @@
 package test
 
 import (
-	"bytes"
-	"context"
-	"encoding/json"
-	"errors"
-	"io"
-	"net/http"
-	"net/http/httptest"
-	"strings"
-	"testing"
-	"time"
+    "bytes"
+    "context"
+    "encoding/json"
+    "errors"
+    "io"
+    "net/http"
+    "net/http/httptest"
+    "strings"
+    "testing"
+    "time"
 
-	"sync/atomic"
+    "sync/atomic"
 
-	"github.com/gaspardpetit/nfrx/modules/llm/agent/worker"
-	mcp "github.com/gaspardpetit/nfrx/modules/mcp/ext"
-	"github.com/gaspardpetit/nfrx/server/internal/adapters"
-	"github.com/gaspardpetit/nfrx/server/internal/config"
-	llm "github.com/gaspardpetit/nfrx/server/internal/llm"
-	"github.com/gaspardpetit/nfrx/server/internal/plugin"
-	"github.com/gaspardpetit/nfrx/server/internal/server"
-	"github.com/gaspardpetit/nfrx/server/internal/serverstate"
+    "github.com/gaspardpetit/nfrx/modules/llm/agent/worker"
+    "github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
+    mcp "github.com/gaspardpetit/nfrx/modules/mcp/ext"
+    "github.com/gaspardpetit/nfrx/server/internal/adapters"
+    "github.com/gaspardpetit/nfrx/server/internal/config"
+    llm "github.com/gaspardpetit/nfrx/modules/llm/ext"
+    ctrlsrv "github.com/gaspardpetit/nfrx/server/internal/ctrlsrv"
+    "github.com/gaspardpetit/nfrx/server/internal/plugin"
+    "github.com/gaspardpetit/nfrx/server/internal/server"
+    "github.com/gaspardpetit/nfrx/server/internal/serverstate"
 )
 
 func TestE2EChatCompletionsProxy(t *testing.T) {
 	cfg := config.ServerConfig{ClientKey: "secret", APIKey: "apikey", RequestTimeout: 5 * time.Second}
 	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg := serverstate.NewRegistry()
-	llmPlugin := llm.New(cfg, "test", "", "", mcpPlugin.Registry(), nil)
+    reg := ctrlsrv.NewRegistry()
+    metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
+    sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
+    connect := ctrlsrv.WSHandler(reg, metricsReg, cfg.ClientKey)
+    wr := adapters.NewWorkerRegistry(reg)
+    sc := adapters.NewScheduler(sched)
+    mx := adapters.NewMetrics(metricsReg)
+    stateProvider := func() any { return metricsReg.Snapshot() }
+    oa := openai.Options{RequestTimeout: cfg.RequestTimeout, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
+    llmPlugin := llm.NewWithDeps(connect, wr, sc, mx, stateProvider, oa, "test", "", "", nil, nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -125,7 +136,7 @@ func TestE2EChatCompletionsProxy(t *testing.T) {
 		t.Fatalf("auth %q", auth)
 	}
 
-	snap := llmPlugin.MetricsRegistry().Snapshot()
+    snap := metricsReg.Snapshot()
 	if len(snap.Workers) != 1 {
 		t.Fatalf("expected one worker")
 	}
