@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gaspardpetit/nfrx/modules/common/logx"
+    "github.com/gaspardpetit/nfrx/core/logx"
 	aconfig "github.com/gaspardpetit/nfrx/modules/llm/agent/internal/config"
 	"github.com/gaspardpetit/nfrx/modules/llm/agent/internal/worker"
 )

@@ -5,7 +5,7 @@ import (
     "net/http"
     "time"
 
-    "github.com/gaspardpetit/nfrx/modules/common/logx"
+    "github.com/gaspardpetit/nfrx/core/logx"
     "github.com/gaspardpetit/nfrx/server/internal/serverstate"
 )
 

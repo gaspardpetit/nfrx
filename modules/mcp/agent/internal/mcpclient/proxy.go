@@ -12,7 +12,7 @@ import (
 	"github.com/mark3labs/mcp-go/client/transport"
 	"github.com/mark3labs/mcp-go/mcp"
 
-	"github.com/gaspardpetit/nfrx/modules/common/logx"
+    "github.com/gaspardpetit/nfrx/core/logx"
 	"github.com/gaspardpetit/nfrx/modules/mcp/agent/internal/mcpbridge"
 )
 

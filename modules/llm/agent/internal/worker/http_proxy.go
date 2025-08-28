@@ -11,7 +11,7 @@ import (
 	"time"
 
     ctrl "github.com/gaspardpetit/nfrx/sdk/contracts/control"
-	"github.com/gaspardpetit/nfrx/modules/common/logx"
+    "github.com/gaspardpetit/nfrx/core/logx"
 	aconfig "github.com/gaspardpetit/nfrx/modules/llm/agent/internal/config"
 	"github.com/rs/zerolog"
 )

@@ -16,7 +16,7 @@ import (
 
     "github.com/prometheus/client_golang/prometheus/promhttp"
 
-    "github.com/gaspardpetit/nfrx/modules/common/logx"
+    "github.com/gaspardpetit/nfrx/core/logx"
     "github.com/gaspardpetit/nfrx/server/internal/adapters"
     "github.com/gaspardpetit/nfrx/server/internal/api"
     "github.com/gaspardpetit/nfrx/server/internal/config"

@@ -3,7 +3,7 @@ package worker
 import (
 	"testing"
 
-	"github.com/gaspardpetit/nfrx/modules/common/reconnect"
+"github.com/gaspardpetit/nfrx/core/reconnect"
 )
 
 func TestReconnectDelay(t *testing.T) {

@@ -17,8 +17,8 @@ import (
 	"github.com/mark3labs/mcp-go/client/transport"
 	"github.com/mark3labs/mcp-go/mcp"
 
-	"github.com/gaspardpetit/nfrx/modules/common/logx"
-	reconnect "github.com/gaspardpetit/nfrx/modules/common/reconnect"
+    "github.com/gaspardpetit/nfrx/core/logx"
+    reconnect "github.com/gaspardpetit/nfrx/core/reconnect"
 )
 
 // Connector is a transport-agnostic MCP client connection.

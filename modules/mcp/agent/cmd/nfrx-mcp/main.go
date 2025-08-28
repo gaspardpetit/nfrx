@@ -9,7 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/gaspardpetit/nfrx/modules/common/logx"
+    "github.com/gaspardpetit/nfrx/core/logx"
 	aconfig "github.com/gaspardpetit/nfrx/modules/mcp/agent/internal/config"
 	"github.com/gaspardpetit/nfrx/modules/mcp/agent/internal/mcp"
 )

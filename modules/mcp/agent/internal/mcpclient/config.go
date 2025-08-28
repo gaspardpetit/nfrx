@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	commoncfg "github.com/gaspardpetit/nfrx/modules/common/config"
+commoncfg "github.com/gaspardpetit/nfrx/core/config"
 	"github.com/mark3labs/mcp-go/client/transport"
 	"gopkg.in/yaml.v3"
 )
