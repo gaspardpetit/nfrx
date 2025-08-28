@@ -15,7 +15,7 @@ type Plugin struct {
     sch        spi.Scheduler
     mx         spi.Metrics
     authMW     spi.Middleware
-    openaiOpts spi.Options
+    srvOpts    spi.Options
     stateFn    func() any
 
     // build info for metrics registration
@@ -37,7 +37,7 @@ func (p *Plugin) RegisterRoutes(r spi.Router) {
         }
         g.Route("/v1", func(v1 spi.Router) {
             // Adapt shared options to OpenAI-specific options
-            oa := openai.Options{RequestTimeout: p.openaiOpts.RequestTimeout, MaxParallelEmbeddings: p.openaiOpts.MaxParallelEmbeddings}
+            oa := openai.Options{RequestTimeout: p.srvOpts.RequestTimeout, MaxParallelEmbeddings: p.srvOpts.MaxParallelEmbeddings}
             openai.Mount(v1, p.wr, p.sch, p.mx, oa)
         })
     })
@@ -122,7 +122,6 @@ func (p *Plugin) RegisterState(reg spi.StateRegistry) {
 var _ spi.Plugin = (*Plugin)(nil)
 var _ spi.WorkerProvider = (*Plugin)(nil)
 
-// NewWithDeps constructs a new LLM plugin using injected SPI dependencies.
 // New constructs a new LLM plugin using the common server options,
 // adapting them to the underlying OpenAI-specific configuration.
 func New(
@@ -145,7 +144,7 @@ func New(
         sch:        sched,
         mx:         metrics,
         authMW:     authMW,
-        openaiOpts: srvOpts,
+        srvOpts:    srvOpts,
         stateFn:    stateProvider,
     }
 }

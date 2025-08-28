@@ -108,26 +108,31 @@ func main() {
     }
     stateProvider := func() any { return metricsReg.Snapshot() }
 
-    // Pruning loop for worker registry
-    go func() {
-        ticker := time.NewTicker(ctrlsrv.HeartbeatInterval)
-        for range ticker.C {
-            reg.PruneExpired(ctrlsrv.HeartbeatExpiry)
-        }
-    }()
-
     ids := cfg.Plugins
     if len(ids) == 1 && ids[0] == "*" {
         ids = plugin.IDs()
         sort.Strings(ids)
     }
+    hasWorker := false
     for _, id := range ids {
         if f, ok := plugin.Get(id); ok {
             p := f(adapters.ServerState{}, connect, wr, sc, mx, stateProvider, version, buildSHA, buildDate, commonOpts, authMW)
             plugins = append(plugins, p)
+            if _, ok := p.(plugin.WorkerProvider); ok {
+                hasWorker = true
+            }
         } else {
             logx.Log.Warn().Str("plugin", id).Msg("unknown plugin; skipping")
         }
+    }
+    if hasWorker {
+        // Pruning loop for worker-style agents
+        go func() {
+            ticker := time.NewTicker(ctrlsrv.HeartbeatInterval)
+            for range ticker.C {
+                reg.PruneExpired(ctrlsrv.HeartbeatExpiry)
+            }
+        }()
     }
 	handler := server.New(cfg, stateReg, plugins)
 	srv := &http.Server{Addr: fmt.Sprintf(":%d", cfg.Port), Handler: handler}
