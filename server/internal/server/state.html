@@ -80,6 +80,7 @@ h1 {
 <body>
 <h1>nfrx state</h1>
 <div id="summary">Loading…</div>
+<div id="summary-details" style="opacity:0.8; font-size: 0.9rem; margin-bottom: 1rem;"></div>
 <div>Sort by: <select id="sort">
   <option value="oldest">Oldest</option>
   <option value="youngest">Youngest</option>
@@ -95,10 +96,10 @@ h1 {
 // Plugin rendering registry
 window.NFRX = window.NFRX || { _renderers: {}, registerRenderer: function(id, fn){ this._renderers[id]=fn; } };
 
-let workers = [];
 let sortBy = 'oldest';
 let token = null;
 const loadedViews = new Set();
+let descriptors = {};
 
 // LLM plugin will render its own worker grid
 
@@ -146,15 +147,25 @@ async function maybeLoadViews(plugins) {
 
 function update(envelope) {
   const plugins = envelope.plugins || {};
-  const llm = plugins.llm || {};
-  const sum = llm.workers_summary || {connected:0, working:0, idle:0};
   const pluginIds = Object.keys(plugins || {});
-  let summary = `Plugins: ${pluginIds.join(', ') || 'none'}`;
-  if (llm.workers) {
-    summary += ` | Workers: ${sum.connected} connected, ${sum.working} working, ${sum.idle} idle`;
-  }
+  // Build a friendly summary using descriptors when available
+  let parts = pluginIds.map(id => {
+    const d = descriptors[id] || {};
+    const name = d.name || id;
+    return `${name} (${id})`;
+  });
+  const summary = parts.length ? `Plugins: ${parts.join(', ')}` : 'Plugins: none';
   document.getElementById('summary').textContent = summary;
-  workers = llm.workers || [];
+  // Show tiny per-plugin summaries when available
+  const detailLines = pluginIds.map(id => {
+    const d = descriptors[id] || {};
+    if (d.summary) {
+      const name = d.name || id;
+      return `${name}: ${d.summary}`;
+    }
+    return null;
+  }).filter(Boolean);
+  document.getElementById('summary-details').textContent = detailLines.join(' • ');
   // Lazy-load plugin views once per plugin id
   maybeLoadViews(plugins);
   // Call plugin renderers if registered
@@ -165,8 +176,6 @@ function update(envelope) {
       try { fn(plugins[id], container, envelope); } catch (e) { console.error('render', id, e); }
     }
   }
-
-  // MCP now renders via its plugin view
 }
 
 // statusColor moved into LLM view renderer
@@ -210,6 +219,17 @@ async function connect() {
   }
   setTimeout(connect, 1000);
 }
+
+// Load descriptors once for friendly names
+(async function loadDescriptors(){
+  try {
+    const headers = token ? { 'Authorization': 'Bearer ' + token } : {};
+    const resp = await fetch('/api/state/descriptors', { headers });
+    if (resp.status === 200) {
+      descriptors = await resp.json();
+    }
+  } catch(e) { console.error('descriptors', e); }
+})();
 
 connect();
 </script>

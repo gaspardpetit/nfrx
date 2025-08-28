@@ -18,6 +18,30 @@ func TestServerBuildInfo(t *testing.T) {
     }
 }
 
+func TestAgentCommonMetrics(t *testing.T) {
+    // Ensure registration works
+    reg := testRegistry{prometheus.NewRegistry()}
+    Register(reg)
+    // Start two jobs
+    AgentJobStart()
+    AgentJobStart()
+    if v := testutil.ToFloat64(agentJobsInflight); v != 2 {
+        t.Fatalf("inflight after starts: %v", v)
+    }
+    // End one success, one failure
+    AgentJobEnd(true)
+    AgentJobEnd(false)
+    if v := testutil.ToFloat64(agentJobsInflight); v != 0 {
+        t.Fatalf("inflight after ends: %v", v)
+    }
+    if v := testutil.ToFloat64(agentJobsTotal); v != 2 {
+        t.Fatalf("jobs_total: %v", v)
+    }
+    if v := testutil.ToFloat64(agentJobsFailedTotal); v != 1 {
+        t.Fatalf("jobs_failed_total: %v", v)
+    }
+}
+
 type testRegistry struct{ *prometheus.Registry }
 
 func (r testRegistry) MustRegister(cs ...spi.Collector) {
