@@ -21,7 +21,7 @@ import (
     "github.com/gaspardpetit/nfrx/server/internal/adapters"
     "github.com/gaspardpetit/nfrx/server/internal/api"
     "github.com/gaspardpetit/nfrx/server/internal/config"
-    llm "github.com/gaspardpetit/nfrx/server/internal/llm"
+    llm "github.com/gaspardpetit/nfrx/modules/llm/ext"
     ctrlsrv "github.com/gaspardpetit/nfrx/server/internal/ctrlsrv"
     "github.com/gaspardpetit/nfrx/server/internal/metrics"
     "github.com/gaspardpetit/nfrx/server/internal/plugin"

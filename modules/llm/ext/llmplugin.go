@@ -24,8 +24,6 @@ type Plugin struct {
     date    string
 }
 
-// (legacy New removed; use NewWithDeps)
-
 func (p *Plugin) ID() string { return "llm" }
 
 // RegisterRoutes wires the HTTP endpoints.
@@ -62,7 +60,6 @@ var _ spi.Plugin = (*Plugin)(nil)
 var _ spi.WorkerProvider = (*Plugin)(nil)
 
 // NewWithDeps constructs a new LLM plugin using injected SPI dependencies.
-// This keeps existing New() intact for tests and legacy wiring.
 func NewWithDeps(
     connect http.Handler,
     workers spi.WorkerRegistry,
@@ -87,3 +84,4 @@ func NewWithDeps(
         stateFn:    stateProvider,
     }
 }
+
