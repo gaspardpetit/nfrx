@@ -71,7 +71,10 @@ type StateRegistry interface {
 }
 
 type ServerState interface {
-	IsDraining() bool
+    IsDraining() bool
+    // SetStatus updates the global server availability status
+    // (e.g., "ready", "not_ready", "draining").
+    SetStatus(status string)
 }
 
 type MCPClientSnapshot struct {

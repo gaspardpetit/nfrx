@@ -16,3 +16,4 @@ func (r StateRegistry) Add(el spi.StateElement) {
 type ServerState struct{}
 
 func (ServerState) IsDraining() bool { return serverstate.IsDraining() }
+func (ServerState) SetStatus(status string) { serverstate.SetState(status) }
