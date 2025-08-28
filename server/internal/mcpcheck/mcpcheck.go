@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -71,12 +70,12 @@ func Configure(endpointURL, cmd string, args ...string) *Checker {
 
 // loadState loads persisted state from disk.
 func (c *Checker) loadState() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	data, err := os.ReadFile(c.statePath)
-	if err == nil {
-		_ = json.Unmarshal(data, &c.state)
-	}
+    c.mu.Lock()
+    defer c.mu.Unlock()
+    data, err := os.ReadFile(c.statePath)
+    if err == nil && len(data) > 0 {
+        _ = json.Unmarshal(data, &c.state)
+    }
 }
 
 // saveState saves state to disk.
@@ -186,14 +185,13 @@ func (c *Checker) tryTransport(ctx context.Context, t Transport) (Result, error)
 }
 
 func computeBackoff(fails int) time.Duration {
-	base := 30 * time.Second
-	max := 5 * time.Minute
-	d := base * time.Duration(int(math.Pow(2, float64(fails-1))))
-	if d > max {
-		d = max
-	}
-	jitter := rand.Float64()*0.4 - 0.2
-	return time.Duration(float64(d) * (1 + jitter))
+    base := 30 * time.Second
+    max := 5 * time.Minute
+    d := base * time.Duration(int(math.Pow(2, float64(fails-1))))
+    if d > max {
+        d = max
+    }
+    return d
 }
 
 // For tests we expose a way to clear state.
