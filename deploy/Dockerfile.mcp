@@ -2,7 +2,7 @@ FROM --platform=$BUILDPLATFORM golang:1.24 AS build
 WORKDIR /src
     COPY go.mod go.sum ./
     # Ensure local replace module is discoverable during deps download
-    COPY nfrx-sdk/go.mod nfrx-sdk/go.mod
+    COPY sdk/go.mod sdk/go.mod
 RUN go mod download
 COPY . .
 ARG TARGETOS TARGETARCH VERSION=dev GIT_SHA=unknown BUILD_DATE=unknown

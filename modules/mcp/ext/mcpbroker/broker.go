@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
-	"github.com/gaspardpetit/nfrx-sdk/contracts/mcp"
-	"github.com/gaspardpetit/nfrx-sdk/spi"
+    "github.com/gaspardpetit/nfrx/sdk/contracts/mcp"
+    "github.com/gaspardpetit/nfrx/sdk/spi"
 	"github.com/gaspardpetit/nfrx/modules/common/logx"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"

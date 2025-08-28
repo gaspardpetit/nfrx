@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	ctrl "github.com/gaspardpetit/nfrx-sdk/contracts/control"
+    ctrl "github.com/gaspardpetit/nfrx/sdk/contracts/control"
 	openai "github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
 	"github.com/gaspardpetit/nfrx/server/internal/adapters"
 	ctrlsrv "github.com/gaspardpetit/nfrx/server/internal/ctrlsrv"

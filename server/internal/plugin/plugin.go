@@ -6,7 +6,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/gaspardpetit/nfrx-sdk/spi"
+    "github.com/gaspardpetit/nfrx/sdk/spi"
 )
 
 // Plugin is implemented by all plugins.
