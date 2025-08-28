@@ -50,7 +50,7 @@ func New(cfg config.ServerConfig, stateReg *serverstate.Registry, plugins []plug
     preg := prometheus.NewRegistry()
     prometheus.DefaultRegisterer = preg
     prometheus.DefaultGatherer = preg
-    // Register global collectors used by LLM runtime metrics
+    // Register global collectors used by runtime metrics
     metrics.Register(promAdapter{preg})
     plugin.Load(r, preg, adapters.NewStateRegistry(stateReg), plugins)
 
@@ -73,7 +73,7 @@ func New(cfg config.ServerConfig, stateReg *serverstate.Registry, plugins []plug
 		})
 	})
 
-	r.Get("/state", StateHandler())
+    r.Get("/state", StatePageHandler())
 
 	if cfg.MetricsAddr == fmt.Sprintf(":%d", cfg.Port) {
 		r.Handle("/metrics", promhttp.HandlerFor(preg, promhttp.HandlerOpts{}))

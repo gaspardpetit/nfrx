@@ -45,11 +45,7 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string) http.H
 		if err := json.Unmarshal(data, &rm); err != nil {
 			return
 		}
-		key := rm.ClientKey
-		if key == "" && rm.Token != "" {
-			logx.Log.Warn().Msg("register message 'token' field is deprecated; use 'client_key'")
-			key = rm.Token
-		}
+    key := rm.ClientKey
 		if clientKey == "" && key != "" {
 			_ = c.Close(websocket.StatusPolicyViolation, "unauthorized")
 			return

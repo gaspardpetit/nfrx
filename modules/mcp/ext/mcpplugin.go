@@ -9,7 +9,7 @@ import (
 // Plugin implements the MCP relay as a plugin.
 type Plugin struct {
     broker     *mcpbroker.Registry
-    pluginOpts spi.Options
+    srvOpts    spi.Options
     clientKey  string
 }
 
@@ -26,7 +26,7 @@ func New(
     authMW spi.Middleware,
 ) *Plugin {
     reg := mcpbroker.NewRegistry(opts.RequestTimeout, state)
-    return &Plugin{broker: reg, pluginOpts: opts, clientKey: opts.ClientKey}
+    return &Plugin{broker: reg, srvOpts: opts, clientKey: opts.ClientKey}
 }
 
 func (p *Plugin) ID() string { return "mcp" }
