@@ -14,6 +14,10 @@ type Plugin struct {
     broker     *mcpbroker.Registry
     srvOpts    spi.Options
     clientKey  string
+    stateFn    func() any
+    version    string
+    sha        string
+    date       string
 }
 
 // New constructs a new MCP plugin using the common server options.
@@ -40,7 +44,7 @@ func New(
         }
     }
     reg := mcpbroker.NewRegistryWithConfig(opts.RequestTimeout, state, cfg)
-    return &Plugin{broker: reg, srvOpts: opts, clientKey: opts.ClientKey}
+    return &Plugin{broker: reg, srvOpts: opts, clientKey: opts.ClientKey, stateFn: stateProvider, version: version, sha: sha, date: date}
 }
 
 func (p *Plugin) ID() string { return "mcp" }
@@ -56,7 +60,12 @@ func (p *Plugin) RegisterMetrics(reg spi.MetricsRegistry) {}
 
 // RegisterState registers MCP state elements.
 func (p *Plugin) RegisterState(reg spi.StateRegistry) {
-    reg.Add(spi.StateElement{ID: "mcp", Data: func() any { return p.broker.Snapshot() }, HTML: func() string {
+    // Prefer injected state provider when available for consistency with LLM; fallback to broker snapshot
+    dataFn := p.stateFn
+    if dataFn == nil {
+        dataFn = func() any { return p.broker.Snapshot() }
+    }
+    reg.Add(spi.StateElement{ID: "mcp", Data: dataFn, HTML: func() string {
         return `
 <div class="mcp-view">
   <div class="mcp-clients"></div>
