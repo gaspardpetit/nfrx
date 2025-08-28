@@ -1,4 +1,32 @@
-nfrx (0.6.2-1ubuntu1) UNRELEASED; urgency=medium
+nfrx (0.6.5-1ubuntu1) UNRELEASED; urgency=medium
+
+  * Release: v0.6.5 —
+    https://github.com/gaspardpetit/nfrx/releases/tag/v0.6.5
+  * ## What's Changed
+  * * Refactor/extentions via factory by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/178
+  * * Make state agnostic of extensions by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/179
+  * * Cleanup by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/180
+  * * deduplicate prometheus adapter by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/181
+  * * Refactor/improve logging by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/182
+  * * Refactor/allow extension options by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/184
+  * * Refactor/move modules common by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/187
+  * * Refactor/move sdk by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/186
+  *
+  *
+  * **Full Changelog**:
+    https://github.com/gaspardpetit/nfrx/compare/v0.6.2...v0.6.5
+
+ -- CI <ci@example.invalid>  Thu, 28 Aug 2025 07:48:31 +0000
+
+nfrx (0.6.5-1) unstable; urgency=medium
 
   * Release: v0.6.2 —
     https://github.com/gaspardpetit/nfrx/releases/tag/v0.6.2
@@ -11,8 +39,9 @@ nfrx (0.6.2-1ubuntu1) UNRELEASED; urgency=medium
   *
   * **Full Changelog**:
     https://github.com/gaspardpetit/nfrx/compare/v0.6.1...v0.6.2
+  *
 
- -- CI <ci@example.invalid>  Thu, 28 Aug 2025 03:44:44 +0000
+ -- CI <ci@example.invalid>  Thu, 28 Aug 2025 07:48:31 +0000
 
 nfrx (0.6.2-1) unstable; urgency=medium
 
