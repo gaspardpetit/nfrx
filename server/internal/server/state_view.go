@@ -13,20 +13,24 @@ func StateViewHTML(state *serverstate.Registry) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
         id := chi.URLParam(r, "id")
         if id == "" {
+            // bad request: no id
             w.WriteHeader(http.StatusBadRequest)
             return
         }
         if state == nil {
+            // no registry available
             w.WriteHeader(http.StatusNoContent)
             return
         }
         el, ok := state.Get(id)
         if !ok || el.HTML == nil {
+            // plugin view not provided
             w.WriteHeader(http.StatusNoContent)
             return
         }
         html := el.HTML()
         if html == "" {
+            // empty view
             w.WriteHeader(http.StatusNoContent)
             return
         }
@@ -34,4 +38,3 @@ func StateViewHTML(state *serverstate.Registry) http.HandlerFunc {
         _, _ = w.Write([]byte(html))
     }
 }
-

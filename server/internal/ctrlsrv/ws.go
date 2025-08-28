@@ -16,44 +16,50 @@ import (
 
 // WSHandler handles incoming client websocket connections.
 func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if serverstate.IsDraining() {
-			http.Error(w, "draining", http.StatusServiceUnavailable)
-			return
-		}
-		c, err := websocket.Accept(w, r, nil)
-		if err != nil {
-			return
-		}
-		ctx := r.Context()
-		defer func() {
-			_ = c.Close(websocket.StatusInternalError, "server error")
-		}()
+    return func(w http.ResponseWriter, r *http.Request) {
+        if serverstate.IsDraining() {
+            http.Error(w, "draining", http.StatusServiceUnavailable)
+            return
+        }
+        c, err := websocket.Accept(w, r, nil)
+        if err != nil {
+            logx.Log.Error().Err(err).Str("remote", r.RemoteAddr).Msg("ws accept")
+            return
+        }
+        ctx := r.Context()
+        defer func() {
+            _ = c.Close(websocket.StatusInternalError, "server error")
+        }()
 
-		_, data, err := c.Read(ctx)
-		if err != nil {
-			return
-		}
-		var env struct {
-			Type string `json:"type"`
-		}
-		if err := json.Unmarshal(data, &env); err != nil || env.Type != "register" {
-			_ = c.Close(websocket.StatusPolicyViolation, "expected register")
-			return
-		}
-		var rm ctrl.RegisterMessage
-		if err := json.Unmarshal(data, &rm); err != nil {
-			return
-		}
-    key := rm.ClientKey
-		if clientKey == "" && key != "" {
-			_ = c.Close(websocket.StatusPolicyViolation, "unauthorized")
-			return
-		}
-		if clientKey != "" && key != clientKey {
-			_ = c.Close(websocket.StatusPolicyViolation, "unauthorized")
-			return
-		}
+        _, data, err := c.Read(ctx)
+        if err != nil {
+            logx.Log.Error().Err(err).Str("remote", r.RemoteAddr).Msg("ws read register")
+            return
+        }
+        var env struct {
+            Type string `json:"type"`
+        }
+        if err := json.Unmarshal(data, &env); err != nil || env.Type != "register" {
+            logx.Log.Warn().Err(err).Str("remote", r.RemoteAddr).Msg("ws invalid first message; expected register")
+            _ = c.Close(websocket.StatusPolicyViolation, "expected register")
+            return
+        }
+        var rm ctrl.RegisterMessage
+        if err := json.Unmarshal(data, &rm); err != nil {
+            logx.Log.Error().Err(err).Str("remote", r.RemoteAddr).Msg("ws decode register")
+            return
+        }
+        key := rm.ClientKey
+        if clientKey == "" && key != "" {
+            logx.Log.Warn().Str("remote", r.RemoteAddr).Msg("ws unexpected client key provided")
+            _ = c.Close(websocket.StatusPolicyViolation, "unauthorized")
+            return
+        }
+        if clientKey != "" && key != clientKey {
+            logx.Log.Warn().Str("remote", r.RemoteAddr).Msg("ws unauthorized: client key mismatch")
+            _ = c.Close(websocket.StatusPolicyViolation, "unauthorized")
+            return
+        }
 		name := rm.WorkerName
 		if name == "" {
 			if len(rm.WorkerID) >= 8 {
@@ -97,21 +103,22 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string) http.H
 			}
 		}()
 
-		go func() {
-			for msg := range wk.Send {
-				b, err := json.Marshal(msg)
-				if err != nil {
-					continue
-				}
-				if err := c.Write(ctx, websocket.MessageText, b); err != nil {
-					return
-				}
-			}
-		}()
+        go func() {
+            for msg := range wk.Send {
+                b, err := json.Marshal(msg)
+                if err != nil {
+                    continue
+                }
+                if err := c.Write(ctx, websocket.MessageText, b); err != nil {
+                    logx.Log.Error().Err(err).Str("worker_id", wk.ID).Str("worker_name", wk.Name).Msg("ws write")
+                    return
+                }
+            }
+        }()
 
-		for {
-			_, msg, err := c.Read(ctx)
-			if err != nil {
+        for {
+            _, msg, err := c.Read(ctx)
+            if err != nil {
 				var ce websocket.CloseError
 				if errors.As(err, &ce) {
 					lvl := logx.Log.Info()
@@ -122,15 +129,16 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string) http.H
 				} else {
 					logx.Log.Error().Err(err).Str("worker_id", wk.ID).Str("worker_name", wk.Name).Msg("disconnected")
 				}
-				return
-			}
-			var env struct {
-				Type string `json:"type"`
-			}
-			if err := json.Unmarshal(msg, &env); err != nil {
-				continue
-			}
-			switch env.Type {
+                return
+            }
+            var env struct {
+                Type string `json:"type"`
+            }
+            if err := json.Unmarshal(msg, &env); err != nil {
+                logx.Log.Debug().Err(err).Str("worker_id", wk.ID).Str("worker_name", wk.Name).Msg("ws decode message")
+                continue
+            }
+            switch env.Type {
 			case "heartbeat":
 				reg.UpdateHeartbeat(wk.ID)
 				metrics.RecordHeartbeat(wk.ID)
@@ -210,21 +218,23 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string) http.H
 						ch <- m
 					}
 				}
-			case "http_proxy_response_end":
-				var m ctrl.HTTPProxyResponseEndMessage
-				if err := json.Unmarshal(msg, &m); err == nil {
-					wk.mu.Lock()
-					ch, ok := wk.Jobs[m.RequestID]
-					if ok {
-						delete(wk.Jobs, m.RequestID)
-					}
-					wk.mu.Unlock()
-					if ok {
-						ch <- m
-						close(ch)
-					}
-				}
-			}
-		}
-	}
+            case "http_proxy_response_end":
+                var m ctrl.HTTPProxyResponseEndMessage
+                if err := json.Unmarshal(msg, &m); err == nil {
+                    wk.mu.Lock()
+                    ch, ok := wk.Jobs[m.RequestID]
+                    if ok {
+                        delete(wk.Jobs, m.RequestID)
+                    }
+                    wk.mu.Unlock()
+                    if ok {
+                        ch <- m
+                        close(ch)
+                    }
+                }
+            default:
+                logx.Log.Debug().Str("type", env.Type).Str("worker_id", wk.ID).Msg("ws unknown message type")
+            }
+        }
+    }
 }
