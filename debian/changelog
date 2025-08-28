@@ -1,5 +1,52 @@
-nfrx (0.6.0-1) UNRELEASED; urgency=medium
+nfrx (0.6.1-1ubuntu1) UNRELEASED; urgency=medium
+
+  * Release: v0.6.1 —
+    https://github.com/gaspardpetit/nfrx/releases/tag/v0.6.1
+  * ## What's Changed
+  * * feat: complete grpc migration by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/156
+  * * Merge branch 'feat/grpc-agents-wip' into revert/revert-grpc-
+    changes by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/157
+  * * Removed desktop for now to focus on main tool by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/158
+  * * Fix tests after refactor by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/159
+  * * refactor: decouple LLM and MCP via SPI by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/162
+  * * chore: update build and packaging for module split by
+    @gaspardpetit in https://github.com/gaspardpetit/nfrx/pull/163
+  * * feat: mount plugins under surface prefixes by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/166
+  * * chore: update build and packaging for module split by
+    @gaspardpetit in https://github.com/gaspardpetit/nfrx/pull/167
+  * * refactor plugin route registration by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/168
+  * * refactor: unify plugin interfaces by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/169
+  * * feat: move plugin interface to sdk by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/170
+  * * refactor(sdk): rename module to github.com/gaspardpetit/nfrx/sdk
+    and … by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/171
+  * * Fix/use unix linebreaks by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/172
+  * * chore: normalize line endings to LF per .gitattributes by
+    @gaspardpetit in https://github.com/gaspardpetit/nfrx/pull/173
+  * * Refactor/llm plugin di and state by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/174
+  * * Codex/do not commit executables by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/175
+  *
+  *
+  * **Full Changelog**:
+    https://github.com/gaspardpetit/nfrx/compare/v0.6.0...v0.6.1
+
+ -- CI <ci@example.invalid>  Thu, 28 Aug 2025 02:12:52 +0000
+
+nfrx (0.6.1-1) unstable; urgency=medium
 
   * Temporary changelog for packaging tests.
+  *
 
- -- CI <ci@example.invalid>  Wed, 27 Aug 2025 00:00:00 +0000
+ -- CI <ci@example.invalid>  Thu, 28 Aug 2025 02:12:52 +0000
