@@ -150,7 +150,8 @@ async function maybeLoadViews(plugins) {
   for (const id of Object.keys(plugins || {})) {
     if (loadedViews.has(id)) continue;
     try {
-      const resp = await fetch(`/api/state/view/${id}.html`);
+      const headers = token ? { 'Authorization': 'Bearer ' + token } : {};
+      const resp = await fetch(`/api/state/view/${id}.html`, { headers });
       if (resp.status === 200) {
         const html = await resp.text();
         if (html && html.trim().length > 0) {
@@ -177,13 +178,18 @@ function update(envelope) {
   const plugins = envelope.plugins || {};
   const llm = plugins.llm || {};
   const sum = llm.workers_summary || {connected:0, working:0, idle:0};
-  const mcp = plugins.mcp || {};
-  document.getElementById('summary').textContent = `Workers: ${sum.connected} connected, ${sum.working} working, ${sum.idle} idle. MCP clients: ${(mcp.clients||[]).length}`;
+  const pluginIds = Object.keys(plugins || {});
+  let summary = `Plugins: ${pluginIds.join(', ') || 'none'}`;
+  if (llm.workers) {
+    summary += ` | Workers: ${sum.connected} connected, ${sum.working} working, ${sum.idle} idle`;
+  }
+  document.getElementById('summary').textContent = summary;
   workers = llm.workers || [];
   render();
   // Lazy-load plugin views once per plugin id
   maybeLoadViews(plugins);
 
+  const mcp = plugins.mcp || {};
   const clientsDiv = document.getElementById('mcp_clients');
   clientsDiv.innerHTML = '';
   (mcp.clients || []).forEach(c => {

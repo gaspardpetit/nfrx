@@ -65,11 +65,12 @@ func (c *ServerConfig) BindFlags() {
 		c.DrainTimeout = 5 * time.Minute
 	}
 	c.AllowedOrigins = splitComma(commoncfg.GetEnv("ALLOWED_ORIGINS", strings.Join(c.AllowedOrigins, ",")))
-	if p := commoncfg.GetEnv("PLUGINS", ""); p != "" {
-		c.Plugins = splitComma(p)
-	} else if c.Plugins == nil {
-		c.Plugins = []string{"llm", "mcp"}
-	}
+    if p := commoncfg.GetEnv("PLUGINS", ""); p != "" {
+        c.Plugins = splitComma(p)
+    } else if c.Plugins == nil {
+        // Default to loading all registered plugins
+        c.Plugins = []string{"*"}
+    }
 
 	flag.StringVar(&c.ConfigFile, "config", c.ConfigFile, "server config file path")
 	flag.StringVar(&c.LogLevel, "log-level", c.LogLevel, "log verbosity (all, debug, info, warn, error, fatal, none)")
