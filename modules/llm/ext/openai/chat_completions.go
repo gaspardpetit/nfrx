@@ -128,10 +128,12 @@ func ChatCompletionsHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics
             if tokensIn > 0 {
                 llmmetrics.RecordModelTokens(meta.Model, "in", tokensIn)
                 llmmetrics.RecordWorkerTokens(worker.ID(), "in", tokensIn)
+                metrics.RecordWorkerTokens(worker.ID(), "in", tokensIn)
             }
             if tokensOut > 0 {
                 llmmetrics.RecordModelTokens(meta.Model, "out", tokensOut)
                 llmmetrics.RecordWorkerTokens(worker.ID(), "out", tokensOut)
+                metrics.RecordWorkerTokens(worker.ID(), "out", tokensOut)
             }
         }()
 		for {

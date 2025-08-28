@@ -3,6 +3,7 @@ package test
 import (
     "context"
     "encoding/json"
+    "net/http"
     "net/http/httptest"
     "strings"
     "testing"
@@ -15,27 +16,18 @@ import (
     "github.com/gaspardpetit/nfrx/server/internal/adapters"
     "github.com/gaspardpetit/nfrx/server/internal/config"
     llm "github.com/gaspardpetit/nfrx/modules/llm/ext"
-    ctrlsrv "github.com/gaspardpetit/nfrx/server/internal/ctrlsrv"
     "github.com/gaspardpetit/nfrx/server/internal/plugin"
     "github.com/gaspardpetit/nfrx/server/internal/server"
     "github.com/gaspardpetit/nfrx/server/internal/serverstate"
     "github.com/gaspardpetit/nfrx/sdk/api/spi"
 )
 
-func TestHeartbeatPrune(t *testing.T) {
+func TestDisconnectRemovesModels(t *testing.T) {
 	cfg := config.ServerConfig{ClientKey: "secret", RequestTimeout: 5 * time.Second}
 	mcpPlugin := mcp.New(adapters.ServerState{}, nil, nil, nil, nil, nil, "test", "", "", spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg := serverstate.NewRegistry()
-    reg := ctrlsrv.NewRegistry()
-    metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
-    sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
-    connect := ctrlsrv.WSHandler(reg, metricsReg, cfg.ClientKey)
-    wr := adapters.NewWorkerRegistry(reg)
-    sc := adapters.NewScheduler(sched)
-    mx := adapters.NewMetrics(metricsReg)
-    stateProvider := func() any { return metricsReg.Snapshot() }
     srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}
-    llmPlugin := llm.New(adapters.ServerState{}, connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
+    llmPlugin := llm.New(adapters.ServerState{}, "test", "", "", srvOpts, nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -53,18 +45,29 @@ func TestHeartbeatPrune(t *testing.T) {
 		t.Fatalf("write: %v", err)
 	}
 
-	// ensure registration
-    for i := 0; i < 50; i++ {
-        if len(reg.Models()) > 0 {
-            break
+    // ensure registration visible via public API
+    for i := 0; i < 100; i++ {
+        resp, err := http.Get(srv.URL + "/api/llm/v1/models")
+        if err == nil {
+            var v struct{ Data []struct{ ID string `json:"id"` } `json:"data"` }
+            _ = json.NewDecoder(resp.Body).Decode(&v)
+            _ = resp.Body.Close()
+            if len(v.Data) > 0 { break }
         }
         time.Sleep(20 * time.Millisecond)
     }
-
-	// prune immediately
-    reg.PruneExpired(0)
-
-    if len(reg.Models()) != 0 {
-        t.Fatalf("expected models pruned")
+    // disconnect
+    _ = conn.Close(websocket.StatusNormalClosure, "")
+    // wait until models list is empty
+    for i := 0; i < 100; i++ {
+        resp, err := http.Get(srv.URL + "/api/llm/v1/models")
+        if err == nil {
+            var v struct{ Data []struct{ ID string `json:"id"` } `json:"data"` }
+            _ = json.NewDecoder(resp.Body).Decode(&v)
+            _ = resp.Body.Close()
+            if len(v.Data) == 0 { return }
+        }
+        time.Sleep(20 * time.Millisecond)
     }
+    t.Fatalf("expected models to be removed after disconnect")
 }

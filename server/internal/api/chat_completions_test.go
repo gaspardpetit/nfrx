@@ -9,9 +9,7 @@ import (
 	"time"
 
     ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
-	openai "github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
-	"github.com/gaspardpetit/nfrx/server/internal/adapters"
-	ctrlsrv "github.com/gaspardpetit/nfrx/server/internal/ctrlsrv"
+    openai "github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
 )
 
 type flushRecorder struct {
@@ -22,19 +20,13 @@ type flushRecorder struct {
 func (f *flushRecorder) Flush() { f.flushed = true }
 
 func TestChatCompletionsHeaders(t *testing.T) {
-	reg := ctrlsrv.NewRegistry()
-	sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
-	wk := &ctrlsrv.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
-	reg.Add(wk)
-	metricsReg := ctrlsrv.NewMetricsRegistry("", "", "")
-	metricsReg.UpsertWorker("w1", "w1", "", "", "", 1, 0, []string{"m"})
-	metricsReg.SetWorkerStatus("w1", ctrlsrv.StatusConnected)
-	h := openai.ChatCompletionsHandler(adapters.NewWorkerRegistry(reg), adapters.NewScheduler(sched), adapters.NewMetrics(metricsReg), time.Second)
+    wk := newTestWorker("w1", []string{"m"})
+    h := openai.ChatCompletionsHandler(testReg{w: wk}, testSched{w: wk}, testMetrics{}, time.Second)
 
 	go func() {
-		msg := <-wk.Send
-		req := msg.(ctrl.HTTPProxyRequestMessage)
-		ch := wk.Jobs[req.RequestID]
+        msg := <-wk.send
+        req := msg.(ctrl.HTTPProxyRequestMessage)
+        ch := wk.jobs[req.RequestID]
 		ch <- ctrl.HTTPProxyResponseHeadersMessage{Type: "http_proxy_response_headers", RequestID: req.RequestID, Status: 200, Headers: map[string]string{"Content-Type": "text/event-stream", "Cache-Control": "no-store"}}
 		ch <- ctrl.HTTPProxyResponseChunkMessage{Type: "http_proxy_response_chunk", RequestID: req.RequestID, Data: []byte("data: hi\n\n")}
 		ch <- ctrl.HTTPProxyResponseEndMessage{Type: "http_proxy_response_end", RequestID: req.RequestID}
@@ -60,17 +52,13 @@ func TestChatCompletionsHeaders(t *testing.T) {
 }
 
 func TestChatCompletionsOpaque(t *testing.T) {
-	reg := ctrlsrv.NewRegistry()
-	sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
-	wk := &ctrlsrv.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
-	reg.Add(wk)
-	metricsReg := ctrlsrv.NewMetricsRegistry("", "", "")
-	h := openai.ChatCompletionsHandler(adapters.NewWorkerRegistry(reg), adapters.NewScheduler(sched), adapters.NewMetrics(metricsReg), time.Second)
+    wk := newTestWorker("w1", []string{"m"})
+    h := openai.ChatCompletionsHandler(testReg{w: wk}, testSched{w: wk}, testMetrics{}, time.Second)
 
 	go func() {
-		msg := <-wk.Send
-		req := msg.(ctrl.HTTPProxyRequestMessage)
-		ch := wk.Jobs[req.RequestID]
+        msg := <-wk.send
+        req := msg.(ctrl.HTTPProxyRequestMessage)
+        ch := wk.jobs[req.RequestID]
 		ch <- ctrl.HTTPProxyResponseHeadersMessage{Type: "http_proxy_response_headers", RequestID: req.RequestID, Status: 200, Headers: map[string]string{"Content-Type": "application/octet-stream"}}
 		ch <- ctrl.HTTPProxyResponseChunkMessage{Type: "http_proxy_response_chunk", RequestID: req.RequestID, Data: []byte("hello ")}
 		ch <- ctrl.HTTPProxyResponseChunkMessage{Type: "http_proxy_response_chunk", RequestID: req.RequestID, Data: []byte("world")}
@@ -87,17 +75,13 @@ func TestChatCompletionsOpaque(t *testing.T) {
 }
 
 func TestChatCompletionsEarlyError(t *testing.T) {
-	reg := ctrlsrv.NewRegistry()
-	sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
-	wk := &ctrlsrv.Worker{ID: "w1", Models: map[string]bool{"m": true}, MaxConcurrency: 1, Send: make(chan interface{}, 1), Jobs: make(map[string]chan interface{})}
-	reg.Add(wk)
-	metricsReg := ctrlsrv.NewMetricsRegistry("", "", "")
-	h := openai.ChatCompletionsHandler(adapters.NewWorkerRegistry(reg), adapters.NewScheduler(sched), adapters.NewMetrics(metricsReg), time.Second)
+    wk := newTestWorker("w1", []string{"m"})
+    h := openai.ChatCompletionsHandler(testReg{w: wk}, testSched{w: wk}, testMetrics{}, time.Second)
 
 	go func() {
-		msg := <-wk.Send
-		req := msg.(ctrl.HTTPProxyRequestMessage)
-		ch := wk.Jobs[req.RequestID]
+        msg := <-wk.send
+        req := msg.(ctrl.HTTPProxyRequestMessage)
+        ch := wk.jobs[req.RequestID]
 		ch <- ctrl.HTTPProxyResponseHeadersMessage{Type: "http_proxy_response_headers", RequestID: req.RequestID, Status: 502, Headers: map[string]string{"Content-Type": "application/json"}}
 		ch <- ctrl.HTTPProxyResponseEndMessage{Type: "http_proxy_response_end", RequestID: req.RequestID, Error: &ctrl.HTTPProxyError{Code: "upstream_error", Message: "boom"}}
 	}()

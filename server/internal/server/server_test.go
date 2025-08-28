@@ -13,7 +13,7 @@ import (
     "github.com/gaspardpetit/nfrx/server/internal/adapters"
     "github.com/gaspardpetit/nfrx/server/internal/config"
     llm "github.com/gaspardpetit/nfrx/modules/llm/ext"
-    ctrlsrv "github.com/gaspardpetit/nfrx/server/internal/ctrlsrv"
+    
     "github.com/gaspardpetit/nfrx/server/internal/plugin"
     "github.com/gaspardpetit/nfrx/server/internal/serverstate"
 )
@@ -22,16 +22,8 @@ func TestMetricsEndpointDefaultPort(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":8080", RequestTimeout: time.Second}
 	mcpPlugin := mcp.New(adapters.ServerState{}, nil, nil, nil, nil, nil, "test", "", "", spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg := serverstate.NewRegistry()
-    reg := ctrlsrv.NewRegistry()
-    metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
-    sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
-    connect := ctrlsrv.WSHandler(reg, metricsReg, cfg.ClientKey)
-    wr := adapters.NewWorkerRegistry(reg)
-    sc := adapters.NewScheduler(sched)
-    mx := adapters.NewMetrics(metricsReg)
-    stateProvider := func() any { return metricsReg.Snapshot() }
     srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}
-    llmPlugin := llm.New(adapters.ServerState{}, connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
+    llmPlugin := llm.New(adapters.ServerState{}, "test", "", "", srvOpts, nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
@@ -49,16 +41,8 @@ func TestMetricsEndpointSeparatePort(t *testing.T) {
     cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":9090", RequestTimeout: time.Second}
     mcpPlugin := mcp.New(adapters.ServerState{}, nil, nil, nil, nil, nil, "test", "", "", spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
     stateReg := serverstate.NewRegistry()
-    reg := ctrlsrv.NewRegistry()
-    metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
-    sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
-    connect := ctrlsrv.WSHandler(reg, metricsReg, cfg.ClientKey)
-    wr := adapters.NewWorkerRegistry(reg)
-    sc := adapters.NewScheduler(sched)
-    mx := adapters.NewMetrics(metricsReg)
-    stateProvider := func() any { return metricsReg.Snapshot() }
     srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}
-    llmPlugin := llm.New(adapters.ServerState{}, connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
+    llmPlugin := llm.New(adapters.ServerState{}, "test", "", "", srvOpts, nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
@@ -76,16 +60,8 @@ func TestStatePage(t *testing.T) {
     cfg := config.ServerConfig{Port: 8080, RequestTimeout: time.Second}
     mcpPlugin := mcp.New(adapters.ServerState{}, nil, nil, nil, nil, nil, "test", "", "", spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
     stateReg := serverstate.NewRegistry()
-    reg := ctrlsrv.NewRegistry()
-    metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
-    sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
-    connect := ctrlsrv.WSHandler(reg, metricsReg, cfg.ClientKey)
-    wr := adapters.NewWorkerRegistry(reg)
-    sc := adapters.NewScheduler(sched)
-    mx := adapters.NewMetrics(metricsReg)
-    stateProvider := func() any { return metricsReg.Snapshot() }
     srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}
-    llmPlugin := llm.New(adapters.ServerState{}, connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
+    llmPlugin := llm.New(adapters.ServerState{}, "test", "", "", srvOpts, nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
@@ -107,16 +83,8 @@ func TestCORSAllowedOrigins(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, RequestTimeout: time.Second, AllowedOrigins: []string{"https://example.com"}}
 	mcpPlugin := mcp.New(adapters.ServerState{}, nil, nil, nil, nil, nil, "test", "", "", spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg := serverstate.NewRegistry()
-    reg := ctrlsrv.NewRegistry()
-    metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
-    sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
-    connect := ctrlsrv.WSHandler(reg, metricsReg, cfg.ClientKey)
-    wr := adapters.NewWorkerRegistry(reg)
-    sc := adapters.NewScheduler(sched)
-    mx := adapters.NewMetrics(metricsReg)
-    stateProvider := func() any { return metricsReg.Snapshot() }
     srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout}
-    llmPlugin := llm.New(adapters.ServerState{}, connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
+    llmPlugin := llm.New(adapters.ServerState{}, "test", "", "", srvOpts, nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
@@ -174,16 +142,8 @@ func TestDisableLLMPlugin(t *testing.T) {
 func TestDisableMCPPlugin(t *testing.T) {
     cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":8080", RequestTimeout: time.Second}
     // LLM without MCP
-    reg := ctrlsrv.NewRegistry()
-    metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
-    sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
-    connect := ctrlsrv.WSHandler(reg, metricsReg, cfg.ClientKey)
-    wr := adapters.NewWorkerRegistry(reg)
-    sc := adapters.NewScheduler(sched)
-    mx := adapters.NewMetrics(metricsReg)
-    stateProvider := func() any { return metricsReg.Snapshot() }
     srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout}
-    llmPlugin := llm.New(adapters.ServerState{}, connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
+    llmPlugin := llm.New(adapters.ServerState{}, "test", "", "", srvOpts, nil)
 	stateReg := serverstate.NewRegistry()
 	h := New(cfg, stateReg, []plugin.Plugin{llmPlugin})
 	ts := httptest.NewServer(h)

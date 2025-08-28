@@ -6,7 +6,6 @@ import (
     "time"
 
     "github.com/gaspardpetit/nfrx/api/generated"
-    ctrlsrv "github.com/gaspardpetit/nfrx/server/internal/ctrlsrv"
     "github.com/gaspardpetit/nfrx/server/internal/serverstate"
 )
 
@@ -15,8 +14,6 @@ type HealthChecker interface {
 }
 
 type API struct {
-    Reg                   *ctrlsrv.Registry
-    Sched                 ctrlsrv.Scheduler
     Timeout               time.Duration
     Health                HealthChecker
     StateReg              *serverstate.Registry

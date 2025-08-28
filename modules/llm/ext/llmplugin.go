@@ -1,51 +1,52 @@
 package llm
 
 import (
-    "net/http"
+    "time"
 
     "github.com/gaspardpetit/nfrx/sdk/api/spi"
     opt "github.com/gaspardpetit/nfrx/core/options"
     "github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
     llmmetrics "github.com/gaspardpetit/nfrx/modules/llm/ext/metrics"
+    "github.com/gaspardpetit/nfrx/modules/llm/common/ctrlplane"
+    llmadapt "github.com/gaspardpetit/nfrx/modules/llm/ext/adapters"
 )
 
 // Plugin implements the llm subsystem as a plugin.
 type Plugin struct {
-    // dependency-injected fields (SPI-only)
-    connect    http.Handler
-    wr         spi.WorkerRegistry
-    sch        spi.Scheduler
-    mx         spi.Metrics
-    authMW     spi.Middleware
-    srvOpts    spi.Options
-    stateFn    func() any
+    // internal control plane
+    reg   *ctrlplane.Registry
+    mxreg *ctrlplane.MetricsRegistry
+    sch   ctrlplane.Scheduler
 
-    // build info for metrics registration
-    version string
-    sha     string
-    date    string
+    // dependency-injected server state + options
+    srvState spi.ServerState
+    authMW  spi.Middleware
+    srvOpts spi.Options
 }
 
 func (p *Plugin) ID() string { return "llm" }
 
 // RegisterRoutes wires the HTTP endpoints.
 func (p *Plugin) RegisterRoutes(r spi.Router) {
-    if p.connect != nil {
-        r.Handle("/connect", p.connect)
-    }
+    // Mount LLM worker connect endpoint owned by the extension
+    r.Handle("/connect", ctrlplane.WSHandler(p.reg, p.mxreg, p.srvOpts.ClientKey, p.srvState))
     r.Group(func(g spi.Router) {
         if p.authMW != nil { g.Use(p.authMW) }
         g.Route("/v1", func(v1 spi.Router) {
             // Adapt shared options to OpenAI-specific options; allow plugin option override for embeddings
             mpe := opt.Int(p.srvOpts.PluginOptions, "llm", "max_parallel_embeddings", 8)
             oa := openai.Options{RequestTimeout: p.srvOpts.RequestTimeout, MaxParallelEmbeddings: mpe}
-            openai.Mount(v1, p.wr, p.sch, p.mx, oa)
+            // Adapt internal control plane to SPI
+            wr := llmadapt.NewWorkerRegistry(p.reg)
+            sch := llmadapt.NewScheduler(p.sch)
+            mx := llmadapt.NewMetrics(p.mxreg)
+            openai.Mount(v1, wr, sch, mx, oa)
         })
     })
 }
 
 // Scheduler returns the plugin's scheduler.
-func (p *Plugin) Scheduler() spi.Scheduler { return p.sch }
+func (p *Plugin) Scheduler() spi.Scheduler { return llmadapt.NewScheduler(p.sch) }
 
 // RegisterMetrics registers LLM extension metrics collectors.
 func (p *Plugin) RegisterMetrics(reg spi.MetricsRegistry) {
@@ -54,11 +55,7 @@ func (p *Plugin) RegisterMetrics(reg spi.MetricsRegistry) {
 
 // RegisterState registers state elements.
 func (p *Plugin) RegisterState(reg spi.StateRegistry) {
-    sf := p.stateFn
-    if sf == nil {
-        sf = func() any { return nil }
-    }
-    reg.Add(spi.StateElement{ID: "llm", Data: sf, HTML: func() string {
+    reg.Add(spi.StateElement{ID: "llm", Data: func() any { return p.mxreg.Snapshot() }, HTML: func() string {
         return `
 <div class="llm-view">
   <div class="llm-workers"></div>
@@ -129,27 +126,23 @@ var _ spi.WorkerProvider = (*Plugin)(nil)
 // adapting them to the underlying OpenAI-specific configuration.
 func New(
     state spi.ServerState,
-    connect http.Handler,
-    workers spi.WorkerRegistry,
-    sched spi.Scheduler,
-    metrics spi.Metrics,
-    stateProvider func() any,
     version, sha, date string,
     srvOpts spi.Options,
     authMW spi.Middleware,
 ) *Plugin {
-    return &Plugin{
-        version:    version,
-        sha:        sha,
-        date:       date,
-        connect:    connect,
-        wr:         workers,
-        sch:        sched,
-        mx:         metrics,
-        authMW:     authMW,
-        srvOpts:    srvOpts,
-        stateFn:    stateProvider,
-    }
+    reg := ctrlplane.NewRegistry()
+    mx := ctrlplane.NewMetricsRegistry(version, sha, date, func() string { return "" })
+    sch := &ctrlplane.LeastBusyScheduler{Reg: reg}
+    // Start pruning expired workers in the background
+    go func() {
+        tick := srvOpts.AgentHeartbeatInterval
+        if tick == 0 { tick = ctrlplane.HeartbeatInterval }
+        expire := srvOpts.AgentHeartbeatExpiry
+        if expire == 0 { expire = ctrlplane.HeartbeatExpiry }
+        ticker := time.NewTicker(tick)
+        for range ticker.C { reg.PruneExpired(expire) }
+    }()
+    return &Plugin{ reg: reg, mxreg: mx, sch: sch, authMW: authMW, srvOpts: srvOpts, srvState: state }
 }
 
 // (compat constructor removed) — use New with spi.Options
