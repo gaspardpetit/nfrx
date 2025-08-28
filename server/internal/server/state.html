@@ -88,62 +88,22 @@ h1 {
   <option value="completed">Completed</option>
   <option value="errors">Errors</option>
 </select></div>
-<div id="workers"></div>
+<!-- Worker grid moved to LLM plugin view -->
 <h2>Plugin: MCP</h2>
 <div id="mcp_clients"></div>
 <div id="mcp_sessions"></div>
 <h2>Plugin Views</h2>
 <div id="plugins"></div>
 <script>
+// Plugin rendering registry
+window.NFRX = window.NFRX || { _renderers: {}, registerRenderer: function(id, fn){ this._renderers[id]=fn; } };
+
 let workers = [];
 let sortBy = 'oldest';
 let token = null;
 const loadedViews = new Set();
 
-function render() {
-  const container = document.getElementById('workers');
-  container.innerHTML = '';
-  const list = workers.slice();
-  list.sort((a, b) => {
-    switch (sortBy) {
-      case 'youngest':
-        return new Date(b.connected_at) - new Date(a.connected_at);
-      case 'busyness':
-        const ba = (a.inflight + a.queue_len) / (a.max_concurrency || 1);
-        const bb = (b.inflight + b.queue_len) / (b.max_concurrency || 1);
-        return bb - ba;
-      case 'name':
-        return (a.name || '').localeCompare(b.name || '');
-      case 'completed':
-        return b.processed_total - a.processed_total;
-      case 'errors':
-        return b.failures_total - a.failures_total;
-      case 'oldest':
-      default:
-        return new Date(a.connected_at) - new Date(b.connected_at);
-    }
-  });
-  list.forEach(w => {
-    const div = document.createElement('div');
-    div.className = 'worker';
-    const status = statusColor(w);
-    const busy = Math.min(1, (w.inflight + w.queue_len) / (w.max_concurrency || 1));
-    div.innerHTML = `
-      <div class="busy-bar"><div class="fill" style="height:${busy*100}%"></div></div>
-      <div class="emoji">🦙</div>
-      <div class="name"><span class="status-dot" style="background:${status}"></span>${w.name || w.id}</div>
-      <div>${w.status}</div>
-      <div>inflight: ${w.inflight}</div>
-      <div>embed batch: ${w.embedding_batch_size}</div>
-      <div>tokens in/out: ${w.tokens_in_total}/${w.tokens_out_total}</div>
-      <div>total tokens: ${w.tokens_total}</div>
-      <div>avg rate: ${w.avg_tokens_per_second.toFixed(2)} tok/s</div>
-      <div>embeddings: ${w.embeddings_total}</div>
-      <div>avg embed rate: ${w.avg_embeddings_per_second.toFixed(2)} emb/s</div>
-    `;
-    container.appendChild(div);
-  });
-}
+// LLM plugin will render its own worker grid
 
 async function maybeLoadViews(plugins) {
   const host = document.getElementById('plugins');
@@ -161,6 +121,7 @@ async function maybeLoadViews(plugins) {
           h.textContent = `Plugin: ${id}`;
           const div = document.createElement('div');
           div.innerHTML = html;
+          section.dataset.pluginId = id;
           section.appendChild(h);
           section.appendChild(div);
           host.appendChild(section);
@@ -185,9 +146,16 @@ function update(envelope) {
   }
   document.getElementById('summary').textContent = summary;
   workers = llm.workers || [];
-  render();
   // Lazy-load plugin views once per plugin id
   maybeLoadViews(plugins);
+  // Call plugin renderers if registered
+  for (const id of pluginIds) {
+    const fn = window.NFRX && window.NFRX._renderers && window.NFRX._renderers[id];
+    const container = document.getElementById('plugin-' + id);
+    if (typeof fn === 'function' && container) {
+      try { fn(plugins[id], container, envelope); } catch (e) { console.error('render', id, e); }
+    }
+  }
 
   const mcp = plugins.mcp || {};
   const clientsDiv = document.getElementById('mcp_clients');
@@ -209,16 +177,11 @@ function update(envelope) {
   });
 }
 
-function statusColor(w) {
-  if (w.last_error) return 'red';
-  if (Date.now() - new Date(w.last_heartbeat).getTime() > 15000) return 'orange';
-  if (w.inflight > 0) return 'gold';
-  return 'green';
-}
+// statusColor moved into LLM view renderer
 
 document.getElementById('sort').addEventListener('change', (e) => {
   sortBy = e.target.value;
-  render();
+  // plugin renderers may react to sortBy
 });
 
 async function connect() {

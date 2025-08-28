@@ -16,10 +16,27 @@ Endpoints are grouped by functional area.
 | Verb & Endpoint | Parameters | Description | Auth |
 | --- | --- | --- | --- |
 | `GET /state` | – | HTML status dashboard (prompts for API key). | API key |
-| `GET /api/state` | – | Server state snapshot (JSON). | API key |
-| `GET /api/state/stream` | – | Server state stream (SSE). | API key |
+| `GET /api/state` | – | Server state snapshot (JSON envelope). | API key |
+| `GET /api/state/stream` | – | Server state stream (SSE of JSON envelope). | API key |
+| `GET /api/state/view/{id}.html` | Path `{id}` | Returns plugin-provided HTML fragment for state view. | API key |
 
-The JSON snapshot includes `server.state` which reports `ready`, `not_ready`, or `draining`.
+JSON envelope shape:
+
+```
+{
+  "plugins": {
+    "llm": { ... plugin-defined state ... },
+    "mcp": { ... plugin-defined state ... },
+    ...
+  }
+}
+```
+
+- Each plugin contributes its own state under its ID. The server does not enforce a schema for plugin state.
+- The dashboard loads plugin-specific HTML fragments via `/api/state/view/{id}.html` and renders using the streamed envelope. If a plugin provides no view, it will not have a dedicated section in the dashboard.
+
+Notes:
+- The LLM plugin’s state includes server status (`ready`, `not_ready`, `draining`), workers, models, and aggregates. Other plugins (e.g., MCP) expose their own structures.
 
 ## Inference API
 
@@ -61,4 +78,3 @@ These endpoints are present when the `mcp` plugin is enabled.
 - **API key** – `Authorization: Bearer <API_KEY>`.
 - **Client key** – WebSocket `register` message must include `client_key` matching server configuration. Providing a key when the server is configured without one results in an immediate failure.
 - **MCP token** – Optional `Authorization: Bearer <AUTH_TOKEN>` forwarded to the MCP relay. The server neither validates nor requires this header; if the relay is configured with a token it will reject missing or invalid tokens. Future improvements may allow the relay to signal this requirement so the server can reject unauthenticated requests early.
-
