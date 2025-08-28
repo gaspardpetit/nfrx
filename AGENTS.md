@@ -41,6 +41,12 @@ requests to local Ollama instances. The repository contains three binaries:
   docker build -f deploy/Dockerfile.worker .
   ```
 
+## Git Hygiene
+- Always review `git status` before committing. Avoid adding built executables or other generated artifacts.
+- Do not commit the server binaries produced by `make build` (they appear at repo root): `nfrx`, `nfrx-llm`, `nfrx-mcp`.
+- If you accidentally stage generated files, unstage them before committing (e.g., `git restore --staged <file>`).
+- Prefer small, focused commits with descriptive messages. Group refactors and moves separately from behavioral changes.
+
 ## Documentation
 - Keep `doc/env.md` updated whenever environment variables, command line flags, or configuration file options change.
 - Keep `doc/server-endpoints.md` current whenever HTTP or WebSocket endpoints change in any component.

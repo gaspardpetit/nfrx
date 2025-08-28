@@ -36,3 +36,8 @@ desktop/windows/**/bin/
 desktop/windows/**/obj/
 **/.vs/
 .DS_Store
+
+# Built executables (do not commit)
+/nfrx
+/nfrx-llm
+/nfrx-mcp
