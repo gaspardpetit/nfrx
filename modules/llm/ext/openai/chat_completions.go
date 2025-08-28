@@ -13,6 +13,7 @@ import (
     ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
     "github.com/gaspardpetit/nfrx/sdk/api/spi"
     "github.com/gaspardpetit/nfrx/core/logx"
+    llmmetrics "github.com/gaspardpetit/nfrx/modules/llm/ext/metrics"
 )
 
 // ChatCompletionsHandler handles POST /api/llm/v1/chat/completions as a pass-through.
@@ -117,22 +118,22 @@ func ChatCompletionsHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics
 			defer idle.Stop()
 		}
 
-		defer func() {
-			dur := time.Since(start)
-			metrics.RecordJobEnd(worker.ID(), meta.Model, dur, tokensIn, tokensOut, 0, success, errMsg)
-			metrics.SetWorkerStatus(worker.ID(), spi.StatusIdle)
-			metrics.ObserveRequestDuration(worker.ID(), meta.Model, dur)
-			metrics.RecordWorkerProcessingTime(worker.ID(), dur)
-			metrics.RecordModelRequest(meta.Model, success)
-			if tokensIn > 0 {
-				metrics.RecordModelTokens(meta.Model, "in", tokensIn)
-				metrics.RecordWorkerTokens(worker.ID(), "in", tokensIn)
-			}
-			if tokensOut > 0 {
-				metrics.RecordModelTokens(meta.Model, "out", tokensOut)
-				metrics.RecordWorkerTokens(worker.ID(), "out", tokensOut)
-			}
-		}()
+        defer func() {
+            dur := time.Since(start)
+            metrics.RecordJobEnd(worker.ID(), meta.Model, dur, tokensIn, tokensOut, 0, success, errMsg)
+            metrics.SetWorkerStatus(worker.ID(), spi.StatusIdle)
+            llmmetrics.ObserveRequestDuration(worker.ID(), meta.Model, dur)
+            llmmetrics.RecordWorkerProcessingTime(worker.ID(), dur)
+            llmmetrics.RecordModelRequest(meta.Model, success)
+            if tokensIn > 0 {
+                llmmetrics.RecordModelTokens(meta.Model, "in", tokensIn)
+                llmmetrics.RecordWorkerTokens(worker.ID(), "in", tokensIn)
+            }
+            if tokensOut > 0 {
+                llmmetrics.RecordModelTokens(meta.Model, "out", tokensOut)
+                llmmetrics.RecordWorkerTokens(worker.ID(), "out", tokensOut)
+            }
+        }()
 		for {
 			select {
 			case <-ctx.Done():

@@ -1,11 +1,10 @@
 package adapters
 
 import (
-	"time"
+    "time"
 
     "github.com/gaspardpetit/nfrx/sdk/api/spi"
-	ctrlsrv "github.com/gaspardpetit/nfrx/server/internal/ctrlsrv"
-	"github.com/gaspardpetit/nfrx/server/internal/metrics"
+    ctrlsrv "github.com/gaspardpetit/nfrx/server/internal/ctrlsrv"
 )
 
 type WorkerRef struct {
@@ -83,32 +82,18 @@ func (m Metrics) RecordJobEnd(id, model string, dur time.Duration, tokensIn, tok
 	m.m.RecordJobEnd(id, model, dur, tokensIn, tokensOut, embeddings, success, errMsg)
 }
 func (m Metrics) SetWorkerStatus(id string, status spi.WorkerStatus) {
-	m.m.SetWorkerStatus(id, ctrlsrv.WorkerStatus(status))
+    m.m.SetWorkerStatus(id, ctrlsrv.WorkerStatus(status))
 }
-func (m Metrics) ObserveRequestDuration(workerID, model string, dur time.Duration) {
-	metrics.ObserveRequestDuration(workerID, model, dur)
-}
-func (m Metrics) RecordWorkerProcessingTime(workerID string, dur time.Duration) {
-	metrics.RecordWorkerProcessingTime(workerID, dur)
-}
-func (m Metrics) RecordWorkerTokens(workerID, kind string, n uint64) {
-	metrics.RecordWorkerTokens(workerID, kind, n)
-}
-func (m Metrics) RecordModelTokens(model, kind string, n uint64) {
-	metrics.RecordModelTokens(model, kind, n)
-}
-func (m Metrics) RecordModelRequest(model string, success bool) {
-	metrics.RecordModelRequest(model, success)
-}
-func (m Metrics) RecordModelEmbeddings(model string, n uint64) {
-	metrics.RecordModelEmbeddings(model, n)
-}
-func (m Metrics) RecordWorkerEmbeddings(workerID string, n uint64) {
-	metrics.RecordWorkerEmbeddings(workerID, n)
-}
-func (m Metrics) RecordWorkerEmbeddingProcessingTime(workerID string, dur time.Duration) {
-	metrics.RecordWorkerEmbeddingProcessingTime(workerID, dur)
-}
+// The following methods are extension-specific and are no-ops at the server level.
+// Extensions should register and emit their own Prometheus metrics.
+func (m Metrics) ObserveRequestDuration(workerID, model string, dur time.Duration) {}
+func (m Metrics) RecordWorkerProcessingTime(workerID string, dur time.Duration)     {}
+func (m Metrics) RecordWorkerTokens(workerID, kind string, n uint64)                {}
+func (m Metrics) RecordModelTokens(model, kind string, n uint64)                    {}
+func (m Metrics) RecordModelRequest(model string, success bool)                     {}
+func (m Metrics) RecordModelEmbeddings(model string, n uint64)                      {}
+func (m Metrics) RecordWorkerEmbeddings(workerID string, n uint64)                  {}
+func (m Metrics) RecordWorkerEmbeddingProcessingTime(workerID string, dur time.Duration) {}
 
 func NewWorkerRegistry(r *ctrlsrv.Registry) WorkerRegistry { return WorkerRegistry{r} }
 func NewScheduler(s ctrlsrv.Scheduler) Scheduler           { return Scheduler{s} }
