@@ -31,11 +31,12 @@ func New(
     // Build broker config from plugin options if provided
     var cfg mcpbroker.Config
     po := opts.PluginOptions
-    cfg.MaxReqBytes = opt.Int64(po, "mcp", "max_req_bytes", 10485760)
-    cfg.MaxRespBytes = opt.Int64(po, "mcp", "max_resp_bytes", 10485760)
-    cfg.Heartbeat = time.Duration(opt.Int(po, "mcp", "ws_heartbeat_ms", 15000)) * time.Millisecond
-    cfg.DeadAfter = time.Duration(opt.Int(po, "mcp", "ws_dead_after_ms", 45000)) * time.Millisecond
-    cfg.MaxConcurrencyPerClient = opt.Int(po, "mcp", "max_concurrency_per_client", 16)
+    // Only set fields when plugin options are provided; leave zero to allow env defaults in broker
+    cfg.MaxReqBytes = opt.Int64(po, "mcp", "max_req_bytes", cfg.MaxReqBytes)
+    cfg.MaxRespBytes = opt.Int64(po, "mcp", "max_resp_bytes", cfg.MaxRespBytes)
+    cfg.Heartbeat = time.Duration(opt.Int(po, "mcp", "ws_heartbeat_ms", int(cfg.Heartbeat/time.Millisecond))) * time.Millisecond
+    cfg.DeadAfter = time.Duration(opt.Int(po, "mcp", "ws_dead_after_ms", int(cfg.DeadAfter/time.Millisecond))) * time.Millisecond
+    cfg.MaxConcurrencyPerClient = opt.Int(po, "mcp", "max_concurrency_per_client", cfg.MaxConcurrencyPerClient)
     reg := mcpbroker.NewRegistryWithConfig(opts.RequestTimeout, state, cfg)
     return &Plugin{broker: reg, srvOpts: opts, clientKey: opts.ClientKey}
 }
