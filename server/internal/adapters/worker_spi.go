@@ -5,6 +5,7 @@ import (
 
     "github.com/gaspardpetit/nfrx/sdk/api/spi"
     ctrlsrv "github.com/gaspardpetit/nfrx/server/internal/ctrlsrv"
+    "github.com/gaspardpetit/nfrx/server/internal/metrics"
 )
 
 type WorkerRef struct {
@@ -77,9 +78,10 @@ type Metrics struct {
 	m *ctrlsrv.MetricsRegistry
 }
 
-func (m Metrics) RecordJobStart(id string) { m.m.RecordJobStart(id) }
+func (m Metrics) RecordJobStart(id string) { m.m.RecordJobStart(id); metrics.AgentJobStart() }
 func (m Metrics) RecordJobEnd(id, model string, dur time.Duration, tokensIn, tokensOut, embeddings uint64, success bool, errMsg string) {
-	m.m.RecordJobEnd(id, model, dur, tokensIn, tokensOut, embeddings, success, errMsg)
+    m.m.RecordJobEnd(id, model, dur, tokensIn, tokensOut, embeddings, success, errMsg)
+    metrics.AgentJobEnd(success)
 }
 func (m Metrics) SetWorkerStatus(id string, status spi.WorkerStatus) {
     m.m.SetWorkerStatus(id, ctrlsrv.WorkerStatus(status))
