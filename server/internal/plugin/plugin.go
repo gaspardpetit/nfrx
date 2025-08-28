@@ -36,7 +36,7 @@ func RegisterSurface(parent chi.Router, p Plugin, preg *prometheus.Registry, sta
 	parent.Mount(path, sub)
 
 	sr := chiRouter{sub}
-	mr := promRegistry{preg}
+    mr := PromAdapter{preg}
 	p.RegisterRoutes(sr)
 	p.RegisterMetrics(mr)
 	p.RegisterState(state)
@@ -82,9 +82,10 @@ func (r chiRouter) Use(mw ...spi.Middleware) {
 func (r chiRouter) Get(pattern string, h http.Handler)  { r.Method("GET", pattern, h) }
 func (r chiRouter) Post(pattern string, h http.Handler) { r.Method("POST", pattern, h) }
 
-type promRegistry struct{ *prometheus.Registry }
+// PromAdapter adapts a Prometheus registry to the SPI MetricsRegistry interface.
+type PromAdapter struct{ *prometheus.Registry }
 
-func (r promRegistry) MustRegister(cs ...spi.Collector) {
+func (r PromAdapter) MustRegister(cs ...spi.Collector) {
 	collectors := make([]prometheus.Collector, 0, len(cs))
 	for _, c := range cs {
 		collectors = append(collectors, c.(prometheus.Collector))

@@ -10,7 +10,6 @@ import (
     "github.com/prometheus/client_golang/prometheus/promhttp"
 
     "github.com/gaspardpetit/nfrx/api/generated"
-    "github.com/gaspardpetit/nfrx/sdk/spi"
     "github.com/gaspardpetit/nfrx/server/internal/adapters"
     "github.com/gaspardpetit/nfrx/server/internal/api"
     "github.com/gaspardpetit/nfrx/server/internal/config"
@@ -18,17 +17,6 @@ import (
     "github.com/gaspardpetit/nfrx/server/internal/serverstate"
     "github.com/gaspardpetit/nfrx/server/internal/metrics"
 )
-
-// promAdapter implements spi.MetricsRegistry backed by a Prometheus registry.
-type promAdapter struct{ *prometheus.Registry }
-
-func (r promAdapter) MustRegister(cs ...spi.Collector) {
-    collectors := make([]prometheus.Collector, 0, len(cs))
-    for _, c := range cs {
-        collectors = append(collectors, c.(prometheus.Collector))
-    }
-    r.Registry.MustRegister(collectors...)
-}
 
 // New constructs the HTTP handler for the server.
 func New(cfg config.ServerConfig, stateReg *serverstate.Registry, plugins []plugin.Plugin) http.Handler {
@@ -51,7 +39,7 @@ func New(cfg config.ServerConfig, stateReg *serverstate.Registry, plugins []plug
     prometheus.DefaultRegisterer = preg
     prometheus.DefaultGatherer = preg
     // Register global collectors used by runtime metrics
-    metrics.Register(promAdapter{preg})
+    metrics.Register(plugin.PromAdapter{Registry: preg})
     plugin.Load(r, preg, adapters.NewStateRegistry(stateReg), plugins)
 
     impl := &api.API{StateReg: stateReg}

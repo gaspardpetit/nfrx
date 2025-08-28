@@ -89,9 +89,6 @@ h1 {
   <option value="errors">Errors</option>
 </select></div>
 <!-- Worker grid moved to LLM plugin view -->
-<h2>Plugin: MCP</h2>
-<div id="mcp_clients"></div>
-<div id="mcp_sessions"></div>
 <h2>Plugin Views</h2>
 <div id="plugins"></div>
 <script>
@@ -119,12 +116,24 @@ async function maybeLoadViews(plugins) {
           section.id = `plugin-${id}`;
           const h = document.createElement('h3');
           h.textContent = `Plugin: ${id}`;
-          const div = document.createElement('div');
-          div.innerHTML = html;
           section.dataset.pluginId = id;
           section.appendChild(h);
-          section.appendChild(div);
+          // Append section to DOM first so dataset is visible to scripts
           host.appendChild(section);
+          const div = document.createElement('div');
+          section.appendChild(div);
+          // Inject HTML and execute any inline scripts by recreating them
+          div.innerHTML = html;
+          const scripts = Array.from(div.querySelectorAll('script'));
+          for (const old of scripts) {
+            const s = document.createElement('script');
+            // Copy attributes (type, etc.) if present
+            for (const attr of Array.from(old.attributes)) {
+              s.setAttribute(attr.name, attr.value);
+            }
+            s.textContent = old.textContent || '';
+            old.parentNode.replaceChild(s, old);
+          }
         }
       }
     } catch (e) {
@@ -157,24 +166,7 @@ function update(envelope) {
     }
   }
 
-  const mcp = plugins.mcp || {};
-  const clientsDiv = document.getElementById('mcp_clients');
-  clientsDiv.innerHTML = '';
-  (mcp.clients || []).forEach(c => {
-    const funcs = Object.entries(c.functions || {}).map(([k,v]) => `${k}:${v}`).join(', ');
-    const div = document.createElement('div');
-    const name = c.name ? ` ${c.name}` : '';
-    div.textContent = `${c.id}${name} (${c.status}) ${funcs}`;
-    clientsDiv.appendChild(div);
-  });
-
-  const sessDiv = document.getElementById('mcp_sessions');
-  sessDiv.innerHTML = '';
-  (mcp.sessions || []).forEach(s => {
-    const div = document.createElement('div');
-    div.textContent = `${s.id} ${s.client_id} ${s.method} ${Math.round(s.duration_ms/1000)}s`;
-    sessDiv.appendChild(div);
-  });
+  // MCP now renders via its plugin view
 }
 
 // statusColor moved into LLM view renderer
