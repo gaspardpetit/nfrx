@@ -52,18 +52,61 @@ func hasPlugin(list []string, name string) bool {
 }
 
 func main() {
-	showVersion := flag.Bool("version", false, "print version and exit")
-	var cfg config.ServerConfig
-	cfg.BindFlags()
-	flag.Usage = func() {
-		_, _ = fmt.Fprintf(flag.CommandLine.Output(), "nfrx-%s version=%s sha=%s date=%s\n\n", binaryName(), version, buildSHA, buildDate)
-		flag.PrintDefaults()
-	}
-	flag.Parse()
-	if *showVersion {
-		fmt.Printf("nfrx-%s version=%s sha=%s date=%s\n", binaryName(), version, buildSHA, buildDate)
-		return
-	}
+    showVersion := flag.Bool("version", false, "print version and exit")
+    showPluginHelp := flag.Bool("help-plugins", false, "print extension options and exit")
+    var cfg config.ServerConfig
+    cfg.BindFlags()
+    flag.Usage = func() {
+        _, _ = fmt.Fprintf(flag.CommandLine.Output(), "nfrx-%s version=%s sha=%s date=%s\n\n", binaryName(), version, buildSHA, buildDate)
+        flag.PrintDefaults()
+        // Print extension descriptors
+        fmt.Println()
+        fmt.Println("Extensions:")
+        ids := plugin.IDs()
+        sort.Strings(ids)
+        for _, id := range ids {
+            if d, ok := plugin.Descriptor(id); ok {
+                fmt.Printf("  - %s (%s)\n", d.Name, d.ID)
+                if d.Summary != "" {
+                    fmt.Printf("    %s\n", d.Summary)
+                }
+                for _, a := range d.Args {
+                    fmt.Printf("    * %s: %s\n", a.ID, a.Description)
+                    if a.Flag != "" {
+                        fmt.Printf("      flag: %s\n", a.Flag)
+                    }
+                    if a.Env != "" {
+                        fmt.Printf("      env: %s\n", a.Env)
+                    }
+                    if a.YAML != "" {
+                        fmt.Printf("      yaml: %s\n", a.YAML)
+                    }
+                    if a.Type != "" || a.Default != "" || a.Example != "" {
+                        fmt.Printf("      type: %s  default: %s", a.Type, a.Default)
+                        if a.Example != "" {
+                            fmt.Printf("  example: %s", a.Example)
+                        }
+                        fmt.Println()
+                    }
+                    if a.Deprecated {
+                        repl := a.Replacement
+                        if repl == "" { repl = "(none)" }
+                        fmt.Printf("      deprecated; replacement: %s\n", repl)
+                    }
+                }
+            }
+        }
+    }
+    flag.Parse()
+    if *showVersion {
+        fmt.Printf("nfrx-%s version=%s sha=%s date=%s\n", binaryName(), version, buildSHA, buildDate)
+        return
+    }
+    if *showPluginHelp {
+        // Trigger usage to print plugin help then exit
+        flag.Usage()
+        return
+    }
 
 	if cfg.ConfigFile != "" {
 		if err := cfg.LoadFile(cfg.ConfigFile); err != nil && !errors.Is(err, os.ErrNotExist) {
