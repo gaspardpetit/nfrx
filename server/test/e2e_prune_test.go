@@ -11,7 +11,6 @@ import (
     "github.com/coder/websocket"
 
     ctrl "github.com/gaspardpetit/nfrx/sdk/contracts/control"
-    "github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
     mcp "github.com/gaspardpetit/nfrx/modules/mcp/ext"
     "github.com/gaspardpetit/nfrx/server/internal/adapters"
     "github.com/gaspardpetit/nfrx/server/internal/config"
@@ -20,11 +19,12 @@ import (
     "github.com/gaspardpetit/nfrx/server/internal/plugin"
     "github.com/gaspardpetit/nfrx/server/internal/server"
     "github.com/gaspardpetit/nfrx/server/internal/serverstate"
+    "github.com/gaspardpetit/nfrx/sdk/spi"
 )
 
 func TestHeartbeatPrune(t *testing.T) {
 	cfg := config.ServerConfig{ClientKey: "secret", RequestTimeout: 5 * time.Second}
-	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
+    mcpPlugin := mcp.New(adapters.ServerState{}, spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey})
 	stateReg := serverstate.NewRegistry()
     reg := ctrlsrv.NewRegistry()
     metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
@@ -34,8 +34,8 @@ func TestHeartbeatPrune(t *testing.T) {
     sc := adapters.NewScheduler(sched)
     mx := adapters.NewMetrics(metricsReg)
     stateProvider := func() any { return metricsReg.Snapshot() }
-    oa := openai.Options{RequestTimeout: cfg.RequestTimeout, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
-    llmPlugin := llm.NewWithDeps(connect, wr, sc, mx, stateProvider, oa, "test", "", "", nil, nil)
+    srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
+    llmPlugin := llm.New(connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()

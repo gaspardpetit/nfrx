@@ -12,7 +12,7 @@ import (
     "github.com/coder/websocket"
 
     ctrl "github.com/gaspardpetit/nfrx/sdk/contracts/control"
-    "github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
+    "github.com/gaspardpetit/nfrx/sdk/spi"
     mcp "github.com/gaspardpetit/nfrx/modules/mcp/ext"
     "github.com/gaspardpetit/nfrx/server/internal/adapters"
     "github.com/gaspardpetit/nfrx/server/internal/config"
@@ -25,7 +25,7 @@ import (
 
 func TestWorkerAuth(t *testing.T) {
 	cfg := config.ServerConfig{ClientKey: "secret", RequestTimeout: 5 * time.Second}
-	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
+	mcpPlugin := mcp.New(adapters.ServerState{}, spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey})
 	stateReg := serverstate.NewRegistry()
     reg := ctrlsrv.NewRegistry()
     metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
@@ -35,8 +35,8 @@ func TestWorkerAuth(t *testing.T) {
     sc := adapters.NewScheduler(sched)
     mx := adapters.NewMetrics(metricsReg)
     stateProvider := func() any { return metricsReg.Snapshot() }
-    oa := openai.Options{RequestTimeout: cfg.RequestTimeout, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
-    llmPlugin := llm.NewWithDeps(connect, wr, sc, mx, stateProvider, oa, "test", "", "", nil, nil)
+    srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
+    llmPlugin := llm.New(connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -98,7 +98,7 @@ func TestWorkerAuth(t *testing.T) {
 
 func TestWorkerClientKeyUnexpected(t *testing.T) {
 	cfg := config.ServerConfig{RequestTimeout: 5 * time.Second}
-	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
+	mcpPlugin := mcp.New(adapters.ServerState{}, spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey})
 	stateReg := serverstate.NewRegistry()
     reg := ctrlsrv.NewRegistry()
     metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
@@ -108,8 +108,8 @@ func TestWorkerClientKeyUnexpected(t *testing.T) {
     sc := adapters.NewScheduler(sched)
     mx := adapters.NewMetrics(metricsReg)
     stateProvider := func() any { return metricsReg.Snapshot() }
-    oa := openai.Options{RequestTimeout: cfg.RequestTimeout, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
-    llmPlugin := llm.NewWithDeps(connect, wr, sc, mx, stateProvider, oa, "test", "", "", nil, nil)
+    srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
+    llmPlugin := llm.New(connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -133,7 +133,7 @@ func TestWorkerClientKeyUnexpected(t *testing.T) {
 
 func TestMCPAuth(t *testing.T) {
 	cfg := config.ServerConfig{ClientKey: "secret", RequestTimeout: 5 * time.Second}
-    mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
+    mcpPlugin := mcp.New(adapters.ServerState{}, spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey})
     stateReg := serverstate.NewRegistry()
     reg := ctrlsrv.NewRegistry()
     metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
@@ -143,8 +143,8 @@ func TestMCPAuth(t *testing.T) {
     sc := adapters.NewScheduler(sched)
     mx := adapters.NewMetrics(metricsReg)
     stateProvider := func() any { return metricsReg.Snapshot() }
-    oa := openai.Options{RequestTimeout: cfg.RequestTimeout, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
-    llmPlugin := llm.NewWithDeps(connect, wr, sc, mx, stateProvider, oa, "test", "", "", nil, nil)
+    srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
+    llmPlugin := llm.New(connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -184,7 +184,7 @@ func TestMCPAuth(t *testing.T) {
 
 	// unexpected key when server has none
 	cfg = config.ServerConfig{RequestTimeout: 5 * time.Second}
-	mcpReg := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
+	mcpReg := mcp.New(adapters.ServerState{}, spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey})
 	stateReg = serverstate.NewRegistry()
     // rebuild deps for second server
     reg2 := ctrlsrv.NewRegistry()
@@ -195,8 +195,8 @@ func TestMCPAuth(t *testing.T) {
     sc2 := adapters.NewScheduler(sched2)
     mx2 := adapters.NewMetrics(metricsReg2)
     stateProvider2 := func() any { return metricsReg2.Snapshot() }
-    oa2 := openai.Options{RequestTimeout: cfg.RequestTimeout, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
-    llmPlugin = llm.NewWithDeps(connect2, wr2, sc2, mx2, stateProvider2, oa2, "test", "", "", nil, nil)
+    srvOpts2 := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
+    llmPlugin = llm.New(connect2, wr2, sc2, mx2, stateProvider2, "test", "", "", srvOpts2, nil)
 	handler = server.New(cfg, stateReg, []plugin.Plugin{mcpReg, llmPlugin})
 	srv2 := httptest.NewServer(handler)
 	defer srv2.Close()

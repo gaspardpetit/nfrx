@@ -16,7 +16,6 @@ import (
     "github.com/prometheus/client_golang/prometheus/promhttp"
 
     "github.com/gaspardpetit/nfrx/modules/common/logx"
-    "github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
     mcp "github.com/gaspardpetit/nfrx/modules/mcp/ext"
     "github.com/gaspardpetit/nfrx/server/internal/adapters"
     "github.com/gaspardpetit/nfrx/server/internal/api"
@@ -27,6 +26,7 @@ import (
     "github.com/gaspardpetit/nfrx/server/internal/plugin"
     "github.com/gaspardpetit/nfrx/server/internal/server"
     "github.com/gaspardpetit/nfrx/server/internal/serverstate"
+    spicontracts "github.com/gaspardpetit/nfrx/sdk/spi"
 )
 
 var (
@@ -84,13 +84,22 @@ func main() {
 		logx.Log.Info().Str("addr", cfg.RedisAddr).Msg("using redis state store")
 	}
 
-	stateReg := serverstate.NewRegistry()
-	var plugins []plugin.Plugin
-	var mcpReg *mcp.Plugin
-	if hasPlugin(cfg.Plugins, "mcp") {
-		mcpReg = mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, cfg.PluginOptions["mcp"])
-		plugins = append(plugins, mcpReg)
-	}
+    stateReg := serverstate.NewRegistry()
+    var plugins []plugin.Plugin
+    var mcpReg *mcp.Plugin
+
+    // Build common server options for all extensions
+    commonOpts := spicontracts.Options{
+        RequestTimeout:        cfg.RequestTimeout,
+        ClientKey:             cfg.ClientKey,
+        MaxParallelEmbeddings: cfg.MaxParallelEmbeddings,
+        PluginOptions:         cfg.PluginOptions,
+    }
+
+    if hasPlugin(cfg.Plugins, "mcp") {
+        mcpReg = mcp.New(adapters.ServerState{}, commonOpts)
+        plugins = append(plugins, mcpReg)
+    }
     if hasPlugin(cfg.Plugins, "llm") {
         // Build concrete dependencies and inject into the LLM plugin
         reg := ctrlsrv.NewRegistry()
@@ -105,10 +114,8 @@ func main() {
         if cfg.APIKey != "" {
             authMW = api.APIKeyMiddleware(cfg.APIKey)
         }
-        openaiOpts := openai.Options{RequestTimeout: cfg.RequestTimeout, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
-
         stateProvider := func() any { return metricsReg.Snapshot() }
-        llmPlugin := llm.NewWithDeps(connect, wr, sc, mx, stateProvider, openaiOpts, version, buildSHA, buildDate, cfg.PluginOptions["llm"], authMW)
+        llmPlugin := llm.New(connect, wr, sc, mx, stateProvider, version, buildSHA, buildDate, commonOpts, authMW)
         // Ownership of pruning loop moves here with injected deps
         go func() {
             ticker := time.NewTicker(ctrlsrv.HeartbeatInterval)

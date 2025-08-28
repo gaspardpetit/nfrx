@@ -9,7 +9,7 @@ import (
     "time"
 
     mcp "github.com/gaspardpetit/nfrx/modules/mcp/ext"
-    "github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
+    "github.com/gaspardpetit/nfrx/sdk/spi"
     "github.com/gaspardpetit/nfrx/server/internal/adapters"
     "github.com/gaspardpetit/nfrx/server/internal/config"
     llm "github.com/gaspardpetit/nfrx/modules/llm/ext"
@@ -20,7 +20,7 @@ import (
 
 func TestMetricsEndpointDefaultPort(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":8080", RequestTimeout: time.Second}
-	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
+	mcpPlugin := mcp.New(adapters.ServerState{}, spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey})
 	stateReg := serverstate.NewRegistry()
     reg := ctrlsrv.NewRegistry()
     metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
@@ -30,8 +30,8 @@ func TestMetricsEndpointDefaultPort(t *testing.T) {
     sc := adapters.NewScheduler(sched)
     mx := adapters.NewMetrics(metricsReg)
     stateProvider := func() any { return metricsReg.Snapshot() }
-    oa := openai.Options{RequestTimeout: cfg.RequestTimeout, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
-    llmPlugin := llm.NewWithDeps(connect, wr, sc, mx, stateProvider, oa, "test", "", "", nil, nil)
+    srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
+    llmPlugin := llm.New(connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
@@ -47,7 +47,7 @@ func TestMetricsEndpointDefaultPort(t *testing.T) {
 
 func TestMetricsEndpointSeparatePort(t *testing.T) {
     cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":9090", RequestTimeout: time.Second}
-    mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
+    mcpPlugin := mcp.New(adapters.ServerState{}, spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey})
     stateReg := serverstate.NewRegistry()
     reg := ctrlsrv.NewRegistry()
     metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
@@ -57,8 +57,8 @@ func TestMetricsEndpointSeparatePort(t *testing.T) {
     sc := adapters.NewScheduler(sched)
     mx := adapters.NewMetrics(metricsReg)
     stateProvider := func() any { return metricsReg.Snapshot() }
-    oa := openai.Options{RequestTimeout: cfg.RequestTimeout, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
-    llmPlugin := llm.NewWithDeps(connect, wr, sc, mx, stateProvider, oa, "test", "", "", nil, nil)
+    srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
+    llmPlugin := llm.New(connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
@@ -74,7 +74,7 @@ func TestMetricsEndpointSeparatePort(t *testing.T) {
 
 func TestStatePage(t *testing.T) {
     cfg := config.ServerConfig{Port: 8080, RequestTimeout: time.Second}
-    mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
+    mcpPlugin := mcp.New(adapters.ServerState{}, spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey})
     stateReg := serverstate.NewRegistry()
     reg := ctrlsrv.NewRegistry()
     metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
@@ -84,8 +84,8 @@ func TestStatePage(t *testing.T) {
     sc := adapters.NewScheduler(sched)
     mx := adapters.NewMetrics(metricsReg)
     stateProvider := func() any { return metricsReg.Snapshot() }
-    oa := openai.Options{RequestTimeout: cfg.RequestTimeout, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
-    llmPlugin := llm.NewWithDeps(connect, wr, sc, mx, stateProvider, oa, "test", "", "", nil, nil)
+    srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
+    llmPlugin := llm.New(connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
@@ -105,7 +105,7 @@ func TestStatePage(t *testing.T) {
 
 func TestCORSAllowedOrigins(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, RequestTimeout: time.Second, AllowedOrigins: []string{"https://example.com"}}
-	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
+	mcpPlugin := mcp.New(adapters.ServerState{}, spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey})
 	stateReg := serverstate.NewRegistry()
     reg := ctrlsrv.NewRegistry()
     metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
@@ -115,8 +115,8 @@ func TestCORSAllowedOrigins(t *testing.T) {
     sc := adapters.NewScheduler(sched)
     mx := adapters.NewMetrics(metricsReg)
     stateProvider := func() any { return metricsReg.Snapshot() }
-    oa := openai.Options{RequestTimeout: cfg.RequestTimeout, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
-    llmPlugin := llm.NewWithDeps(connect, wr, sc, mx, stateProvider, oa, "test", "", "", nil, nil)
+    srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
+    llmPlugin := llm.New(connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
@@ -144,7 +144,7 @@ func TestCORSAllowedOrigins(t *testing.T) {
 
 func TestDisableLLMPlugin(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":8080", RequestTimeout: time.Second}
-	mcpPlugin := mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
+	mcpPlugin := mcp.New(adapters.ServerState{}, spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey})
 	stateReg := serverstate.NewRegistry()
 	h := New(cfg, stateReg, []plugin.Plugin{mcpPlugin})
 	ts := httptest.NewServer(h)
@@ -182,8 +182,8 @@ func TestDisableMCPPlugin(t *testing.T) {
     sc := adapters.NewScheduler(sched)
     mx := adapters.NewMetrics(metricsReg)
     stateProvider := func() any { return metricsReg.Snapshot() }
-    oa := openai.Options{RequestTimeout: cfg.RequestTimeout, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
-    llmPlugin := llm.NewWithDeps(connect, wr, sc, mx, stateProvider, oa, "test", "", "", nil, nil)
+    srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
+    llmPlugin := llm.New(connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
 	stateReg := serverstate.NewRegistry()
 	h := New(cfg, stateReg, []plugin.Plugin{llmPlugin})
 	ts := httptest.NewServer(h)
