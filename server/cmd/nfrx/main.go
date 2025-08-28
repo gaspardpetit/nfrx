@@ -55,7 +55,56 @@ func main() {
     showVersion := flag.Bool("version", false, "print version and exit")
     showPluginHelp := flag.Bool("help-plugins", false, "print extension options and exit")
     var cfg config.ServerConfig
-    cfg.BindFlags()
+    // Resolve config with precedence: defaults < file < env < args
+    cfg.SetDefaults()
+    cfg.ApplyEnv() // allows CONFIG_FILE from env
+    // Allow --config to override file path before loading it
+    for i := 1; i < len(os.Args); i++ {
+        a := os.Args[i]
+        if a == "--config" && i+1 < len(os.Args) {
+            cfg.ConfigFile = os.Args[i+1]
+            break
+        }
+        if strings.HasPrefix(a, "--config=") {
+            cfg.ConfigFile = strings.TrimPrefix(a, "--config=")
+            break
+        }
+    }
+    if cfg.ConfigFile != "" {
+        if err := cfg.LoadFile(cfg.ConfigFile); err != nil && !errors.Is(err, os.ErrNotExist) {
+            logx.Log.Fatal().Err(err).Str("path", cfg.ConfigFile).Msg("load config")
+        }
+    }
+    // Overlay env (after file) and then bind flags; args parsed below
+    cfg.ApplyEnv()
+    // Overlay plugin options from environment using descriptors
+    if cfg.PluginOptions == nil { cfg.PluginOptions = map[string]map[string]string{} }
+    for id, d := range plugin.Descriptors() {
+        for _, a := range d.Args {
+            if a.Env == "" { continue }
+            if v := os.Getenv(a.Env); v != "" {
+                po := cfg.PluginOptions[id]
+                if po == nil { po = map[string]string{} }
+                po[a.ID] = v
+                cfg.PluginOptions[id] = po
+            }
+        }
+    }
+    // Bind core flags
+    cfg.BindFlagsFromCurrent()
+    // Dynamically bind extension flags using descriptors
+    for id, d := range plugin.Descriptors() {
+        for _, a := range d.Args {
+            if a.Flag == "" { continue }
+            name := strings.TrimPrefix(a.Flag, "--")
+            // Capture id and arg id
+            pid, aid := id, a.ID
+            flag.Func(name, fmt.Sprintf("extension option (%s.%s)", id, a.ID), func(v string) error {
+                cfg.SetPluginOption(pid, aid, v)
+                return nil
+            })
+        }
+    }
     flag.Usage = func() {
         _, _ = fmt.Fprintf(flag.CommandLine.Output(), "nfrx-%s version=%s sha=%s date=%s\n\n", binaryName(), version, buildSHA, buildDate)
         flag.PrintDefaults()
@@ -108,11 +157,7 @@ func main() {
         return
     }
 
-	if cfg.ConfigFile != "" {
-		if err := cfg.LoadFile(cfg.ConfigFile); err != nil && !errors.Is(err, os.ErrNotExist) {
-			logx.Log.Fatal().Err(err).Str("path", cfg.ConfigFile).Msg("load config")
-		}
-	}
+    // cfg now reflects defaults <- file <- env <- args
     logx.Configure(cfg.LogLevel)
     // Set build info metric (collectors are registered in server.New)
     metrics.SetServerBuildInfo(version, buildSHA, buildDate)
@@ -157,7 +202,13 @@ func main() {
     }
     // Apply descriptor defaults into plugin options when absent
     optsWithDefaults := commonOpts
-    if optsWithDefaults.PluginOptions == nil { optsWithDefaults.PluginOptions = map[string]map[string]string{} }
+    // Copy plugin options to avoid mutating cfg
+    optsWithDefaults.PluginOptions = map[string]map[string]string{}
+    for k, v := range commonOpts.PluginOptions {
+        mv := map[string]string{}
+        for kk, vv := range v { mv[kk] = vv }
+        optsWithDefaults.PluginOptions[k] = mv
+    }
     for _, id := range ids {
         if d, ok := plugin.Descriptor(id); ok {
             po := optsWithDefaults.PluginOptions[id]
