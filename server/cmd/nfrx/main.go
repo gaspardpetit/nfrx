@@ -18,14 +18,13 @@ import (
 
     "github.com/gaspardpetit/nfrx/core/logx"
     "github.com/gaspardpetit/nfrx/server/internal/adapters"
-    "github.com/gaspardpetit/nfrx/server/internal/api"
     "github.com/gaspardpetit/nfrx/server/internal/config"
-    ctrlsrv "github.com/gaspardpetit/nfrx/server/internal/ctrlsrv"
     "github.com/gaspardpetit/nfrx/server/internal/metrics"
     "github.com/gaspardpetit/nfrx/server/internal/plugin"
     "github.com/gaspardpetit/nfrx/server/internal/server"
     "github.com/gaspardpetit/nfrx/server/internal/serverstate"
     spicontracts "github.com/gaspardpetit/nfrx/sdk/api/spi"
+    baseauth "github.com/gaspardpetit/nfrx/sdk/base/auth"
 )
 
 var (
@@ -174,19 +173,11 @@ func main() {
         PluginOptions:         cfg.PluginOptions,
     }
 
-    // Build common SPI dependencies (worker control plane) once; plugins may ignore what they don't use
-    reg := ctrlsrv.NewRegistry()
-    metricsReg := ctrlsrv.NewMetricsRegistry(version, buildSHA, buildDate)
-    sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
-    connect := ctrlsrv.WSHandler(reg, metricsReg, cfg.ClientKey)
-    wr := adapters.NewWorkerRegistry(reg)
-    sc := adapters.NewScheduler(sched)
-    mx := adapters.NewMetrics(metricsReg)
+    // Server-side API auth (for server endpoints); plugins wire their own
     authMW := (func(http.Handler) http.Handler)(nil)
     if cfg.APIKey != "" {
-        authMW = api.APIKeyMiddleware(cfg.APIKey)
+        authMW = baseauth.BearerSecretMiddleware(cfg.APIKey)
     }
-    stateProvider := func() any { return metricsReg.Snapshot() }
 
     ids := cfg.Plugins
     if len(ids) == 1 && ids[0] == "*" {
@@ -216,34 +207,21 @@ func main() {
             optsWithDefaults.PluginOptions[id] = po
         }
     }
-    hasWorker := false
     for _, id := range ids {
         if f, ok := plugin.Get(id); ok {
+            // Pass nils for control-plane deps; worker/tunnel plugins own their WS and registries
+            var (
+                connect http.Handler             = nil
+                wr spicontracts.WorkerRegistry   = nil
+                sc spicontracts.Scheduler        = nil
+                mx spicontracts.Metrics          = nil
+                stateProvider func() any         = nil
+            )
             p := f(adapters.ServerState{}, connect, wr, sc, mx, stateProvider, version, buildSHA, buildDate, optsWithDefaults, authMW)
             plugins = append(plugins, p)
-            if _, ok := p.(plugin.WorkerProvider); ok {
-                hasWorker = true
-            }
         } else {
             logx.Log.Warn().Str("plugin", id).Msg("unknown plugin; skipping")
         }
-    }
-    if hasWorker {
-        // Pruning loop for worker-style agents
-        go func() {
-            tick := commonOpts.AgentHeartbeatInterval
-            if tick == 0 {
-                tick = ctrlsrv.HeartbeatInterval
-            }
-            expire := commonOpts.AgentHeartbeatExpiry
-            if expire == 0 {
-                expire = ctrlsrv.HeartbeatExpiry
-            }
-            ticker := time.NewTicker(tick)
-            for range ticker.C {
-                reg.PruneExpired(expire)
-            }
-        }()
     }
 	handler := server.New(cfg, stateReg, plugins)
 	srv := &http.Server{Addr: fmt.Sprintf(":%d", cfg.Port), Handler: handler}

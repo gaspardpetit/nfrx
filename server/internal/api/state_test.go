@@ -10,14 +10,14 @@ import (
 
     "github.com/go-chi/chi/v5"
 
-    ctrlsrv "github.com/gaspardpetit/nfrx/server/internal/ctrlsrv"
+    llmctrl "github.com/gaspardpetit/nfrx/modules/llm/common/ctrlplane"
     "github.com/gaspardpetit/nfrx/server/internal/serverstate"
 )
 
 func TestGetState(t *testing.T) {
-    metricsReg := ctrlsrv.NewMetricsRegistry("v", "sha", "date")
+    metricsReg := llmctrl.NewMetricsRegistry("v", "sha", "date", func() string { return "" })
     metricsReg.UpsertWorker("w1", "w1", "1", "a", "d", 1, 0, []string{"m"})
-    metricsReg.SetWorkerStatus("w1", ctrlsrv.StatusConnected)
+    metricsReg.SetWorkerStatus("w1", llmctrl.StatusConnected)
     metricsReg.RecordJobStart("w1")
     metricsReg.RecordJobEnd("w1", "m", 50*time.Millisecond, 5, 7, 0, true, "")
 
@@ -37,7 +37,7 @@ func TestGetState(t *testing.T) {
         t.Fatalf("missing llm plugin state")
     }
     b, _ := json.Marshal(raw)
-    var resp ctrlsrv.StateResponse
+    var resp llmctrl.StateResponse
     if err := json.Unmarshal(b, &resp); err != nil {
         t.Fatalf("decode llm state: %v", err)
     }
@@ -50,7 +50,7 @@ func TestGetState(t *testing.T) {
 }
 
 func TestGetStateStream(t *testing.T) {
-    metricsReg := ctrlsrv.NewMetricsRegistry("v", "sha", "date")
+    metricsReg := llmctrl.NewMetricsRegistry("v", "sha", "date", func() string { return "" })
     sr := serverstate.NewRegistry()
     sr.Add(serverstate.Element{ID: "llm", Data: func() any { return metricsReg.Snapshot() }})
     h := &StateHandler{State: sr}

@@ -11,7 +11,7 @@ import (
     "github.com/gaspardpetit/nfrx/server/internal/api"
     "github.com/gaspardpetit/nfrx/server/internal/config"
     llm "github.com/gaspardpetit/nfrx/modules/llm/ext"
-    ctrlsrv "github.com/gaspardpetit/nfrx/server/internal/ctrlsrv"
+    
     "github.com/gaspardpetit/nfrx/server/internal/plugin"
     "github.com/gaspardpetit/nfrx/server/internal/server"
     "github.com/gaspardpetit/nfrx/server/internal/serverstate"
@@ -22,17 +22,9 @@ func TestAPIKeyEnforcement(t *testing.T) {
 	cfg := config.ServerConfig{APIKey: "test123", RequestTimeout: 5 * time.Second}
 	mcpPlugin := mcp.New(adapters.ServerState{}, nil, nil, nil, nil, nil, "test", "", "", spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg := serverstate.NewRegistry()
-    reg := ctrlsrv.NewRegistry()
-    metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
-    sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
-    connect := ctrlsrv.WSHandler(reg, metricsReg, cfg.ClientKey)
-    wr := adapters.NewWorkerRegistry(reg)
-    sc := adapters.NewScheduler(sched)
-    mx := adapters.NewMetrics(metricsReg)
-    stateProvider := func() any { return metricsReg.Snapshot() }
     authMW := api.APIKeyMiddleware(cfg.APIKey)
     srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}
-    llmPlugin := llm.New(adapters.ServerState{}, connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, authMW)
+    llmPlugin := llm.New(adapters.ServerState{}, "test", "", "", srvOpts, authMW)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()

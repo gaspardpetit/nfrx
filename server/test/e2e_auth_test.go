@@ -17,7 +17,7 @@ import (
     "github.com/gaspardpetit/nfrx/server/internal/adapters"
     "github.com/gaspardpetit/nfrx/server/internal/config"
     llm "github.com/gaspardpetit/nfrx/modules/llm/ext"
-    ctrlsrv "github.com/gaspardpetit/nfrx/server/internal/ctrlsrv"
+    
     "github.com/gaspardpetit/nfrx/server/internal/plugin"
     "github.com/gaspardpetit/nfrx/server/internal/server"
     "github.com/gaspardpetit/nfrx/server/internal/serverstate"
@@ -27,16 +27,8 @@ func TestWorkerAuth(t *testing.T) {
 	cfg := config.ServerConfig{ClientKey: "secret", RequestTimeout: 5 * time.Second}
 	mcpPlugin := mcp.New(adapters.ServerState{}, nil, nil, nil, nil, nil, "test", "", "", spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg := serverstate.NewRegistry()
-    reg := ctrlsrv.NewRegistry()
-    metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
-    sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
-    connect := ctrlsrv.WSHandler(reg, metricsReg, cfg.ClientKey)
-    wr := adapters.NewWorkerRegistry(reg)
-    sc := adapters.NewScheduler(sched)
-    mx := adapters.NewMetrics(metricsReg)
-    stateProvider := func() any { return metricsReg.Snapshot() }
     srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}
-    llmPlugin := llm.New(adapters.ServerState{}, connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
+    llmPlugin := llm.New(adapters.ServerState{}, "test", "", "", srvOpts, nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -61,8 +53,14 @@ func TestWorkerAuth(t *testing.T) {
 	if err := connBad.Close(websocket.StatusNormalClosure, ""); err != nil {
 		t.Logf("close bad: %v", err)
 	}
-    if len(reg.Models()) != 0 {
-        t.Fatalf("unexpected worker registered")
+    // ensure no models published
+    req, _ := http.NewRequest(http.MethodGet, srv.URL+"/api/llm/v1/models", nil)
+    resp, err := http.DefaultClient.Do(req)
+    if err == nil {
+        var v struct{ Data []struct{ ID string `json:"id"` } `json:"data"` }
+        _ = json.NewDecoder(resp.Body).Decode(&v)
+        _ = resp.Body.Close()
+        if len(v.Data) != 0 { t.Fatalf("unexpected worker registered") }
     }
 
 	// good key
@@ -79,15 +77,19 @@ func TestWorkerAuth(t *testing.T) {
 		t.Fatalf("write: %v", err)
 	}
 
-	// wait for registration
+    // wait for registration via models API
     for i := 0; i < 50; i++ {
-        if len(reg.Models()) > 0 {
-            break
+        r2, e2 := http.Get(srv.URL + "/api/llm/v1/models")
+        if e2 == nil {
+            var v struct{ Data []struct{ ID string `json:"id"` } `json:"data"` }
+            _ = json.NewDecoder(r2.Body).Decode(&v)
+            _ = r2.Body.Close()
+            if len(v.Data) > 0 { break }
         }
         time.Sleep(20 * time.Millisecond)
     }
-	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/api/llm/v1/models", nil)
-	resp, err := http.DefaultClient.Do(req)
+    req, _ = http.NewRequest(http.MethodGet, srv.URL+"/api/llm/v1/models", nil)
+    resp, err = http.DefaultClient.Do(req)
 	if err != nil || resp.StatusCode != http.StatusOK {
 		t.Fatalf("models: %v %d", err, resp.StatusCode)
 	}
@@ -100,16 +102,8 @@ func TestWorkerClientKeyUnexpected(t *testing.T) {
 	cfg := config.ServerConfig{RequestTimeout: 5 * time.Second}
 	mcpPlugin := mcp.New(adapters.ServerState{}, nil, nil, nil, nil, nil, "test", "", "", spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg := serverstate.NewRegistry()
-    reg := ctrlsrv.NewRegistry()
-    metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
-    sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
-    connect := ctrlsrv.WSHandler(reg, metricsReg, cfg.ClientKey)
-    wr := adapters.NewWorkerRegistry(reg)
-    sc := adapters.NewScheduler(sched)
-    mx := adapters.NewMetrics(metricsReg)
-    stateProvider := func() any { return metricsReg.Snapshot() }
     srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}
-    llmPlugin := llm.New(adapters.ServerState{}, connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
+    llmPlugin := llm.New(adapters.ServerState{}, "test", "", "", srvOpts, nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -135,16 +129,8 @@ func TestMCPAuth(t *testing.T) {
 	cfg := config.ServerConfig{ClientKey: "secret", RequestTimeout: 5 * time.Second}
 	mcpPlugin := mcp.New(adapters.ServerState{}, nil, nil, nil, nil, nil, "test", "", "", spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
     stateReg := serverstate.NewRegistry()
-    reg := ctrlsrv.NewRegistry()
-    metricsReg := ctrlsrv.NewMetricsRegistry("test", "", "")
-    sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
-    connect := ctrlsrv.WSHandler(reg, metricsReg, cfg.ClientKey)
-    wr := adapters.NewWorkerRegistry(reg)
-    sc := adapters.NewScheduler(sched)
-    mx := adapters.NewMetrics(metricsReg)
-    stateProvider := func() any { return metricsReg.Snapshot() }
     srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}
-    llmPlugin := llm.New(adapters.ServerState{}, connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
+    llmPlugin := llm.New(adapters.ServerState{}, "test", "", "", srvOpts, nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -187,16 +173,8 @@ func TestMCPAuth(t *testing.T) {
 	mcpReg := mcp.New(adapters.ServerState{}, nil, nil, nil, nil, nil, "test", "", "", spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg = serverstate.NewRegistry()
     // rebuild deps for second server
-    reg2 := ctrlsrv.NewRegistry()
-    metricsReg2 := ctrlsrv.NewMetricsRegistry("test", "", "")
-    sched2 := &ctrlsrv.LeastBusyScheduler{Reg: reg2}
-    connect2 := ctrlsrv.WSHandler(reg2, metricsReg2, cfg.ClientKey)
-    wr2 := adapters.NewWorkerRegistry(reg2)
-    sc2 := adapters.NewScheduler(sched2)
-    mx2 := adapters.NewMetrics(metricsReg2)
-    stateProvider2 := func() any { return metricsReg2.Snapshot() }
     srvOpts2 := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}
-    llmPlugin = llm.New(adapters.ServerState{}, connect2, wr2, sc2, mx2, stateProvider2, "test", "", "", srvOpts2, nil)
+    llmPlugin = llm.New(adapters.ServerState{}, "test", "", "", srvOpts2, nil)
 	handler = server.New(cfg, stateReg, []plugin.Plugin{mcpReg, llmPlugin})
 	srv2 := httptest.NewServer(handler)
 	defer srv2.Close()

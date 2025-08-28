@@ -56,7 +56,7 @@ func Descriptors() map[string]spi.PluginDescriptor { return descriptors }
 // Wire built-in plugins.
 func init() {
     Register("llm", func(state spi.ServerState, connect http.Handler, workers spi.WorkerRegistry, sched spi.Scheduler, metrics spi.Metrics, stateProvider func() any, version, sha, date string, opts spi.Options, authMW spi.Middleware) spi.Plugin {
-        return llm.New(state, connect, workers, sched, metrics, stateProvider, version, sha, date, opts, authMW)
+        return llm.New(state, version, sha, date, opts, authMW)
     }, spi.PluginDescriptor{
         ID:      "llm",
         Name:    "LLM Gateway",
