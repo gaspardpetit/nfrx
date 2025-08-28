@@ -187,6 +187,11 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg acon
 	}()
 
     checkDrain := func() {
+        // If the connection context is already canceled, avoid any attempts
+        // to send on the websocket channel or proceed with shutdown logic here.
+        if connCtx.Err() != nil {
+            return
+        }
         if IsDraining() {
             // Announce draining to the server so scheduler can stop assigning.
             su := ctrl.StatusUpdateMessage{
@@ -403,10 +408,17 @@ func sendStatusUpdate(ch chan<- ctrl.StatusUpdateMessage, msg ctrl.StatusUpdateM
 }
 
 func sendMsg(ctx context.Context, ch chan<- []byte, msg []byte) {
-	select {
-	case ch <- msg:
-	case <-ctx.Done():
-	}
+    // Short-circuit if connection context is done to avoid races where the
+    // channel may be closing/closed and a send would panic.
+    select {
+    case <-ctx.Done():
+        return
+    default:
+    }
+    select {
+    case ch <- msg:
+    case <-ctx.Done():
+    }
 }
 
 func handleGenerate(ctx context.Context, client *ollama.Client, timeout time.Duration, sendCh chan []byte, jr ctrl.JobRequestMessage, cancels map[string]context.CancelFunc, mu *sync.Mutex, onDone func()) {
