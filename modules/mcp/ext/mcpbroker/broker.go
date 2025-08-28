@@ -51,12 +51,33 @@ type Registry struct {
 
 // NewRegistry constructs a Registry using environment variables for configuration.
 func NewRegistry(timeout time.Duration, state spi.ServerState) *Registry {
-	maxReqBytes := int64(parseInt(getEnv("BROKER_MAX_REQ_BYTES", "10485760")))
-	maxRespBytes := int64(parseInt(getEnv("BROKER_MAX_RESP_BYTES", "10485760")))
-	heartbeat := time.Duration(parseInt(getEnv("BROKER_WS_HEARTBEAT_MS", "15000"))) * time.Millisecond
-	deadAfter := time.Duration(parseInt(getEnv("BROKER_WS_DEAD_AFTER_MS", "45000"))) * time.Millisecond
-	maxConc := parseInt(getEnv("BROKER_MAX_CONCURRENCY_PER_CLIENT", "16"))
-	return &Registry{relays: map[string]*Relay{}, maxReqBytes: maxReqBytes, maxRespBytes: maxRespBytes, requestTimeout: timeout, heartbeat: heartbeat, deadAfter: deadAfter, maxConc: maxConc, state: state}
+    maxReqBytes := int64(parseInt(getEnv("BROKER_MAX_REQ_BYTES", "10485760")))
+    maxRespBytes := int64(parseInt(getEnv("BROKER_MAX_RESP_BYTES", "10485760")))
+    heartbeat := time.Duration(parseInt(getEnv("BROKER_WS_HEARTBEAT_MS", "15000"))) * time.Millisecond
+    deadAfter := time.Duration(parseInt(getEnv("BROKER_WS_DEAD_AFTER_MS", "45000"))) * time.Millisecond
+    maxConc := parseInt(getEnv("BROKER_MAX_CONCURRENCY_PER_CLIENT", "16"))
+    return &Registry{relays: map[string]*Relay{}, maxReqBytes: maxReqBytes, maxRespBytes: maxRespBytes, requestTimeout: timeout, heartbeat: heartbeat, deadAfter: deadAfter, maxConc: maxConc, state: state}
+}
+
+// Config allows the server to provide broker tunables explicitly.
+type Config struct {
+    MaxReqBytes            int64
+    MaxRespBytes           int64
+    Heartbeat              time.Duration
+    DeadAfter              time.Duration
+    MaxConcurrencyPerClient int
+}
+
+// NewRegistryWithConfig constructs a Registry using explicit configuration, falling back to env defaults when zero values are provided.
+func NewRegistryWithConfig(timeout time.Duration, state spi.ServerState, cfg Config) *Registry {
+    // start with env defaults
+    r := NewRegistry(timeout, state)
+    if cfg.MaxReqBytes > 0 { r.maxReqBytes = cfg.MaxReqBytes }
+    if cfg.MaxRespBytes > 0 { r.maxRespBytes = cfg.MaxRespBytes }
+    if cfg.Heartbeat > 0 { r.heartbeat = cfg.Heartbeat }
+    if cfg.DeadAfter > 0 { r.deadAfter = cfg.DeadAfter }
+    if cfg.MaxConcurrencyPerClient > 0 { r.maxConc = cfg.MaxConcurrencyPerClient }
+    return r
 }
 
 func parseInt(v string) int {

@@ -133,7 +133,6 @@ func main() {
     commonOpts := spicontracts.Options{
         RequestTimeout:        cfg.RequestTimeout,
         ClientKey:             cfg.ClientKey,
-        MaxParallelEmbeddings: cfg.MaxParallelEmbeddings,
         PluginOptions:         cfg.PluginOptions,
     }
 
@@ -156,10 +155,27 @@ func main() {
         ids = plugin.IDs()
         sort.Strings(ids)
     }
+    // Apply descriptor defaults into plugin options when absent
+    optsWithDefaults := commonOpts
+    if optsWithDefaults.PluginOptions == nil { optsWithDefaults.PluginOptions = map[string]map[string]string{} }
+    for _, id := range ids {
+        if d, ok := plugin.Descriptor(id); ok {
+            po := optsWithDefaults.PluginOptions[id]
+            if po == nil { po = map[string]string{} }
+            for _, a := range d.Args {
+                if a.Default != "" {
+                    if _, exists := po[a.ID]; !exists || po[a.ID] == "" {
+                        po[a.ID] = a.Default
+                    }
+                }
+            }
+            optsWithDefaults.PluginOptions[id] = po
+        }
+    }
     hasWorker := false
     for _, id := range ids {
         if f, ok := plugin.Get(id); ok {
-            p := f(adapters.ServerState{}, connect, wr, sc, mx, stateProvider, version, buildSHA, buildDate, commonOpts, authMW)
+            p := f(adapters.ServerState{}, connect, wr, sc, mx, stateProvider, version, buildSHA, buildDate, optsWithDefaults, authMW)
             plugins = append(plugins, p)
             if _, ok := p.(plugin.WorkerProvider); ok {
                 hasWorker = true
@@ -171,9 +187,17 @@ func main() {
     if hasWorker {
         // Pruning loop for worker-style agents
         go func() {
-            ticker := time.NewTicker(ctrlsrv.HeartbeatInterval)
+            tick := commonOpts.AgentHeartbeatInterval
+            if tick == 0 {
+                tick = ctrlsrv.HeartbeatInterval
+            }
+            expire := commonOpts.AgentHeartbeatExpiry
+            if expire == 0 {
+                expire = ctrlsrv.HeartbeatExpiry
+            }
+            ticker := time.NewTicker(tick)
             for range ticker.C {
-                reg.PruneExpired(ctrlsrv.HeartbeatExpiry)
+                reg.PruneExpired(expire)
             }
         }()
     }

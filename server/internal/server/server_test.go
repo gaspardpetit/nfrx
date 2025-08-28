@@ -30,7 +30,7 @@ func TestMetricsEndpointDefaultPort(t *testing.T) {
     sc := adapters.NewScheduler(sched)
     mx := adapters.NewMetrics(metricsReg)
     stateProvider := func() any { return metricsReg.Snapshot() }
-    srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
+    srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}
     llmPlugin := llm.New(adapters.ServerState{}, connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	ts := httptest.NewServer(h)
@@ -57,7 +57,7 @@ func TestMetricsEndpointSeparatePort(t *testing.T) {
     sc := adapters.NewScheduler(sched)
     mx := adapters.NewMetrics(metricsReg)
     stateProvider := func() any { return metricsReg.Snapshot() }
-    srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
+    srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}
     llmPlugin := llm.New(adapters.ServerState{}, connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	ts := httptest.NewServer(h)
@@ -84,7 +84,7 @@ func TestStatePage(t *testing.T) {
     sc := adapters.NewScheduler(sched)
     mx := adapters.NewMetrics(metricsReg)
     stateProvider := func() any { return metricsReg.Snapshot() }
-    srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
+    srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}
     llmPlugin := llm.New(adapters.ServerState{}, connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	ts := httptest.NewServer(h)
@@ -115,7 +115,7 @@ func TestCORSAllowedOrigins(t *testing.T) {
     sc := adapters.NewScheduler(sched)
     mx := adapters.NewMetrics(metricsReg)
     stateProvider := func() any { return metricsReg.Snapshot() }
-    srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
+    srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout}
     llmPlugin := llm.New(adapters.ServerState{}, connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	ts := httptest.NewServer(h)
@@ -182,7 +182,7 @@ func TestDisableMCPPlugin(t *testing.T) {
     sc := adapters.NewScheduler(sched)
     mx := adapters.NewMetrics(metricsReg)
     stateProvider := func() any { return metricsReg.Snapshot() }
-    srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
+    srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout}
     llmPlugin := llm.New(adapters.ServerState{}, connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
 	stateReg := serverstate.NewRegistry()
 	h := New(cfg, stateReg, []plugin.Plugin{llmPlugin})

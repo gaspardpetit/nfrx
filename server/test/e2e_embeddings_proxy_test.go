@@ -36,7 +36,7 @@ func TestE2EEmbeddingsProxy(t *testing.T) {
     sc := adapters.NewScheduler(sched)
     mx := adapters.NewMetrics(metricsReg)
     stateProvider := func() any { return metricsReg.Snapshot() }
-    srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
+    srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}
     llmPlugin := llm.New(adapters.ServerState{}, connect, wr, sc, mx, stateProvider, "test", "", "", srvOpts, nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	srv := httptest.NewServer(handler)
@@ -89,7 +89,7 @@ func TestE2EEmbeddingsProxy(t *testing.T) {
 	}
 
 	reqBody := []byte(`{"model":"llama3","input":"hi"}`)
-	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/api/llm/v1/embeddings", bytes.NewReader(reqBody))
+    req, _ := http.NewRequest(http.MethodPost, srv.URL+"/api/llm/v1/embeddings", bytes.NewReader(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer apikey")
 	resp, err := http.DefaultClient.Do(req)

@@ -24,9 +24,8 @@ type ServerConfig struct {
 	ConfigFile            string
 	LogLevel              string
 	RedisAddr             string
-	MaxParallelEmbeddings int
-	Plugins               []string                     `yaml:"plugins"`
-	PluginOptions         map[string]map[string]string `yaml:"plugin_options"`
+    Plugins               []string                     `yaml:"plugins"`
+    PluginOptions         map[string]map[string]string `yaml:"plugin_options"`
 }
 
 // BindFlags populates the struct with defaults from environment variables and
@@ -49,11 +48,6 @@ func (c *ServerConfig) BindFlags() {
 	c.APIKey = commoncfg.GetEnv("API_KEY", "")
 	c.ClientKey = commoncfg.GetEnv("CLIENT_KEY", "")
 	c.RedisAddr = commoncfg.GetEnv("REDIS_ADDR", "")
-	if v, err := strconv.Atoi(commoncfg.GetEnv("MAX_PARALLEL_EMBEDDINGS", "8")); err == nil {
-		c.MaxParallelEmbeddings = v
-	} else {
-		c.MaxParallelEmbeddings = 8
-	}
 	if v, err := strconv.ParseFloat(commoncfg.GetEnv("REQUEST_TIMEOUT", "120"), 64); err == nil {
 		c.RequestTimeout = time.Duration(v * float64(time.Second))
 	} else {
@@ -79,7 +73,6 @@ func (c *ServerConfig) BindFlags() {
 	flag.StringVar(&c.APIKey, "api-key", c.APIKey, "client API key required for HTTP requests; leave empty to disable auth")
 	flag.StringVar(&c.ClientKey, "client-key", c.ClientKey, "shared key clients must present when registering")
 	flag.StringVar(&c.RedisAddr, "redis-addr", c.RedisAddr, "redis connection URL for server state")
-	flag.IntVar(&c.MaxParallelEmbeddings, "max-parallel-embeddings", c.MaxParallelEmbeddings, "maximum number of workers to split embeddings across")
 	flag.Func("plugins", "comma separated list of enabled plugins", func(v string) error {
 		c.Plugins = splitComma(v)
 		return nil

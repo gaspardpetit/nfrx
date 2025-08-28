@@ -9,10 +9,12 @@ type Options struct {
     RequestTimeout time.Duration
     // Shared key clients must present when registering.
     ClientKey string
-    // Maximum number of workers to split embeddings across (LLM-specific policy).
-    // Kept here for now to maintain behavior; may move under plugin options later.
-    MaxParallelEmbeddings int
+    // AgentHeartbeatInterval controls how often connected agents are expected to send heartbeats.
+    // If zero, defaults are used by the server.
+    AgentHeartbeatInterval time.Duration
+    // AgentHeartbeatExpiry controls how long the server waits without a heartbeat before evicting an agent.
+    // If zero, defaults are used by the server.
+    AgentHeartbeatExpiry time.Duration
     // PluginOptions holds extension-specific options keyed by plugin ID (e.g., "llm", "mcp").
     PluginOptions map[string]map[string]string
 }
-

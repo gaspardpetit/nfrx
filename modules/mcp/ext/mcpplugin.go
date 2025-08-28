@@ -2,6 +2,9 @@ package mcp
 
 import (
     "net/http"
+    "strconv"
+    "time"
+
     mcpbroker "github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
     "github.com/gaspardpetit/nfrx/sdk/spi"
 )
@@ -25,7 +28,18 @@ func New(
     opts spi.Options,
     authMW spi.Middleware,
 ) *Plugin {
-    reg := mcpbroker.NewRegistry(opts.RequestTimeout, state)
+    // Build broker config from plugin options if provided
+    var cfg mcpbroker.Config
+    if opts.PluginOptions != nil {
+        if po, ok := opts.PluginOptions["mcp"]; ok {
+            if v := po["max_req_bytes"]; v != "" { if n, err := strconv.ParseInt(v, 10, 64); err == nil { cfg.MaxReqBytes = n } }
+            if v := po["max_resp_bytes"]; v != "" { if n, err := strconv.ParseInt(v, 10, 64); err == nil { cfg.MaxRespBytes = n } }
+            if v := po["ws_heartbeat_ms"]; v != "" { if n, err := strconv.Atoi(v); err == nil { cfg.Heartbeat = time.Duration(n) * time.Millisecond } }
+            if v := po["ws_dead_after_ms"]; v != "" { if n, err := strconv.Atoi(v); err == nil { cfg.DeadAfter = time.Duration(n) * time.Millisecond } }
+            if v := po["max_concurrency_per_client"]; v != "" { if n, err := strconv.Atoi(v); err == nil { cfg.MaxConcurrencyPerClient = n } }
+        }
+    }
+    reg := mcpbroker.NewRegistryWithConfig(opts.RequestTimeout, state, cfg)
     return &Plugin{broker: reg, srvOpts: opts, clientKey: opts.ClientKey}
 }
 

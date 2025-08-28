@@ -18,7 +18,6 @@ type API struct {
     Reg                   *ctrlsrv.Registry
     Sched                 ctrlsrv.Scheduler
     Timeout               time.Duration
-    MaxParallelEmbeddings int
     Health                HealthChecker
     StateReg              *serverstate.Registry
 }
