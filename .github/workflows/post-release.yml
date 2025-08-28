@@ -1,0 +1,64 @@
+name: post-release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  update-files:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Install changelog tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y devscripts jq
+
+      - name: Compute version metadata (from release tag)
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ github.event.release.tag_name }}"
+          UPSTREAM="${TAG#v}"
+          UPSTREAM="${UPSTREAM//-/'~'}"
+          DEBVER="${UPSTREAM}-1"
+          {
+            echo "tag=${TAG}"
+            echo "debver=${DEBVER}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Update post-release files
+        shell: bash
+        env:
+          DEBFULLNAME: "CI"
+          DEBEMAIL: "ci@example.invalid"
+          DEB_VERSION: ${{ steps.meta.outputs.debver }}
+          BUILD_KIND:  release
+        run: |
+          set -euo pipefail
+          chmod +x .github/scripts/deb_changelog.sh
+          .github/scripts/deb_changelog.sh
+
+      - name: Commit changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.meta.outputs.tag }}"
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if ! git diff --quiet; then
+            git add -A
+            git commit -m "chore(release): update version files for ${TAG} [skip ci]"
+            git push
+          else
+            echo "No post-release updates to commit."
+          fi
+
