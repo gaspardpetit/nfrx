@@ -114,14 +114,14 @@ async function maybeLoadViews(plugins) {
         if (html && html.trim().length > 0) {
           const section = document.createElement('section');
           section.id = `plugin-${id}`;
+          section.dataset.pluginId = id;
           const h = document.createElement('h3');
           h.textContent = `Plugin: ${id}`;
           const div = document.createElement('div');
-          div.innerHTML = html;
-          section.dataset.pluginId = id;
           section.appendChild(h);
           section.appendChild(div);
           host.appendChild(section);
+          div.innerHTML = html;
         }
       }
     } catch (e) {
