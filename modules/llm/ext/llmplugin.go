@@ -2,9 +2,9 @@ package llm
 
 import (
     "net/http"
-    "strconv"
 
     "github.com/gaspardpetit/nfrx/sdk/api/spi"
+    opt "github.com/gaspardpetit/nfrx/core/options"
     "github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
 )
 
@@ -33,20 +33,10 @@ func (p *Plugin) RegisterRoutes(r spi.Router) {
         r.Handle("/connect", p.connect)
     }
     r.Group(func(g spi.Router) {
-        if p.authMW != nil {
-            g.Use(p.authMW)
-        }
+        if p.authMW != nil { g.Use(p.authMW) }
         g.Route("/v1", func(v1 spi.Router) {
             // Adapt shared options to OpenAI-specific options; allow plugin option override for embeddings
-            // Default comes from descriptor via main() default injection; keep 8 as safe fallback
-            mpe := 8
-            if p.srvOpts.PluginOptions != nil {
-                if po, ok := p.srvOpts.PluginOptions["llm"]; ok {
-                    if v := po["max_parallel_embeddings"]; v != "" {
-                        if n, err := strconv.Atoi(v); err == nil { mpe = n }
-                    }
-                }
-            }
+            mpe := opt.Int(p.srvOpts.PluginOptions, "llm", "max_parallel_embeddings", 8)
             oa := openai.Options{RequestTimeout: p.srvOpts.RequestTimeout, MaxParallelEmbeddings: mpe}
             openai.Mount(v1, p.wr, p.sch, p.mx, oa)
         })
