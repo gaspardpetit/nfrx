@@ -1,7 +1,7 @@
 package mcp
 
 import (
-	"github.com/gaspardpetit/nfrx-sdk/spi"
+    "github.com/gaspardpetit/nfrx/sdk/spi"
 	mcpbroker "github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
 )
 

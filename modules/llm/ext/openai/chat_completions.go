@@ -10,8 +10,8 @@ import (
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 
-	ctrl "github.com/gaspardpetit/nfrx-sdk/contracts/control"
-	"github.com/gaspardpetit/nfrx-sdk/spi"
+    ctrl "github.com/gaspardpetit/nfrx/sdk/contracts/control"
+    "github.com/gaspardpetit/nfrx/sdk/spi"
 	"github.com/gaspardpetit/nfrx/modules/common/logx"
 )
 

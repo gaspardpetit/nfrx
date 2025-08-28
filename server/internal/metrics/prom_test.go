@@ -7,7 +7,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 
-	"github.com/gaspardpetit/nfrx-sdk/spi"
+    "github.com/gaspardpetit/nfrx/sdk/spi"
 )
 
 func TestPromMetrics(t *testing.T) {

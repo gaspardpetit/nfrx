@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	ctrl "github.com/gaspardpetit/nfrx-sdk/contracts/control"
+    ctrl "github.com/gaspardpetit/nfrx/sdk/contracts/control"
 	"github.com/gaspardpetit/nfrx/modules/common/logx"
 	aconfig "github.com/gaspardpetit/nfrx/modules/llm/agent/internal/config"
 	"github.com/rs/zerolog"

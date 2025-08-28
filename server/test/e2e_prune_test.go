@@ -10,7 +10,7 @@ import (
 
 	"github.com/coder/websocket"
 
-	ctrl "github.com/gaspardpetit/nfrx-sdk/contracts/control"
+    ctrl "github.com/gaspardpetit/nfrx/sdk/contracts/control"
 	mcp "github.com/gaspardpetit/nfrx/modules/mcp/ext"
 	"github.com/gaspardpetit/nfrx/server/internal/adapters"
 	"github.com/gaspardpetit/nfrx/server/internal/config"

@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"sync/atomic"
 
-	ctrl "github.com/gaspardpetit/nfrx-sdk/contracts/control"
+    ctrl "github.com/gaspardpetit/nfrx/sdk/contracts/control"
 	aconfig "github.com/gaspardpetit/nfrx/modules/llm/agent/internal/config"
 	"github.com/gaspardpetit/nfrx/modules/llm/agent/internal/ollama"
 )
