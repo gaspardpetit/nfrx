@@ -52,6 +52,8 @@ func (h *StateHandler) GetStateStream(w http.ResponseWriter, r *http.Request) {
     for {
         select {
         case <-r.Context().Done():
+            // client closed stream
+            logx.Log.Debug().Msg("state stream closed")
             return
         case <-ticker.C:
             env := PluginsEnvelope{Plugins: map[string]any{}}
