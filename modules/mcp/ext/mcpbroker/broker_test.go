@@ -19,6 +19,7 @@ import (
 type fakeState struct{}
 
 func (fakeState) IsDraining() bool { return false }
+func (fakeState) SetStatus(string) {}
 
 func TestHTTPHandlerRelayOffline(t *testing.T) {
 	reg := NewRegistry(time.Second, fakeState{})
