@@ -88,6 +88,8 @@ func (c *Checker) saveState() {
 
 // Check runs the health check.
 func (c *Checker) Check(ctx context.Context) (Result, error) {
+    // Load persisted state (last OK transport, backoff, etc.)
+    c.loadState()
     if c.state.ConsecutiveFails > 0 && time.Now().Before(c.state.NextAttempt) {
         return Result{Healthy: false, LastError: c.state.LastError}, errors.New("backoff active")
     }

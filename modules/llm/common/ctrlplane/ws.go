@@ -46,12 +46,24 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
         }
         wk := &Worker{ ID: rm.WorkerID, Name: name, Models: map[string]bool{}, MaxConcurrency: rm.MaxConcurrency, EmbeddingBatchSize: rm.EmbeddingBatchSize, InFlight: 0, LastHeartbeat: time.Now(), Send: make(chan interface{}, 32), Jobs: make(map[string]chan interface{}) }
         for _, m := range rm.Models { wk.Models[m] = true }
+        // Add worker and update server readiness if this is the first one
         reg.Add(wk)
+        if state != nil && reg.WorkerCount() == 1 {
+            // First worker became available: mark server as ready
+            state.SetStatus("ready")
+        }
         metrics.UpsertWorker(wk.ID, wk.Name, rm.Version, rm.BuildSHA, rm.BuildDate, rm.MaxConcurrency, rm.EmbeddingBatchSize, rm.Models)
         status := StatusIdle; if rm.MaxConcurrency == 0 { status = StatusNotReady }
         metrics.SetWorkerStatus(wk.ID, status)
         logx.Log.Info().Str("worker_id", wk.ID).Str("worker_name", wk.Name).Int("model_count", len(wk.Models)).Msg("registered")
-        defer func() { reg.Remove(wk.ID); metrics.RemoveWorker(wk.ID) }()
+        defer func() {
+            reg.Remove(wk.ID)
+            metrics.RemoveWorker(wk.ID)
+            // If no workers remain and we're not draining, mark server not_ready
+            if state != nil && !state.IsDraining() && reg.WorkerCount() == 0 {
+                state.SetStatus("not_ready")
+            }
+        }()
 
         go func() {
             for msg := range wk.Send {

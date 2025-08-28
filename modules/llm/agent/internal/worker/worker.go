@@ -186,14 +186,30 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg acon
 		}
 	}()
 
-	checkDrain := func() {
-		if IsDraining() && GetState().CurrentJobs == 0 {
-			SetState("terminating")
-			go func() { _ = ws.Close(websocket.StatusNormalClosure, "drained") }()
-			cancelConn()
-			cancelAll()
-		}
-	}
+    checkDrain := func() {
+        if IsDraining() {
+            // Announce draining to the server so scheduler can stop assigning.
+            su := ctrl.StatusUpdateMessage{
+                Type:               "status_update",
+                Status:             "draining",
+                MaxConcurrency:     0,
+                EmbeddingBatchSize: GetState().EmbeddingBatchSize,
+                Models:             GetState().Models,
+            }
+            mb, _ := json.Marshal(su)
+            sendMsg(connCtx, sendCh, mb)
+        }
+        if IsDraining() && GetState().CurrentJobs == 0 {
+            SetState("terminating")
+            logx.Log.Info().Msg("agent drained; closing connection")
+            go func() { _ = ws.Close(websocket.StatusNormalClosure, "drained") }()
+            cancelConn()
+            cancelAll()
+        } else if IsDraining() {
+            // Still draining; waiting for in-flight jobs to complete
+            logx.Log.Info().Int("inflight", GetState().CurrentJobs).Msg("draining; waiting for jobs to complete")
+        }
+    }
 	setDrainCheck(checkDrain)
 	defer setDrainCheck(nil)
 	checkDrain()

@@ -1,6 +1,7 @@
 package llm
 
 import (
+    "net/http"
     "time"
 
     "github.com/gaspardpetit/nfrx/sdk/api/spi"
@@ -31,6 +32,20 @@ func (p *Plugin) RegisterRoutes(r spi.Router) {
     // Mount LLM worker connect endpoint owned by the extension
     r.Handle("/connect", ctrlplane.WSHandler(p.reg, p.mxreg, p.srvOpts.ClientKey, p.srvState))
     r.Group(func(g spi.Router) {
+        // During server drain, reject new public API requests for this extension.
+        if p.srvState != nil {
+            g.Use(func(next http.Handler) http.Handler {
+                return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+                    if p.srvState != nil && p.srvState.IsDraining() {
+                        w.Header().Set("Content-Type", "application/json")
+                        w.WriteHeader(http.StatusServiceUnavailable)
+                        _, _ = w.Write([]byte(`{"error":"draining"}`))
+                        return
+                    }
+                    next.ServeHTTP(w, r)
+                })
+            })
+        }
         if p.authMW != nil { g.Use(p.authMW) }
         g.Route("/v1", func(v1 spi.Router) {
             // Adapt shared options to OpenAI-specific options; allow plugin option override for embeddings
@@ -140,7 +155,14 @@ func New(
         expire := srvOpts.AgentHeartbeatExpiry
         if expire == 0 { expire = ctrlplane.HeartbeatExpiry }
         ticker := time.NewTicker(tick)
-        for range ticker.C { reg.PruneExpired(expire) }
+        for range ticker.C {
+            // Prune expired workers and update readiness if pool becomes empty
+            reg.PruneExpired(expire)
+            if state != nil && !state.IsDraining() && reg.WorkerCount() == 0 {
+                // No active workers remain and we're not draining: mark server not_ready
+                state.SetStatus("not_ready")
+            }
+        }
     }()
     return &Plugin{ reg: reg, mxreg: mx, sch: sch, authMW: authMW, srvOpts: srvOpts, srvState: state }
 }
