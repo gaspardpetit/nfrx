@@ -2,11 +2,11 @@ package mcp
 
 import (
     "net/http"
-    "strconv"
     "time"
 
     mcpbroker "github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
     "github.com/gaspardpetit/nfrx/sdk/api/spi"
+    opt "github.com/gaspardpetit/nfrx/core/options"
 )
 
 // Plugin implements the MCP relay as a plugin.
@@ -30,15 +30,13 @@ func New(
 ) *Plugin {
     // Build broker config from plugin options if provided
     var cfg mcpbroker.Config
-    if opts.PluginOptions != nil {
-        if po, ok := opts.PluginOptions["mcp"]; ok {
-            if v := po["max_req_bytes"]; v != "" { if n, err := strconv.ParseInt(v, 10, 64); err == nil { cfg.MaxReqBytes = n } }
-            if v := po["max_resp_bytes"]; v != "" { if n, err := strconv.ParseInt(v, 10, 64); err == nil { cfg.MaxRespBytes = n } }
-            if v := po["ws_heartbeat_ms"]; v != "" { if n, err := strconv.Atoi(v); err == nil { cfg.Heartbeat = time.Duration(n) * time.Millisecond } }
-            if v := po["ws_dead_after_ms"]; v != "" { if n, err := strconv.Atoi(v); err == nil { cfg.DeadAfter = time.Duration(n) * time.Millisecond } }
-            if v := po["max_concurrency_per_client"]; v != "" { if n, err := strconv.Atoi(v); err == nil { cfg.MaxConcurrencyPerClient = n } }
-        }
-    }
+    po := opts.PluginOptions
+    // Only set fields when plugin options are provided; leave zero to allow env defaults in broker
+    cfg.MaxReqBytes = opt.Int64(po, "mcp", "max_req_bytes", cfg.MaxReqBytes)
+    cfg.MaxRespBytes = opt.Int64(po, "mcp", "max_resp_bytes", cfg.MaxRespBytes)
+    cfg.Heartbeat = time.Duration(opt.Int(po, "mcp", "ws_heartbeat_ms", int(cfg.Heartbeat/time.Millisecond))) * time.Millisecond
+    cfg.DeadAfter = time.Duration(opt.Int(po, "mcp", "ws_dead_after_ms", int(cfg.DeadAfter/time.Millisecond))) * time.Millisecond
+    cfg.MaxConcurrencyPerClient = opt.Int(po, "mcp", "max_concurrency_per_client", cfg.MaxConcurrencyPerClient)
     reg := mcpbroker.NewRegistryWithConfig(opts.RequestTimeout, state, cfg)
     return &Plugin{broker: reg, srvOpts: opts, clientKey: opts.ClientKey}
 }
