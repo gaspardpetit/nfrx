@@ -1,27 +1,26 @@
 package api
 
 import (
-	"fmt"
-	"net/http"
-	"time"
+    "fmt"
+    "net/http"
+    "time"
 
-	"github.com/gaspardpetit/nfrx/api/generated"
-	mcpbroker "github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
-	ctrlsrv "github.com/gaspardpetit/nfrx/server/internal/ctrlsrv"
+    "github.com/gaspardpetit/nfrx/api/generated"
+    ctrlsrv "github.com/gaspardpetit/nfrx/server/internal/ctrlsrv"
+    "github.com/gaspardpetit/nfrx/server/internal/serverstate"
 )
 
 type HealthChecker interface {
-	Healthy() bool
+    Healthy() bool
 }
 
 type API struct {
-	Reg                   *ctrlsrv.Registry
-	Metrics               *ctrlsrv.MetricsRegistry
-	MCP                   *mcpbroker.Registry
-	Sched                 ctrlsrv.Scheduler
-	Timeout               time.Duration
-	MaxParallelEmbeddings int
-	Health                HealthChecker
+    Reg                   *ctrlsrv.Registry
+    Sched                 ctrlsrv.Scheduler
+    Timeout               time.Duration
+    MaxParallelEmbeddings int
+    Health                HealthChecker
+    StateReg              *serverstate.Registry
 }
 
 var _ generated.ServerInterface = (*API)(nil)
@@ -39,9 +38,9 @@ func (a *API) GetHealthz(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) GetApiState(w http.ResponseWriter, r *http.Request) {
-	(&StateHandler{Metrics: a.Metrics, MCP: a.MCP}).GetState(w, r)
+    (&StateHandler{State: a.StateReg}).GetState(w, r)
 }
 
 func (a *API) GetApiStateStream(w http.ResponseWriter, r *http.Request) {
-	(&StateHandler{Metrics: a.Metrics, MCP: a.MCP}).GetStateStream(w, r)
+    (&StateHandler{State: a.StateReg}).GetStateStream(w, r)
 }

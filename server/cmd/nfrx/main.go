@@ -1,29 +1,32 @@
 package main
 
 import (
-	"context"
-	"errors"
-	"flag"
-	"fmt"
-	"net/http"
-	"os"
-	"os/signal"
-	"path/filepath"
-	"strings"
-	"syscall"
-	"time"
+    "context"
+    "errors"
+    "flag"
+    "fmt"
+    "net/http"
+    "os"
+    "os/signal"
+    "path/filepath"
+    "strings"
+    "syscall"
+    "time"
 
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+    "github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/gaspardpetit/nfrx/modules/common/logx"
-	mcp "github.com/gaspardpetit/nfrx/modules/mcp/ext"
-	mcpbroker "github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
-	"github.com/gaspardpetit/nfrx/server/internal/adapters"
-	"github.com/gaspardpetit/nfrx/server/internal/config"
-	llm "github.com/gaspardpetit/nfrx/server/internal/llm"
-	"github.com/gaspardpetit/nfrx/server/internal/plugin"
-	"github.com/gaspardpetit/nfrx/server/internal/server"
-	"github.com/gaspardpetit/nfrx/server/internal/serverstate"
+    "github.com/gaspardpetit/nfrx/modules/common/logx"
+    "github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
+    mcp "github.com/gaspardpetit/nfrx/modules/mcp/ext"
+    "github.com/gaspardpetit/nfrx/server/internal/adapters"
+    "github.com/gaspardpetit/nfrx/server/internal/api"
+    "github.com/gaspardpetit/nfrx/server/internal/config"
+    llm "github.com/gaspardpetit/nfrx/server/internal/llm"
+    ctrlsrv "github.com/gaspardpetit/nfrx/server/internal/ctrlsrv"
+    "github.com/gaspardpetit/nfrx/server/internal/metrics"
+    "github.com/gaspardpetit/nfrx/server/internal/plugin"
+    "github.com/gaspardpetit/nfrx/server/internal/server"
+    "github.com/gaspardpetit/nfrx/server/internal/serverstate"
 )
 
 var (
@@ -68,7 +71,9 @@ func main() {
 			logx.Log.Fatal().Err(err).Str("path", cfg.ConfigFile).Msg("load config")
 		}
 	}
-	logx.Configure(cfg.LogLevel)
+    logx.Configure(cfg.LogLevel)
+    // Set build info metric (collectors are registered in server.New)
+    metrics.SetServerBuildInfo(version, buildSHA, buildDate)
 
 	if cfg.RedisAddr != "" {
 		rs, err := serverstate.NewRedisStore(cfg.RedisAddr)
@@ -86,14 +91,34 @@ func main() {
 		mcpReg = mcp.New(adapters.ServerState{}, mcp.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, cfg.PluginOptions["mcp"])
 		plugins = append(plugins, mcpReg)
 	}
-	var mcpBroker *mcpbroker.Registry
-	if mcpReg != nil {
-		mcpBroker = mcpReg.Registry()
-	}
-	if hasPlugin(cfg.Plugins, "llm") {
-		llmPlugin := llm.New(cfg, version, buildSHA, buildDate, mcpBroker, cfg.PluginOptions["llm"])
-		plugins = append(plugins, llmPlugin)
-	}
+    if hasPlugin(cfg.Plugins, "llm") {
+        // Build concrete dependencies and inject into the LLM plugin
+        reg := ctrlsrv.NewRegistry()
+        metricsReg := ctrlsrv.NewMetricsRegistry(version, buildSHA, buildDate)
+        sched := &ctrlsrv.LeastBusyScheduler{Reg: reg}
+
+        connect := ctrlsrv.WSHandler(reg, metricsReg, cfg.ClientKey)
+        wr := adapters.NewWorkerRegistry(reg)
+        sc := adapters.NewScheduler(sched)
+        mx := adapters.NewMetrics(metricsReg)
+        authMW := (func(http.Handler) http.Handler)(nil)
+        if cfg.APIKey != "" {
+            authMW = api.APIKeyMiddleware(cfg.APIKey)
+        }
+        openaiOpts := openai.Options{RequestTimeout: cfg.RequestTimeout, MaxParallelEmbeddings: cfg.MaxParallelEmbeddings}
+
+        stateProvider := func() any { return metricsReg.Snapshot() }
+        llmPlugin := llm.NewWithDeps(connect, wr, sc, mx, stateProvider, openaiOpts, version, buildSHA, buildDate, cfg.PluginOptions["llm"], authMW)
+        // Ownership of pruning loop moves here with injected deps
+        go func() {
+            ticker := time.NewTicker(ctrlsrv.HeartbeatInterval)
+            for range ticker.C {
+                reg.PruneExpired(ctrlsrv.HeartbeatExpiry)
+            }
+        }()
+
+        plugins = append(plugins, llmPlugin)
+    }
 	handler := server.New(cfg, stateReg, plugins)
 	srv := &http.Server{Addr: fmt.Sprintf(":%d", cfg.Port), Handler: handler}
 	var metricsSrv *http.Server
