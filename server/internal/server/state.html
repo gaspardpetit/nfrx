@@ -89,7 +89,6 @@ h1 {
   <option value="completed">Completed</option>
   <option value="errors">Errors</option>
 </select></div>
-<!-- Worker grid moved to LLM plugin view -->
 <h2>Plugin Views</h2>
 <div id="plugins"></div>
 <script>
@@ -101,7 +100,6 @@ let token = null;
 const loadedViews = new Set();
 let descriptors = {};
 
-// LLM plugin will render its own worker grid
 
 async function maybeLoadViews(plugins) {
   const host = document.getElementById('plugins');
