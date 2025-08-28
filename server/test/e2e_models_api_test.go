@@ -11,7 +11,7 @@ import (
 
     "github.com/coder/websocket"
 
-    ctrl "github.com/gaspardpetit/nfrx/sdk/contracts/control"
+    ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
     mcp "github.com/gaspardpetit/nfrx/modules/mcp/ext"
     "github.com/gaspardpetit/nfrx/server/internal/adapters"
     "github.com/gaspardpetit/nfrx/server/internal/config"
@@ -20,7 +20,7 @@ import (
     "github.com/gaspardpetit/nfrx/server/internal/plugin"
     "github.com/gaspardpetit/nfrx/server/internal/server"
     "github.com/gaspardpetit/nfrx/server/internal/serverstate"
-    "github.com/gaspardpetit/nfrx/sdk/spi"
+    "github.com/gaspardpetit/nfrx/sdk/api/spi"
 )
 
 func TestModelsAPI(t *testing.T) {

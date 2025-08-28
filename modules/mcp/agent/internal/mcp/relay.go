@@ -11,7 +11,7 @@ import (
 	"sync"
 
 	"github.com/coder/websocket"
-    mcpc "github.com/gaspardpetit/nfrx/sdk/contracts/mcp"
+    mcpc "github.com/gaspardpetit/nfrx/sdk/api/mcp"
 )
 
 // RelayClient is a minimal MCP relay.

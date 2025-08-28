@@ -9,7 +9,7 @@ import (
 
 	"github.com/coder/websocket"
 
-    ctrl "github.com/gaspardpetit/nfrx/sdk/contracts/control"
+    ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
     "github.com/gaspardpetit/nfrx/core/logx"
 	"github.com/gaspardpetit/nfrx/server/internal/serverstate"
 )

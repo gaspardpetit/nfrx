@@ -5,7 +5,7 @@ import (
 
     llm "github.com/gaspardpetit/nfrx/modules/llm/ext"
     mcp "github.com/gaspardpetit/nfrx/modules/mcp/ext"
-    "github.com/gaspardpetit/nfrx/sdk/spi"
+    "github.com/gaspardpetit/nfrx/sdk/api/spi"
 )
 
 // Factory is the common constructor for server extensions.

@@ -11,8 +11,8 @@ import (
 
     "github.com/coder/websocket"
 
-    ctrl "github.com/gaspardpetit/nfrx/sdk/contracts/control"
-    "github.com/gaspardpetit/nfrx/sdk/spi"
+    ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
+    "github.com/gaspardpetit/nfrx/sdk/api/spi"
     mcp "github.com/gaspardpetit/nfrx/modules/mcp/ext"
     "github.com/gaspardpetit/nfrx/server/internal/adapters"
     "github.com/gaspardpetit/nfrx/server/internal/config"

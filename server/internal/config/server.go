@@ -9,7 +9,7 @@ import (
 	"time"
 
     commoncfg "github.com/gaspardpetit/nfrx/core/config"
-	"github.com/gaspardpetit/nfrx/sdk/spi"
+	"github.com/gaspardpetit/nfrx/sdk/api/spi"
 	"gopkg.in/yaml.v3"
 )
 

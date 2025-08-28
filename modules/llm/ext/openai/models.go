@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-    "github.com/gaspardpetit/nfrx/sdk/spi"
+    "github.com/gaspardpetit/nfrx/sdk/api/spi"
     "github.com/gaspardpetit/nfrx/core/logx"
 )
 
