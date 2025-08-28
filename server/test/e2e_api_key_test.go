@@ -15,7 +15,7 @@ import (
     "github.com/gaspardpetit/nfrx/server/internal/plugin"
     "github.com/gaspardpetit/nfrx/server/internal/server"
     "github.com/gaspardpetit/nfrx/server/internal/serverstate"
-    "github.com/gaspardpetit/nfrx/sdk/spi"
+    "github.com/gaspardpetit/nfrx/sdk/api/spi"
 )
 
 func TestAPIKeyEnforcement(t *testing.T) {

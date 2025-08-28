@@ -4,8 +4,8 @@ import (
 	"sync"
 	"time"
 
-    ctrl "github.com/gaspardpetit/nfrx/sdk/contracts/control"
-	"github.com/gaspardpetit/nfrx/modules/common/logx"
+    ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
+    "github.com/gaspardpetit/nfrx/core/logx"
 )
 
 const (

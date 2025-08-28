@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	commoncfg "github.com/gaspardpetit/nfrx/modules/common/config"
-	"github.com/gaspardpetit/nfrx/sdk/spi"
+    commoncfg "github.com/gaspardpetit/nfrx/core/config"
+	"github.com/gaspardpetit/nfrx/sdk/api/spi"
 	"gopkg.in/yaml.v3"
 )
 

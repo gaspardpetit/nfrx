@@ -180,7 +180,7 @@ metrics and state. Skeleton implementations for worker-based and relay-based
 plugins live under [templates/](templates/). Plugins receive generic
 `spi.Router` and `spi.MetricsRegistry` abstractions for HTTP wiring and
 metrics registration, keeping them decoupled from specific frameworks. These
-interfaces live in the [`github.com/gaspardpetit/nfrx/sdk/spi`](https://github.com/gaspardpetit/nfrx/sdk)
+interfaces live in the [`github.com/gaspardpetit/nfrx/sdk/api/spi`](https://github.com/gaspardpetit/nfrx/sdk)
 package so plugins can be built independently of the server.
 
 ## macOS Menu Bar App

@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gaspardpetit/nfrx/api/generated"
-	"github.com/gaspardpetit/nfrx/modules/common/logx"
+    "github.com/gaspardpetit/nfrx/core/logx"
 )
 
 var openapiJSON []byte

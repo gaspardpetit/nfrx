@@ -10,9 +10,9 @@ import (
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 
-    ctrl "github.com/gaspardpetit/nfrx/sdk/contracts/control"
-    "github.com/gaspardpetit/nfrx/sdk/spi"
-	"github.com/gaspardpetit/nfrx/modules/common/logx"
+    ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
+    "github.com/gaspardpetit/nfrx/sdk/api/spi"
+    "github.com/gaspardpetit/nfrx/core/logx"
 )
 
 // ChatCompletionsHandler handles POST /api/llm/v1/chat/completions as a pass-through.

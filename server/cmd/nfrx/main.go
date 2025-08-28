@@ -16,7 +16,7 @@ import (
 
     "github.com/prometheus/client_golang/prometheus/promhttp"
 
-    "github.com/gaspardpetit/nfrx/modules/common/logx"
+    "github.com/gaspardpetit/nfrx/core/logx"
     "github.com/gaspardpetit/nfrx/server/internal/adapters"
     "github.com/gaspardpetit/nfrx/server/internal/api"
     "github.com/gaspardpetit/nfrx/server/internal/config"
@@ -25,7 +25,7 @@ import (
     "github.com/gaspardpetit/nfrx/server/internal/plugin"
     "github.com/gaspardpetit/nfrx/server/internal/server"
     "github.com/gaspardpetit/nfrx/server/internal/serverstate"
-    spicontracts "github.com/gaspardpetit/nfrx/sdk/spi"
+    spicontracts "github.com/gaspardpetit/nfrx/sdk/api/spi"
 )
 
 var (
@@ -42,14 +42,7 @@ func binaryName() string {
 	return b
 }
 
-func hasPlugin(list []string, name string) bool {
-	for _, p := range list {
-		if p == name {
-			return true
-		}
-	}
-	return false
-}
+// (removed unused hasPlugin helper)
 
 func main() {
     showVersion := flag.Bool("version", false, "print version and exit")

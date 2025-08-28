@@ -6,7 +6,7 @@ import (
     "time"
 
     mcpbroker "github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
-    "github.com/gaspardpetit/nfrx/sdk/spi"
+    "github.com/gaspardpetit/nfrx/sdk/api/spi"
 )
 
 // Plugin implements the MCP relay as a plugin.

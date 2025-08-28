@@ -4,7 +4,7 @@ import (
     "net/http"
     "strconv"
 
-    "github.com/gaspardpetit/nfrx/sdk/spi"
+    "github.com/gaspardpetit/nfrx/sdk/api/spi"
     "github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
 )
 
