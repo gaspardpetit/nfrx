@@ -41,7 +41,7 @@ func TestWorkerModelRefresh(t *testing.T) {
 	}
 	defer func() { _ = conn.Close(websocket.StatusNormalClosure, "") }()
 
-	rm := ctrl.RegisterMessage{Type: "register", WorkerID: "w1", WorkerName: "Alpha", Models: []string{"m1"}, MaxConcurrency: 1, EmbeddingBatchSize: 0}
+    rm := ctrl.RegisterMessage{Type: "register", WorkerID: "w1", WorkerName: "Alpha", Models: []string{"m1"}, MaxConcurrency: 1}
 	b, _ := json.Marshal(rm)
 	if err := conn.Write(ctx, websocket.MessageText, b); err != nil {
 		t.Fatalf("write register: %v", err)
@@ -78,7 +78,7 @@ func TestWorkerModelRefresh(t *testing.T) {
 		t.Fatalf("models not updated")
 	}
 
-	sm := ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: 1, EmbeddingBatchSize: 0, Models: []string{"m1"}, Status: "idle"}
+    sm := ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: 1, Models: []string{"m1"}, Status: "idle"}
 	b, _ = json.Marshal(sm)
 	if err := conn.Write(ctx, websocket.MessageText, b); err != nil {
 		t.Fatalf("write status: %v", err)
@@ -86,7 +86,7 @@ func TestWorkerModelRefresh(t *testing.T) {
 
 	waitForModels(1, "m1")
 
-	sm = ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: 1, EmbeddingBatchSize: 0, Models: []string{"m1", "m2"}, Status: "idle"}
+    sm = ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: 1, Models: []string{"m1", "m2"}, Status: "idle"}
 	b, _ = json.Marshal(sm)
 	if err := conn.Write(ctx, websocket.MessageText, b); err != nil {
 		t.Fatalf("write update: %v", err)
@@ -94,7 +94,7 @@ func TestWorkerModelRefresh(t *testing.T) {
 
 	waitForModels(2, "m2")
 
-	sm = ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: 1, EmbeddingBatchSize: 0, Models: []string{"m2"}, Status: "idle"}
+    sm = ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: 1, Models: []string{"m2"}, Status: "idle"}
 	b, _ = json.Marshal(sm)
 	if err := conn.Write(ctx, websocket.MessageText, b); err != nil {
 		t.Fatalf("write update2: %v", err)

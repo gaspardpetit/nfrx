@@ -41,7 +41,7 @@ func TestWorkerAuth(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dial bad: %v", err)
 	}
-	regBad := ctrl.RegisterMessage{Type: "register", WorkerID: "wbad", ClientKey: "nope", Models: []string{"m"}, MaxConcurrency: 1, EmbeddingBatchSize: 0}
+    regBad := ctrl.RegisterMessage{Type: "register", WorkerID: "wbad", ClientKey: "nope", Models: []string{"m"}, MaxConcurrency: 1}
 	b, _ := json.Marshal(regBad)
 	if err := connBad.Write(ctx, websocket.MessageText, b); err != nil {
 		t.Fatalf("write bad: %v", err)
@@ -77,7 +77,7 @@ func TestWorkerAuth(t *testing.T) {
 	defer func() {
 		_ = conn.Close(websocket.StatusNormalClosure, "")
 	}()
-	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w1", ClientKey: "secret", Models: []string{"m"}, MaxConcurrency: 1, EmbeddingBatchSize: 0}
+    regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w1", ClientKey: "secret", Models: []string{"m"}, MaxConcurrency: 1}
 	b, _ = json.Marshal(regMsg)
 	if err := conn.Write(ctx, websocket.MessageText, b); err != nil {
 		t.Fatalf("write: %v", err)
@@ -126,7 +126,7 @@ func TestWorkerClientKeyUnexpected(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}
-	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w1", ClientKey: "secret", Models: []string{"m"}, MaxConcurrency: 1, EmbeddingBatchSize: 0}
+    regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w1", ClientKey: "secret", Models: []string{"m"}, MaxConcurrency: 1}
 	b, _ := json.Marshal(regMsg)
 	if err := conn.Write(ctx, websocket.MessageText, b); err != nil {
 		t.Fatalf("write: %v", err)
