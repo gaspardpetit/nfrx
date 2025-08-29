@@ -13,26 +13,53 @@ import (
     ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
 )
 
-func TestLeastBusyScheduler(t *testing.T) {
+func TestScoreSchedulerLeastBusy(t *testing.T) {
     reg := NewRegistry()
     w1 := &Worker{ID: "w1", Models: map[string]bool{"m": true}, InFlight: 1, MaxConcurrency: 2}
     w2 := &Worker{ID: "w2", Models: map[string]bool{"m": true}, InFlight: 0, MaxConcurrency: 1}
     reg.Add(w1)
     reg.Add(w2)
-    sched := &LeastBusyScheduler{Reg: reg}
+    sched := NewScoreScheduler(reg, DefaultExactMatchScorer{})
     w, err := sched.PickWorker("m")
     if err != nil { t.Fatalf("unexpected err: %v", err) }
     if w.ID != "w2" { t.Fatalf("expected w2, got %s", w.ID) }
 }
 
-func TestLeastBusySchedulerAliasFallback(t *testing.T) {
+func TestLLMScorerAliasFallback(t *testing.T) {
     reg := NewRegistry()
     alias := &Worker{ID: "alias", Models: map[string]bool{"llama2:7b-fp16": true}, MaxConcurrency: 1}
     reg.Add(alias)
-    sched := &LeastBusyScheduler{Reg: reg}
+    // emulate llm scorer behavior
+    type aScorer struct{}
+    func (aScorer) Score(task string, w *Worker) float64 {
+        if w.Models[task] { return 1.0 }
+        if ak, ok := ctrl.AliasKey(task); ok {
+            for m := range w.Models { if mk, ok2 := ctrl.AliasKey(m); ok2 && mk == ak { return 0.5 } }
+        }
+        return 0.0
+    }
+    sched := NewScoreScheduler(reg, aScorer{})
     w, err := sched.PickWorker("llama2:7b-q4_0")
     if err != nil { t.Fatalf("unexpected err: %v", err) }
     if w.ID != "alias" { t.Fatalf("expected alias, got %s", w.ID) }
+}
+
+func TestMinScoreThreshold(t *testing.T) {
+    reg := NewRegistry()
+    // Two capacity-available workers with no matching models (score 0)
+    w1 := &Worker{ID: "w1", Models: map[string]bool{}, InFlight: 1, MaxConcurrency: 2}
+    w2 := &Worker{ID: "w2", Models: map[string]bool{}, InFlight: 0, MaxConcurrency: 1}
+    reg.Add(w1); reg.Add(w2)
+    // With MinScore 1.0, nothing qualifies
+    s1 := NewScoreSchedulerWithMinScore(reg, DefaultExactMatchScorer{}, 1.0)
+    if _, err := s1.PickWorker("m"); err == nil {
+        t.Fatalf("expected no worker with minScore 1.0")
+    }
+    // With MinScore 0.0, we accept score 0 and pick least busy (w2)
+    s2 := NewScoreSchedulerWithMinScore(reg, DefaultExactMatchScorer{}, 0.0)
+    w, err := s2.PickWorker("m")
+    if err != nil { t.Fatalf("unexpected err: %v", err) }
+    if w.ID != "w2" { t.Fatalf("expected w2, got %s", w.ID) }
 }
 
 func TestAggregatedModels(t *testing.T) {
@@ -106,4 +133,3 @@ func TestMetricsRegistryRace(t *testing.T) {
     }
     wg.Wait()
 }
-
