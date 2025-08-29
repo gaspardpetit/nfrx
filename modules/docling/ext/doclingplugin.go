@@ -53,7 +53,73 @@ func (p *Plugin) RegisterRoutes(r spi.Router) {
 func (p *Plugin) RegisterMetrics(reg spi.MetricsRegistry) { basemetrics.Register(reg) }
 
 func (p *Plugin) RegisterState(reg spi.StateRegistry) {
-	reg.Add(spi.StateElement{ID: p.ID(), Data: func() any { return p.mxreg.Snapshot() }})
+    reg.Add(spi.StateElement{ID: p.ID(), Data: func() any { return p.mxreg.Snapshot() }, HTML: func() string {
+        return `
+<div class="docling-view">
+  <div class="docling-workers"></div>
+  <script>(function(){
+    function statusColor(w){
+      var lastHb = w.last_heartbeat;
+      var inflight = (w.inflight||0);
+      if (w.last_error) return 'red';
+      if (lastHb && (Date.now() - new Date(lastHb).getTime() > 15000)) return 'orange';
+      if (inflight > 0) return 'gold';
+      return 'green';
+    }
+    function sortWorkers(list, sortBy){
+      return list.slice().sort(function(a,b){
+        switch (sortBy){
+          case 'youngest': return new Date(b.connected_at) - new Date(a.connected_at);
+          case 'busyness': {
+            var ba = ((a.inflight||0) + (a.queue_len||0)) / ((a.max_concurrency||1));
+            var bb = ((b.inflight||0) + (b.queue_len||0)) / ((b.max_concurrency||1));
+            return bb - ba;
+          }
+          case 'name': return (a.name||'').localeCompare(b.name||'');
+          case 'completed': return (b.processed_total|0) - (a.processed_total|0);
+          case 'errors': return (b.failures_total|0) - (a.failures_total|0);
+          case 'oldest': default: return new Date(a.connected_at) - new Date(b.connected_at);
+        }
+      });
+    }
+    function render(state, container){
+      var host = container.querySelector('.docling-workers');
+      if (!host) return;
+      var workers = (state && state.workers) || [];
+      var sortSel = document.getElementById('sort');
+      var sortBy = sortSel ? sortSel.value : 'oldest';
+      var list = sortWorkers(workers, sortBy);
+      host.innerHTML='';
+      list.forEach(function(w){
+        var div=document.createElement('div');
+        div.className='worker';
+        var status=statusColor(w);
+        var inflight=(w.inflight||0);
+        var qlen=(w.queue_len||0);
+        var maxc=(w.max_concurrency||1);
+        var busy=Math.min(1, (inflight + qlen) / (maxc || 1));
+        var name=(w.name || w.id || 'worker');
+        var avg=(w.avg_processing_ms||0);
+        var avgText=(avg && avg.toFixed)? avg.toFixed(0) : avg;
+        var processed=(w.processed_total||0);
+        div.innerHTML=
+          '<div class="busy-bar"><div class="fill" style="height:'+Math.round(busy*100)+'%"></div></div>'+
+          '<div class="emoji">📄</div>'+
+          '<div class="name"><span class="status-dot" style="background:'+status+'"></span>'+name+'</div>'+
+          '<div>'+(w.status || '')+'</div>'+
+          '<div>inflight: '+inflight+'</div>'+
+          '<div>processed: '+processed+'</div>'+
+          '<div>avg processing: '+avgText+' ms</div>';
+        host.appendChild(div);
+      });
+    }
+    if (!window.NFRX) window.NFRX = { _renderers:{}, registerRenderer:function(id,fn){ this._renderers[id]=fn; } };
+    var section = (document.currentScript && document.currentScript.closest('section')) || null;
+    var id = (section && section.dataset && section.dataset.pluginId) || 'docling';
+    window.NFRX.registerRenderer(id, function(state, container, envelope){ render(state, container); });
+  })();</script>
+</div>`
+    }})
 }
 
 var _ spi.Plugin = (*Plugin)(nil)
