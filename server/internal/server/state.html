@@ -101,13 +101,38 @@ const loadedViews = new Set();
 let descriptors = {};
 
 
+function getCookie(name){
+  const m = document.cookie.match('(?:^|; )'+name.replace(/([.$?*|{}()\[\]\\/+^])/g,'\\$1')+'=([^;]*)');
+  return m ? decodeURIComponent(m[1]) : null;
+}
+function setTokenCookie(val){
+  const secure = location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = 'nfrx_token=' + encodeURIComponent(val) + '; Path=/; SameSite=Lax; Max-Age=' + (60*60*24*30) + secure;
+}
+function tryLoadToken(){
+  const t = getCookie('nfrx_token');
+  if (t && t.trim()) { token = t.trim(); }
+}
+function authHeaders(){ return token ? { 'Authorization': 'Bearer ' + token } : {}; }
+async function authorizedFetch(url, opts){
+  opts = opts || {};
+  const merged = Object.assign({}, opts, { headers: Object.assign({}, authHeaders(), opts.headers||{}) });
+  let resp = await fetch(url, merged);
+  if (resp.status === 401 || resp.status === 403) {
+    const t = prompt('Access token:');
+    if (t && t.trim()) { token = t.trim(); setTokenCookie(token); }
+    const retry = Object.assign({}, opts, { headers: Object.assign({}, authHeaders(), opts.headers||{}) });
+    resp = await fetch(url, retry);
+  }
+  return resp;
+}
+
 async function maybeLoadViews(plugins) {
   const host = document.getElementById('plugins');
   for (const id of Object.keys(plugins || {})) {
     if (loadedViews.has(id)) continue;
     try {
-      const headers = token ? { 'Authorization': 'Bearer ' + token } : {};
-      const resp = await fetch(`/api/state/view/${id}.html`, { headers });
+      const resp = await authorizedFetch(`/api/state/view/${id}.html`);
       if (resp.status === 200) {
         const html = await resp.text();
         if (html && html.trim().length > 0) {
@@ -184,14 +209,8 @@ document.getElementById('sort').addEventListener('change', (e) => {
 });
 
 async function connect() {
-  const headers = token ? { 'Authorization': 'Bearer ' + token } : {};
   try {
-    const resp = await fetch('/api/state/stream', { headers });
-    if (resp.status === 401) {
-      token = prompt('Access token:');
-      if (token) connect();
-      return;
-    }
+    const resp = await authorizedFetch('/api/state/stream');
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();
     let buf = '';
@@ -221,14 +240,14 @@ async function connect() {
 // Load descriptors once for friendly names
 (async function loadDescriptors(){
   try {
-    const headers = token ? { 'Authorization': 'Bearer ' + token } : {};
-    const resp = await fetch('/api/state/descriptors', { headers });
+    const resp = await authorizedFetch('/api/state/descriptors');
     if (resp.status === 200) {
       descriptors = await resp.json();
     }
   } catch(e) { console.error('descriptors', e); }
 })();
-
+// Initialize token from cookie on load
+tryLoadToken();
 connect();
 </script>
 </body>
