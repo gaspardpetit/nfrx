@@ -29,7 +29,7 @@ type Plugin struct {
 
 // RegisterRoutes wires the HTTP endpoints.
 func (p *Plugin) RegisterRoutes(r spi.Router) {
-    // Register base route (501) at "/api/llm/" and then mount specific endpoints
+    // Register base descriptor endpoint at "/api/llm/" and then mount specific endpoints
     p.Base.RegisterRoutes(r)
     // Mount LLM worker connect endpoint owned by the extension
     r.Handle("/connect", baseworker.WSHandler(p.reg, p.mxreg, p.srvOpts.ClientKey, p.srvState))

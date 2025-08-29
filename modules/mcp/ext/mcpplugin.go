@@ -46,7 +46,7 @@ func New(
 
 // RegisterRoutes registers HTTP routes; MCP uses relay endpoints only.
 func (p *Plugin) RegisterRoutes(r spi.Router) {
-    // Register base route (501) at "/api/mcp/" and then specific endpoints
+    // Register base descriptor endpoint at "/api/mcp/" and then specific endpoints
     p.Base.RegisterRoutes(r)
 	r.Handle("/connect", p.broker.WSHandler(p.clientKey))
 	r.Handle("/id/{id}", p.broker.HTTPHandler())

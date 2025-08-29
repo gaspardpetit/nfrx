@@ -9,9 +9,9 @@ import (
 )
 
 // Base provides a minimal implementation of the spi.Plugin interface that
-// plugins can embed to inherit default behaviors. For now it only mounts a
-// base route that returns 501 Not Implemented; concrete plugins can call
-// Base.RegisterRoutes before wiring their own endpoints.
+// plugins can embed to inherit default behaviors. It mounts a base route
+// that returns the plugin descriptor and masked options as JSON; concrete
+// plugins can call Base.RegisterRoutes before wiring their own endpoints.
 type Base struct{
     desc spi.PluginDescriptor
     opts map[string]string
