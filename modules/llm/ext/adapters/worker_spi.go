@@ -32,12 +32,6 @@ func (r *WorkerRegistry) WorkersForModel(model string) []spi.WorkerRef {
     for _, w := range ws { res = append(res, WorkerRef{w}) }
     return res
 }
-func (r *WorkerRegistry) WorkersForAlias(model string) []spi.WorkerRef {
-    ws := r.r.WorkersForAlias(model)
-    res := make([]spi.WorkerRef, 0, len(ws))
-    for _, w := range ws { res = append(res, WorkerRef{w}) }
-    return res
-}
 func (r *WorkerRegistry) IncInFlight(id string) { r.r.IncInFlight(id) }
 func (r *WorkerRegistry) DecInFlight(id string) { r.r.DecInFlight(id) }
 func (r *WorkerRegistry) AggregatedModels() []spi.ModelInfo {

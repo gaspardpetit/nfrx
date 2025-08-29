@@ -48,9 +48,9 @@ func EmbeddingsHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics spi.
 		if raw, ok := payload["input"]; ok {
 			var inputs []json.RawMessage
 			if err := json.Unmarshal(raw, &inputs); err == nil && len(inputs) > 0 {
-				handleEmbeddingBatches(w, r, reg, metrics, timeout, meta.Model, payload, inputs, maxParallel)
-				return
-			}
+            handleEmbeddingBatches(w, r, reg, sched, metrics, timeout, meta.Model, payload, inputs, maxParallel)
+            return
+        }
 		}
 
 		// Fallback to original pass-through behaviour for non-array inputs.
@@ -260,7 +260,7 @@ type embeddingResponse struct {
 	Usage  embeddingUsage    `json:"usage"`
 }
 
-func handleEmbeddingBatches(w http.ResponseWriter, r *http.Request, reg spi.WorkerRegistry, metrics spi.Metrics, timeout time.Duration, model string, payload map[string]json.RawMessage, inputs []json.RawMessage, maxParallel int) {
+func handleEmbeddingBatches(w http.ResponseWriter, r *http.Request, reg spi.WorkerRegistry, sched spi.Scheduler, metrics spi.Metrics, timeout time.Duration, model string, payload map[string]json.RawMessage, inputs []json.RawMessage, maxParallel int) {
 	ctx := r.Context()
 	var cancel context.CancelFunc
 	logID := chiMiddleware.GetReqID(ctx)
@@ -294,15 +294,20 @@ func handleEmbeddingBatches(w http.ResponseWriter, r *http.Request, reg spi.Work
 		}
 	}
 
-	workers := reg.WorkersForModel(model)
-	if len(workers) == 0 {
-		workers = reg.WorkersForAlias(model)
-	}
-	if len(workers) == 0 {
-		logx.Log.Warn().Str("model", model).Msg("no worker")
-		http.Error(w, "no worker", http.StatusNotFound)
-		return
-	}
+    workers := reg.WorkersForModel(model)
+    if len(workers) == 0 {
+        // No exact match available: pick a best worker via scheduler (allows alias fallback via scorer)
+        worker, err := sched.PickWorker(model)
+        if err != nil {
+            logx.Log.Warn().Str("model", model).Msg("no worker")
+            http.Error(w, "no worker", http.StatusNotFound)
+            return
+        }
+        if key, ok := ctrl.AliasKey(model); ok {
+            logx.Log.Info().Str("event", "alias_fallback").Str("requested_id", model).Str("alias_key", key).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Msg("alias fallback")
+        }
+        workers = []spi.WorkerRef{worker}
+    }
 	sort.Slice(workers, func(i, j int) bool {
 		if workers[i].InFlight() == workers[j].InFlight() {
 			return workers[i].EmbeddingBatchSize() > workers[j].EmbeddingBatchSize()
@@ -322,8 +327,8 @@ func handleEmbeddingBatches(w http.ResponseWriter, r *http.Request, reg spi.Work
 	}
 
 	// If only one worker is available, fall back to sequential batching respecting its batch size.
-	if len(workers) == 1 {
-		worker := workers[0]
+    if len(workers) == 1 {
+        worker := workers[0]
 		remaining := inputs
 		var allData []json.RawMessage
 		var usage embeddingUsage
@@ -343,7 +348,7 @@ func handleEmbeddingBatches(w http.ResponseWriter, r *http.Request, reg spi.Work
 			reg.IncInFlight(worker.ID())
 			reqID := uuid.NewString()
 			logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Str("model", model).Msg("dispatch")
-			respBody, status, success, errMsg := proxyEmbeddingOnce(ctx, worker, reqID, logID, model, headers, body, metrics, batch, timeout)
+            respBody, status, success, errMsg := proxyEmbeddingOnce(ctx, worker, reqID, logID, model, headers, body, metrics, batch, timeout)
 			reg.DecInFlight(worker.ID())
 			worker.RemoveJob(reqID)
 			if !success {

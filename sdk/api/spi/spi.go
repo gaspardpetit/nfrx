@@ -20,12 +20,11 @@ type ModelInfo struct {
 }
 
 type WorkerRegistry interface {
-	WorkersForModel(model string) []WorkerRef
-	WorkersForAlias(model string) []WorkerRef
-	IncInFlight(id string)
-	DecInFlight(id string)
-	AggregatedModels() []ModelInfo
-	AggregatedModel(id string) (ModelInfo, bool)
+    WorkersForModel(model string) []WorkerRef
+    IncInFlight(id string)
+    DecInFlight(id string)
+    AggregatedModels() []ModelInfo
+    AggregatedModel(id string) (ModelInfo, bool)
 }
 
 type Scheduler interface {

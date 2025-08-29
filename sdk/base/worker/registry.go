@@ -4,7 +4,6 @@ import (
     "sync"
     "time"
 
-    ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
     "github.com/gaspardpetit/nfrx/core/logx"
 )
 
@@ -92,20 +91,6 @@ func (r *Registry) WorkersForModel(model string) []*Worker {
     return res
 }
 
-func (r *Registry) WorkersForAlias(requested string) []*Worker {
-    key, ok := ctrl.AliasKey(requested)
-    if !ok { return nil }
-    r.mu.RLock(); defer r.mu.RUnlock()
-    var res []*Worker
-    for _, w := range r.workers {
-        w.mu.Lock()
-        for m := range w.Labels {
-            if ak, ok := ctrl.AliasKey(m); ok && ak == key && w.InFlight < w.MaxConcurrency { res = append(res, w); break }
-        }
-        w.mu.Unlock()
-    }
-    return res
-}
 
 func (r *Registry) IncInFlight(id string) { r.mu.Lock(); if w, ok := r.workers[id]; ok { w.InFlight++ } ; r.mu.Unlock() }
 func (r *Registry) DecInFlight(id string) { r.mu.Lock(); if w, ok := r.workers[id]; ok && w.InFlight > 0 { w.InFlight-- } ; r.mu.Unlock() }
