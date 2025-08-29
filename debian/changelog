@@ -1,4 +1,18 @@
-nfrx (0.7.2-1ubuntu1) UNRELEASED; urgency=medium
+nfrx (0.7.3-1ubuntu1) UNRELEASED; urgency=medium
+
+  * Release: v0.7.3 —
+    https://github.com/gaspardpetit/nfrx/releases/tag/v0.7.3
+  * ## What's Changed
+  * * Fix/incorrect fields in dashboard by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/220
+  *
+  *
+  * **Full Changelog**:
+    https://github.com/gaspardpetit/nfrx/compare/v0.7.2...v0.7.3
+
+ -- CI <ci@example.invalid>  Fri, 29 Aug 2025 13:31:11 +0000
+
+nfrx (0.7.3-1) unstable; urgency=medium
 
   * Release: v0.7.2 —
     https://github.com/gaspardpetit/nfrx/releases/tag/v0.7.2
@@ -11,8 +25,9 @@ nfrx (0.7.2-1ubuntu1) UNRELEASED; urgency=medium
   *
   * **Full Changelog**:
     https://github.com/gaspardpetit/nfrx/compare/v0.7.1...v0.7.2
+  *
 
- -- CI <ci@example.invalid>  Fri, 29 Aug 2025 07:47:06 +0000
+ -- CI <ci@example.invalid>  Fri, 29 Aug 2025 13:31:11 +0000
 
 nfrx (0.7.2-1) unstable; urgency=medium
 
