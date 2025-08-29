@@ -53,8 +53,8 @@ func (p *Plugin) RegisterRoutes(r spi.Router) {
 func (p *Plugin) RegisterMetrics(reg spi.MetricsRegistry) { basemetrics.Register(reg) }
 
 func (p *Plugin) RegisterState(reg spi.StateRegistry) {
-    reg.Add(spi.StateElement{ID: p.ID(), Data: func() any { return p.mxreg.Snapshot() }, HTML: func() string {
-        return `
+	reg.Add(spi.StateElement{ID: p.ID(), Data: func() any { return p.mxreg.Snapshot() }, HTML: func() string {
+		return `
 <div class="docling-view">
   <div class="docling-workers"></div>
   <script>(function(){
@@ -119,7 +119,7 @@ func (p *Plugin) RegisterState(reg spi.StateRegistry) {
     window.NFRX.registerRenderer(id, function(state, container, envelope){ render(state, container); });
   })();</script>
 </div>`
-    }})
+	}})
 }
 
 var _ spi.Plugin = (*Plugin)(nil)

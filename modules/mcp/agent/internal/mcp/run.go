@@ -74,7 +74,10 @@ func monitorProvider(ctx context.Context, url string, shouldReconnect bool) {
 	attempt := 0
 	for {
 		logx.Log.Debug().Int("attempt", attempt).Str("url", url).Msg("checking mcp provider")
-		err := ProbeProvider(ctx, url)
+		// Apply a finite timeout to each probe
+		pctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		err := ProbeProvider(pctx, url)
+		cancel()
 		if err != nil {
 			lvl := logx.Log.Warn()
 			if strings.Contains(err.Error(), "status 401") || strings.Contains(err.Error(), "status 403") {

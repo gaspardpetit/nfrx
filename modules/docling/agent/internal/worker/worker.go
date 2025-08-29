@@ -108,8 +108,15 @@ func monitorBackend(ctx context.Context, cfg aconfig.WorkerConfig, ch chan<- ctr
 }
 
 func probeBackend(ctx context.Context, cfg aconfig.WorkerConfig, ch chan<- ctrl.StatusUpdateMessage) error {
+	// Apply a finite timeout to avoid hanging the monitor goroutine
+	healthTO := 10 * time.Second
+	if cfg.RequestTimeout > 0 && cfg.RequestTimeout < healthTO {
+		healthTO = cfg.RequestTimeout
+	}
+	pctx, cancel := context.WithTimeout(ctx, healthTO)
+	defer cancel()
 	// GET {BaseURL}/health
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, cfg.BaseURL+"/health", nil)
+	req, err := http.NewRequestWithContext(pctx, http.MethodGet, cfg.BaseURL+"/health", nil)
 	if err != nil {
 		return err
 	}
