@@ -51,7 +51,7 @@ func (p *Plugin) RegisterRoutes(r spi.Router) {
         if p.authMW != nil { g.Use(p.authMW) }
         g.Route("/v1", func(v1 spi.Router) {
             // Adapt shared options to OpenAI-specific options; allow plugin option override for embeddings
-            mpe := opt.Int(p.srvOpts.PluginOptions, "llm", "max_parallel_embeddings", 8)
+            mpe := opt.Int(p.srvOpts.PluginOptions, p.ID(), "max_parallel_embeddings", 8)
             oa := openai.Options{RequestTimeout: p.srvOpts.RequestTimeout, MaxParallelEmbeddings: mpe}
             // Adapt internal control plane to SPI
             wr := llmadapt.NewWorkerRegistry(p.reg)
@@ -72,7 +72,7 @@ func (p *Plugin) RegisterMetrics(reg spi.MetricsRegistry) {
 
 // RegisterState registers state elements.
 func (p *Plugin) RegisterState(reg spi.StateRegistry) {
-    reg.Add(spi.StateElement{ID: "llm", Data: func() any { return p.mxreg.Snapshot() }, HTML: func() string {
+    reg.Add(spi.StateElement{ID: p.ID(), Data: func() any { return p.mxreg.Snapshot() }, HTML: func() string {
         return `
 <div class="llm-view">
   <div class="llm-workers"></div>
@@ -166,7 +166,8 @@ func New(
             }
         }
     }()
-    return &Plugin{ Base: baseplugin.NewBase("llm"), reg: reg, mxreg: mx, sch: sch, authMW: authMW, srvOpts: srvOpts, srvState: state }
+    id := Descriptor().ID
+    return &Plugin{ Base: baseplugin.NewBase(Descriptor(), srvOpts.PluginOptions[id]), reg: reg, mxreg: mx, sch: sch, authMW: authMW, srvOpts: srvOpts, srvState: state }
 }
 
 // (compat constructor removed) — use New with spi.Options
