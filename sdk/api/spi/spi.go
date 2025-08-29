@@ -3,14 +3,14 @@ package spi
 import "time"
 
 type WorkerRef interface {
-	ID() string
-	Name() string
-	SendChan() chan<- interface{}
-	AddJob(id string, ch chan interface{})
-	RemoveJob(id string)
-	LastHeartbeat() time.Time
-	EmbeddingBatchSize() int
-	InFlight() int
+    ID() string
+    Name() string
+    SendChan() chan<- interface{}
+    AddJob(id string, ch chan interface{})
+    RemoveJob(id string)
+    LastHeartbeat() time.Time
+    PreferredBatchSize() int
+    InFlight() int
 }
 
 type ModelInfo struct {
@@ -20,7 +20,7 @@ type ModelInfo struct {
 }
 
 type WorkerRegistry interface {
-    WorkersForModel(model string) []WorkerRef
+    WorkersForLabel(label string) []WorkerRef
     IncInFlight(id string)
     DecInFlight(id string)
     AggregatedModels() []ModelInfo
@@ -45,6 +45,9 @@ type PartitionJob interface {
     Result() []byte
     // Path returns the HTTP path on the worker that handles this job (e.g., "/embeddings").
     Path() string
+    // DesiredChunkSize optionally specifies the ideal chunk size for a given worker.
+    // Return <= 0 to defer to the worker's preferred size.
+    DesiredChunkSize(w WorkerRef) int
 }
 
 type Metrics interface {

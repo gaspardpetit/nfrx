@@ -17,7 +17,7 @@ func (w WorkerRef) SendChan() chan<- interface{}          { return w.w.Send }
 func (w WorkerRef) AddJob(id string, ch chan interface{}) { w.w.AddJob(id, ch) }
 func (w WorkerRef) RemoveJob(id string)                   { w.w.RemoveJob(id) }
 func (w WorkerRef) LastHeartbeat() time.Time              { return w.w.LastHeartbeat }
-func (w WorkerRef) EmbeddingBatchSize() int               { return w.w.EmbeddingBatchSize }
+func (w WorkerRef) PreferredBatchSize() int               { return w.w.PreferredBatchSize }
 func (w WorkerRef) InFlight() int                         { return w.w.InFlight }
 
 type WorkerRegistry struct{
@@ -26,8 +26,8 @@ type WorkerRegistry struct{
     firstSeen map[string]int64
 }
 
-func (r *WorkerRegistry) WorkersForModel(model string) []spi.WorkerRef {
-    ws := r.r.WorkersForModel(model)
+func (r *WorkerRegistry) WorkersForLabel(model string) []spi.WorkerRef {
+    ws := r.r.WorkersForLabel(model)
     res := make([]spi.WorkerRef, 0, len(ws))
     for _, w := range ws { res = append(res, WorkerRef{w}) }
     return res

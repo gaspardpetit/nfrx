@@ -34,7 +34,7 @@ func HandlePartitionedJob(
     if maxParallel <= 0 { maxParallel = 1 }
 
     // Determine eligible workers
-    workers := reg.WorkersForModel(model)
+    workers := reg.WorkersForLabel(model)
     if len(workers) == 0 {
         // Fallback to best single worker via scheduler scoring
         w, err := sched.PickWorker(model)
@@ -43,7 +43,7 @@ func HandlePartitionedJob(
     }
     sort.Slice(workers, func(i, j int) bool {
         if workers[i].InFlight() == workers[j].InFlight() {
-            return workers[i].EmbeddingBatchSize() > workers[j].EmbeddingBatchSize()
+            return workers[i].PreferredBatchSize() > workers[j].PreferredBatchSize()
         }
         return workers[i].InFlight() < workers[j].InFlight()
     })
@@ -54,7 +54,7 @@ func HandlePartitionedJob(
     if len(workers) == 1 {
         wk := workers[0]
         for start := 0; start < size; {
-            batch := wk.EmbeddingBatchSize()
+            batch := wk.PreferredBatchSize()
             remaining := size - start
             if batch <= 0 || batch > remaining { batch = remaining }
             body, n := job.MakeChunk(start, batch)
@@ -76,7 +76,13 @@ func HandlePartitionedJob(
     // Weights based on embedding batch size; default to remaining size
     weights := make([]int, len(workers))
     total := 0
-    for i, w := range workers { n := w.EmbeddingBatchSize(); if n <= 0 { n = size } ; weights[i] = n ; total += n }
+    for i, w := range workers {
+        n := 0
+        if job != nil { n = job.DesiredChunkSize(w) }
+        if n <= 0 { n = w.PreferredBatchSize() }
+        if n <= 0 { n = size }
+        weights[i] = n; total += n
+    }
     tasks := make([]task, len(workers))
     remaining := size
     offset := 0
@@ -217,4 +223,3 @@ func proxyHTTPOnce(ctx context.Context, worker spi.WorkerRef, reqID, logID, mode
         }
     }
 }
-

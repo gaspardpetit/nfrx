@@ -52,7 +52,7 @@ func EmbeddingsHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics spi.
         }
 
         // Fallback to original pass-through behaviour for non-array inputs.
-        exact := reg.WorkersForModel(meta.Model)
+        exact := reg.WorkersForLabel(meta.Model)
         worker, err := sched.PickWorker(meta.Model)
         if err != nil {
             logx.Log.Warn().Str("model", meta.Model).Msg("no worker")

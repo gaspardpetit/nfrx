@@ -28,12 +28,12 @@ func (w *testWorker) SendChan() chan<- interface{} { return w.send }
 func (w *testWorker) AddJob(id string, ch chan interface{}) { w.jobs[id] = ch }
 func (w *testWorker) RemoveJob(id string) { if ch, ok := w.jobs[id]; ok { delete(w.jobs, id); if ch != nil { close(ch) } } }
 func (w *testWorker) LastHeartbeat() time.Time { return w.hb }
-func (w *testWorker) EmbeddingBatchSize() int  { return w.embBS }
+func (w *testWorker) PreferredBatchSize() int  { return w.embBS }
 func (w *testWorker) InFlight() int            { return w.infl }
 
 type testReg struct{ w *testWorker }
 
-func (r testReg) WorkersForModel(model string) []spi.WorkerRef {
+func (r testReg) WorkersForLabel(model string) []spi.WorkerRef {
     if r.w.models[model] { return []spi.WorkerRef{r.w} }
     return nil
 }
@@ -59,7 +59,7 @@ func (testMetrics) RecordWorkerEmbeddings(string, uint64) {}
 func (testMetrics) RecordWorkerEmbeddingProcessingTime(string, time.Duration) {}
 
 type testMultiReg struct{ ws []spi.WorkerRef }
-func (r testMultiReg) WorkersForModel(model string) []spi.WorkerRef { return append([]spi.WorkerRef(nil), r.ws...) }
+func (r testMultiReg) WorkersForLabel(model string) []spi.WorkerRef { return append([]spi.WorkerRef(nil), r.ws...) }
 func (r testMultiReg) IncInFlight(id string) {}
 func (r testMultiReg) DecInFlight(id string) {}
 func (r testMultiReg) AggregatedModels() []spi.ModelInfo { return nil }
