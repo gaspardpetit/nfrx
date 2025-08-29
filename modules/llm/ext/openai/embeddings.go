@@ -15,7 +15,7 @@ import (
     baseworker "github.com/gaspardpetit/nfrx/sdk/base/worker"
     basemetrics "github.com/gaspardpetit/nfrx/sdk/base/metrics"
     "github.com/gaspardpetit/nfrx/core/logx"
-    llmmetrics "github.com/gaspardpetit/nfrx/modules/llm/ext/metrics"
+    
 )
 
 // EmbeddingsHandler handles POST /api/llm/v1/embeddings as a pass-through.
@@ -66,6 +66,8 @@ func EmbeddingsHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics spi.
             }
         }
         reg.IncInFlight(worker.ID())
+        // Generic metrics
+        basemetrics.RecordRequest("llm", "worker", "llm.embedding", meta.Model)
         defer reg.DecInFlight(worker.ID())
 
         reqID := uuid.NewString()
@@ -87,6 +89,8 @@ func EmbeddingsHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics spi.
         msg := ctrl.HTTPProxyRequestMessage{ Type: "http_proxy_request", RequestID: reqID, Method: http.MethodPost, Path: "/embeddings", Headers: headers, Stream: false, Body: body }
         switch {
         case func() bool { select { case worker.SendChan() <- msg: return true; default: return false } }():
+            // Mark started only after successful enqueue
+            basemetrics.RecordStart("llm", "worker", "llm.embedding", meta.Model)
             metrics.RecordJobStart(worker.ID())
             metrics.SetWorkerStatus(worker.ID(), spi.StatusWorking)
         default:
@@ -109,17 +113,14 @@ func EmbeddingsHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics spi.
         var timeoutCh <-chan time.Time
         if timeout > 0 { idle = time.NewTimer(timeout); timeoutCh = idle.C; defer idle.Stop() }
 
+        errMsgIf := func(cond bool, msg string) string { if cond { return msg }; return "" }
         defer func() {
             dur := time.Since(start)
             metrics.RecordJobEnd(worker.ID(), meta.Model, dur, 0, 0, embeddingsCount, success, errMsg)
             metrics.SetWorkerStatus(worker.ID(), spi.StatusIdle)
-            llmmetrics.ObserveRequestDuration(worker.ID(), meta.Model, dur)
-            llmmetrics.RecordModelRequest(meta.Model, success)
-            if success {
-                llmmetrics.RecordWorkerEmbeddingProcessingTime(worker.ID(), dur)
-                llmmetrics.RecordWorkerEmbeddings(worker.ID(), embeddingsCount)
-                llmmetrics.RecordModelEmbeddings(meta.Model, embeddingsCount)
-            }
+            // Generic request metrics for single-item embedding
+            basemetrics.RecordComplete("llm", "worker", "llm.embedding", meta.Model, errMsgIf(!success, errMsg), success, dur)
+            basemetrics.AddSize("llm", "worker", "llm.embedding", meta.Model, "embeddings", embeddingsCount)
         }()
 
         for {
@@ -208,9 +209,8 @@ func handlePartitionedEmbeddings(w http.ResponseWriter, r *http.Request, reg spi
     headers["Cache-Control"] = "no-store"
 
     job := newEmbeddingPartitionJob(payload, inputs)
-    // Record generic request metrics (job-level). Chunk metrics are emitted by the observer.
+    // Record generic request metric (job-level). We record start in the worker path/observer.
     basemetrics.RecordRequest("llm", "worker", "llm.embedding", model)
-    basemetrics.RecordStart("llm", "worker", "llm.embedding", model)
     body, status, ok, errMsg := baseworker.HandlePartitionedJob(ctx, reg, sched, metrics, model, headers, job, maxParallel, timeout, logID)
     w.Header().Set("Content-Type", "application/json")
     if !ok {
