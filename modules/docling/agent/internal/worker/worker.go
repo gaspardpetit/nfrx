@@ -9,11 +9,14 @@ import (
 
 	"github.com/coder/websocket"
 
+	"fmt"
 	"github.com/gaspardpetit/nfrx/core/logx"
+	reconnect "github.com/gaspardpetit/nfrx/core/reconnect"
 	aconfig "github.com/gaspardpetit/nfrx/modules/docling/agent/internal/config"
 	ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
 	"github.com/gaspardpetit/nfrx/sdk/base/agent"
 	dr "github.com/gaspardpetit/nfrx/sdk/base/agent/drain"
+	"net/http"
 )
 
 func Run(ctx context.Context, cfg aconfig.WorkerConfig) error {
@@ -23,7 +26,8 @@ func Run(ctx context.Context, cfg aconfig.WorkerConfig) error {
 	SetWorkerInfo(cfg.ClientID, cfg.ClientName, cfg.MaxConcurrency)
 	SetState("not_ready")
 	SetConnectedToServer(false)
-	SetConnectedToBackend(true)
+	// Start with backend unknown; probe will update
+	SetConnectedToBackend(false)
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -61,12 +65,111 @@ func Run(ctx context.Context, cfg aconfig.WorkerConfig) error {
 		}
 	}
 
+	// Probe backend health periodically
+	startBackendMonitor(ctx, cfg, statusUpdates, 20*time.Second)
+
 	return agent.RunWithReconnect(ctx, cfg.Reconnect, func(runCtx context.Context) error {
 		SetState("connecting")
 		SetConnectedToServer(false)
 		_, err := connectAndServe(runCtx, cancel, cfg, statusUpdates)
 		return err
 	})
+}
+
+// Periodic health check for docling backend
+func startBackendMonitor(ctx context.Context, cfg aconfig.WorkerConfig, ch chan<- ctrl.StatusUpdateMessage, interval time.Duration) {
+	go monitorBackend(ctx, cfg, ch, interval)
+}
+
+func monitorBackend(ctx context.Context, cfg aconfig.WorkerConfig, ch chan<- ctrl.StatusUpdateMessage, interval time.Duration) {
+	attempt := 0
+	for {
+		err := probeBackend(ctx, cfg, ch)
+		if err != nil {
+			if !cfg.Reconnect {
+				return
+			}
+			delay := reconnect.Delay(attempt)
+			attempt++
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(delay):
+			}
+		} else {
+			attempt = 0
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(interval):
+			}
+		}
+	}
+}
+
+func probeBackend(ctx context.Context, cfg aconfig.WorkerConfig, ch chan<- ctrl.StatusUpdateMessage) error {
+	// GET {BaseURL}/health
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, cfg.BaseURL+"/health", nil)
+	if err != nil {
+		return err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil || resp.StatusCode >= 400 {
+		if resp != nil {
+			_ = resp.Body.Close()
+		}
+		was := GetState().ConnectedToBackend
+		SetConnectedToBackend(false)
+		SetWorkerInfo(cfg.ClientID, cfg.ClientName, 0)
+		SetState("not_ready")
+		if err != nil {
+			SetLastError(err.Error())
+		} else {
+			SetLastError(resp.Status)
+		}
+		if was {
+			logx.Log.Warn().Str("status", func() string {
+				if resp != nil {
+					return resp.Status
+				}
+				return ""
+			}()).Msg("docling backend probe failed; became not_ready")
+		} else {
+			logx.Log.Warn().Str("status", func() string {
+				if resp != nil {
+					return resp.Status
+				}
+				return ""
+			}()).Msg("docling backend probe failed")
+		}
+		msg := ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: 0, Status: "not_ready"}
+		sendStatusUpdate(ch, msg)
+		return errIfNil(err, resp)
+	}
+	_ = resp.Body.Close()
+	prev := GetState().ConnectedToBackend
+	SetConnectedToBackend(true)
+	SetWorkerInfo(cfg.ClientID, cfg.ClientName, cfg.MaxConcurrency)
+	if GetState().ConnectedToServer && !IsDraining() && GetState().CurrentJobs == 0 {
+		SetState("connected_idle")
+	}
+	SetLastError("")
+	if !prev {
+		logx.Log.Info().Msg("docling backend ready")
+		msg := ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: cfg.MaxConcurrency, Status: "idle"}
+		sendStatusUpdate(ch, msg)
+	}
+	return nil
+}
+
+func errIfNil(err error, resp *http.Response) error {
+	if err != nil {
+		return err
+	}
+	if resp != nil {
+		return fmt.Errorf("status %s", resp.Status)
+	}
+	return fmt.Errorf("probe failed")
 }
 
 func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg aconfig.WorkerConfig, statusUpdates <-chan ctrl.StatusUpdateMessage) (bool, error) {
