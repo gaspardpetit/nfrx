@@ -376,6 +376,13 @@ func probeBackend(ctx context.Context, client healthClient, cfg aconfig.WorkerCo
 		SetState("not_ready")
 		SetLastError(err.Error())
 
+		// Log failed probe attempts
+		if wasConnected {
+			logx.Log.Warn().Err(err).Msg("backend probe failed; became not_ready")
+		} else {
+			logx.Log.Warn().Err(err).Msg("backend probe failed")
+		}
+
 		// Emit an update on error (always), but keep the channel non-blocking.
 		msg := ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: 0, EmbeddingBatchSize: cfg.EmbeddingBatchSize, Status: "not_ready"}
 		sendStatusUpdate(ch, msg)
@@ -411,6 +418,7 @@ func probeBackend(ctx context.Context, client healthClient, cfg aconfig.WorkerCo
 		}
 	}
 	if changed {
+		logx.Log.Info().Int("models", len(models)).Msg("backend ready")
 		msg := ctrl.StatusUpdateMessage{
 			Type:               "status_update",
 			MaxConcurrency:     cfg.MaxConcurrency,
