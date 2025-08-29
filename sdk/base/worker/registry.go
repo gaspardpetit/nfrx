@@ -16,7 +16,7 @@ const (
 type Worker struct {
     ID                 string
     Name               string
-    Models             map[string]bool
+    Labels             map[string]bool
     MaxConcurrency     int
     EmbeddingBatchSize int
     InFlight           int
@@ -26,22 +26,30 @@ type Worker struct {
     mu                 sync.Mutex
 }
 
+// NameValue safely returns the worker's name.
+func (w *Worker) NameValue() string { w.mu.Lock(); defer w.mu.Unlock(); return w.Name }
+
+// LabelKeys returns a copy of the worker's label set as a slice.
+func (w *Worker) LabelKeys() []string {
+    w.mu.Lock(); defer w.mu.Unlock()
+    keys := make([]string, 0, len(w.Labels))
+    for k := range w.Labels { keys = append(keys, k) }
+    return keys
+}
+
+// HasLabel reports whether the worker supports the given label.
+func (w *Worker) HasLabel(label string) bool { w.mu.Lock(); defer w.mu.Unlock(); return w.Labels[label] }
+
 type Registry struct {
     mu             sync.RWMutex
     workers        map[string]*Worker
-    modelFirstSeen map[string]int64
 }
 
-func NewRegistry() *Registry { return &Registry{workers: make(map[string]*Worker), modelFirstSeen: make(map[string]int64)} }
+func NewRegistry() *Registry { return &Registry{workers: make(map[string]*Worker)} }
 
 func (r *Registry) Add(w *Worker) {
     r.mu.Lock()
     r.workers[w.ID] = w
-    for m := range w.Models {
-        if _, ok := r.modelFirstSeen[m]; !ok {
-            r.modelFirstSeen[m] = time.Now().Unix()
-        }
-    }
     r.mu.Unlock()
 }
 
@@ -61,15 +69,13 @@ func (r *Registry) WorkerCount() int { r.mu.RLock(); defer r.mu.RUnlock(); retur
 
 func (r *Registry) UpdateHeartbeat(id string) { r.mu.Lock(); if w, ok := r.workers[id]; ok { w.LastHeartbeat = time.Now() } ; r.mu.Unlock() }
 
-func (r *Registry) UpdateModels(id string, models []string) {
+// UpdateLabels replaces the label set for a worker.
+func (r *Registry) UpdateLabels(id string, labels []string) {
     r.mu.Lock()
     if w, ok := r.workers[id]; ok {
         w.mu.Lock()
-        w.Models = make(map[string]bool)
-        for _, m := range models {
-            w.Models[m] = true
-            if _, ok := r.modelFirstSeen[m]; !ok { r.modelFirstSeen[m] = time.Now().Unix() }
-        }
+        w.Labels = make(map[string]bool)
+        for _, m := range labels { w.Labels[m] = true }
         w.mu.Unlock()
     }
     r.mu.Unlock()
@@ -80,7 +86,7 @@ func (r *Registry) WorkersForModel(model string) []*Worker {
     var res []*Worker
     for _, w := range r.workers {
         w.mu.Lock()
-        if w.Models[model] && w.InFlight < w.MaxConcurrency { res = append(res, w) }
+        if w.Labels[model] && w.InFlight < w.MaxConcurrency { res = append(res, w) }
         w.mu.Unlock()
     }
     return res
@@ -93,7 +99,7 @@ func (r *Registry) WorkersForAlias(requested string) []*Worker {
     var res []*Worker
     for _, w := range r.workers {
         w.mu.Lock()
-        for m := range w.Models {
+        for m := range w.Labels {
             if ak, ok := ctrl.AliasKey(m); ok && ak == key && w.InFlight < w.MaxConcurrency { res = append(res, w); break }
         }
         w.mu.Unlock()
@@ -104,17 +110,13 @@ func (r *Registry) WorkersForAlias(requested string) []*Worker {
 func (r *Registry) IncInFlight(id string) { r.mu.Lock(); if w, ok := r.workers[id]; ok { w.InFlight++ } ; r.mu.Unlock() }
 func (r *Registry) DecInFlight(id string) { r.mu.Lock(); if w, ok := r.workers[id]; ok && w.InFlight > 0 { w.InFlight-- } ; r.mu.Unlock() }
 
-func (r *Registry) Models() []string {
+// Snapshot returns a point-in-time slice of worker pointers.
+// Callers must not mutate the returned workers without holding their locks.
+func (r *Registry) Snapshot() []*Worker {
     r.mu.RLock(); defer r.mu.RUnlock()
-    set := make(map[string]struct{})
-    for _, w := range r.workers {
-        w.mu.Lock()
-        for m := range w.Models { set[m] = struct{}{} }
-        w.mu.Unlock()
-    }
-    var models []string
-    for m := range set { models = append(models, m) }
-    return models
+    res := make([]*Worker, 0, len(r.workers))
+    for _, w := range r.workers { res = append(res, w) }
+    return res
 }
 
 func (r *Registry) PruneExpired(maxAge time.Duration) {

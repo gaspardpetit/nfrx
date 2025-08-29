@@ -1,6 +1,8 @@
 package adapters
 
 import (
+    "sort"
+    "sync"
     "time"
 
     "github.com/gaspardpetit/nfrx/sdk/api/spi"
@@ -18,31 +20,64 @@ func (w WorkerRef) LastHeartbeat() time.Time              { return w.w.LastHeart
 func (w WorkerRef) EmbeddingBatchSize() int               { return w.w.EmbeddingBatchSize }
 func (w WorkerRef) InFlight() int                         { return w.w.InFlight }
 
-type WorkerRegistry struct{ r *baseworker.Registry }
+type WorkerRegistry struct{
+    r *baseworker.Registry
+    mu sync.Mutex
+    firstSeen map[string]int64
+}
 
-func (r WorkerRegistry) WorkersForModel(model string) []spi.WorkerRef {
+func (r *WorkerRegistry) WorkersForModel(model string) []spi.WorkerRef {
     ws := r.r.WorkersForModel(model)
     res := make([]spi.WorkerRef, 0, len(ws))
     for _, w := range ws { res = append(res, WorkerRef{w}) }
     return res
 }
-func (r WorkerRegistry) WorkersForAlias(model string) []spi.WorkerRef {
+func (r *WorkerRegistry) WorkersForAlias(model string) []spi.WorkerRef {
     ws := r.r.WorkersForAlias(model)
     res := make([]spi.WorkerRef, 0, len(ws))
     for _, w := range ws { res = append(res, WorkerRef{w}) }
     return res
 }
-func (r WorkerRegistry) IncInFlight(id string) { r.r.IncInFlight(id) }
-func (r WorkerRegistry) DecInFlight(id string) { r.r.DecInFlight(id) }
-func (r WorkerRegistry) AggregatedModels() []spi.ModelInfo {
-    ms := r.r.AggregatedModels()
-    res := make([]spi.ModelInfo, 0, len(ms))
-    for _, m := range ms { res = append(res, spi.ModelInfo{ID: m.ID, Created: m.Created, Owners: m.Owners}) }
+func (r *WorkerRegistry) IncInFlight(id string) { r.r.IncInFlight(id) }
+func (r *WorkerRegistry) DecInFlight(id string) { r.r.DecInFlight(id) }
+func (r *WorkerRegistry) AggregatedModels() []spi.ModelInfo {
+    ws := r.r.Snapshot()
+    ownersMap := make(map[string][]string)
+    r.mu.Lock()
+    if r.firstSeen == nil { r.firstSeen = make(map[string]int64) }
+    now := time.Now().Unix()
+    for _, w := range ws {
+        name := w.NameValue()
+        for _, id := range w.LabelKeys() {
+            ownersMap[id] = append(ownersMap[id], name)
+            if _, ok := r.firstSeen[id]; !ok { r.firstSeen[id] = now }
+        }
+    }
+    // build sorted result
+    var res []spi.ModelInfo
+    for id, owners := range ownersMap {
+        sort.Strings(owners)
+        res = append(res, spi.ModelInfo{ID: id, Created: r.firstSeen[id], Owners: owners})
+    }
+    sort.Slice(res, func(i, j int) bool { return res[i].ID < res[j].ID })
+    r.mu.Unlock()
     return res
 }
-func (r WorkerRegistry) AggregatedModel(id string) (spi.ModelInfo, bool) {
-    m, ok := r.r.AggregatedModel(id); if !ok { return spi.ModelInfo{}, false }
-    return spi.ModelInfo{ID: m.ID, Created: m.Created, Owners: m.Owners}, true
+func (r *WorkerRegistry) AggregatedModel(id string) (spi.ModelInfo, bool) {
+    ws := r.r.Snapshot()
+    var owners []string
+    r.mu.Lock()
+    if r.firstSeen == nil { r.firstSeen = make(map[string]int64) }
+    now := time.Now().Unix()
+    for _, w := range ws {
+        if w.HasLabel(id) { owners = append(owners, w.NameValue()) }
+    }
+    if len(owners) == 0 { r.mu.Unlock(); return spi.ModelInfo{}, false }
+    if _, ok := r.firstSeen[id]; !ok { r.firstSeen[id] = now }
+    sort.Strings(owners)
+    m := spi.ModelInfo{ID: id, Created: r.firstSeen[id], Owners: owners}
+    r.mu.Unlock()
+    return m, true
 }
 
 type Scheduler struct{ s baseworker.Scheduler }
@@ -70,7 +105,7 @@ func (m Metrics) RecordModelEmbeddings(model string, n uint64)                  
 func (m Metrics) RecordWorkerEmbeddings(workerID string, n uint64)                                {}
 func (m Metrics) RecordWorkerEmbeddingProcessingTime(workerID string, dur time.Duration)          {}
 
-func NewWorkerRegistry(r *baseworker.Registry) WorkerRegistry { return WorkerRegistry{r} }
+func NewWorkerRegistry(r *baseworker.Registry) *WorkerRegistry { return &WorkerRegistry{r: r, firstSeen: make(map[string]int64)} }
 func NewScheduler(s baseworker.Scheduler) Scheduler           { return Scheduler{s} }
 func NewMetrics(m *baseworker.MetricsRegistry) Metrics        { return Metrics{m} }
 func (m Metrics) RecordWorkerTokens(workerID, kind string, n uint64) { m.m.AddWorkerTokens(workerID, kind, n) }

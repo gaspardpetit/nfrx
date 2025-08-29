@@ -44,8 +44,8 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
         if name == "" {
             if len(rm.WorkerID) >= 8 { name = rm.WorkerID[:8] } else if rm.WorkerID != "" { name = rm.WorkerID } else { name = strings.Split(r.RemoteAddr, ":")[0] }
         }
-        wk := &Worker{ ID: rm.WorkerID, Name: name, Models: map[string]bool{}, MaxConcurrency: rm.MaxConcurrency, EmbeddingBatchSize: rm.EmbeddingBatchSize, InFlight: 0, LastHeartbeat: time.Now(), Send: make(chan interface{}, 32), Jobs: make(map[string]chan interface{}) }
-        for _, m := range rm.Models { wk.Models[m] = true }
+        wk := &Worker{ ID: rm.WorkerID, Name: name, Labels: map[string]bool{}, MaxConcurrency: rm.MaxConcurrency, EmbeddingBatchSize: rm.EmbeddingBatchSize, InFlight: 0, LastHeartbeat: time.Now(), Send: make(chan interface{}, 32), Jobs: make(map[string]chan interface{}) }
+        for _, m := range rm.Models { wk.Labels[m] = true }
         // Add worker and update server readiness if this is the first one
         reg.Add(wk)
         if state != nil && reg.WorkerCount() == 1 {
@@ -55,7 +55,7 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
         metrics.UpsertWorker(wk.ID, wk.Name, rm.Version, rm.BuildSHA, rm.BuildDate, rm.MaxConcurrency, rm.EmbeddingBatchSize, rm.Models)
         status := StatusIdle; if rm.MaxConcurrency == 0 { status = StatusNotReady }
         metrics.SetWorkerStatus(wk.ID, status)
-        logx.Log.Info().Str("worker_id", wk.ID).Str("worker_name", wk.Name).Int("model_count", len(wk.Models)).Msg("registered")
+        logx.Log.Info().Str("worker_id", wk.ID).Str("worker_name", wk.Name).Int("label_count", len(wk.Labels)).Msg("registered")
         defer func() {
             reg.Remove(wk.ID)
             metrics.RemoveWorker(wk.ID)
@@ -89,7 +89,7 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
             case "status_update":
                 var m ctrl.StatusUpdateMessage
                 if err := json.Unmarshal(msg, &m); err == nil {
-                    wk.mu.Lock(); wk.MaxConcurrency = m.MaxConcurrency; wk.EmbeddingBatchSize = m.EmbeddingBatchSize; if m.Models != nil { wk.Models = map[string]bool{}; for _, mm := range m.Models { wk.Models[mm] = true } } ; wk.mu.Unlock()
+                    wk.mu.Lock(); wk.MaxConcurrency = m.MaxConcurrency; wk.EmbeddingBatchSize = m.EmbeddingBatchSize; if m.Models != nil { wk.Labels = map[string]bool{}; for _, mm := range m.Models { wk.Labels[mm] = true } } ; wk.mu.Unlock()
                     metrics.UpdateWorker(wk.ID, m.MaxConcurrency, m.EmbeddingBatchSize, m.Models)
                     if m.Status != "" { metrics.SetWorkerStatus(wk.ID, WorkerStatus(m.Status)) }
                 }
@@ -117,4 +117,3 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
         }
     }
 }
-
