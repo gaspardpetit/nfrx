@@ -1,4 +1,4 @@
-package worker
+package workerproxy
 
 import (
 	"sync"
@@ -31,8 +31,6 @@ var (
 	drainMu    sync.Mutex
 	drainCheck func()
 )
-
-// (no resetState in production build)
 
 func SetBuildInfo(v, sha, date string) {
 	buildInfo = VersionInfo{Version: v, BuildSHA: sha, BuildDate: date}
@@ -84,7 +82,12 @@ func DecJobs() int {
 }
 func GetState() State { stateMu.RLock(); defer stateMu.RUnlock(); return stateData }
 
-// metrics wiring handled elsewhere; no-op setter for tests
+// metrics wiring handled elsewhere; no-op setter by default.
+func JobStarted()                              {}
+func JobCompleted(success bool, d interface{}) {}
+func setCurrentJobs(int)                       {}
+
+// Drain integration
 func StartDrain() { draining.Store(true); SetState("draining"); dr.Start(); triggerDrainCheck() }
 func StopDrain() {
 	draining.Store(false)
