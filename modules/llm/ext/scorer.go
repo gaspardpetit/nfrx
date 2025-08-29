@@ -13,10 +13,10 @@ func NewLLMScorer() baseworker.Scorer { return llmScorer{} }
 
 func (llmScorer) Score(task string, w *baseworker.Worker) float64 {
     if w == nil { return 0 }
-    if w.Models != nil && w.Models[task] { return 1.0 }
+    if w.Labels != nil && w.Labels[task] { return 1.0 }
     // alias fallback
     if ak, ok := ctrl.AliasKey(task); ok {
-        for m := range w.Models {
+        for m := range w.Labels {
             if mk, ok2 := ctrl.AliasKey(m); ok2 && mk == ak {
                 return 0.5
             }

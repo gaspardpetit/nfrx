@@ -16,7 +16,7 @@ type DefaultExactMatchScorer struct{}
 
 func (DefaultExactMatchScorer) Score(task string, w *Worker) float64 {
     if w == nil { return 0 }
-    if w.Models != nil && w.Models[task] { return 1.0 }
+    if w.Labels != nil && w.Labels[task] { return 1.0 }
     return 0.0
 }
 
