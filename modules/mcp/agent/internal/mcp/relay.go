@@ -11,9 +11,9 @@ import (
 	"sync"
 
 	"github.com/coder/websocket"
-    mcpc "github.com/gaspardpetit/nfrx/sdk/api/mcp"
-    mcpcommon "github.com/gaspardpetit/nfrx/modules/mcp/common"
-    "github.com/gaspardpetit/nfrx/sdk/base/agent"
+	mcpcommon "github.com/gaspardpetit/nfrx/modules/mcp/common"
+	mcpc "github.com/gaspardpetit/nfrx/sdk/api/mcp"
+	"github.com/gaspardpetit/nfrx/sdk/base/agent"
 )
 
 // RelayClient is a minimal MCP relay.
@@ -33,12 +33,12 @@ func NewRelayClient(conn *websocket.Conn, providerURL, token string, timeout tim
 
 // Run processes frames until the context or connection ends.
 func (r *RelayClient) Run(ctx context.Context) error {
-    go agent.StartHeartbeat(ctx, 15*time.Second, func(c context.Context) error { return r.send(c, mcpc.Frame{T: "ping"}) })
-    for {
-        _, data, err := r.conn.Read(ctx)
-        if err != nil {
-            return err
-        }
+	go agent.StartHeartbeat(ctx, 15*time.Second, func(c context.Context) error { return r.send(c, mcpc.Frame{T: "ping"}) })
+	for {
+		_, data, err := r.conn.Read(ctx)
+		if err != nil {
+			return err
+		}
 		var f mcpc.Frame
 		if json.Unmarshal(data, &f) != nil {
 			continue
@@ -89,17 +89,17 @@ func (r *RelayClient) handleRPC(ctx context.Context, f mcpc.Frame) {
 		return
 	}
 	if err != nil {
-        errObj := map[string]any{
-            "jsonrpc": "2.0",
-            "id":      nil,
-            "error": map[string]any{
-                "code":    -32000,
-                "message": "Provider error",
-                "data": map[string]any{
-                    "mcp": mcpcommon.ErrUpstreamError,
-                },
-            },
-        }
+		errObj := map[string]any{
+			"jsonrpc": "2.0",
+			"id":      nil,
+			"error": map[string]any{
+				"code":    -32000,
+				"message": "Provider error",
+				"data": map[string]any{
+					"mcp": mcpcommon.ErrUpstreamError,
+				},
+			},
+		}
 		resp, _ = json.Marshal(errObj)
 	}
 	_ = r.send(ctx, mcpc.Frame{T: "rpc", SID: f.SID, Payload: resp})
@@ -137,10 +137,10 @@ func (r *RelayClient) callProvider(ctx context.Context, payload []byte) ([]byte,
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-        data := map[string]any{
-            "mcp":    mcpcommon.ErrUpstreamError,
-            "status": resp.StatusCode,
-        }
+		data := map[string]any{
+			"mcp":    mcpcommon.ErrUpstreamError,
+			"status": resp.StatusCode,
+		}
 		if len(body) > 0 {
 			data["body"] = string(body)
 		}

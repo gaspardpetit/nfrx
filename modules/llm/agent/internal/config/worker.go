@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-commoncfg "github.com/gaspardpetit/nfrx/core/config"
+	commoncfg "github.com/gaspardpetit/nfrx/core/config"
 	"github.com/google/uuid"
 	"gopkg.in/yaml.v3"
 )

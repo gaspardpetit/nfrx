@@ -1,34 +1,34 @@
 package test
 
 import (
-    "context"
-    "encoding/json"
-    "net/http"
-    "net/http/httptest"
-    "strings"
-    "testing"
-    "time"
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
 
-    "github.com/coder/websocket"
+	"github.com/coder/websocket"
 
-    ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
-    "github.com/gaspardpetit/nfrx/sdk/api/spi"
-    mcp "github.com/gaspardpetit/nfrx/modules/mcp/ext"
-    "github.com/gaspardpetit/nfrx/server/internal/adapters"
-    "github.com/gaspardpetit/nfrx/server/internal/config"
-    llm "github.com/gaspardpetit/nfrx/modules/llm/ext"
-    
-    "github.com/gaspardpetit/nfrx/server/internal/plugin"
-    "github.com/gaspardpetit/nfrx/server/internal/server"
-    "github.com/gaspardpetit/nfrx/server/internal/serverstate"
+	llm "github.com/gaspardpetit/nfrx/modules/llm/ext"
+	mcp "github.com/gaspardpetit/nfrx/modules/mcp/ext"
+	ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
+	"github.com/gaspardpetit/nfrx/sdk/api/spi"
+	"github.com/gaspardpetit/nfrx/server/internal/adapters"
+	"github.com/gaspardpetit/nfrx/server/internal/config"
+
+	"github.com/gaspardpetit/nfrx/server/internal/plugin"
+	"github.com/gaspardpetit/nfrx/server/internal/server"
+	"github.com/gaspardpetit/nfrx/server/internal/serverstate"
 )
 
 func TestWorkerAuth(t *testing.T) {
 	cfg := config.ServerConfig{ClientKey: "secret", RequestTimeout: 5 * time.Second}
 	mcpPlugin := mcp.New(adapters.ServerState{}, nil, nil, nil, nil, nil, "test", "", "", spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg := serverstate.NewRegistry()
-    srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}
-    llmPlugin := llm.New(adapters.ServerState{}, "test", "", "", srvOpts, nil)
+	srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}
+	llmPlugin := llm.New(adapters.ServerState{}, "test", "", "", srvOpts, nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -53,15 +53,21 @@ func TestWorkerAuth(t *testing.T) {
 	if err := connBad.Close(websocket.StatusNormalClosure, ""); err != nil {
 		t.Logf("close bad: %v", err)
 	}
-    // ensure no models published
-    req, _ := http.NewRequest(http.MethodGet, srv.URL+"/api/llm/v1/models", nil)
-    resp, err := http.DefaultClient.Do(req)
-    if err == nil {
-        var v struct{ Data []struct{ ID string `json:"id"` } `json:"data"` }
-        _ = json.NewDecoder(resp.Body).Decode(&v)
-        _ = resp.Body.Close()
-        if len(v.Data) != 0 { t.Fatalf("unexpected worker registered") }
-    }
+	// ensure no models published
+	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/api/llm/v1/models", nil)
+	resp, err := http.DefaultClient.Do(req)
+	if err == nil {
+		var v struct {
+			Data []struct {
+				ID string `json:"id"`
+			} `json:"data"`
+		}
+		_ = json.NewDecoder(resp.Body).Decode(&v)
+		_ = resp.Body.Close()
+		if len(v.Data) != 0 {
+			t.Fatalf("unexpected worker registered")
+		}
+	}
 
 	// good key
 	conn, _, err := websocket.Dial(ctx, wsURL, nil)
@@ -77,19 +83,25 @@ func TestWorkerAuth(t *testing.T) {
 		t.Fatalf("write: %v", err)
 	}
 
-    // wait for registration via models API
-    for i := 0; i < 50; i++ {
-        r2, e2 := http.Get(srv.URL + "/api/llm/v1/models")
-        if e2 == nil {
-            var v struct{ Data []struct{ ID string `json:"id"` } `json:"data"` }
-            _ = json.NewDecoder(r2.Body).Decode(&v)
-            _ = r2.Body.Close()
-            if len(v.Data) > 0 { break }
-        }
-        time.Sleep(20 * time.Millisecond)
-    }
-    req, _ = http.NewRequest(http.MethodGet, srv.URL+"/api/llm/v1/models", nil)
-    resp, err = http.DefaultClient.Do(req)
+	// wait for registration via models API
+	for i := 0; i < 50; i++ {
+		r2, e2 := http.Get(srv.URL + "/api/llm/v1/models")
+		if e2 == nil {
+			var v struct {
+				Data []struct {
+					ID string `json:"id"`
+				} `json:"data"`
+			}
+			_ = json.NewDecoder(r2.Body).Decode(&v)
+			_ = r2.Body.Close()
+			if len(v.Data) > 0 {
+				break
+			}
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	req, _ = http.NewRequest(http.MethodGet, srv.URL+"/api/llm/v1/models", nil)
+	resp, err = http.DefaultClient.Do(req)
 	if err != nil || resp.StatusCode != http.StatusOK {
 		t.Fatalf("models: %v %d", err, resp.StatusCode)
 	}
@@ -102,8 +114,8 @@ func TestWorkerClientKeyUnexpected(t *testing.T) {
 	cfg := config.ServerConfig{RequestTimeout: 5 * time.Second}
 	mcpPlugin := mcp.New(adapters.ServerState{}, nil, nil, nil, nil, nil, "test", "", "", spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg := serverstate.NewRegistry()
-    srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}
-    llmPlugin := llm.New(adapters.ServerState{}, "test", "", "", srvOpts, nil)
+	srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}
+	llmPlugin := llm.New(adapters.ServerState{}, "test", "", "", srvOpts, nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -128,9 +140,9 @@ func TestWorkerClientKeyUnexpected(t *testing.T) {
 func TestMCPAuth(t *testing.T) {
 	cfg := config.ServerConfig{ClientKey: "secret", RequestTimeout: 5 * time.Second}
 	mcpPlugin := mcp.New(adapters.ServerState{}, nil, nil, nil, nil, nil, "test", "", "", spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
-    stateReg := serverstate.NewRegistry()
-    srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}
-    llmPlugin := llm.New(adapters.ServerState{}, "test", "", "", srvOpts, nil)
+	stateReg := serverstate.NewRegistry()
+	srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}
+	llmPlugin := llm.New(adapters.ServerState{}, "test", "", "", srvOpts, nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -172,9 +184,9 @@ func TestMCPAuth(t *testing.T) {
 	cfg = config.ServerConfig{RequestTimeout: 5 * time.Second}
 	mcpReg := mcp.New(adapters.ServerState{}, nil, nil, nil, nil, nil, "test", "", "", spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg = serverstate.NewRegistry()
-    // rebuild deps for second server
-    srvOpts2 := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}
-    llmPlugin = llm.New(adapters.ServerState{}, "test", "", "", srvOpts2, nil)
+	// rebuild deps for second server
+	srvOpts2 := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}
+	llmPlugin = llm.New(adapters.ServerState{}, "test", "", "", srvOpts2, nil)
 	handler = server.New(cfg, stateReg, []plugin.Plugin{mcpReg, llmPlugin})
 	srv2 := httptest.NewServer(handler)
 	defer srv2.Close()

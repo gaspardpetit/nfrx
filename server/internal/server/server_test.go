@@ -1,29 +1,29 @@
 package server
 
 import (
-    "io"
-    "net/http"
-    "net/http/httptest"
-    "strings"
-    "testing"
-    "time"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
 
-    mcp "github.com/gaspardpetit/nfrx/modules/mcp/ext"
-    "github.com/gaspardpetit/nfrx/sdk/api/spi"
-    "github.com/gaspardpetit/nfrx/server/internal/adapters"
-    "github.com/gaspardpetit/nfrx/server/internal/config"
-    llm "github.com/gaspardpetit/nfrx/modules/llm/ext"
-    
-    "github.com/gaspardpetit/nfrx/server/internal/plugin"
-    "github.com/gaspardpetit/nfrx/server/internal/serverstate"
+	llm "github.com/gaspardpetit/nfrx/modules/llm/ext"
+	mcp "github.com/gaspardpetit/nfrx/modules/mcp/ext"
+	"github.com/gaspardpetit/nfrx/sdk/api/spi"
+	"github.com/gaspardpetit/nfrx/server/internal/adapters"
+	"github.com/gaspardpetit/nfrx/server/internal/config"
+
+	"github.com/gaspardpetit/nfrx/server/internal/plugin"
+	"github.com/gaspardpetit/nfrx/server/internal/serverstate"
 )
 
 func TestMetricsEndpointDefaultPort(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":8080", RequestTimeout: time.Second}
 	mcpPlugin := mcp.New(adapters.ServerState{}, nil, nil, nil, nil, nil, "test", "", "", spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg := serverstate.NewRegistry()
-    srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}
-    llmPlugin := llm.New(adapters.ServerState{}, "test", "", "", srvOpts, nil)
+	srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}
+	llmPlugin := llm.New(adapters.ServerState{}, "test", "", "", srvOpts, nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
@@ -38,11 +38,11 @@ func TestMetricsEndpointDefaultPort(t *testing.T) {
 }
 
 func TestMetricsEndpointSeparatePort(t *testing.T) {
-    cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":9090", RequestTimeout: time.Second}
-    mcpPlugin := mcp.New(adapters.ServerState{}, nil, nil, nil, nil, nil, "test", "", "", spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
-    stateReg := serverstate.NewRegistry()
-    srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}
-    llmPlugin := llm.New(adapters.ServerState{}, "test", "", "", srvOpts, nil)
+	cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":9090", RequestTimeout: time.Second}
+	mcpPlugin := mcp.New(adapters.ServerState{}, nil, nil, nil, nil, nil, "test", "", "", spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
+	stateReg := serverstate.NewRegistry()
+	srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}
+	llmPlugin := llm.New(adapters.ServerState{}, "test", "", "", srvOpts, nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
@@ -57,11 +57,11 @@ func TestMetricsEndpointSeparatePort(t *testing.T) {
 }
 
 func TestStatePage(t *testing.T) {
-    cfg := config.ServerConfig{Port: 8080, RequestTimeout: time.Second}
-    mcpPlugin := mcp.New(adapters.ServerState{}, nil, nil, nil, nil, nil, "test", "", "", spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
-    stateReg := serverstate.NewRegistry()
-    srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}
-    llmPlugin := llm.New(adapters.ServerState{}, "test", "", "", srvOpts, nil)
+	cfg := config.ServerConfig{Port: 8080, RequestTimeout: time.Second}
+	mcpPlugin := mcp.New(adapters.ServerState{}, nil, nil, nil, nil, nil, "test", "", "", spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
+	stateReg := serverstate.NewRegistry()
+	srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}
+	llmPlugin := llm.New(adapters.ServerState{}, "test", "", "", srvOpts, nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
@@ -83,8 +83,8 @@ func TestCORSAllowedOrigins(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, RequestTimeout: time.Second, AllowedOrigins: []string{"https://example.com"}}
 	mcpPlugin := mcp.New(adapters.ServerState{}, nil, nil, nil, nil, nil, "test", "", "", spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg := serverstate.NewRegistry()
-    srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout}
-    llmPlugin := llm.New(adapters.ServerState{}, "test", "", "", srvOpts, nil)
+	srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout}
+	llmPlugin := llm.New(adapters.ServerState{}, "test", "", "", srvOpts, nil)
 	h := New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
@@ -112,7 +112,7 @@ func TestCORSAllowedOrigins(t *testing.T) {
 
 func TestDisableLLMPlugin(t *testing.T) {
 	cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":8080", RequestTimeout: time.Second}
-    mcpPlugin := mcp.New(adapters.ServerState{}, nil, nil, nil, nil, nil, "test", "", "", spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
+	mcpPlugin := mcp.New(adapters.ServerState{}, nil, nil, nil, nil, nil, "test", "", "", spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg := serverstate.NewRegistry()
 	h := New(cfg, stateReg, []plugin.Plugin{mcpPlugin})
 	ts := httptest.NewServer(h)
@@ -140,10 +140,10 @@ func TestDisableLLMPlugin(t *testing.T) {
 }
 
 func TestDisableMCPPlugin(t *testing.T) {
-    cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":8080", RequestTimeout: time.Second}
-    // LLM without MCP
-    srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout}
-    llmPlugin := llm.New(adapters.ServerState{}, "test", "", "", srvOpts, nil)
+	cfg := config.ServerConfig{Port: 8080, MetricsAddr: ":8080", RequestTimeout: time.Second}
+	// LLM without MCP
+	srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout}
+	llmPlugin := llm.New(adapters.ServerState{}, "test", "", "", srvOpts, nil)
 	stateReg := serverstate.NewRegistry()
 	h := New(cfg, stateReg, []plugin.Plugin{llmPlugin})
 	ts := httptest.NewServer(h)

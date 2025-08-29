@@ -1,11 +1,11 @@
 package worker
 
 import (
-    "sync"
-    "sync/atomic"
-    "time"
+	"sync"
+	"sync/atomic"
+	"time"
 
-    dr "github.com/gaspardpetit/nfrx/sdk/base/agent/drain"
+	dr "github.com/gaspardpetit/nfrx/sdk/base/agent/drain"
 )
 
 type State struct {
@@ -33,20 +33,20 @@ var (
 	stateMu    sync.RWMutex
 	stateData  = State{State: "disconnected"}
 	buildInfo  = VersionInfo{Version: "dev", BuildSHA: "unknown", BuildDate: "unknown"}
-    draining   atomic.Bool
+	draining   atomic.Bool
 	drainMu    sync.Mutex
 	drainCheck func()
 )
 
 func resetState() {
-    stateMu.Lock()
-    stateData = State{State: "disconnected"}
-    stateMu.Unlock()
-    draining.Store(false)
-    setDrainCheck(nil)
-    // Ensure the shared drain manager is reset between tests/runs
-    dr.Stop()
-    dr.OnCheck(nil)
+	stateMu.Lock()
+	stateData = State{State: "disconnected"}
+	stateMu.Unlock()
+	draining.Store(false)
+	setDrainCheck(nil)
+	// Ensure the shared drain manager is reset between tests/runs
+	dr.Stop()
+	dr.OnCheck(nil)
 }
 
 func SetBuildInfo(v, sha, date string) {
@@ -159,15 +159,15 @@ func triggerDrainCheck() {
 }
 
 func StartDrain() {
-    draining.Store(true)
-    SetState("draining")
-    dr.Start()
-    triggerDrainCheck()
+	draining.Store(true)
+	SetState("draining")
+	dr.Start()
+	triggerDrainCheck()
 }
 
 func StopDrain() {
-    draining.Store(false)
-    stateMu.Lock()
+	draining.Store(false)
+	stateMu.Lock()
 	if stateData.ConnectedToServer {
 		if stateData.CurrentJobs > 0 {
 			stateData.State = "connected_busy"
@@ -177,14 +177,14 @@ func StopDrain() {
 	} else {
 		stateData.State = "disconnected"
 	}
-    stateMu.Unlock()
-    dr.Stop()
+	stateMu.Unlock()
+	dr.Stop()
 }
 
 func IsDraining() bool {
-    // Keep local flag in sync with global drain manager
-    if dr.IsDraining() != draining.Load() {
-        draining.Store(dr.IsDraining())
-    }
-    return dr.IsDraining()
+	// Keep local flag in sync with global drain manager
+	if dr.IsDraining() != draining.Load() {
+		draining.Store(dr.IsDraining())
+	}
+	return dr.IsDraining()
 }

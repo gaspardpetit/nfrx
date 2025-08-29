@@ -11,19 +11,19 @@ import (
 	"testing"
 	"time"
 
-    ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
-    openai "github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
-    "github.com/gaspardpetit/nfrx/sdk/api/spi"
+	openai "github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
+	ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
+	"github.com/gaspardpetit/nfrx/sdk/api/spi"
 )
 
 func TestEmbeddings(t *testing.T) {
-    wk := newTestWorker("w1", []string{"m"})
-    h := openai.EmbeddingsHandler(testReg{w: wk}, testSched{w: wk}, testMetrics{}, time.Second, 8)
+	wk := newTestWorker("w1", []string{"m"})
+	h := openai.EmbeddingsHandler(testReg{w: wk}, testSched{w: wk}, testMetrics{}, time.Second, 8)
 
 	go func() {
-        msg := <-wk.send
-        req := msg.(ctrl.HTTPProxyRequestMessage)
-        ch := wk.jobs[req.RequestID]
+		msg := <-wk.send
+		req := msg.(ctrl.HTTPProxyRequestMessage)
+		ch := wk.jobs[req.RequestID]
 		ch <- ctrl.HTTPProxyResponseHeadersMessage{Type: "http_proxy_response_headers", RequestID: req.RequestID, Status: 200, Headers: map[string]string{"Content-Type": "application/json"}}
 		ch <- ctrl.HTTPProxyResponseChunkMessage{Type: "http_proxy_response_chunk", RequestID: req.RequestID, Data: []byte(`{"embedding":[1]}`)}
 		ch <- ctrl.HTTPProxyResponseEndMessage{Type: "http_proxy_response_end", RequestID: req.RequestID}
@@ -42,13 +42,13 @@ func TestEmbeddings(t *testing.T) {
 }
 
 func TestEmbeddingsEarlyError(t *testing.T) {
-    wk := newTestWorker("w1", []string{"m"})
-    h := openai.EmbeddingsHandler(testReg{w: wk}, testSched{w: wk}, testMetrics{}, time.Second, 8)
+	wk := newTestWorker("w1", []string{"m"})
+	h := openai.EmbeddingsHandler(testReg{w: wk}, testSched{w: wk}, testMetrics{}, time.Second, 8)
 
 	go func() {
-        msg := <-wk.send
-        req := msg.(ctrl.HTTPProxyRequestMessage)
-        ch := wk.jobs[req.RequestID]
+		msg := <-wk.send
+		req := msg.(ctrl.HTTPProxyRequestMessage)
+		ch := wk.jobs[req.RequestID]
 		ch <- ctrl.HTTPProxyResponseHeadersMessage{Type: "http_proxy_response_headers", RequestID: req.RequestID, Status: 502, Headers: map[string]string{"Content-Type": "application/json"}}
 		ch <- ctrl.HTTPProxyResponseEndMessage{Type: "http_proxy_response_end", RequestID: req.RequestID, Error: &ctrl.HTTPProxyError{Code: "upstream_error", Message: "boom"}}
 	}()
@@ -66,16 +66,16 @@ func TestEmbeddingsEarlyError(t *testing.T) {
 }
 
 func TestEmbeddingsBatching(t *testing.T) {
-    wk := newTestWorker("w1", []string{"m"})
-    wk.embBS = 1
-    h := openai.EmbeddingsHandler(testReg{w: wk}, testSched{w: wk}, testMetrics{}, time.Second, 8)
+	wk := newTestWorker("w1", []string{"m"})
+	wk.embBS = 1
+	h := openai.EmbeddingsHandler(testReg{w: wk}, testSched{w: wk}, testMetrics{}, time.Second, 8)
 
 	errCh := make(chan error, 1)
 	go func() {
 		defer close(errCh)
 		for i := 1; i <= 2; i++ {
-        msg := <-wk.send
-        req := msg.(ctrl.HTTPProxyRequestMessage)
+			msg := <-wk.send
+			req := msg.(ctrl.HTTPProxyRequestMessage)
 			var v struct {
 				Input []string `json:"input"`
 			}
@@ -84,7 +84,7 @@ func TestEmbeddingsBatching(t *testing.T) {
 				errCh <- fmt.Errorf("batch size %d", len(v.Input))
 				return
 			}
-            ch := wk.jobs[req.RequestID]
+			ch := wk.jobs[req.RequestID]
 			resp := `{"object":"list","data":[{"embedding":[` + strconv.Itoa(i) + `],"index":0}],"model":"m","usage":{"prompt_tokens":1,"total_tokens":1}}`
 			ch <- ctrl.HTTPProxyResponseHeadersMessage{Type: "http_proxy_response_headers", RequestID: req.RequestID, Status: 200, Headers: map[string]string{"Content-Type": "application/json"}}
 			ch <- ctrl.HTTPProxyResponseChunkMessage{Type: "http_proxy_response_chunk", RequestID: req.RequestID, Data: []byte(resp)}
@@ -123,14 +123,16 @@ func TestEmbeddingsBatching(t *testing.T) {
 }
 
 func TestEmbeddingsParallelSplit(t *testing.T) {
-    w1 := newTestWorker("w1", []string{"m"}); w1.embBS = 10
-    w2 := newTestWorker("w2", []string{"m"}); w2.embBS = 2
-    // For parallel split test, present two workers via registry so handler splits batches
-    h := openai.EmbeddingsHandler(testMultiReg{ws: []spi.WorkerRef{w1, w2}}, testSched{w: w1}, testMetrics{}, time.Second, 8)
+	w1 := newTestWorker("w1", []string{"m"})
+	w1.embBS = 10
+	w2 := newTestWorker("w2", []string{"m"})
+	w2.embBS = 2
+	// For parallel split test, present two workers via registry so handler splits batches
+	h := openai.EmbeddingsHandler(testMultiReg{ws: []spi.WorkerRef{w1, w2}}, testSched{w: w1}, testMetrics{}, time.Second, 8)
 
 	errCh := make(chan error, 2)
 	go func() {
-        msg := <-w1.send
+		msg := <-w1.send
 		req := msg.(ctrl.HTTPProxyRequestMessage)
 		var v struct {
 			Input []string `json:"input"`
@@ -145,7 +147,7 @@ func TestEmbeddingsParallelSplit(t *testing.T) {
 			parts[i] = fmt.Sprintf("{\"embedding\":[%d],\"index\":%d}", i, i)
 		}
 		resp := fmt.Sprintf("{\"object\":\"list\",\"data\":[%s],\"model\":\"m\",\"usage\":{\"prompt_tokens\":%d,\"total_tokens\":%d}}", strings.Join(parts, ","), len(v.Input), len(v.Input))
-        ch := w1.jobs[req.RequestID]
+		ch := w1.jobs[req.RequestID]
 		ch <- ctrl.HTTPProxyResponseHeadersMessage{Type: "http_proxy_response_headers", RequestID: req.RequestID, Status: 200, Headers: map[string]string{"Content-Type": "application/json"}}
 		ch <- ctrl.HTTPProxyResponseChunkMessage{Type: "http_proxy_response_chunk", RequestID: req.RequestID, Data: []byte(resp)}
 		ch <- ctrl.HTTPProxyResponseEndMessage{Type: "http_proxy_response_end", RequestID: req.RequestID}
@@ -153,7 +155,7 @@ func TestEmbeddingsParallelSplit(t *testing.T) {
 	}()
 
 	go func() {
-        msg := <-w2.send
+		msg := <-w2.send
 		req := msg.(ctrl.HTTPProxyRequestMessage)
 		var v struct {
 			Input []string `json:"input"`
@@ -168,7 +170,7 @@ func TestEmbeddingsParallelSplit(t *testing.T) {
 			parts[i] = fmt.Sprintf("{\"embedding\":[%d],\"index\":%d}", i, i)
 		}
 		resp := fmt.Sprintf("{\"object\":\"list\",\"data\":[%s],\"model\":\"m\",\"usage\":{\"prompt_tokens\":%d,\"total_tokens\":%d}}", strings.Join(parts, ","), len(v.Input), len(v.Input))
-        ch := w2.jobs[req.RequestID]
+		ch := w2.jobs[req.RequestID]
 		ch <- ctrl.HTTPProxyResponseHeadersMessage{Type: "http_proxy_response_headers", RequestID: req.RequestID, Status: 200, Headers: map[string]string{"Content-Type": "application/json"}}
 		ch <- ctrl.HTTPProxyResponseChunkMessage{Type: "http_proxy_response_chunk", RequestID: req.RequestID, Data: []byte(resp)}
 		ch <- ctrl.HTTPProxyResponseEndMessage{Type: "http_proxy_response_end", RequestID: req.RequestID}

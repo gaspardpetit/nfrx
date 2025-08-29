@@ -1,12 +1,12 @@
 package worker
 
 import (
-    "context"
-    "time"
+	"context"
+	"time"
 
-    "github.com/gaspardpetit/nfrx/core/logx"
-    "github.com/gaspardpetit/nfrx/sdk/base/agent"
-    "github.com/prometheus/client_golang/prometheus"
+	"github.com/gaspardpetit/nfrx/core/logx"
+	"github.com/gaspardpetit/nfrx/sdk/base/agent"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
@@ -52,24 +52,24 @@ var (
 // StartMetricsServer starts an HTTP server exposing Prometheus metrics on /metrics.
 // It returns the address it is listening on.
 func StartMetricsServer(ctx context.Context, addr string) (string, error) {
-    reg := prometheus.NewRegistry()
-    reg.MustRegister(
-        connectedToServerGauge,
-        connectedToBackendGauge,
-        currentJobsGauge,
-        maxConcurrencyGauge,
-        embeddingBatchSizeGauge,
-        jobsStartedCounter,
-        jobsSucceededCounter,
-        jobsFailedCounter,
-        jobDurationHist,
-    )
-    addrOut, err := agent.StartMetricsServer(ctx, addr, reg)
-    if err != nil {
-        return "", err
-    }
-    logx.Log.Info().Str("addr", addrOut).Msg("metrics server started")
-    return addrOut, nil
+	reg := prometheus.NewRegistry()
+	reg.MustRegister(
+		connectedToServerGauge,
+		connectedToBackendGauge,
+		currentJobsGauge,
+		maxConcurrencyGauge,
+		embeddingBatchSizeGauge,
+		jobsStartedCounter,
+		jobsSucceededCounter,
+		jobsFailedCounter,
+		jobDurationHist,
+	)
+	addrOut, err := agent.StartMetricsServer(ctx, addr, reg)
+	if err != nil {
+		return "", err
+	}
+	logx.Log.Info().Str("addr", addrOut).Msg("metrics server started")
+	return addrOut, nil
 }
 
 func setConnectedToServer(v bool) {

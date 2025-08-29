@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-    ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
-    openai "github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
+	openai "github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
+	ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
 )
 
 type flushRecorder struct {
@@ -20,13 +20,13 @@ type flushRecorder struct {
 func (f *flushRecorder) Flush() { f.flushed = true }
 
 func TestChatCompletionsHeaders(t *testing.T) {
-    wk := newTestWorker("w1", []string{"m"})
-    h := openai.ChatCompletionsHandler(testReg{w: wk}, testSched{w: wk}, testMetrics{}, time.Second)
+	wk := newTestWorker("w1", []string{"m"})
+	h := openai.ChatCompletionsHandler(testReg{w: wk}, testSched{w: wk}, testMetrics{}, time.Second)
 
 	go func() {
-        msg := <-wk.send
-        req := msg.(ctrl.HTTPProxyRequestMessage)
-        ch := wk.jobs[req.RequestID]
+		msg := <-wk.send
+		req := msg.(ctrl.HTTPProxyRequestMessage)
+		ch := wk.jobs[req.RequestID]
 		ch <- ctrl.HTTPProxyResponseHeadersMessage{Type: "http_proxy_response_headers", RequestID: req.RequestID, Status: 200, Headers: map[string]string{"Content-Type": "text/event-stream", "Cache-Control": "no-store"}}
 		ch <- ctrl.HTTPProxyResponseChunkMessage{Type: "http_proxy_response_chunk", RequestID: req.RequestID, Data: []byte("data: hi\n\n")}
 		ch <- ctrl.HTTPProxyResponseEndMessage{Type: "http_proxy_response_end", RequestID: req.RequestID}
@@ -52,13 +52,13 @@ func TestChatCompletionsHeaders(t *testing.T) {
 }
 
 func TestChatCompletionsOpaque(t *testing.T) {
-    wk := newTestWorker("w1", []string{"m"})
-    h := openai.ChatCompletionsHandler(testReg{w: wk}, testSched{w: wk}, testMetrics{}, time.Second)
+	wk := newTestWorker("w1", []string{"m"})
+	h := openai.ChatCompletionsHandler(testReg{w: wk}, testSched{w: wk}, testMetrics{}, time.Second)
 
 	go func() {
-        msg := <-wk.send
-        req := msg.(ctrl.HTTPProxyRequestMessage)
-        ch := wk.jobs[req.RequestID]
+		msg := <-wk.send
+		req := msg.(ctrl.HTTPProxyRequestMessage)
+		ch := wk.jobs[req.RequestID]
 		ch <- ctrl.HTTPProxyResponseHeadersMessage{Type: "http_proxy_response_headers", RequestID: req.RequestID, Status: 200, Headers: map[string]string{"Content-Type": "application/octet-stream"}}
 		ch <- ctrl.HTTPProxyResponseChunkMessage{Type: "http_proxy_response_chunk", RequestID: req.RequestID, Data: []byte("hello ")}
 		ch <- ctrl.HTTPProxyResponseChunkMessage{Type: "http_proxy_response_chunk", RequestID: req.RequestID, Data: []byte("world")}
@@ -75,13 +75,13 @@ func TestChatCompletionsOpaque(t *testing.T) {
 }
 
 func TestChatCompletionsEarlyError(t *testing.T) {
-    wk := newTestWorker("w1", []string{"m"})
-    h := openai.ChatCompletionsHandler(testReg{w: wk}, testSched{w: wk}, testMetrics{}, time.Second)
+	wk := newTestWorker("w1", []string{"m"})
+	h := openai.ChatCompletionsHandler(testReg{w: wk}, testSched{w: wk}, testMetrics{}, time.Second)
 
 	go func() {
-        msg := <-wk.send
-        req := msg.(ctrl.HTTPProxyRequestMessage)
-        ch := wk.jobs[req.RequestID]
+		msg := <-wk.send
+		req := msg.(ctrl.HTTPProxyRequestMessage)
+		ch := wk.jobs[req.RequestID]
 		ch <- ctrl.HTTPProxyResponseHeadersMessage{Type: "http_proxy_response_headers", RequestID: req.RequestID, Status: 502, Headers: map[string]string{"Content-Type": "application/json"}}
 		ch <- ctrl.HTTPProxyResponseEndMessage{Type: "http_proxy_response_end", RequestID: req.RequestID, Error: &ctrl.HTTPProxyError{Code: "upstream_error", Message: "boom"}}
 	}()

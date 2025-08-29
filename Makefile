@@ -6,10 +6,13 @@ BUILD_DATE ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 OPENAPI=api/openapi.yaml
 GENDIR=api/generated
 
-.PHONY: build test lint generate check
+.PHONY: build test lint generate check format
 
 LDFLAGS ?= -s -w -X main.version=$(VERSION) -X main.buildSHA=$(BUILD_SHA) -X main.buildDate=$(BUILD_DATE)
 GOFLAGS ?= -trimpath
+
+format:
+	gofmt -w .
 
 build:
 	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./server/cmd/nfrx

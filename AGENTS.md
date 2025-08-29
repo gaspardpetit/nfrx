@@ -11,6 +11,7 @@ The repository contains four binaries:
 
 ## Build & Commands
 - Build all binaries: `make build`
+- Format all Go files: `make format`
 - Run tests with race detector: `make test`
 - Lint (requires golangci-lint): `make lint`
 
@@ -35,7 +36,7 @@ The repository contains four binaries:
 ## Testing Guidelines
 - Unit tests live alongside the code using `*_test.go` files
 - End-to-end tests are in the `test/` directory
-- Always run `make lint`, `make build`, and `make test` before submitting a change
+- Always run `make format`, `make lint`, `make build`, and `make test` before submitting a change
 - Fix any lint errors before completing your task
 - If the Dockerfiles under `deploy/` are updated, ensure they still build:
   ```bash

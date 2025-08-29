@@ -1,35 +1,35 @@
 package test
 
 import (
-    "bytes"
-    "context"
-    "encoding/json"
-    "io"
-    "net/http"
-    "net/http/httptest"
-    "strings"
-    "sync/atomic"
-    "testing"
-    "time"
+	"bytes"
+	"context"
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"sync/atomic"
+	"testing"
+	"time"
 
-    "github.com/gaspardpetit/nfrx/modules/llm/agent/worker"
-    mcp "github.com/gaspardpetit/nfrx/modules/mcp/ext"
-    "github.com/gaspardpetit/nfrx/server/internal/adapters"
-    "github.com/gaspardpetit/nfrx/server/internal/config"
-    llm "github.com/gaspardpetit/nfrx/modules/llm/ext"
-    
-    "github.com/gaspardpetit/nfrx/server/internal/plugin"
-    "github.com/gaspardpetit/nfrx/server/internal/server"
-    "github.com/gaspardpetit/nfrx/server/internal/serverstate"
-    "github.com/gaspardpetit/nfrx/sdk/api/spi"
+	"github.com/gaspardpetit/nfrx/modules/llm/agent/worker"
+	llm "github.com/gaspardpetit/nfrx/modules/llm/ext"
+	mcp "github.com/gaspardpetit/nfrx/modules/mcp/ext"
+	"github.com/gaspardpetit/nfrx/server/internal/adapters"
+	"github.com/gaspardpetit/nfrx/server/internal/config"
+
+	"github.com/gaspardpetit/nfrx/sdk/api/spi"
+	"github.com/gaspardpetit/nfrx/server/internal/plugin"
+	"github.com/gaspardpetit/nfrx/server/internal/server"
+	"github.com/gaspardpetit/nfrx/server/internal/serverstate"
 )
 
 func TestE2EEmbeddingsProxy(t *testing.T) {
 	cfg := config.ServerConfig{ClientKey: "secret", APIKey: "apikey", RequestTimeout: 5 * time.Second}
 	mcpPlugin := mcp.New(adapters.ServerState{}, nil, nil, nil, nil, nil, "test", "", "", spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg := serverstate.NewRegistry()
-    srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}
-    llmPlugin := llm.New(adapters.ServerState{}, "test", "", "", srvOpts, nil)
+	srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}
+	llmPlugin := llm.New(adapters.ServerState{}, "test", "", "", srvOpts, nil)
 	handler := server.New(cfg, stateReg, []plugin.Plugin{mcpPlugin, llmPlugin})
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -81,7 +81,7 @@ func TestE2EEmbeddingsProxy(t *testing.T) {
 	}
 
 	reqBody := []byte(`{"model":"llama3","input":"hi"}`)
-    req, _ := http.NewRequest(http.MethodPost, srv.URL+"/api/llm/v1/embeddings", bytes.NewReader(reqBody))
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/api/llm/v1/embeddings", bytes.NewReader(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer apikey")
 	resp, err := http.DefaultClient.Do(req)

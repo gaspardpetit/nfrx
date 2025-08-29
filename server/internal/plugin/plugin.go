@@ -6,7 +6,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/prometheus/client_golang/prometheus"
 
-    "github.com/gaspardpetit/nfrx/sdk/api/spi"
+	"github.com/gaspardpetit/nfrx/sdk/api/spi"
 )
 
 // Plugin is implemented by all plugins.
@@ -36,7 +36,7 @@ func RegisterSurface(parent chi.Router, p Plugin, preg *prometheus.Registry, sta
 	parent.Mount(path, sub)
 
 	sr := chiRouter{sub}
-    mr := PromAdapter{preg}
+	mr := PromAdapter{preg}
 	p.RegisterRoutes(sr)
 	p.RegisterMetrics(mr)
 	p.RegisterState(state)

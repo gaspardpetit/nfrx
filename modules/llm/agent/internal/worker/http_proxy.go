@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-    ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
-    "github.com/gaspardpetit/nfrx/core/logx"
+	"github.com/gaspardpetit/nfrx/core/logx"
 	aconfig "github.com/gaspardpetit/nfrx/modules/llm/agent/internal/config"
+	ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
 	"github.com/rs/zerolog"
 )
 
