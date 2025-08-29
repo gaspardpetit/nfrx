@@ -14,6 +14,7 @@ import (
     "github.com/gaspardpetit/nfrx/sdk/api/spi"
     "github.com/gaspardpetit/nfrx/core/logx"
     llmmetrics "github.com/gaspardpetit/nfrx/modules/llm/ext/metrics"
+    basemetrics "github.com/gaspardpetit/nfrx/sdk/base/metrics"
 )
 
 // ChatCompletionsHandler handles POST /api/llm/v1/chat/completions as a pass-through.
@@ -49,8 +50,11 @@ func ChatCompletionsHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics
 				logx.Log.Info().Str("event", "alias_fallback").Str("requested_id", meta.Model).Str("alias_key", key).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Msg("alias fallback")
 			}
 		}
-		reg.IncInFlight(worker.ID())
-		defer reg.DecInFlight(worker.ID())
+        reg.IncInFlight(worker.ID())
+        // Generic request metrics (job-level)
+        basemetrics.RecordRequest("llm", "worker", "llm.completion", meta.Model)
+        basemetrics.RecordStart("llm", "worker", "llm.completion", meta.Model)
+        defer reg.DecInFlight(worker.ID())
 
 		reqID := uuid.NewString()
 		logID := chiMiddleware.GetReqID(r.Context())
@@ -118,6 +122,7 @@ func ChatCompletionsHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics
 			defer idle.Stop()
 		}
 
+        errMsgIf := func(cond bool, msg string) string { if cond { return msg }; return "" }
         defer func() {
             dur := time.Since(start)
             metrics.RecordJobEnd(worker.ID(), meta.Model, dur, tokensIn, tokensOut, 0, success, errMsg)
@@ -125,15 +130,20 @@ func ChatCompletionsHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics
             llmmetrics.ObserveRequestDuration(worker.ID(), meta.Model, dur)
             llmmetrics.RecordWorkerProcessingTime(worker.ID(), dur)
             llmmetrics.RecordModelRequest(meta.Model, success)
+            // Generic request metrics
+            basemetrics.RecordComplete("llm", "worker", "llm.completion", meta.Model, errMsgIf(!success, errMsg), success, dur)
             if tokensIn > 0 {
                 llmmetrics.RecordModelTokens(meta.Model, "in", tokensIn)
                 llmmetrics.RecordWorkerTokens(worker.ID(), "in", tokensIn)
                 metrics.RecordWorkerTokens(worker.ID(), "in", tokensIn)
+                basemetrics.AddSize("llm", "worker", "llm.completion", meta.Model, "tokens_in", tokensIn)
             }
             if tokensOut > 0 {
                 llmmetrics.RecordModelTokens(meta.Model, "out", tokensOut)
                 llmmetrics.RecordWorkerTokens(worker.ID(), "out", tokensOut)
                 metrics.RecordWorkerTokens(worker.ID(), "out", tokensOut)
+                basemetrics.AddSize("llm", "worker", "llm.completion", meta.Model, "tokens_out", tokensOut)
+                basemetrics.AddSize("llm", "worker", "llm.completion", meta.Model, "tokens_total", tokensIn+tokensOut)
             }
         }()
 		for {

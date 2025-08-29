@@ -13,6 +13,7 @@ import (
     ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
     "github.com/gaspardpetit/nfrx/sdk/api/spi"
     baseworker "github.com/gaspardpetit/nfrx/sdk/base/worker"
+    basemetrics "github.com/gaspardpetit/nfrx/sdk/base/metrics"
     "github.com/gaspardpetit/nfrx/core/logx"
     llmmetrics "github.com/gaspardpetit/nfrx/modules/llm/ext/metrics"
 )
@@ -207,6 +208,9 @@ func handlePartitionedEmbeddings(w http.ResponseWriter, r *http.Request, reg spi
     headers["Cache-Control"] = "no-store"
 
     job := newEmbeddingPartitionJob(payload, inputs)
+    // Record generic request metrics (job-level). Chunk metrics are emitted by the observer.
+    basemetrics.RecordRequest("llm", "worker", "llm.embedding", model)
+    basemetrics.RecordStart("llm", "worker", "llm.embedding", model)
     body, status, ok, errMsg := baseworker.HandlePartitionedJob(ctx, reg, sched, metrics, model, headers, job, maxParallel, timeout, logID)
     w.Header().Set("Content-Type", "application/json")
     if !ok {

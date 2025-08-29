@@ -29,6 +29,8 @@ func HandlePartitionedJob(
     timeout time.Duration,
     logID string,
 ) ([]byte, int, bool, string) {
+    jobStart := time.Now()
+    obs := job.Observer()
     size := job.Size()
     if size <= 0 { return nil, http.StatusBadRequest, false, "empty" }
     if maxParallel <= 0 { maxParallel = 1 }
@@ -61,13 +63,16 @@ func HandlePartitionedJob(
             if n <= 0 { break }
             reqID := uuid.NewString()
             reg.IncInFlight(wk.ID())
+            chunkStart := time.Now()
             respBody, status, ok, errMsg := proxyHTTPOnce(ctx, wk, reqID, logID, model, headers, job.Path(), body, metrics, n, timeout)
             reg.DecInFlight(wk.ID())
             wk.RemoveJob(reqID)
+            if obs != nil { obs.OnChunkResult(wk.ID(), model, time.Since(chunkStart), n, ok) }
             if !ok { return respBody, status, false, errMsg }
             if err := job.Append(respBody, start); err != nil { return []byte(`{"error":"aggregate_failed"}`), http.StatusBadGateway, false, "aggregate_failed" }
             start += n
         }
+        if obs != nil { obs.OnJobResult(model, time.Since(jobStart), size, true) }
         return job.Result(), http.StatusOK, true, ""
     }
 
@@ -101,7 +106,7 @@ func HandlePartitionedJob(
         offset += cnt
     }
 
-    type result struct { start int; body []byte; status int; err string; ok bool }
+    type result struct { start int; body []byte; status int; err string; ok bool; workerID string; dur time.Duration; count int }
     resCh := make(chan result, len(tasks))
 
     // Worker acquire/release among the pool
@@ -134,13 +139,14 @@ func HandlePartitionedJob(
                 if n <= 0 { resCh <- result{start: t.start, body: nil, status: http.StatusBadRequest, err: "empty", ok: false}; return }
                 reqID := uuid.NewString()
                 reg.IncInFlight(current.ID())
+                chunkStart := time.Now()
                 rb, status, ok, errMsg := proxyHTTPOnce(ctx, current, reqID, logID, model, headers, job.Path(), body, metrics, n, timeout)
                 reg.DecInFlight(current.ID())
                 current.RemoveJob(reqID)
-                if ok { resCh <- result{start: t.start, body: rb, ok: true}; release(current); return }
+                if ok { resCh <- result{start: t.start, body: rb, ok: true, workerID: current.ID(), dur: time.Since(chunkStart), count: n}; release(current); return }
                 t.attempted[current.ID()] = true
                 release(current)
-                if len(t.attempted) >= len(workers) { resCh <- result{start: t.start, body: rb, status: status, err: errMsg, ok: false}; return }
+                if len(t.attempted) >= len(workers) { resCh <- result{start: t.start, body: rb, status: status, err: errMsg, ok: false, workerID: current.ID(), dur: time.Since(chunkStart), count: n}; return }
                 next, err := acquire(t.attempted)
                 if err != nil { resCh <- result{start: t.start, body: rb, status: status, err: errMsg, ok: false}; return }
                 current = next
@@ -151,9 +157,11 @@ func HandlePartitionedJob(
     // Collect results
     for i := 0; i < len(tasks); i++ {
         r := <-resCh
-        if !r.ok { return r.body, r.status, false, r.err }
+        if obs != nil { obs.OnChunkResult(r.workerID, model, r.dur, r.count, r.ok) }
+        if !r.ok { if obs != nil { obs.OnJobResult(model, time.Since(jobStart), size, false) } ; return r.body, r.status, false, r.err }
         if err := job.Append(r.body, r.start); err != nil { return []byte(`{"error":"aggregate_failed"}`), http.StatusBadGateway, false, "aggregate_failed" }
     }
+    if obs != nil { obs.OnJobResult(model, time.Since(jobStart), size, true) }
     return job.Result(), http.StatusOK, true, ""
 }
 

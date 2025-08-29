@@ -2,7 +2,10 @@ package openai
 
 import (
     "encoding/json"
+    "time"
     "github.com/gaspardpetit/nfrx/sdk/api/spi"
+    basemetrics "github.com/gaspardpetit/nfrx/sdk/base/metrics"
+    llmmetrics "github.com/gaspardpetit/nfrx/modules/llm/ext/metrics"
 )
 
 // embeddingUsage and embeddingResponse are defined in embeddings.go; reuse types.
@@ -57,3 +60,28 @@ func (j *embeddingPartitionJob) DesiredChunkSize(w spi.WorkerRef) int {
     // Use worker's preferred size; no override at job level for now.
     return w.PreferredBatchSize()
 }
+
+type embeddingObserver struct{}
+
+func (embeddingObserver) OnChunkResult(workerID, model string, dur time.Duration, elements int, success bool) {
+    // Per-chunk metrics: record worker-level timings and counts; model embeddings too.
+    if success {
+        llmmetrics.RecordWorkerEmbeddingProcessingTime(workerID, dur)
+        llmmetrics.RecordWorkerEmbeddings(workerID, uint64(elements))
+        llmmetrics.RecordModelEmbeddings(model, uint64(elements))
+    }
+    // Also observe request duration at chunk granularity (per worker)
+    llmmetrics.ObserveRequestDuration(workerID, model, dur)
+    // Generic request chunk metrics
+    basemetrics.RecordChunkComplete("llm", "worker", "llm.embedding", model, workerID, "", success, dur)
+    if elements > 0 { basemetrics.AddChunkSize("llm", "worker", "llm.embedding", model, workerID, "embeddings", uint64(elements)) }
+}
+
+func (embeddingObserver) OnJobResult(model string, dur time.Duration, elements int, success bool) {
+    // Record model-level request success/failure once per job
+    llmmetrics.RecordModelRequest(model, success)
+    basemetrics.RecordComplete("llm", "worker", "llm.embedding", model, "", success, dur)
+    if elements > 0 { basemetrics.AddSize("llm", "worker", "llm.embedding", model, "embeddings", uint64(elements)) }
+}
+
+func (j *embeddingPartitionJob) Observer() spi.PartitionObserver { return embeddingObserver{} }
