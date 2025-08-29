@@ -42,7 +42,8 @@ override_dh_auto_build:
 	for pkg in \
 	    server/cmd/nfrx \
 	    modules/llm/agent/cmd/nfrx-llm \
-	    modules/mcp/agent/cmd/nfrx-mcp; do \
+	    modules/mcp/agent/cmd/nfrx-mcp \
+	    modules/docling/agent/cmd/nfrx-docling; do \
 	    bin=$$(basename $$pkg); \
 	    go build -ldflags "$(GO_LDFLAGS)" -o build/bin/$$bin ./$$pkg; \
 	done
@@ -69,4 +70,3 @@ override_dh_strip:
 
 %:
 	dh $@ --buildsystem=golang
-

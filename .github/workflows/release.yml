@@ -56,6 +56,7 @@ jobs:
           go build -ldflags "$LDFLAGS" -o dist/nfrx${EXT} ./server/cmd/nfrx
           go build -ldflags "$LDFLAGS" -o dist/nfrx-llm${EXT} ./modules/llm/agent/cmd/nfrx-llm
           go build -ldflags "$LDFLAGS" -o dist/nfrx-mcp${EXT} ./modules/mcp/agent/cmd/nfrx-mcp
+          go build -ldflags "$LDFLAGS" -o dist/nfrx-docling${EXT} ./modules/docling/agent/cmd/nfrx-docling
       - name: Package
         id: pkg
         shell: bash
@@ -99,4 +100,3 @@ jobs:
             out/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-

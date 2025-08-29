@@ -53,7 +53,45 @@ PORT=${MY_SERVER_PORT} CLIENT_KEY="${MY_CLIENT_KEY}" API_KEY="${MY_API_KEY}" \
 
 You may then choose to expose an LLM provider, an MCP server and/or a RAG system from private hardware behind a NAT/Firewall.
 
-Set `PLUGINS` to control which modules load (`llm` and/or `mcp`; defaults to both). For example, `PLUGINS=llm` disables the MCP relay.
+Set `PLUGINS` to control which modules load (`llm`, `mcp`, `docling`; defaults to all available). For example, `PLUGINS=llm` disables the MCP relay.
+
+### Expose a local Docling converter (document extraction)
+
+Docling lets you convert documents from URLs or uploaded files. Run the docling agent on your private machine; it connects out to the public server and proxies requests to your local Docling service.
+
+##### Docker
+
+```bash
+docker run --rm \
+  -e SERVER_URL="wss://${MY_SERVER_ADDR}/api/docling/connect" \
+  -e CLIENT_KEY="${MY_CLIENT_KEY}" \
+  -e DOC_BASE_URL="http://host.docker.internal:5001" \
+  ghcr.io/gaspardpetit/nfrx-docling:main
+```
+
+##### Bare (Linux)
+
+```bash
+SERVER_URL="wss://${MY_SERVER_ADDR}/api/docling/connect" \
+CLIENT_KEY="${MY_CLIENT_KEY}" \
+DOC_BASE_URL="http://127.0.0.1:5001" \
+nfrx-docling   # or: go run ./modules/docling/agent/cmd/nfrx-docling
+```
+
+Once connected, call your private Docling service via the public server:
+
+```bash
+curl -X POST "https://${MY_SERVER_ADDR}/api/docling/v1/convert/source" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${MY_API_KEY}" \
+  -d '{
+        "sources": [
+          {"url": "https://example.com/sample.pdf"}
+        ]
+      }'
+```
+
+For file uploads, POST multipart/form-data to `/api/docling/v1/convert/file` with the same headers.
 
 ### Expose a local LLM worker (Ollama shown)
 

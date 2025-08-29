@@ -24,3 +24,9 @@ Architecture: any
 Depends: ${misc:Depends}, adduser
 Description: nfrx mcp bridge component (daemon)
  The mcp bridge for nfrx.
+
+Package: nfrx-docling
+Architecture: any
+Depends: ${misc:Depends}, adduser
+Description: nfrx docling worker component (daemon)
+ The docling worker for nfrx.
