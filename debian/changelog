@@ -1,4 +1,46 @@
-nfrx (0.6.5-1ubuntu1) UNRELEASED; urgency=medium
+nfrx (0.7.0-1ubuntu1) UNRELEASED; urgency=medium
+
+  * Release: v0.7.0 —
+    https://github.com/gaspardpetit/nfrx/releases/tag/v0.7.0
+  * ## What's Changed
+  * * simplify option parsing by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/188
+  * * Refactor/move domain specific metrics to extensions by
+    @gaspardpetit in https://github.com/gaspardpetit/nfrx/pull/189
+  * * Refactor/make state dashboard ext agnostic by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/190
+  * * Move worker and handlers under llm extension by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/192
+  * * Move worker and handlers under llm extension by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/194
+  * * Remove unused mcpcheck by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/196
+  * * Refactor/workers under llm extension by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/198
+  * * Refactor/make worker reusable by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/199
+  * * Move plugin descriptor out of server; define default endpoint by
+    @gaspardpetit in https://github.com/gaspardpetit/nfrx/pull/200
+  * * Refactor/use scorer for handlers by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/202
+  * * Rename models to labels by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/203
+  * * Refactor/reuse worker selection logic for embeddings by
+    @gaspardpetit in https://github.com/gaspardpetit/nfrx/pull/204
+  * * Rename model to label by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/205
+  * * Refactor/make llm metrics generic by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/209
+  * * generalize mcp as a tunnel agent by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/212
+  *
+  *
+  * **Full Changelog**:
+    https://github.com/gaspardpetit/nfrx/compare/v0.6.5...v0.7.0
+
+ -- CI <ci@example.invalid>  Fri, 29 Aug 2025 06:09:52 +0000
+
+nfrx (0.7.0-1) unstable; urgency=medium
 
   * Release: v0.6.5 —
     https://github.com/gaspardpetit/nfrx/releases/tag/v0.6.5
@@ -23,8 +65,9 @@ nfrx (0.6.5-1ubuntu1) UNRELEASED; urgency=medium
   *
   * **Full Changelog**:
     https://github.com/gaspardpetit/nfrx/compare/v0.6.2...v0.6.5
+  *
 
- -- CI <ci@example.invalid>  Thu, 28 Aug 2025 07:48:31 +0000
+ -- CI <ci@example.invalid>  Fri, 29 Aug 2025 06:09:52 +0000
 
 nfrx (0.6.5-1) unstable; urgency=medium
 
