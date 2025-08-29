@@ -149,7 +149,10 @@ func New(
 ) *Plugin {
     reg := baseworker.NewRegistry()
     mx := baseworker.NewMetricsRegistry(version, sha, date, func() string { return "" })
-    sch := &baseworker.LeastBusyScheduler{Reg: reg}
+    // Use LLM-specific scorer (exact model match, then alias fallback).
+    // Read min_score from plugin options (default 0.01) to allow alias matches by default.
+    minScore := opt.Float(srvOpts.PluginOptions, Descriptor().ID, "min_score", 0.01)
+    sch := baseworker.NewScoreSchedulerWithMinScore(reg, NewLLMScorer(), minScore)
     // Start pruning expired workers in the background
     go func() {
         tick := srvOpts.AgentHeartbeatInterval

@@ -1,10 +1,13 @@
 package llm
 
-import "github.com/gaspardpetit/nfrx/sdk/api/spi"
+import (
+    "github.com/gaspardpetit/nfrx/sdk/api/spi"
+    baseworker "github.com/gaspardpetit/nfrx/sdk/base/worker"
+)
 
 // Descriptor returns the LLM plugin descriptor.
 func Descriptor() spi.PluginDescriptor {
-    return spi.PluginDescriptor{
+    d := spi.PluginDescriptor{
         ID:      "llm",
         Name:    "LLM Gateway",
         Summary: "OpenAI-compatible API over an agent pool",
@@ -21,5 +24,7 @@ func Descriptor() spi.PluginDescriptor {
             },
         },
     }
+    // Append base worker options (shared across worker-style plugins)
+    d.Args = append(d.Args, baseworker.ArgSpecs(d.ID)...)
+    return d
 }
-
