@@ -1,16 +1,17 @@
 package worker
 
 import (
-	"encoding/json"
-	"errors"
-	"net/http"
-	"strings"
-	"time"
+    "encoding/json"
+    "errors"
+    "net/http"
+    "strings"
+    "time"
 
-	"github.com/coder/websocket"
-	"github.com/gaspardpetit/nfrx/core/logx"
-	ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
-	"github.com/gaspardpetit/nfrx/sdk/api/spi"
+    "github.com/coder/websocket"
+    "github.com/gaspardpetit/nfrx/core/logx"
+    ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
+    "github.com/gaspardpetit/nfrx/sdk/api/spi"
+    "strconv"
 )
 
 // WSHandler handles incoming client websocket connections for worker-style agents.
@@ -67,7 +68,13 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
 				name = strings.Split(r.RemoteAddr, ":")[0]
 			}
 		}
-		wk := &Worker{ID: rm.WorkerID, Name: name, Labels: map[string]bool{}, MaxConcurrency: rm.MaxConcurrency, PreferredBatchSize: rm.EmbeddingBatchSize, InFlight: 0, LastHeartbeat: time.Now(), Send: make(chan interface{}, 32), Jobs: make(map[string]chan interface{})}
+        prefBatch := 0
+        if rm.AgentConfig != nil {
+            if s, ok := rm.AgentConfig["embedding_batch_size"]; ok {
+                if v, err := strconv.Atoi(s); err == nil { prefBatch = v }
+            }
+        }
+        wk := &Worker{ID: rm.WorkerID, Name: name, Labels: map[string]bool{}, MaxConcurrency: rm.MaxConcurrency, PreferredBatchSize: prefBatch, InFlight: 0, LastHeartbeat: time.Now(), Send: make(chan interface{}, 32), Jobs: make(map[string]chan interface{})}
 		for _, m := range rm.Models {
 			wk.Labels[m] = true
 		}
@@ -77,7 +84,7 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
 			// First worker became available: mark server as ready
 			state.SetStatus("ready")
 		}
-		metrics.UpsertWorker(wk.ID, wk.Name, rm.Version, rm.BuildSHA, rm.BuildDate, rm.MaxConcurrency, rm.EmbeddingBatchSize, rm.Models)
+        metrics.UpsertWorker(wk.ID, wk.Name, rm.Version, rm.BuildSHA, rm.BuildDate, rm.MaxConcurrency, prefBatch, rm.Models)
 		status := StatusIdle
 		if rm.MaxConcurrency == 0 {
 			status = StatusNotReady
@@ -136,8 +143,14 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
 				var m ctrl.StatusUpdateMessage
 				if err := json.Unmarshal(msg, &m); err == nil {
 					wk.mu.Lock()
-					wk.MaxConcurrency = m.MaxConcurrency
-					wk.PreferredBatchSize = m.EmbeddingBatchSize
+                wk.MaxConcurrency = m.MaxConcurrency
+                prefBatch := 0
+                if m.AgentConfig != nil {
+                    if s, ok := m.AgentConfig["embedding_batch_size"]; ok {
+                        if v, err := strconv.Atoi(s); err == nil { prefBatch = v }
+                    }
+                }
+                wk.PreferredBatchSize = prefBatch
 					if m.Models != nil {
 						wk.Labels = map[string]bool{}
 						for _, mm := range m.Models {
@@ -145,7 +158,7 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
 						}
 					}
 					wk.mu.Unlock()
-					metrics.UpdateWorker(wk.ID, m.MaxConcurrency, m.EmbeddingBatchSize, m.Models)
+                metrics.UpdateWorker(wk.ID, m.MaxConcurrency, prefBatch, m.Models)
 					if m.Status != "" {
 						metrics.SetWorkerStatus(wk.ID, WorkerStatus(m.Status))
 					}
