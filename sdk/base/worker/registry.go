@@ -64,11 +64,13 @@ func (r *Registry) UpdateHeartbeat(id string) { r.mu.Lock(); if w, ok := r.worke
 func (r *Registry) UpdateModels(id string, models []string) {
     r.mu.Lock()
     if w, ok := r.workers[id]; ok {
+        w.mu.Lock()
         w.Models = make(map[string]bool)
         for _, m := range models {
             w.Models[m] = true
             if _, ok := r.modelFirstSeen[m]; !ok { r.modelFirstSeen[m] = time.Now().Unix() }
         }
+        w.mu.Unlock()
     }
     r.mu.Unlock()
 }
@@ -136,4 +138,3 @@ func (w *Worker) RemoveJob(id string) {
     if ch, ok := w.Jobs[id]; ok { delete(w.Jobs, id); if ch != nil { close(ch) } }
     w.mu.Unlock()
 }
-

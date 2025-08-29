@@ -37,3 +37,10 @@ func Bool(pluginOptions map[string]map[string]string, pluginID, key string, def 
     return def
 }
 
+// Float parses and returns a plugin option as float64, falling back to def on error/absence.
+func Float(pluginOptions map[string]map[string]string, pluginID, key string, def float64) float64 {
+    v := String(pluginOptions, pluginID, key, "")
+    if v == "" { return def }
+    if n, err := strconv.ParseFloat(v, 64); err == nil { return n }
+    return def
+}
