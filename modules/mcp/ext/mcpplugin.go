@@ -6,11 +6,13 @@ import (
 
     mcpbroker "github.com/gaspardpetit/nfrx/modules/mcp/ext/mcpbroker"
     "github.com/gaspardpetit/nfrx/sdk/api/spi"
+    baseplugin "github.com/gaspardpetit/nfrx/sdk/base/plugin"
     opt "github.com/gaspardpetit/nfrx/core/options"
 )
 
 // Plugin implements the MCP relay as a plugin.
 type Plugin struct {
+    baseplugin.Base
     broker     *mcpbroker.Registry
     srvOpts    spi.Options
     clientKey  string
@@ -38,13 +40,13 @@ func New(
     cfg.DeadAfter = time.Duration(opt.Int(po, "mcp", "ws_dead_after_ms", int(cfg.DeadAfter/time.Millisecond))) * time.Millisecond
     cfg.MaxConcurrencyPerClient = opt.Int(po, "mcp", "max_concurrency_per_client", cfg.MaxConcurrencyPerClient)
     reg := mcpbroker.NewRegistryWithConfig(opts.RequestTimeout, state, cfg)
-    return &Plugin{broker: reg, srvOpts: opts, clientKey: opts.ClientKey}
+    return &Plugin{Base: baseplugin.NewBase("mcp"), broker: reg, srvOpts: opts, clientKey: opts.ClientKey}
 }
-
-func (p *Plugin) ID() string { return "mcp" }
 
 // RegisterRoutes registers HTTP routes; MCP uses relay endpoints only.
 func (p *Plugin) RegisterRoutes(r spi.Router) {
+    // Register base route (501) at "/api/mcp/" and then specific endpoints
+    p.Base.RegisterRoutes(r)
 	r.Handle("/connect", p.broker.WSHandler(p.clientKey))
 	r.Handle("/id/{id}", p.broker.HTTPHandler())
 }

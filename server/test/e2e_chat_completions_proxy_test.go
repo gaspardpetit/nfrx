@@ -15,7 +15,7 @@ import (
     "sync/atomic"
 
     "github.com/gaspardpetit/nfrx/modules/llm/agent/worker"
-    llmctrl "github.com/gaspardpetit/nfrx/modules/llm/common/ctrlplane"
+    llmctrl "github.com/gaspardpetit/nfrx/sdk/base/worker"
     mcp "github.com/gaspardpetit/nfrx/modules/mcp/ext"
     "github.com/gaspardpetit/nfrx/server/internal/adapters"
     "github.com/gaspardpetit/nfrx/server/internal/config"

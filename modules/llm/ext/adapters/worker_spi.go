@@ -4,10 +4,10 @@ import (
     "time"
 
     "github.com/gaspardpetit/nfrx/sdk/api/spi"
-    "github.com/gaspardpetit/nfrx/modules/llm/common/ctrlplane"
+    baseworker "github.com/gaspardpetit/nfrx/sdk/base/worker"
 )
 
-type WorkerRef struct{ w *ctrlplane.Worker }
+type WorkerRef struct{ w *baseworker.Worker }
 
 func (w WorkerRef) ID() string                            { return w.w.ID }
 func (w WorkerRef) Name() string                          { return w.w.Name }
@@ -18,7 +18,7 @@ func (w WorkerRef) LastHeartbeat() time.Time              { return w.w.LastHeart
 func (w WorkerRef) EmbeddingBatchSize() int               { return w.w.EmbeddingBatchSize }
 func (w WorkerRef) InFlight() int                         { return w.w.InFlight }
 
-type WorkerRegistry struct{ r *ctrlplane.Registry }
+type WorkerRegistry struct{ r *baseworker.Registry }
 
 func (r WorkerRegistry) WorkersForModel(model string) []spi.WorkerRef {
     ws := r.r.WorkersForModel(model)
@@ -45,7 +45,7 @@ func (r WorkerRegistry) AggregatedModel(id string) (spi.ModelInfo, bool) {
     return spi.ModelInfo{ID: m.ID, Created: m.Created, Owners: m.Owners}, true
 }
 
-type Scheduler struct{ s ctrlplane.Scheduler }
+type Scheduler struct{ s baseworker.Scheduler }
 
 func (s Scheduler) PickWorker(model string) (spi.WorkerRef, error) {
     w, err := s.s.PickWorker(model)
@@ -53,13 +53,13 @@ func (s Scheduler) PickWorker(model string) (spi.WorkerRef, error) {
     return WorkerRef{w}, nil
 }
 
-type Metrics struct{ m *ctrlplane.MetricsRegistry }
+type Metrics struct{ m *baseworker.MetricsRegistry }
 
 func (m Metrics) RecordJobStart(id string) { m.m.RecordJobStart(id) }
 func (m Metrics) RecordJobEnd(id, model string, dur time.Duration, tokensIn, tokensOut, embeddings uint64, success bool, errMsg string) {
     m.m.RecordJobEnd(id, model, dur, tokensIn, tokensOut, embeddings, success, errMsg)
 }
-func (m Metrics) SetWorkerStatus(id string, status spi.WorkerStatus) { m.m.SetWorkerStatus(id, ctrlplane.WorkerStatus(status)) }
+func (m Metrics) SetWorkerStatus(id string, status spi.WorkerStatus) { m.m.SetWorkerStatus(id, baseworker.WorkerStatus(status)) }
 
 // Extension-specific metrics are emitted directly by the plugin; no-ops here.
 func (m Metrics) ObserveRequestDuration(workerID, model string, dur time.Duration)               {}
@@ -70,7 +70,7 @@ func (m Metrics) RecordModelEmbeddings(model string, n uint64)                  
 func (m Metrics) RecordWorkerEmbeddings(workerID string, n uint64)                                {}
 func (m Metrics) RecordWorkerEmbeddingProcessingTime(workerID string, dur time.Duration)          {}
 
-func NewWorkerRegistry(r *ctrlplane.Registry) WorkerRegistry { return WorkerRegistry{r} }
-func NewScheduler(s ctrlplane.Scheduler) Scheduler           { return Scheduler{s} }
-func NewMetrics(m *ctrlplane.MetricsRegistry) Metrics        { return Metrics{m} }
+func NewWorkerRegistry(r *baseworker.Registry) WorkerRegistry { return WorkerRegistry{r} }
+func NewScheduler(s baseworker.Scheduler) Scheduler           { return Scheduler{s} }
+func NewMetrics(m *baseworker.MetricsRegistry) Metrics        { return Metrics{m} }
 func (m Metrics) RecordWorkerTokens(workerID, kind string, n uint64) { m.m.AddWorkerTokens(workerID, kind, n) }
