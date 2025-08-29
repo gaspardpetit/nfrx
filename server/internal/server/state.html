@@ -238,6 +238,9 @@ async function connect() {
 }
 
 // Load descriptors once for friendly names
+// Initialize token from cookie before any authorized requests
+tryLoadToken();
+
 (async function loadDescriptors(){
   try {
     const resp = await authorizedFetch('/api/state/descriptors');
@@ -246,8 +249,7 @@ async function connect() {
     }
   } catch(e) { console.error('descriptors', e); }
 })();
-// Initialize token from cookie on load
-tryLoadToken();
+
 connect();
 </script>
 </body>
