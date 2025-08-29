@@ -1,4 +1,4 @@
-package ctrlplane
+package worker
 
 import (
     "sort"
@@ -174,3 +174,4 @@ func (m *MetricsRegistry) Snapshot() StateResponse {
     for _, name := range modelNames { resp.Models = append(resp.Models, ModelCount{Name: name, Workers: modelWorkers[name]}) }
     return resp
 }
+

@@ -1,4 +1,4 @@
-package ctrlplane
+package worker
 
 import "errors"
 

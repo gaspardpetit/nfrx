@@ -10,7 +10,7 @@ import (
 
     "github.com/go-chi/chi/v5"
 
-    llmctrl "github.com/gaspardpetit/nfrx/modules/llm/common/ctrlplane"
+    llmctrl "github.com/gaspardpetit/nfrx/sdk/base/worker"
     "github.com/gaspardpetit/nfrx/server/internal/serverstate"
 )
 

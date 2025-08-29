@@ -5,19 +5,21 @@ import (
     "time"
 
     "github.com/gaspardpetit/nfrx/sdk/api/spi"
+    baseplugin "github.com/gaspardpetit/nfrx/sdk/base/plugin"
+    baseworker "github.com/gaspardpetit/nfrx/sdk/base/worker"
     opt "github.com/gaspardpetit/nfrx/core/options"
     "github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
     llmmetrics "github.com/gaspardpetit/nfrx/modules/llm/ext/metrics"
-    "github.com/gaspardpetit/nfrx/modules/llm/common/ctrlplane"
     llmadapt "github.com/gaspardpetit/nfrx/modules/llm/ext/adapters"
 )
 
 // Plugin implements the llm subsystem as a plugin.
 type Plugin struct {
+    baseplugin.Base
     // internal control plane
-    reg   *ctrlplane.Registry
-    mxreg *ctrlplane.MetricsRegistry
-    sch   ctrlplane.Scheduler
+    reg   *baseworker.Registry
+    mxreg *baseworker.MetricsRegistry
+    sch   baseworker.Scheduler
 
     // dependency-injected server state + options
     srvState spi.ServerState
@@ -25,12 +27,12 @@ type Plugin struct {
     srvOpts spi.Options
 }
 
-func (p *Plugin) ID() string { return "llm" }
-
 // RegisterRoutes wires the HTTP endpoints.
 func (p *Plugin) RegisterRoutes(r spi.Router) {
+    // Register base route (501) at "/api/llm/" and then mount specific endpoints
+    p.Base.RegisterRoutes(r)
     // Mount LLM worker connect endpoint owned by the extension
-    r.Handle("/connect", ctrlplane.WSHandler(p.reg, p.mxreg, p.srvOpts.ClientKey, p.srvState))
+    r.Handle("/connect", baseworker.WSHandler(p.reg, p.mxreg, p.srvOpts.ClientKey, p.srvState))
     r.Group(func(g spi.Router) {
         // During server drain, reject new public API requests for this extension.
         if p.srvState != nil {
@@ -145,15 +147,15 @@ func New(
     srvOpts spi.Options,
     authMW spi.Middleware,
 ) *Plugin {
-    reg := ctrlplane.NewRegistry()
-    mx := ctrlplane.NewMetricsRegistry(version, sha, date, func() string { return "" })
-    sch := &ctrlplane.LeastBusyScheduler{Reg: reg}
+    reg := baseworker.NewRegistry()
+    mx := baseworker.NewMetricsRegistry(version, sha, date, func() string { return "" })
+    sch := &baseworker.LeastBusyScheduler{Reg: reg}
     // Start pruning expired workers in the background
     go func() {
         tick := srvOpts.AgentHeartbeatInterval
-        if tick == 0 { tick = ctrlplane.HeartbeatInterval }
+        if tick == 0 { tick = baseworker.HeartbeatInterval }
         expire := srvOpts.AgentHeartbeatExpiry
-        if expire == 0 { expire = ctrlplane.HeartbeatExpiry }
+        if expire == 0 { expire = baseworker.HeartbeatExpiry }
         ticker := time.NewTicker(tick)
         for range ticker.C {
             // Prune expired workers and update readiness if pool becomes empty
@@ -164,7 +166,7 @@ func New(
             }
         }
     }()
-    return &Plugin{ reg: reg, mxreg: mx, sch: sch, authMW: authMW, srvOpts: srvOpts, srvState: state }
+    return &Plugin{ Base: baseplugin.NewBase("llm"), reg: reg, mxreg: mx, sch: sch, authMW: authMW, srvOpts: srvOpts, srvState: state }
 }
 
 // (compat constructor removed) — use New with spi.Options

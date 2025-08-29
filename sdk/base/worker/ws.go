@@ -1,4 +1,4 @@
-package ctrlplane
+package worker
 
 import (
     "encoding/json"
@@ -13,7 +13,7 @@ import (
     "github.com/gaspardpetit/nfrx/core/logx"
 )
 
-// WSHandler handles incoming client websocket connections for LLM workers.
+// WSHandler handles incoming client websocket connections for worker-style agents.
 func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state spi.ServerState) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
         // Reject new worker connections when server is draining
@@ -117,3 +117,4 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
         }
     }
 }
+
