@@ -37,7 +37,6 @@ func (r testReg) WorkersForModel(model string) []spi.WorkerRef {
     if r.w.models[model] { return []spi.WorkerRef{r.w} }
     return nil
 }
-func (r testReg) WorkersForAlias(model string) []spi.WorkerRef { return nil }
 func (r testReg) IncInFlight(id string) { r.w.infl++ }
 func (r testReg) DecInFlight(id string) { if r.w.infl > 0 { r.w.infl-- } }
 func (r testReg) AggregatedModels() []spi.ModelInfo { return nil }
@@ -61,7 +60,6 @@ func (testMetrics) RecordWorkerEmbeddingProcessingTime(string, time.Duration) {}
 
 type testMultiReg struct{ ws []spi.WorkerRef }
 func (r testMultiReg) WorkersForModel(model string) []spi.WorkerRef { return append([]spi.WorkerRef(nil), r.ws...) }
-func (r testMultiReg) WorkersForAlias(model string) []spi.WorkerRef { return append([]spi.WorkerRef(nil), r.ws...) }
 func (r testMultiReg) IncInFlight(id string) {}
 func (r testMultiReg) DecInFlight(id string) {}
 func (r testMultiReg) AggregatedModels() []spi.ModelInfo { return nil }

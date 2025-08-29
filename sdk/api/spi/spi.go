@@ -20,16 +20,31 @@ type ModelInfo struct {
 }
 
 type WorkerRegistry interface {
-	WorkersForModel(model string) []WorkerRef
-	WorkersForAlias(model string) []WorkerRef
-	IncInFlight(id string)
-	DecInFlight(id string)
-	AggregatedModels() []ModelInfo
-	AggregatedModel(id string) (ModelInfo, bool)
+    WorkersForModel(model string) []WorkerRef
+    IncInFlight(id string)
+    DecInFlight(id string)
+    AggregatedModels() []ModelInfo
+    AggregatedModel(id string) (ModelInfo, bool)
 }
 
 type Scheduler interface {
-	PickWorker(model string) (WorkerRef, error)
+    PickWorker(model string) (WorkerRef, error)
+}
+
+// PartitionJob describes a request that can be split into multiple independent
+// chunks and recombined. Implemented by extensions that support partitioning.
+type PartitionJob interface {
+    // Size returns the total number of elements in the job.
+    Size() int
+    // MakeChunk builds a request body for the subrange [start, start+count).
+    // It may return a smaller count if fewer elements remain.
+    MakeChunk(start, count int) (body []byte, actual int)
+    // Append merges a completed worker response for the subrange starting at start.
+    Append(resp []byte, start int) error
+    // Result returns the final assembled response body.
+    Result() []byte
+    // Path returns the HTTP path on the worker that handles this job (e.g., "/embeddings").
+    Path() string
 }
 
 type Metrics interface {
