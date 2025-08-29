@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+    "net/http"
 
 	"github.com/gaspardpetit/nfrx/core/logx"
 	aconfig "github.com/gaspardpetit/nfrx/modules/docling/agent/internal/config"
@@ -38,12 +39,21 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	// Bridge docling config to the generic worker-proxy runner.
+    probe := func(pctx context.Context) (wp.ProbeResult, error) {
+        req, err := http.NewRequestWithContext(pctx, http.MethodGet, cfg.BaseURL+"/health", nil)
+        if err != nil { return wp.ProbeResult{Ready: false}, err }
+        resp, err := http.DefaultClient.Do(req)
+        if err != nil { return wp.ProbeResult{Ready: false}, err }
+        _ = resp.Body.Close()
+        if resp.StatusCode >= 400 { return wp.ProbeResult{Ready: false}, fmt.Errorf("status %s", resp.Status) }
+        return wp.ProbeResult{Ready: true, MaxConcurrency: cfg.MaxConcurrency}, nil
+    }
 	gcfg := wp.Config{
 		ServerURL:      cfg.ServerURL,
 		ClientKey:      cfg.ClientKey,
 		BaseURL:        cfg.BaseURL,
 		APIKey:         cfg.APIKey,
-		ProbePath:      "/health",
+		ProbeFunc:      probe,
 		MaxConcurrency: cfg.MaxConcurrency,
 		ClientID:       cfg.ClientID,
 		ClientName:     cfg.ClientName,
