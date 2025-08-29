@@ -12,6 +12,8 @@ import (
 
 	"github.com/coder/websocket"
     mcpc "github.com/gaspardpetit/nfrx/sdk/api/mcp"
+    mcpcommon "github.com/gaspardpetit/nfrx/modules/mcp/common"
+    "github.com/gaspardpetit/nfrx/sdk/base/agent"
 )
 
 // RelayClient is a minimal MCP relay.
@@ -31,12 +33,12 @@ func NewRelayClient(conn *websocket.Conn, providerURL, token string, timeout tim
 
 // Run processes frames until the context or connection ends.
 func (r *RelayClient) Run(ctx context.Context) error {
-	go r.pingLoop(ctx)
-	for {
-		_, data, err := r.conn.Read(ctx)
-		if err != nil {
-			return err
-		}
+    go agent.StartHeartbeat(ctx, 15*time.Second, func(c context.Context) error { return r.send(c, mcpc.Frame{T: "ping"}) })
+    for {
+        _, data, err := r.conn.Read(ctx)
+        if err != nil {
+            return err
+        }
 		var f mcpc.Frame
 		if json.Unmarshal(data, &f) != nil {
 			continue
@@ -87,35 +89,24 @@ func (r *RelayClient) handleRPC(ctx context.Context, f mcpc.Frame) {
 		return
 	}
 	if err != nil {
-		errObj := map[string]any{
-			"jsonrpc": "2.0",
-			"id":      nil,
-			"error": map[string]any{
-				"code":    -32000,
-				"message": "Provider error",
-				"data": map[string]any{
-					"mcp": "MCP_UPSTREAM_ERROR",
-				},
-			},
-		}
+        errObj := map[string]any{
+            "jsonrpc": "2.0",
+            "id":      nil,
+            "error": map[string]any{
+                "code":    -32000,
+                "message": "Provider error",
+                "data": map[string]any{
+                    "mcp": mcpcommon.ErrUpstreamError,
+                },
+            },
+        }
 		resp, _ = json.Marshal(errObj)
 	}
 	_ = r.send(ctx, mcpc.Frame{T: "rpc", SID: f.SID, Payload: resp})
 	_ = r.send(ctx, mcpc.Frame{T: "close", SID: f.SID, Msg: "done"})
 }
 
-func (r *RelayClient) pingLoop(ctx context.Context) {
-	ticker := time.NewTicker(15 * time.Second)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ticker.C:
-			_ = r.send(ctx, mcpc.Frame{T: "ping"})
-		case <-ctx.Done():
-			return
-		}
-	}
-}
+// pingLoop is now handled by agent.StartHeartbeat
 
 func (r *RelayClient) send(ctx context.Context, f mcpc.Frame) error {
 	b, err := json.Marshal(f)
@@ -146,10 +137,10 @@ func (r *RelayClient) callProvider(ctx context.Context, payload []byte) ([]byte,
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		data := map[string]any{
-			"mcp":    "MCP_UPSTREAM_ERROR",
-			"status": resp.StatusCode,
-		}
+        data := map[string]any{
+            "mcp":    mcpcommon.ErrUpstreamError,
+            "status": resp.StatusCode,
+        }
 		if len(body) > 0 {
 			data["body"] = string(body)
 		}

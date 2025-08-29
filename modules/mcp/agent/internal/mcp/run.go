@@ -14,7 +14,9 @@ import (
 
     "github.com/gaspardpetit/nfrx/core/logx"
     reconnect "github.com/gaspardpetit/nfrx/core/reconnect"
-	aconfig "github.com/gaspardpetit/nfrx/modules/mcp/agent/internal/config"
+    aconfig "github.com/gaspardpetit/nfrx/modules/mcp/agent/internal/config"
+    mcpcommon "github.com/gaspardpetit/nfrx/modules/mcp/common"
+    "github.com/gaspardpetit/nfrx/sdk/base/agent"
 )
 
 // Run starts the MCP relay client and blocks until the context is canceled or a
@@ -28,93 +30,42 @@ func Run(ctx context.Context, cfg aconfig.MCPConfig) error {
 		logx.Log.Info().Str("addr", cfg.MetricsAddr).Msg("metrics server started")
 	}
 
-	attempt := 0
-	for {
-		conn, _, err := websocket.Dial(ctx, cfg.ServerURL, nil)
-		if err != nil {
-			if !cfg.Reconnect {
-				return err
-			}
-			delay := reconnect.Delay(attempt)
-			attempt++
-			logx.Log.Warn().Dur("backoff", delay).Err(err).Msg("dial broker failed; retrying")
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-time.After(delay):
-				continue
-			}
-		}
+    return agent.RunWithReconnect(ctx, cfg.Reconnect, func(runCtx context.Context) error {
+        conn, _, err := websocket.Dial(runCtx, cfg.ServerURL, nil)
+        if err != nil {
+            return err
+        }
 
-		reg := map[string]string{"id": cfg.ClientID, "client_name": cfg.ClientName}
-		if cfg.ClientKey != "" {
-			reg["client_key"] = cfg.ClientKey
-		}
-		b, _ := json.Marshal(reg)
-		if err := conn.Write(ctx, websocket.MessageText, b); err != nil {
-			_ = conn.Close(websocket.StatusInternalError, "closing")
-			if !cfg.Reconnect {
-				return err
-			}
-			delay := reconnect.Delay(attempt)
-			attempt++
-			logx.Log.Warn().Dur("backoff", delay).Err(err).Msg("register failed; retrying")
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-time.After(delay):
-				continue
-			}
-		}
+        reg := map[string]string{"id": cfg.ClientID, "client_name": cfg.ClientName}
+        if cfg.ClientKey != "" { reg["client_key"] = cfg.ClientKey }
+        b, _ := json.Marshal(reg)
+        if err := conn.Write(runCtx, websocket.MessageText, b); err != nil {
+            _ = conn.Close(websocket.StatusInternalError, "closing")
+            return err
+        }
 
-		_, msg, err := conn.Read(ctx)
-		if err != nil {
-			_ = conn.Close(websocket.StatusInternalError, "closing")
-			if !cfg.Reconnect {
-				return err
-			}
-			delay := reconnect.Delay(attempt)
-			attempt++
-			logx.Log.Warn().Dur("backoff", delay).Err(err).Msg("register ack failed; retrying")
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-time.After(delay):
-				continue
-			}
-		}
-		var ack struct {
-			ID string `json:"id"`
-		}
-		_ = json.Unmarshal(msg, &ack)
-		cfg.ClientID = ack.ID
-		logx.Log.Info().Str("server", cfg.ServerURL).Str("client_id", cfg.ClientID).Str("client_name", cfg.ClientName).Msg("connected to server")
-		attempt = 0
+        _, msg, err := conn.Read(runCtx)
+        if err != nil {
+            _ = conn.Close(websocket.StatusInternalError, "closing")
+            return err
+        }
+        var ack mcpcommon.Ack
+        _ = json.Unmarshal(msg, &ack)
+        cfg.ClientID = ack.ID
+        logx.Log.Info().Str("server", cfg.ServerURL).Str("client_id", cfg.ClientID).Str("client_name", cfg.ClientName).Msg("connected to server")
 
-		runCtx, cancel := context.WithCancel(ctx)
-		go monitorProvider(runCtx, cfg.ProviderURL, cfg.Reconnect)
+        childCtx, cancel := context.WithCancel(runCtx)
+        defer cancel()
+        go monitorProvider(childCtx, cfg.ProviderURL, cfg.Reconnect)
 
-		relay := NewRelayClient(conn, cfg.ProviderURL, cfg.AuthToken, cfg.RequestTimeout)
-		if err := relay.Run(runCtx); err != nil {
-			cancel()
-			_ = conn.Close(websocket.StatusInternalError, "closing")
-			if !cfg.Reconnect {
-				return err
-			}
-			delay := reconnect.Delay(attempt)
-			attempt++
-			logx.Log.Warn().Dur("backoff", delay).Err(err).Msg("relay stopped; reconnecting")
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-time.After(delay):
-				continue
-			}
-		}
-		cancel()
-		_ = conn.Close(websocket.StatusNormalClosure, "closing")
-		return nil
-	}
+        relay := NewRelayClient(conn, cfg.ProviderURL, cfg.AuthToken, cfg.RequestTimeout)
+        if err := relay.Run(childCtx); err != nil {
+            _ = conn.Close(websocket.StatusInternalError, "closing")
+            return err
+        }
+        _ = conn.Close(websocket.StatusNormalClosure, "closing")
+        return nil
+    })
 }
 
 func monitorProvider(ctx context.Context, url string, shouldReconnect bool) {

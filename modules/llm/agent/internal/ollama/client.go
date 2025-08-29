@@ -8,7 +8,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/gaspardpetit/nfrx/modules/llm/agent/internal/relay"
+    llmcommon "github.com/gaspardpetit/nfrx/modules/llm/common"
 )
 
 // Client is a tiny HTTP client for talking to local Ollama.
@@ -54,7 +54,7 @@ func (c *Client) Health(ctx context.Context) ([]string, error) {
 	return c.Tags(ctx)
 }
 
-func (c *Client) GenerateStream(ctx context.Context, req relay.GenerateRequest) (io.ReadCloser, error) {
+func (c *Client) GenerateStream(ctx context.Context, req llmcommon.GenerateRequest) (io.ReadCloser, error) {
 	b, _ := json.Marshal(req)
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+"/api/generate?stream=true", bytes.NewReader(b))
 	if err != nil {
@@ -68,7 +68,7 @@ func (c *Client) GenerateStream(ctx context.Context, req relay.GenerateRequest) 
 	return resp.Body, nil
 }
 
-func (c *Client) Generate(ctx context.Context, req relay.GenerateRequest) ([]byte, error) {
+func (c *Client) Generate(ctx context.Context, req llmcommon.GenerateRequest) ([]byte, error) {
 	b, _ := json.Marshal(req)
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+"/api/generate", bytes.NewReader(b))
 	if err != nil {
