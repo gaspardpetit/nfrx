@@ -59,25 +59,28 @@ func StartStatusServer(ctx context.Context, addr, configFile string, drainTimeou
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(GetVersionInfo())
 	})
-	mux.HandleFunc("/control/drain", auth(func(w http.ResponseWriter, r *http.Request) {
-		StartDrain()
-		mu.Lock()
-		if timer != nil {
-			timer.Stop()
-		}
-		if drainTimeout > 0 {
-			timer = time.AfterFunc(drainTimeout, func() {
-				if IsDraining() {
-					SetState("terminating")
-					shutdown()
-				}
-			})
-		} else {
-			timer = nil
-		}
-		mu.Unlock()
-		w.WriteHeader(http.StatusOK)
-	}))
+    mux.HandleFunc("/control/drain", auth(func(w http.ResponseWriter, r *http.Request) {
+        // Start draining and log current inflight jobs
+        StartDrain()
+        logx.Log.Info().Int("inflight", GetState().CurrentJobs).Msg("agent drain requested")
+        mu.Lock()
+        if timer != nil {
+            timer.Stop()
+        }
+        if drainTimeout > 0 {
+            timer = time.AfterFunc(drainTimeout, func() {
+                if IsDraining() {
+                    logx.Log.Warn().Dur("timeout", drainTimeout).Msg("agent drain timeout; forcing shutdown")
+                    SetState("terminating")
+                    shutdown()
+                }
+            })
+        } else {
+            timer = nil
+        }
+        mu.Unlock()
+        w.WriteHeader(http.StatusOK)
+    }))
 	mux.HandleFunc("/control/undrain", auth(func(w http.ResponseWriter, r *http.Request) {
 		StopDrain()
 		mu.Lock()
