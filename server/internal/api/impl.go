@@ -1,22 +1,22 @@
 package api
 
 import (
-    "fmt"
-    "net/http"
-    "time"
+	"fmt"
+	"net/http"
+	"time"
 
-    "github.com/gaspardpetit/nfrx/api/generated"
-    "github.com/gaspardpetit/nfrx/server/internal/serverstate"
+	"github.com/gaspardpetit/nfrx/api/generated"
+	"github.com/gaspardpetit/nfrx/server/internal/serverstate"
 )
 
 type HealthChecker interface {
-    Healthy() bool
+	Healthy() bool
 }
 
 type API struct {
-    Timeout               time.Duration
-    Health                HealthChecker
-    StateReg              *serverstate.Registry
+	Timeout  time.Duration
+	Health   HealthChecker
+	StateReg *serverstate.Registry
 }
 
 var _ generated.ServerInterface = (*API)(nil)
@@ -34,9 +34,9 @@ func (a *API) GetHealthz(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) GetApiState(w http.ResponseWriter, r *http.Request) {
-    (&StateHandler{State: a.StateReg}).GetState(w, r)
+	(&StateHandler{State: a.StateReg}).GetState(w, r)
 }
 
 func (a *API) GetApiStateStream(w http.ResponseWriter, r *http.Request) {
-    (&StateHandler{State: a.StateReg}).GetStateStream(w, r)
+	(&StateHandler{State: a.StateReg}).GetStateStream(w, r)
 }

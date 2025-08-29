@@ -12,9 +12,9 @@ import (
 	"path/filepath"
 	"sync/atomic"
 
-    ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
 	aconfig "github.com/gaspardpetit/nfrx/modules/llm/agent/internal/config"
 	"github.com/gaspardpetit/nfrx/modules/llm/agent/internal/ollama"
+	ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
 )
 
 // fakeHealthClient implements healthClient for unit tests.

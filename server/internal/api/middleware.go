@@ -12,7 +12,7 @@ import (
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/zerolog"
 
-    "github.com/gaspardpetit/nfrx/core/logx"
+	"github.com/gaspardpetit/nfrx/core/logx"
 )
 
 type loggingResponseWriter struct {

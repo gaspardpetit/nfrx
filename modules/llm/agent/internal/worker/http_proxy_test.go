@@ -8,8 +8,8 @@ import (
 	"sync"
 	"testing"
 
-    ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
 	aconfig "github.com/gaspardpetit/nfrx/modules/llm/agent/internal/config"
+	ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
 )
 
 func TestHandleHTTPProxyAuthAndStream(t *testing.T) {

@@ -1,6 +1,5 @@
 package common
 
 const (
-    ErrWorkerDraining = "worker_draining"
+	ErrWorkerDraining = "worker_draining"
 )
-

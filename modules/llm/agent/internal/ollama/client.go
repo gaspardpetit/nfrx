@@ -8,7 +8,7 @@ import (
 	"io"
 	"net/http"
 
-    llmcommon "github.com/gaspardpetit/nfrx/modules/llm/common"
+	llmcommon "github.com/gaspardpetit/nfrx/modules/llm/common"
 )
 
 // Client is a tiny HTTP client for talking to local Ollama.

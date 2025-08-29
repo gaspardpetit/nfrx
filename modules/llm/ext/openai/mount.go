@@ -1,7 +1,7 @@
 package openai
 
 import (
-    "github.com/gaspardpetit/nfrx/sdk/api/spi"
+	"github.com/gaspardpetit/nfrx/sdk/api/spi"
 )
 
 func Mount(v1 spi.Router, reg spi.WorkerRegistry, sched spi.Scheduler, metrics spi.Metrics, opts Options) {

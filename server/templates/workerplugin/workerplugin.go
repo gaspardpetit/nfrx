@@ -1,7 +1,7 @@
 package workerplugin
 
 import (
-    "github.com/gaspardpetit/nfrx/sdk/api/spi"
+	"github.com/gaspardpetit/nfrx/sdk/api/spi"
 )
 
 // Plugin is a minimal example implementing plugin.Plugin and plugin.WorkerProvider.

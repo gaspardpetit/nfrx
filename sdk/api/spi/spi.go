@@ -3,14 +3,14 @@ package spi
 import "time"
 
 type WorkerRef interface {
-    ID() string
-    Name() string
-    SendChan() chan<- interface{}
-    AddJob(id string, ch chan interface{})
-    RemoveJob(id string)
-    LastHeartbeat() time.Time
-    PreferredBatchSize() int
-    InFlight() int
+	ID() string
+	Name() string
+	SendChan() chan<- interface{}
+	AddJob(id string, ch chan interface{})
+	RemoveJob(id string)
+	LastHeartbeat() time.Time
+	PreferredBatchSize() int
+	InFlight() int
 }
 
 type ModelInfo struct {
@@ -20,44 +20,44 @@ type ModelInfo struct {
 }
 
 type WorkerRegistry interface {
-    WorkersForLabel(label string) []WorkerRef
-    IncInFlight(id string)
-    DecInFlight(id string)
-    AggregatedModels() []ModelInfo
-    AggregatedModel(id string) (ModelInfo, bool)
+	WorkersForLabel(label string) []WorkerRef
+	IncInFlight(id string)
+	DecInFlight(id string)
+	AggregatedModels() []ModelInfo
+	AggregatedModel(id string) (ModelInfo, bool)
 }
 
 type Scheduler interface {
-    PickWorker(model string) (WorkerRef, error)
+	PickWorker(model string) (WorkerRef, error)
 }
 
 // PartitionJob describes a request that can be split into multiple independent
 // chunks and recombined. Implemented by extensions that support partitioning.
 type PartitionJob interface {
-    // Size returns the total number of elements in the job.
-    Size() int
-    // MakeChunk builds a request body for the subrange [start, start+count).
-    // It may return a smaller count if fewer elements remain.
-    MakeChunk(start, count int) (body []byte, actual int)
-    // Append merges a completed worker response for the subrange starting at start.
-    Append(resp []byte, start int) error
-    // Result returns the final assembled response body.
-    Result() []byte
-    // Path returns the HTTP path on the worker that handles this job (e.g., "/embeddings").
-    Path() string
-    // DesiredChunkSize optionally specifies the ideal chunk size for a given worker.
-    // Return <= 0 to defer to the worker's preferred size.
-    DesiredChunkSize(w WorkerRef) int
-    // Observer optionally provides hooks for recording domain-specific metrics.
-    Observer() PartitionObserver
+	// Size returns the total number of elements in the job.
+	Size() int
+	// MakeChunk builds a request body for the subrange [start, start+count).
+	// It may return a smaller count if fewer elements remain.
+	MakeChunk(start, count int) (body []byte, actual int)
+	// Append merges a completed worker response for the subrange starting at start.
+	Append(resp []byte, start int) error
+	// Result returns the final assembled response body.
+	Result() []byte
+	// Path returns the HTTP path on the worker that handles this job (e.g., "/embeddings").
+	Path() string
+	// DesiredChunkSize optionally specifies the ideal chunk size for a given worker.
+	// Return <= 0 to defer to the worker's preferred size.
+	DesiredChunkSize(w WorkerRef) int
+	// Observer optionally provides hooks for recording domain-specific metrics.
+	Observer() PartitionObserver
 }
 
 // PartitionObserver receives per-chunk and per-job results for partitioned work.
 type PartitionObserver interface {
-    // OnChunkResult is called after each worker chunk completes.
-    OnChunkResult(workerID, model string, dur time.Duration, elements int, success bool)
-    // OnJobResult is called once after all chunks complete or on first failure.
-    OnJobResult(model string, dur time.Duration, elements int, success bool)
+	// OnChunkResult is called after each worker chunk completes.
+	OnChunkResult(workerID, model string, dur time.Duration, elements int, success bool)
+	// OnJobResult is called once after all chunks complete or on first failure.
+	OnJobResult(model string, dur time.Duration, elements int, success bool)
 }
 
 type Metrics interface {
@@ -86,12 +86,12 @@ const (
 )
 
 type StateElement struct {
-    ID   string
-    Data func() any
-    // HTML is an optional function returning an HTML fragment that renders the
-    // plugin's state on the state dashboard. Return empty string or leave nil
-    // if no custom view is provided.
-    HTML func() string
+	ID   string
+	Data func() any
+	// HTML is an optional function returning an HTML fragment that renders the
+	// plugin's state on the state dashboard. Return empty string or leave nil
+	// if no custom view is provided.
+	HTML func() string
 }
 
 type StateRegistry interface {
@@ -99,10 +99,10 @@ type StateRegistry interface {
 }
 
 type ServerState interface {
-    IsDraining() bool
-    // SetStatus updates the global server availability status
-    // (e.g., "ready", "not_ready", "draining").
-    SetStatus(status string)
+	IsDraining() bool
+	// SetStatus updates the global server availability status
+	// (e.g., "ready", "not_ready", "draining").
+	SetStatus(status string)
 }
 
 type MCPClientSnapshot struct {
