@@ -10,7 +10,6 @@ import (
     baseworker "github.com/gaspardpetit/nfrx/sdk/base/worker"
     opt "github.com/gaspardpetit/nfrx/core/options"
     "github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
-    llmmetrics "github.com/gaspardpetit/nfrx/modules/llm/ext/metrics"
     llmadapt "github.com/gaspardpetit/nfrx/modules/llm/ext/adapters"
 )
 
@@ -68,7 +67,6 @@ func (p *Plugin) Scheduler() spi.Scheduler { return llmadapt.NewScheduler(p.sch)
 
 // RegisterMetrics registers LLM extension metrics collectors.
 func (p *Plugin) RegisterMetrics(reg spi.MetricsRegistry) {
-    llmmetrics.Register(reg)
     // Register generic request-* metrics
     basemetrics.Register(reg)
 }

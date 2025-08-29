@@ -13,7 +13,6 @@ import (
     ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
     "github.com/gaspardpetit/nfrx/sdk/api/spi"
     "github.com/gaspardpetit/nfrx/core/logx"
-    llmmetrics "github.com/gaspardpetit/nfrx/modules/llm/ext/metrics"
     basemetrics "github.com/gaspardpetit/nfrx/sdk/base/metrics"
 )
 
@@ -53,7 +52,6 @@ func ChatCompletionsHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics
         reg.IncInFlight(worker.ID())
         // Generic request metrics (job-level)
         basemetrics.RecordRequest("llm", "worker", "llm.completion", meta.Model)
-        basemetrics.RecordStart("llm", "worker", "llm.completion", meta.Model)
         defer reg.DecInFlight(worker.ID())
 
 		reqID := uuid.NewString()
@@ -90,19 +88,23 @@ func ChatCompletionsHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics
 			Stream:    meta.Stream,
 			Body:      body,
 		}
-		select {
-		case worker.SendChan() <- msg:
-			metrics.RecordJobStart(worker.ID())
-			metrics.SetWorkerStatus(worker.ID(), spi.StatusWorking)
-		default:
-			logx.Log.Warn().Str("request_id", logID).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Str("model", meta.Model).Msg("worker busy")
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusServiceUnavailable)
-			if _, err := w.Write([]byte(`{"error":"worker_busy"}`)); err != nil {
-				logx.Log.Error().Err(err).Msg("write worker busy")
-			}
-			return
-		}
+        select {
+        case worker.SendChan() <- msg:
+            // Mark started only after successful enqueue
+            basemetrics.RecordStart("llm", "worker", "llm.completion", meta.Model)
+            metrics.RecordJobStart(worker.ID())
+            metrics.SetWorkerStatus(worker.ID(), spi.StatusWorking)
+        default:
+            logx.Log.Warn().Str("request_id", logID).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Str("model", meta.Model).Msg("worker busy")
+            w.Header().Set("Content-Type", "application/json")
+            w.WriteHeader(http.StatusServiceUnavailable)
+            if _, err := w.Write([]byte(`{"error":"worker_busy"}`)); err != nil {
+                logx.Log.Error().Err(err).Msg("write worker busy")
+            }
+            // Record completion for busy case to keep inflight consistent
+            basemetrics.RecordComplete("llm", "worker", "llm.completion", meta.Model, "worker_busy", false, 0)
+            return
+        }
 
 		flusher, _ := w.(http.Flusher)
 		ctx := r.Context()
@@ -127,20 +129,13 @@ func ChatCompletionsHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics
             dur := time.Since(start)
             metrics.RecordJobEnd(worker.ID(), meta.Model, dur, tokensIn, tokensOut, 0, success, errMsg)
             metrics.SetWorkerStatus(worker.ID(), spi.StatusIdle)
-            llmmetrics.ObserveRequestDuration(worker.ID(), meta.Model, dur)
-            llmmetrics.RecordWorkerProcessingTime(worker.ID(), dur)
-            llmmetrics.RecordModelRequest(meta.Model, success)
             // Generic request metrics
             basemetrics.RecordComplete("llm", "worker", "llm.completion", meta.Model, errMsgIf(!success, errMsg), success, dur)
             if tokensIn > 0 {
-                llmmetrics.RecordModelTokens(meta.Model, "in", tokensIn)
-                llmmetrics.RecordWorkerTokens(worker.ID(), "in", tokensIn)
                 metrics.RecordWorkerTokens(worker.ID(), "in", tokensIn)
                 basemetrics.AddSize("llm", "worker", "llm.completion", meta.Model, "tokens_in", tokensIn)
             }
             if tokensOut > 0 {
-                llmmetrics.RecordModelTokens(meta.Model, "out", tokensOut)
-                llmmetrics.RecordWorkerTokens(worker.ID(), "out", tokensOut)
                 metrics.RecordWorkerTokens(worker.ID(), "out", tokensOut)
                 basemetrics.AddSize("llm", "worker", "llm.completion", meta.Model, "tokens_out", tokensOut)
                 basemetrics.AddSize("llm", "worker", "llm.completion", meta.Model, "tokens_total", tokensIn+tokensOut)
