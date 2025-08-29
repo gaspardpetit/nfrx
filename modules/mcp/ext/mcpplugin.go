@@ -33,19 +33,20 @@ func New(
     // Build broker config from plugin options if provided
     var cfg mcpbroker.Config
     po := opts.PluginOptions
+    id := Descriptor().ID
     // Only set fields when plugin options are provided; leave zero to allow env defaults in broker
-    cfg.MaxReqBytes = opt.Int64(po, "mcp", "max_req_bytes", cfg.MaxReqBytes)
-    cfg.MaxRespBytes = opt.Int64(po, "mcp", "max_resp_bytes", cfg.MaxRespBytes)
-    cfg.Heartbeat = time.Duration(opt.Int(po, "mcp", "ws_heartbeat_ms", int(cfg.Heartbeat/time.Millisecond))) * time.Millisecond
-    cfg.DeadAfter = time.Duration(opt.Int(po, "mcp", "ws_dead_after_ms", int(cfg.DeadAfter/time.Millisecond))) * time.Millisecond
-    cfg.MaxConcurrencyPerClient = opt.Int(po, "mcp", "max_concurrency_per_client", cfg.MaxConcurrencyPerClient)
+    cfg.MaxReqBytes = opt.Int64(po, id, "max_req_bytes", cfg.MaxReqBytes)
+    cfg.MaxRespBytes = opt.Int64(po, id, "max_resp_bytes", cfg.MaxRespBytes)
+    cfg.Heartbeat = time.Duration(opt.Int(po, id, "ws_heartbeat_ms", int(cfg.Heartbeat/time.Millisecond))) * time.Millisecond
+    cfg.DeadAfter = time.Duration(opt.Int(po, id, "ws_dead_after_ms", int(cfg.DeadAfter/time.Millisecond))) * time.Millisecond
+    cfg.MaxConcurrencyPerClient = opt.Int(po, id, "max_concurrency_per_client", cfg.MaxConcurrencyPerClient)
     reg := mcpbroker.NewRegistryWithConfig(opts.RequestTimeout, state, cfg)
-    return &Plugin{Base: baseplugin.NewBase("mcp"), broker: reg, srvOpts: opts, clientKey: opts.ClientKey}
+    return &Plugin{Base: baseplugin.NewBase(Descriptor(), opts.PluginOptions[id]), broker: reg, srvOpts: opts, clientKey: opts.ClientKey}
 }
 
 // RegisterRoutes registers HTTP routes; MCP uses relay endpoints only.
 func (p *Plugin) RegisterRoutes(r spi.Router) {
-    // Register base route (501) at "/api/mcp/" and then specific endpoints
+    // Register base descriptor endpoint at "/api/mcp/" and then specific endpoints
     p.Base.RegisterRoutes(r)
 	r.Handle("/connect", p.broker.WSHandler(p.clientKey))
 	r.Handle("/id/{id}", p.broker.HTTPHandler())
@@ -56,7 +57,7 @@ func (p *Plugin) RegisterMetrics(reg spi.MetricsRegistry) {}
 
 // RegisterState registers MCP state elements.
 func (p *Plugin) RegisterState(reg spi.StateRegistry) {
-    reg.Add(spi.StateElement{ID: "mcp", Data: func() any { return p.broker.Snapshot() }, HTML: func() string {
+    reg.Add(spi.StateElement{ID: p.ID(), Data: func() any { return p.broker.Snapshot() }, HTML: func() string {
         return `
 <div class="mcp-view">
   <div class="mcp-clients"></div>
