@@ -2,6 +2,7 @@ package openai
 
 import (
     "encoding/json"
+    "github.com/gaspardpetit/nfrx/sdk/api/spi"
 )
 
 // embeddingUsage and embeddingResponse are defined in embeddings.go; reuse types.
@@ -51,3 +52,8 @@ func (j *embeddingPartitionJob) Result() []byte {
 }
 
 func (j *embeddingPartitionJob) Path() string { return "/embeddings" }
+
+func (j *embeddingPartitionJob) DesiredChunkSize(w spi.WorkerRef) int {
+    // Use worker's preferred size; no override at job level for now.
+    return w.PreferredBatchSize()
+}

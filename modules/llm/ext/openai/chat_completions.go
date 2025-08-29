@@ -37,7 +37,7 @@ func ChatCompletionsHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics
 			Stream bool   `json:"stream"`
 		}
 		_ = json.Unmarshal(body, &meta)
-		exact := reg.WorkersForModel(meta.Model)
+        exact := reg.WorkersForLabel(meta.Model)
 		worker, err := sched.PickWorker(meta.Model)
 		if err != nil {
 			logx.Log.Warn().Str("model", meta.Model).Msg("no worker")

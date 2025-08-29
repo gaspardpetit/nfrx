@@ -17,7 +17,7 @@ type Worker struct {
     Name               string
     Labels             map[string]bool
     MaxConcurrency     int
-    EmbeddingBatchSize int
+    PreferredBatchSize int
     InFlight           int
     LastHeartbeat      time.Time
     Send               chan interface{}
@@ -80,7 +80,7 @@ func (r *Registry) UpdateLabels(id string, labels []string) {
     r.mu.Unlock()
 }
 
-func (r *Registry) WorkersForModel(model string) []*Worker {
+func (r *Registry) WorkersForLabel(model string) []*Worker {
     r.mu.RLock(); defer r.mu.RUnlock()
     var res []*Worker
     for _, w := range r.workers {
