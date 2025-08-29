@@ -120,7 +120,16 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg acon
 	}
 	SetLastError("")
 
-	_ = probeBackend(connCtx, client, cfg, nil)
+	// Initial probe with timeout
+	{
+		healthTO := 10 * time.Second
+		if cfg.RequestTimeout > 0 && cfg.RequestTimeout < healthTO {
+			healthTO = cfg.RequestTimeout
+		}
+		pctx, cancel := context.WithTimeout(connCtx, healthTO)
+		_ = probeBackend(pctx, client, cfg, nil)
+		cancel()
+	}
 	vi := GetVersionInfo()
 	regMsg := ctrl.RegisterMessage{
 		Type:               "register",
@@ -341,7 +350,14 @@ func startBackendMonitor(ctx context.Context, cfg aconfig.WorkerConfig, client h
 func monitorBackend(ctx context.Context, cfg aconfig.WorkerConfig, client healthClient, ch chan<- ctrl.StatusUpdateMessage, interval time.Duration) {
 	attempt := 0
 	for {
-		err := probeBackend(ctx, client, cfg, ch)
+		// Probe with a finite timeout to avoid hangs
+		healthTO := 10 * time.Second
+		if cfg.RequestTimeout > 0 && cfg.RequestTimeout < healthTO {
+			healthTO = cfg.RequestTimeout
+		}
+		pctx, cancel := context.WithTimeout(ctx, healthTO)
+		err := probeBackend(pctx, client, cfg, ch)
+		cancel()
 		if err != nil {
 			if !cfg.Reconnect {
 				return
