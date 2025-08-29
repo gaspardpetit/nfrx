@@ -14,9 +14,11 @@ import (
     ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
     "github.com/gaspardpetit/nfrx/core/logx"
     reconnect "github.com/gaspardpetit/nfrx/core/reconnect"
+    "github.com/gaspardpetit/nfrx/sdk/base/agent"
+    dr "github.com/gaspardpetit/nfrx/sdk/base/agent/drain"
 	aconfig "github.com/gaspardpetit/nfrx/modules/llm/agent/internal/config"
-	"github.com/gaspardpetit/nfrx/modules/llm/agent/internal/ollama"
-	"github.com/gaspardpetit/nfrx/modules/llm/agent/internal/relay"
+    "github.com/gaspardpetit/nfrx/modules/llm/agent/internal/ollama"
+    llmcommon "github.com/gaspardpetit/nfrx/modules/llm/common"
 )
 
 // Run starts the worker agent.
@@ -29,18 +31,48 @@ func Run(ctx context.Context, cfg aconfig.WorkerConfig) error {
 	SetConnectedToServer(false)
 	SetConnectedToBackend(false)
 
-	client := ollama.New(strings.TrimSuffix(cfg.CompletionBaseURL, "/v1"))
+    client := ollama.New(strings.TrimSuffix(cfg.CompletionBaseURL, "/v1"))
 
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+    ctx, cancel := context.WithCancel(ctx)
+    defer cancel()
 
-	interval := cfg.ModelPollInterval
+    interval := cfg.ModelPollInterval
 	if interval <= 0 {
 		interval = 20 * time.Second
 	}
 
-	statusUpdates := make(chan ctrl.StatusUpdateMessage, 16)
-	startBackendMonitor(ctx, cfg, client, statusUpdates, interval)
+    statusUpdates := make(chan ctrl.StatusUpdateMessage, 16)
+
+    // Bridge shared drain state to local behavior and advertise transitions.
+    dr.OnCheck(func(){
+        if dr.IsDraining() {
+            // Entering drain: mark state and let checkDrain send the draining update.
+            SetState("draining")
+            triggerDrainCheck()
+            return
+        }
+        // Leaving drain: restore advertised state and concurrency.
+        s := GetState()
+        // Compute status based on connectivity and inflight work.
+        newStatus := "disconnected"
+        if s.ConnectedToServer {
+            if s.ConnectedToBackend {
+                if s.CurrentJobs > 0 { newStatus = "connected_busy" } else { newStatus = "connected_idle" }
+            } else {
+                newStatus = "not_ready"
+            }
+        }
+        SetState(newStatus)
+        su := ctrl.StatusUpdateMessage{
+            Type:               "status_update",
+            Status:             "idle", // semantic status for scheduler; detailed view uses state above
+            MaxConcurrency:     s.MaxConcurrency,
+            EmbeddingBatchSize: s.EmbeddingBatchSize,
+            Models:             s.Models,
+        }
+        sendStatusUpdate(statusUpdates, su)
+    })
+    startBackendMonitor(ctx, cfg, client, statusUpdates, interval)
 
 	if cfg.StatusAddr != "" {
 		if _, err := StartStatusServer(ctx, cfg.StatusAddr, cfg.ConfigFile, cfg.DrainTimeout, cancel); err != nil {
@@ -53,27 +85,13 @@ func Run(ctx context.Context, cfg aconfig.WorkerConfig) error {
 		}
 	}
 
-	attempt := 0
-	for {
-		SetState("connecting")
-		SetConnectedToServer(false)
-
-		connected, err := connectAndServe(ctx, cancel, cfg, client, statusUpdates)
-		if err == nil || !cfg.Reconnect {
-			return err
-		}
-		if connected {
-			attempt = 0
-		}
-		delay := reconnect.Delay(attempt)
-		attempt++
-		logx.Log.Warn().Dur("backoff", delay).Err(err).Msg("connection to server lost; retrying")
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(delay):
-		}
-	}
+    // Use shared reconnect helper to manage backoff and retries
+    return agent.RunWithReconnect(ctx, cfg.Reconnect, func(runCtx context.Context) error {
+        SetState("connecting")
+        SetConnectedToServer(false)
+        _, err := connectAndServe(runCtx, cancel, cfg, client, statusUpdates)
+        return err
+    })
 }
 
 func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg aconfig.WorkerConfig, client *ollama.Client, statusUpdates <-chan ctrl.StatusUpdateMessage) (bool, error) {
@@ -120,13 +138,8 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg acon
 		return false, err
 	}
 
-	sendCh := make(chan []byte, 16)
-	var senderWG sync.WaitGroup
-	go func() {
-		<-connCtx.Done()
-		senderWG.Wait()
-		close(sendCh)
-	}()
+    sendCh := make(chan []byte, 16)
+    var senderWG sync.WaitGroup
 	defer cancelConn()
 	reqCancels := make(map[string]context.CancelFunc)
 	var jobMu sync.Mutex
@@ -264,14 +277,14 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg acon
 			logx.Log.Info().Str("job", jr.JobID).Msg("job request")
 			if IsDraining() {
 				logx.Log.Warn().Str("job", jr.JobID).Msg("reject job while draining")
-				msg := ctrl.JobErrorMessage{Type: "job_error", JobID: jr.JobID, Code: "worker_draining", Message: "worker is draining"}
+                msg := ctrl.JobErrorMessage{Type: "job_error", JobID: jr.JobID, Code: llmcommon.ErrWorkerDraining, Message: "worker is draining"}
 				b, _ := json.Marshal(msg)
 				sendMsg(connCtx, sendCh, b)
 				continue
 			}
-			if jr.Endpoint == "generate" {
-				go handleGenerate(connCtx, client, cfg.RequestTimeout, sendCh, jr, reqCancels, &jobMu, checkDrain)
-			}
+            if jr.Endpoint == llmcommon.EndpointGenerate {
+                go handleGenerate(connCtx, client, cfg.RequestTimeout, sendCh, jr, reqCancels, &jobMu, checkDrain)
+            }
 		case "cancel_job":
 			var cj ctrl.CancelJobMessage
 			if err := json.Unmarshal(data, &cj); err == nil {
@@ -290,10 +303,10 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg acon
 			logx.Log.Info().Str("request_id", hr.RequestID).Str("path", hr.Path).Msg("http proxy request")
 			if IsDraining() {
 				logx.Log.Warn().Str("request_id", hr.RequestID).Msg("reject proxy while draining")
-				h := ctrl.HTTPProxyResponseHeadersMessage{Type: "http_proxy_response_headers", RequestID: hr.RequestID, Status: 503, Headers: map[string]string{"Content-Type": "application/json"}}
+            h := ctrl.HTTPProxyResponseHeadersMessage{Type: "http_proxy_response_headers", RequestID: hr.RequestID, Status: 503, Headers: map[string]string{"Content-Type": "application/json"}}
 				hb, _ := json.Marshal(h)
 				sendMsg(connCtx, sendCh, hb)
-				end := ctrl.HTTPProxyResponseEndMessage{Type: "http_proxy_response_end", RequestID: hr.RequestID, Error: &ctrl.HTTPProxyError{Code: "worker_draining", Message: "worker is draining"}}
+            end := ctrl.HTTPProxyResponseEndMessage{Type: "http_proxy_response_end", RequestID: hr.RequestID, Error: &ctrl.HTTPProxyError{Code: llmcommon.ErrWorkerDraining, Message: "worker is draining"}}
 				eb, _ := json.Marshal(end)
 				sendMsg(connCtx, sendCh, eb)
 				continue
@@ -417,23 +430,14 @@ func sendStatusUpdate(ch chan<- ctrl.StatusUpdateMessage, msg ctrl.StatusUpdateM
 }
 
 func sendMsg(ctx context.Context, ch chan<- []byte, msg []byte) {
-    // Short-circuit if connection context is done to avoid races where the
-    // channel may be closing/closed and a send would panic.
-    select {
-    case <-ctx.Done():
-        return
-    default:
-    }
-    select {
-    case ch <- msg:
-    case <-ctx.Done():
-    }
+    // Delegate to shared agent utility for safe send semantics
+    agent.Send(ctx, ch, msg)
 }
 
 func handleGenerate(ctx context.Context, client *ollama.Client, timeout time.Duration, sendCh chan []byte, jr ctrl.JobRequestMessage, cancels map[string]context.CancelFunc, mu *sync.Mutex, onDone func()) {
 	logx.Log.Info().Str("job", jr.JobID).Msg("generate start")
 	raw, _ := json.Marshal(jr.Payload)
-	var req relay.GenerateRequest
+    var req llmcommon.GenerateRequest
 	if err := json.Unmarshal(raw, &req); err != nil {
 		logx.Log.Error().Str("job", jr.JobID).Err(err).Msg("unmarshal generate request")
 		return

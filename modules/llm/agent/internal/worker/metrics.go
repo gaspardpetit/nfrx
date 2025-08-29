@@ -1,14 +1,12 @@
 package worker
 
 import (
-	"context"
-	"net"
-	"net/http"
-	"time"
+    "context"
+    "time"
 
     "github.com/gaspardpetit/nfrx/core/logx"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+    "github.com/gaspardpetit/nfrx/sdk/base/agent"
+    "github.com/prometheus/client_golang/prometheus"
 )
 
 var (
@@ -54,39 +52,24 @@ var (
 // StartMetricsServer starts an HTTP server exposing Prometheus metrics on /metrics.
 // It returns the address it is listening on.
 func StartMetricsServer(ctx context.Context, addr string) (string, error) {
-	reg := prometheus.NewRegistry()
-	reg.MustRegister(
-		connectedToServerGauge,
-		connectedToBackendGauge,
-		currentJobsGauge,
-		maxConcurrencyGauge,
-		embeddingBatchSizeGauge,
-		jobsStartedCounter,
-		jobsSucceededCounter,
-		jobsFailedCounter,
-		jobDurationHist,
-	)
-	mux := http.NewServeMux()
-	mux.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
-
-	srv := &http.Server{Handler: mux}
-	ln, err := net.Listen("tcp", addr)
-	if err != nil {
-		return "", err
-	}
-	actual := ln.Addr().String()
-	go func() {
-		<-ctx.Done()
-		c, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = srv.Shutdown(c)
-	}()
-	go func() {
-		if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
-			logx.Log.Error().Err(err).Str("addr", actual).Msg("metrics server error")
-		}
-	}()
-	return actual, nil
+    reg := prometheus.NewRegistry()
+    reg.MustRegister(
+        connectedToServerGauge,
+        connectedToBackendGauge,
+        currentJobsGauge,
+        maxConcurrencyGauge,
+        embeddingBatchSizeGauge,
+        jobsStartedCounter,
+        jobsSucceededCounter,
+        jobsFailedCounter,
+        jobDurationHist,
+    )
+    addrOut, err := agent.StartMetricsServer(ctx, addr, reg)
+    if err != nil {
+        return "", err
+    }
+    logx.Log.Info().Str("addr", addrOut).Msg("metrics server started")
+    return addrOut, nil
 }
 
 func setConnectedToServer(v bool) {
