@@ -15,6 +15,7 @@ build:
 	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./server/cmd/nfrx
 	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./modules/llm/agent/cmd/nfrx-llm
 	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./modules/mcp/agent/cmd/nfrx-mcp
+	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./modules/docling/agent/cmd/nfrx-docling
 
 test:
 	go test ./... -race -count=1

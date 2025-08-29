@@ -5,6 +5,7 @@ import (
 
     llm "github.com/gaspardpetit/nfrx/modules/llm/ext"
     mcp "github.com/gaspardpetit/nfrx/modules/mcp/ext"
+    docling "github.com/gaspardpetit/nfrx/modules/docling/ext"
     "github.com/gaspardpetit/nfrx/sdk/api/spi"
 )
 
@@ -61,4 +62,7 @@ func init() {
     Register("mcp", func(state spi.ServerState, connect http.Handler, workers spi.WorkerRegistry, sched spi.Scheduler, metrics spi.Metrics, stateProvider func() any, version, sha, date string, opts spi.Options, authMW spi.Middleware) spi.Plugin {
         return mcp.New(state, connect, workers, sched, metrics, stateProvider, version, sha, date, opts, authMW)
     }, mcp.Descriptor())
+    Register("docling", func(state spi.ServerState, connect http.Handler, workers spi.WorkerRegistry, sched spi.Scheduler, metrics spi.Metrics, stateProvider func() any, version, sha, date string, opts spi.Options, authMW spi.Middleware) spi.Plugin {
+        return docling.New(state, version, sha, date, opts, authMW)
+    }, docling.Descriptor())
 }

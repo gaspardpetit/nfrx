@@ -2,10 +2,12 @@
 
 ## Project Overview
 nfrx provides a minimal Ollama-compatible server with a pool of workers that proxy
-requests to local Ollama instances. The repository contains three binaries:
+requests to local services. It includes worker‑style and tunnel‑style extensions.
+The repository contains four binaries:
 - `nfrx`: hosts the public HTTP API and coordinates workers over WebSocket
 - `nfrx-llm`: connects to the server and forwards requests to a local Ollama
 - `nfrx-mcp`: bridges private MCP providers to the public server
+- `nfrx-docling`: connects to the server and forwards document conversion requests to a local Docling service
 
 ## Build & Commands
 - Build all binaries: `make build`
@@ -38,12 +40,14 @@ requests to local Ollama instances. The repository contains three binaries:
 - If the Dockerfiles under `deploy/` are updated, ensure they still build:
   ```bash
   docker build -f deploy/Dockerfile.server .
-  docker build -f deploy/Dockerfile.worker .
+  docker build -f deploy/Dockerfile.llm .
+  docker build -f deploy/Dockerfile.mcp .
+  docker build -f deploy/Dockerfile.docling .
   ```
 
 ## Git Hygiene
 - Always review `git status` before committing. Avoid adding built executables or other generated artifacts.
-- Do not commit the server binaries produced by `make build` (they appear at repo root): `nfrx`, `nfrx-llm`, `nfrx-mcp`.
+- Do not commit the server binaries produced by `make build` (they appear at repo root): `nfrx`, `nfrx-llm`, `nfrx-mcp`, `nfrx-docling`.
 - If you accidentally stage generated files, unstage them before committing (e.g., `git restore --staged <file>`).
 - Prefer small, focused commits with descriptive messages. Group refactors and moves separately from behavioral changes.
 
