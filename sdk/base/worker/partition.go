@@ -68,7 +68,10 @@ func HandlePartitionedJob(
             reg.DecInFlight(wk.ID())
             wk.RemoveJob(reqID)
             if obs != nil { obs.OnChunkResult(wk.ID(), model, time.Since(chunkStart), n, ok) }
-            if !ok { return respBody, status, false, errMsg }
+            if !ok {
+                if obs != nil { obs.OnJobResult(model, time.Since(jobStart), size, false) }
+                return respBody, status, false, errMsg
+            }
             if err := job.Append(respBody, start); err != nil { return []byte(`{"error":"aggregate_failed"}`), http.StatusBadGateway, false, "aggregate_failed" }
             start += n
         }
