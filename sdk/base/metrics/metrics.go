@@ -1,6 +1,7 @@
 package metrics
 
 import (
+    "sync"
     "time"
     "github.com/prometheus/client_golang/prometheus"
     "github.com/gaspardpetit/nfrx/sdk/api/spi"
@@ -48,8 +49,22 @@ var (
 )
 
 // Register registers the request-* metrics with the provided registry.
+var registerOnce sync.Once
+
 func Register(reg spi.MetricsRegistry) {
-    reg.MustRegister(requestTotal, requestStartedTotal, requestCompletedTotal, requestDuration, requestSizeTotal, requestInflight, chunkCompletedTotal, chunkDuration, chunkSizeTotal)
+    registerOnce.Do(func() {
+        reg.MustRegister(
+            requestTotal,
+            requestStartedTotal,
+            requestCompletedTotal,
+            requestDuration,
+            requestSizeTotal,
+            requestInflight,
+            chunkCompletedTotal,
+            chunkDuration,
+            chunkSizeTotal,
+        )
+    })
 }
 
 func RecordRequest(ext, pluginType, jobType, label string) {
@@ -80,4 +95,3 @@ func AddChunkSize(ext, pluginType, jobType, label, workerID, sizeKind string, n 
     if n == 0 { return }
     chunkSizeTotal.WithLabelValues(ext, pluginType, jobType, label, workerID, sizeKind).Add(float64(n))
 }
-
