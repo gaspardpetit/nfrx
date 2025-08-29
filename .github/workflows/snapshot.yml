@@ -55,6 +55,7 @@ jobs:
           go build -trimpath -ldflags "$LDFLAGS" -o "dist/nfrx${EXT}" ./server/cmd/nfrx
           go build -trimpath -ldflags "$LDFLAGS" -o "dist/nfrx-llm${EXT}" ./modules/llm/agent/cmd/nfrx-llm
           go build -trimpath -ldflags "$LDFLAGS" -o "dist/nfrx-mcp${EXT}" ./modules/mcp/agent/cmd/nfrx-mcp
+          go build -trimpath -ldflags "$LDFLAGS" -o "dist/nfrx-docling${EXT}" ./modules/docling/agent/cmd/nfrx-docling
       
       - name: Package
         id: pkg

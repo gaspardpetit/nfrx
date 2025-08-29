@@ -33,6 +33,9 @@ jobs:
           - name: llm-client
             suffix: "-llm"
             dockerfile: deploy/Dockerfile.llm
+          - name: docling-client
+            suffix: "-docling"
+            dockerfile: deploy/Dockerfile.docling
 
     steps:
       - name: Checkout repository
