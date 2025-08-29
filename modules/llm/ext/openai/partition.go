@@ -2,7 +2,9 @@ package openai
 
 import (
     "encoding/json"
+    "time"
     "github.com/gaspardpetit/nfrx/sdk/api/spi"
+    basemetrics "github.com/gaspardpetit/nfrx/sdk/base/metrics"
 )
 
 // embeddingUsage and embeddingResponse are defined in embeddings.go; reuse types.
@@ -57,3 +59,20 @@ func (j *embeddingPartitionJob) DesiredChunkSize(w spi.WorkerRef) int {
     // Use worker's preferred size; no override at job level for now.
     return w.PreferredBatchSize()
 }
+
+type embeddingObserver struct{}
+
+func (embeddingObserver) OnChunkResult(workerID, model string, dur time.Duration, elements int, success bool) {
+    // Per-chunk metrics (generic)
+    // Generic request chunk metrics
+    basemetrics.RecordChunkComplete("llm", "worker", "llm.embedding", model, workerID, "", success, dur)
+    if elements > 0 { basemetrics.AddChunkSize("llm", "worker", "llm.embedding", model, workerID, "embeddings", uint64(elements)) }
+}
+
+func (embeddingObserver) OnJobResult(model string, dur time.Duration, elements int, success bool) {
+    // Record job-level metrics (generic)
+    basemetrics.RecordComplete("llm", "worker", "llm.embedding", model, "", success, dur)
+    if elements > 0 { basemetrics.AddSize("llm", "worker", "llm.embedding", model, "embeddings", uint64(elements)) }
+}
+
+func (j *embeddingPartitionJob) Observer() spi.PartitionObserver { return embeddingObserver{} }

@@ -48,6 +48,16 @@ type PartitionJob interface {
     // DesiredChunkSize optionally specifies the ideal chunk size for a given worker.
     // Return <= 0 to defer to the worker's preferred size.
     DesiredChunkSize(w WorkerRef) int
+    // Observer optionally provides hooks for recording domain-specific metrics.
+    Observer() PartitionObserver
+}
+
+// PartitionObserver receives per-chunk and per-job results for partitioned work.
+type PartitionObserver interface {
+    // OnChunkResult is called after each worker chunk completes.
+    OnChunkResult(workerID, model string, dur time.Duration, elements int, success bool)
+    // OnJobResult is called once after all chunks complete or on first failure.
+    OnJobResult(model string, dur time.Duration, elements int, success bool)
 }
 
 type Metrics interface {
