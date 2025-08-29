@@ -1,0 +1,28 @@
+[Unit]
+Description=nfrx docling worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=nfrx
+Group=nfrx
+EnvironmentFile=-/etc/nfrx/docling.env
+ExecStart=/usr/bin/nfrx-docling $DOCLING_FLAGS
+Restart=on-failure
+RestartSec=3s
+AmbientCapabilities=
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+CapabilityBoundingSet=
+StateDirectory=nfrx
+RuntimeDirectory=nfrx
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target
+

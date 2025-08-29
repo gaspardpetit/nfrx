@@ -1,0 +1,4 @@
+build/bin/nfrx-docling usr/bin/
+debian/nfrx-docling.service usr/lib/systemd/system/
+debian/examples/docling.env etc/nfrx/docling.env
+
