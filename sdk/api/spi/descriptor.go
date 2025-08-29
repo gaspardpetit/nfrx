@@ -23,6 +23,7 @@ type ArgSpec struct {
     Description string   // one-line description
     Deprecated  bool     // true if deprecated
     Replacement string   // optional replacement guidance
+    Secret      bool     // true if value is secret and should be masked in UIs
 }
 
 // PluginDescriptor provides human-readable metadata for an extension and its options.
@@ -32,4 +33,3 @@ type PluginDescriptor struct {
     Summary string   // short description
     Args    []ArgSpec
 }
-
