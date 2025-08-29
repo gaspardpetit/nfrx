@@ -12,6 +12,7 @@ import (
 
 	"github.com/coder/websocket"
     mcpc "github.com/gaspardpetit/nfrx/sdk/api/mcp"
+    mcpcommon "github.com/gaspardpetit/nfrx/modules/mcp/common"
 )
 
 // RelayClient is a minimal MCP relay.
@@ -87,17 +88,17 @@ func (r *RelayClient) handleRPC(ctx context.Context, f mcpc.Frame) {
 		return
 	}
 	if err != nil {
-		errObj := map[string]any{
-			"jsonrpc": "2.0",
-			"id":      nil,
-			"error": map[string]any{
-				"code":    -32000,
-				"message": "Provider error",
-				"data": map[string]any{
-					"mcp": "MCP_UPSTREAM_ERROR",
-				},
-			},
-		}
+        errObj := map[string]any{
+            "jsonrpc": "2.0",
+            "id":      nil,
+            "error": map[string]any{
+                "code":    -32000,
+                "message": "Provider error",
+                "data": map[string]any{
+                    "mcp": mcpcommon.ErrUpstreamError,
+                },
+            },
+        }
 		resp, _ = json.Marshal(errObj)
 	}
 	_ = r.send(ctx, mcpc.Frame{T: "rpc", SID: f.SID, Payload: resp})
@@ -146,10 +147,10 @@ func (r *RelayClient) callProvider(ctx context.Context, payload []byte) ([]byte,
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		data := map[string]any{
-			"mcp":    "MCP_UPSTREAM_ERROR",
-			"status": resp.StatusCode,
-		}
+        data := map[string]any{
+            "mcp":    mcpcommon.ErrUpstreamError,
+            "status": resp.StatusCode,
+        }
 		if len(body) > 0 {
 			data["body"] = string(body)
 		}

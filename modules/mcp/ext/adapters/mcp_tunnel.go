@@ -8,15 +8,12 @@ import (
 
     "github.com/gaspardpetit/nfrx/sdk/api/mcp"
     "github.com/gaspardpetit/nfrx/sdk/base/tunnel"
+    mcpcommon "github.com/gaspardpetit/nfrx/modules/mcp/common"
 )
 
 // MCPRegisterDecoder parses the initial register frame from an MCP relay.
 func MCPRegisterDecoder(first []byte) (id, name, clientKey string, err error) {
-    var reg struct{
-        ID string `json:"id"`
-        ClientName string `json:"client_name"`
-        ClientKey string `json:"client_key"`
-    }
+    var reg mcpcommon.Register
     err = json.Unmarshal(first, &reg)
     if err != nil { return "", "", "", err }
     return reg.ID, reg.ClientName, reg.ClientKey, nil
@@ -55,15 +52,9 @@ type MCPAdapter struct{}
 func (MCPAdapter) JobType() string { return "mcp.call" }
 
 func (MCPAdapter) ValidateRequest(body []byte) (label string, id any, payload []byte, status int, errCode string, ok bool) {
-    var env struct{
-        JSONRPC string `json:"jsonrpc"`
-        ID any `json:"id"`
-        Method string `json:"method"`
-    }
-    if json.Unmarshal(body, &env) != nil || env.JSONRPC != "2.0" || env.ID == nil || env.Method == "" {
-        return "", nil, nil, http.StatusOK, "MCP_SCHEMA_ERROR", false
-    }
-    return env.Method, env.ID, body, 0, "", true
+    idv, method, ok := mcpcommon.ValidateEnvelope(body)
+    if !ok { return "", nil, nil, http.StatusOK, mcpcommon.ErrSchema, false }
+    return method, idv, body, 0, "", true
 }
 
 func (MCPAdapter) WriteError(w http.ResponseWriter, id any, status int, errCode, msg, reqID string) {
@@ -93,7 +84,7 @@ func (MCPAdapter) Open(ctx context.Context, rl *tunnel.Relay, sid, reqID, label,
     f := mcp.Frame{T:"open", SID: sid, ReqID: reqID, Hint: label, Auth: auth}
     b, _ := json.Marshal(f)
     rl.Mu.Lock(); err := rl.Conn.Write(ctx, 1, b); rl.Mu.Unlock()
-    if err != nil { return false, "MCP_PROVIDER_UNAVAILABLE", http.StatusServiceUnavailable }
+    if err != nil { return false, mcpcommon.ErrProviderUnavailable, http.StatusServiceUnavailable }
     return true, "", 0
 }
 
@@ -108,15 +99,15 @@ func (MCPAdapter) WaitOpen(ctx context.Context, ch <-chan []byte) (bool, string,
     select {
     case data := <-ch:
         var f mcp.Frame
-        if json.Unmarshal(data, &f) != nil { return false, "MCP_PROVIDER_UNAVAILABLE", http.StatusServiceUnavailable }
+        if json.Unmarshal(data, &f) != nil { return false, mcpcommon.ErrProviderUnavailable, http.StatusServiceUnavailable }
         if f.T != "open.ok" {
-            code := "MCP_PROVIDER_UNAVAILABLE"; status := http.StatusServiceUnavailable
-            if f.Code == "MCP_UNAUTHORIZED" { code = f.Code; status = http.StatusUnauthorized }
+            code := mcpcommon.ErrProviderUnavailable; status := http.StatusServiceUnavailable
+            if f.Code == mcpcommon.ErrUnauthorized { code = f.Code; status = http.StatusUnauthorized }
             return false, code, status
         }
         return true, "", 0
     case <-ctx.Done():
-        return false, "MCP_TIMEOUT", http.StatusGatewayTimeout
+        return false, mcpcommon.ErrTimeout, http.StatusGatewayTimeout
     }
 }
 
@@ -124,11 +115,11 @@ func (MCPAdapter) WaitResponse(ctx context.Context, ch <-chan []byte, maxRespByt
     select {
     case data := <-ch:
         var f mcp.Frame
-        if json.Unmarshal(data, &f) != nil { return nil, false, "MCP_PROVIDER_UNAVAILABLE", http.StatusServiceUnavailable }
-        if int64(len(f.Payload)) > maxRespBytes { return nil, false, "MCP_LIMIT_EXCEEDED", http.StatusOK }
+        if json.Unmarshal(data, &f) != nil { return nil, false, mcpcommon.ErrProviderUnavailable, http.StatusServiceUnavailable }
+        if int64(len(f.Payload)) > maxRespBytes { return nil, false, mcpcommon.ErrLimitExceeded, http.StatusOK }
         return f.Payload, true, "", 0
     case <-ctx.Done():
-        return nil, false, "MCP_TIMEOUT", http.StatusGatewayTimeout
+        return nil, false, mcpcommon.ErrTimeout, http.StatusGatewayTimeout
     }
 }
 

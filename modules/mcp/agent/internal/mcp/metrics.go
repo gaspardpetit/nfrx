@@ -1,36 +1,13 @@
 package mcp
 
 import (
-	"context"
-	"net"
-	"net/http"
-	"time"
+    "context"
 
-    "github.com/gaspardpetit/nfrx/core/logx"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+    "github.com/gaspardpetit/nfrx/sdk/base/agent"
 )
 
 // StartMetricsServer starts an HTTP server exposing Prometheus metrics on /metrics.
 // It returns the address it is listening on.
 func StartMetricsServer(ctx context.Context, addr string) (string, error) {
-	mux := http.NewServeMux()
-	mux.Handle("/metrics", promhttp.Handler())
-	srv := &http.Server{Handler: mux}
-	ln, err := net.Listen("tcp", addr)
-	if err != nil {
-		return "", err
-	}
-	actual := ln.Addr().String()
-	go func() {
-		<-ctx.Done()
-		c, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = srv.Shutdown(c)
-	}()
-	go func() {
-		if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
-			logx.Log.Error().Err(err).Str("addr", actual).Msg("metrics server error")
-		}
-	}()
-	return actual, nil
+    return agent.StartMetricsServer(ctx, addr, nil)
 }

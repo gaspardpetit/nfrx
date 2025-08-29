@@ -14,7 +14,8 @@ import (
 
     "github.com/gaspardpetit/nfrx/core/logx"
     reconnect "github.com/gaspardpetit/nfrx/core/reconnect"
-	aconfig "github.com/gaspardpetit/nfrx/modules/mcp/agent/internal/config"
+    aconfig "github.com/gaspardpetit/nfrx/modules/mcp/agent/internal/config"
+    mcpcommon "github.com/gaspardpetit/nfrx/modules/mcp/common"
 )
 
 // Run starts the MCP relay client and blocks until the context is canceled or a
@@ -83,11 +84,9 @@ func Run(ctx context.Context, cfg aconfig.MCPConfig) error {
 				continue
 			}
 		}
-		var ack struct {
-			ID string `json:"id"`
-		}
-		_ = json.Unmarshal(msg, &ack)
-		cfg.ClientID = ack.ID
+        var ack mcpcommon.Ack
+        _ = json.Unmarshal(msg, &ack)
+        cfg.ClientID = ack.ID
 		logx.Log.Info().Str("server", cfg.ServerURL).Str("client_id", cfg.ClientID).Str("client_name", cfg.ClientName).Msg("connected to server")
 		attempt = 0
 
