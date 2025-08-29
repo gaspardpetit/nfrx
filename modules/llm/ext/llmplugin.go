@@ -79,9 +79,11 @@ func (p *Plugin) RegisterState(reg spi.StateRegistry) {
   <div class="llm-workers"></div>
   <script>(function(){
     function statusColor(w){
-      if (w.last_error) return 'red';
-      if (Date.now() - new Date(w.last_heartbeat).getTime() > 15000) return 'orange';
-      if (w.inflight > 0) return 'gold';
+      var lastHb = w.last_heartbeat || w.LastHeartbeat;
+      var inflight = (w.inflight!=null? w.inflight : (w.Inflight||0));
+      if (w.last_error || w.LastError) return 'red';
+      if (lastHb && (Date.now() - new Date(lastHb).getTime() > 15000)) return 'orange';
+      if (inflight > 0) return 'gold';
       return 'green';
     }
     function sortWorkers(list, sortBy){
@@ -112,19 +114,23 @@ func (p *Plugin) RegisterState(reg spi.StateRegistry) {
         var div=document.createElement('div');
         div.className='worker';
         var status=statusColor(w);
-        var busy=Math.min(1, (w.inflight + w.queue_len) / (w.max_concurrency || 1));
+        var inflight=(w.inflight||0);
+        var qlen=(w.queue_len||0);
+        var maxc=(w.max_concurrency||1);
+        var busy=Math.min(1, (inflight + qlen) / (maxc || 1));
+        var name=(w.name || w.id || 'worker');
+        var avg=(w.avg_processing_ms||0);
+        var avgText=(avg && avg.toFixed)? avg.toFixed(0) : avg;
+        var processed=(w.processed_total||0);
         div.innerHTML=
           '<div class="busy-bar"><div class="fill" style="height:'+Math.round(busy*100)+'%"></div></div>'+
           '<div class="emoji">🦙</div>'+
-          '<div class="name"><span class="status-dot" style="background:'+status+'"></span>'+(w.name||w.id)+'</div>'+
-          '<div>'+w.status+'</div>'+
-          '<div>inflight: '+w.inflight+'</div>'+
-          '<div>embed batch: '+w.embedding_batch_size+'</div>'+
-          '<div>tokens in/out: '+(w.tokens_in_total||0)+'/'+(w.tokens_out_total||0)+'</div>'+
-          '<div>total tokens: '+((w.tokens_total)||((w.tokens_in_total||0)+(w.tokens_out_total||0)))+'</div>'+
-          '<div>avg rate: '+(((w.avg_tokens_per_second)||0).toFixed? (w.avg_tokens_per_second).toFixed(2): w.avg_tokens_per_second)+' tok/s</div>'+
-          '<div>embeddings: '+(w.embeddings_total||0)+'</div>'+
-          '<div>avg embed rate: '+(((w.avg_embeddings_per_second)||0).toFixed? (w.avg_embeddings_per_second).toFixed(2): w.avg_embeddings_per_second)+' emb/s</div>';
+          '<div class="name"><span class="status-dot" style="background:'+status+'"></span>'+name+'</div>'+
+          '<div>'+(w.status || '')+'</div>'+
+          '<div>inflight: '+inflight+'</div>'+
+          '<div>embed batch: '+(w.embedding_batch_size||0)+'</div>'+
+          '<div>processed: '+processed+'</div>'+
+          '<div>avg processing: '+avgText+' ms</div>';
         host.appendChild(div);
       });
     }

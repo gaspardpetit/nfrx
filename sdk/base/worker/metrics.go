@@ -18,19 +18,24 @@ const (
 )
 
 type WorkerSnapshot struct {
-    ID, Name, Version, BuildSHA, BuildDate string
-    Status        WorkerStatus
-    ConnectedAt   time.Time
-    LastHeartbeat time.Time
-    MaxConcurrency int `json:"max_concurrency"`
-    // Keep JSON name for UI compatibility while using generic terminology
-    PreferredBatchSize int `json:"embedding_batch_size"`
-    ProcessedTotal, ProcessingMsTotal uint64
-    AvgProcessingMs float64
-    Inflight int
-    FailuresTotal uint64
-    QueueLen int
-    LastError string
+    ID                string       `json:"id"`
+    Name              string       `json:"name"`
+    Version           string       `json:"version"`
+    BuildSHA          string       `json:"build_sha,omitempty"`
+    BuildDate         string       `json:"build_date,omitempty"`
+    Status            WorkerStatus `json:"status"`
+    ConnectedAt       time.Time    `json:"connected_at"`
+    LastHeartbeat     time.Time    `json:"last_heartbeat"`
+    MaxConcurrency    int          `json:"max_concurrency"`
+    // Keep historical UI label for preferred batch size
+    PreferredBatchSize int         `json:"embedding_batch_size"`
+    ProcessedTotal     uint64      `json:"processed_total"`
+    ProcessingMsTotal  uint64      `json:"processing_ms_total"`
+    AvgProcessingMs    float64     `json:"avg_processing_ms"`
+    Inflight           int         `json:"inflight"`
+    FailuresTotal      uint64      `json:"failures_total"`
+    QueueLen           int         `json:"queue_len"`
+    LastError          string      `json:"last_error"`
 }
 
 type ServerSnapshot struct {
@@ -46,8 +51,14 @@ type ServerSnapshot struct {
     SchedulerQueueLen  int       `json:"scheduler_queue_len"`
 }
 
-type WorkersSummary struct { Connected, Working, Idle, NotReady, Gone int }
-type ModelCount struct { Name string; Workers int }
+type WorkersSummary struct {
+    Connected int `json:"connected"`
+    Working   int `json:"working"`
+    Idle      int `json:"idle"`
+    NotReady  int `json:"not_ready"`
+    Gone      int `json:"gone"`
+}
+type ModelCount struct { Name string `json:"name"`; Workers int `json:"workers"` }
 
 type StateResponse struct {
     Server ServerSnapshot `json:"server"`
