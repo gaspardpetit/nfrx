@@ -13,7 +13,7 @@ import (
 	"github.com/coder/websocket"
     ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
 	aconfig "github.com/gaspardpetit/nfrx/modules/llm/agent/internal/config"
-	"github.com/gaspardpetit/nfrx/modules/llm/agent/internal/relay"
+    llmcommon "github.com/gaspardpetit/nfrx/modules/llm/common"
 )
 
 func TestDrainAndTerminate(t *testing.T) {
@@ -67,7 +67,7 @@ func TestDrainAndTerminate(t *testing.T) {
 		t.Fatalf("read register: %v", err)
 	}
 
-	jr1 := ctrl.JobRequestMessage{Type: "job_request", JobID: "j1", Endpoint: "generate", Payload: relay.GenerateRequest{Model: "m1", Prompt: "hi"}}
+    jr1 := ctrl.JobRequestMessage{Type: "job_request", JobID: "j1", Endpoint: llmcommon.EndpointGenerate, Payload: llmcommon.GenerateRequest{Model: "m1", Prompt: "hi"}}
 	b1, _ := json.Marshal(jr1)
 	if err := srvConn.Write(context.Background(), websocket.MessageText, b1); err != nil {
 		t.Fatalf("write j1: %v", err)
@@ -76,7 +76,7 @@ func TestDrainAndTerminate(t *testing.T) {
 	<-started
 	StartDrain()
 
-	jr2 := ctrl.JobRequestMessage{Type: "job_request", JobID: "j2", Endpoint: "generate", Payload: relay.GenerateRequest{Model: "m1", Prompt: "hi"}}
+    jr2 := ctrl.JobRequestMessage{Type: "job_request", JobID: "j2", Endpoint: llmcommon.EndpointGenerate, Payload: llmcommon.GenerateRequest{Model: "m1", Prompt: "hi"}}
 	b2, _ := json.Marshal(jr2)
 	if err := srvConn.Write(context.Background(), websocket.MessageText, b2); err != nil {
 		t.Fatalf("write j2: %v", err)

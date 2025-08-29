@@ -11,7 +11,7 @@ import (
     "github.com/coder/websocket"
     ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
     aconfig "github.com/gaspardpetit/nfrx/modules/llm/agent/internal/config"
-    "github.com/gaspardpetit/nfrx/modules/llm/agent/internal/relay"
+    llmcommon "github.com/gaspardpetit/nfrx/modules/llm/common"
 )
 
 // Reproduces an edge case where the server connection drops while draining
@@ -75,7 +75,7 @@ func TestNoPanicOnDrainAfterConnDrop(t *testing.T) {
     }
 
     // Send a job request to start a long running generate.
-    jr := ctrl.JobRequestMessage{Type: "job_request", JobID: "j1", Endpoint: "generate", Payload: relay.GenerateRequest{Model: "m1", Prompt: "hi"}}
+    jr := ctrl.JobRequestMessage{Type: "job_request", JobID: "j1", Endpoint: llmcommon.EndpointGenerate, Payload: llmcommon.GenerateRequest{Model: "m1", Prompt: "hi"}}
     jb, _ := json.Marshal(jr)
     if err := srvConn.Write(context.Background(), websocket.MessageText, jb); err != nil {
         t.Fatalf("write job: %v", err)
@@ -106,4 +106,3 @@ func TestNoPanicOnDrainAfterConnDrop(t *testing.T) {
         t.Fatalf("timeout waiting for worker exit")
     }
 }
-
