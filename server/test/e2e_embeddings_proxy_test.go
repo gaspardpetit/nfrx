@@ -12,13 +12,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gaspardpetit/nfrx/modules/llm/agent/worker"
 	llm "github.com/gaspardpetit/nfrx/modules/llm/ext"
 	mcp "github.com/gaspardpetit/nfrx/modules/mcp/ext"
 	"github.com/gaspardpetit/nfrx/server/internal/adapters"
 	"github.com/gaspardpetit/nfrx/server/internal/config"
 
 	"github.com/gaspardpetit/nfrx/sdk/api/spi"
+	wp "github.com/gaspardpetit/nfrx/sdk/base/agent/workerproxy"
 	"github.com/gaspardpetit/nfrx/server/internal/plugin"
 	"github.com/gaspardpetit/nfrx/server/internal/server"
 	"github.com/gaspardpetit/nfrx/server/internal/serverstate"
@@ -58,7 +58,8 @@ func TestE2EEmbeddingsProxy(t *testing.T) {
 	defer cancel()
 	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/api/llm/connect"
 	go func() {
-		_ = worker.Run(ctx, worker.Config{ServerURL: wsURL, ClientKey: "secret", CompletionBaseURL: ollama.URL + "/v1", CompletionAPIKey: "secret-123", ClientID: "w1", ClientName: "w1", MaxConcurrency: 2, EmbeddingBatchSize: 0})
+        probe := func(pctx context.Context) (wp.ProbeResult, error) { return wp.ProbeResult{Ready: true, Models: []string{"llama3"}, MaxConcurrency: 2}, nil }
+        _ = wp.Run(ctx, wp.Config{ServerURL: wsURL, ClientKey: "secret", BaseURL: ollama.URL + "/v1", APIKey: "secret-123", ProbeFunc: probe, ProbeInterval: 50 * time.Millisecond, ClientID: "w1", ClientName: "w1", MaxConcurrency: 2})
 	}()
 
 	for i := 0; i < 20; i++ {

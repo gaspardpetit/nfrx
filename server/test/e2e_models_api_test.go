@@ -41,7 +41,7 @@ func TestModelsAPI(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dial alpha: %v", err)
 	}
-	rmA := ctrl.RegisterMessage{Type: "register", WorkerID: "wA", WorkerName: "Alpha", Models: []string{"llama3:8b", "mistral:7b"}, MaxConcurrency: 1, EmbeddingBatchSize: 0}
+    rmA := ctrl.RegisterMessage{Type: "register", WorkerID: "wA", WorkerName: "Alpha", Models: []string{"llama3:8b", "mistral:7b"}, MaxConcurrency: 1}
 	b, _ := json.Marshal(rmA)
 	if err := connA.Write(ctx, websocket.MessageText, b); err != nil {
 		t.Fatalf("write alpha: %v", err)
@@ -52,7 +52,7 @@ func TestModelsAPI(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dial beta: %v", err)
 	}
-	rmB := ctrl.RegisterMessage{Type: "register", WorkerID: "wB", WorkerName: "Beta", Models: []string{"llama3:8b", "qwen2.5:14b"}, MaxConcurrency: 1, EmbeddingBatchSize: 0}
+    rmB := ctrl.RegisterMessage{Type: "register", WorkerID: "wB", WorkerName: "Beta", Models: []string{"llama3:8b", "qwen2.5:14b"}, MaxConcurrency: 1}
 	b, _ = json.Marshal(rmB)
 	if err := connB.Write(ctx, websocket.MessageText, b); err != nil {
 		t.Fatalf("write beta: %v", err)

@@ -19,39 +19,44 @@ import (
 
 // Run starts the generic worker HTTP-proxy agent using the provided config.
 func Run(ctx context.Context, cfg Config) error {
-	if cfg.ClientID == "" {
-		cfg.ClientID = time.Now().Format("20060102150405")
-	}
-	SetWorkerInfo(cfg.ClientID, cfg.ClientName, cfg.MaxConcurrency)
-	SetState("not_ready")
-	SetConnectedToServer(false)
-	// Start with backend unknown; probe will update
-	SetConnectedToBackend(false)
+    if cfg.ClientID == "" {
+        cfg.ClientID = time.Now().Format("20060102150405")
+    }
+    // Start advertising with zero concurrency until backend health is known
+    SetWorkerInfo(cfg.ClientID, cfg.ClientName, 0)
+    SetState("not_ready")
+    SetConnectedToServer(false)
+    // Start with backend unknown; probe will update
+    SetConnectedToBackend(false)
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	// Bridge shared drain state to local behavior and advertise transitions.
 	statusUpdates := make(chan ctrl.StatusUpdateMessage, 16)
-	dr.OnCheck(func() {
-		if dr.IsDraining() {
-			SetState("draining")
-			triggerDrainCheck()
-			return
-		}
-		s := GetState()
-		newStatus := "disconnected"
-		if s.ConnectedToServer {
-			if s.CurrentJobs > 0 {
-				newStatus = "connected_busy"
-			} else {
-				newStatus = "connected_idle"
-			}
-		}
-		SetState(newStatus)
-		su := ctrl.StatusUpdateMessage{Type: "status_update", Status: "idle", MaxConcurrency: s.MaxConcurrency}
-		sendStatusUpdate(statusUpdates, su)
-	})
+    dr.OnCheck(func() {
+        if dr.IsDraining() {
+            // Advertise draining with zero concurrency so the scheduler stops routing new work.
+            SetState("draining")
+            SetWorkerInfo(cfg.ClientID, cfg.ClientName, 0)
+            su := ctrl.StatusUpdateMessage{Type: "status_update", Status: "draining", MaxConcurrency: 0}
+            sendStatusUpdate(statusUpdates, su)
+            triggerDrainCheck()
+            return
+        }
+        s := GetState()
+        newStatus := "disconnected"
+        if s.ConnectedToServer {
+            if s.CurrentJobs > 0 {
+                newStatus = "connected_busy"
+            } else {
+                newStatus = "connected_idle"
+            }
+        }
+        SetState(newStatus)
+        su := ctrl.StatusUpdateMessage{Type: "status_update", Status: "idle", MaxConcurrency: s.MaxConcurrency}
+        sendStatusUpdate(statusUpdates, su)
+    })
 
 	if cfg.StatusAddr != "" {
 		if _, err := StartStatusServer(ctx, cfg.StatusAddr, cfg.TokenBasename, cfg.ConfigFile, cfg.DrainTimeout, cancel); err != nil {
@@ -64,10 +69,24 @@ func Run(ctx context.Context, cfg Config) error {
 		}
 	}
 
-	// Probe backend health periodically (if configured)
-	if cfg.ProbePath != "" {
-		startBackendMonitor(ctx, cfg, statusUpdates, 20*time.Second)
-	}
+    // Probe backend health. Perform an initial synchronous probe (if provided)
+    // so our first registration reflects accurate readiness/concurrency, then
+    // continue probing periodically in the background. When no probe is
+    // provided, assume the backend is ready and advertise the configured
+    // concurrency to avoid permanently-disabled workers.
+    interval := cfg.ProbeInterval
+    if interval <= 0 { interval = 20 * time.Second }
+    if cfg.ProbeFunc != nil {
+        // Initial probe with short timeout to populate state before connecting
+        _ = probeBackend(ctx, cfg, statusUpdates)
+        startBackendMonitor(ctx, cfg, statusUpdates, interval)
+    } else {
+        // No probe configured: mark backend as ready with configured concurrency
+        SetConnectedToBackend(true)
+        SetWorkerInfo(cfg.ClientID, cfg.ClientName, cfg.MaxConcurrency)
+        SetLabels(nil)
+        SetLastError("")
+    }
 
 	return agent.RunWithReconnect(ctx, cfg.Reconnect, func(runCtx context.Context) error {
 		SetState("connecting")
@@ -79,7 +98,7 @@ func Run(ctx context.Context, cfg Config) error {
 
 // Periodic health check for the upstream backend
 func startBackendMonitor(ctx context.Context, cfg Config, ch chan<- ctrl.StatusUpdateMessage, interval time.Duration) {
-	go monitorBackend(ctx, cfg, ch, interval)
+    go monitorBackend(ctx, cfg, ch, interval)
 }
 
 func monitorBackend(ctx context.Context, cfg Config, ch chan<- ctrl.StatusUpdateMessage, interval time.Duration) {
@@ -109,72 +128,56 @@ func monitorBackend(ctx context.Context, cfg Config, ch chan<- ctrl.StatusUpdate
 }
 
 func probeBackend(ctx context.Context, cfg Config, ch chan<- ctrl.StatusUpdateMessage) error {
-	// Apply a finite timeout to avoid hanging the monitor goroutine
-	healthTO := 10 * time.Second
-	if cfg.RequestTimeout > 0 && cfg.RequestTimeout < healthTO {
-		healthTO = cfg.RequestTimeout
-	}
-	pctx, cancel := context.WithTimeout(ctx, healthTO)
-	defer cancel()
-	// GET {BaseURL}/{ProbePath}
-	url := cfg.BaseURL
-	if cfg.ProbePath != "" {
-		if cfg.ProbePath[0] != '/' {
-			url += "/"
-		}
-		url += cfg.ProbePath
-	}
-	req, err := http.NewRequestWithContext(pctx, http.MethodGet, url, nil)
-	if err != nil {
-		return err
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil || resp.StatusCode >= 400 {
-		if resp != nil {
-			_ = resp.Body.Close()
-		}
-		was := GetState().ConnectedToBackend
-		SetConnectedToBackend(false)
-		SetWorkerInfo(cfg.ClientID, cfg.ClientName, 0)
-		SetState("not_ready")
-		if err != nil {
-			SetLastError(err.Error())
-		} else {
-			SetLastError(resp.Status)
-		}
-		if was {
-			logx.Log.Warn().Str("status", func() string {
-				if resp != nil {
-					return resp.Status
-				}
-				return ""
-			}()).Msg("backend probe failed; became not_ready")
-		} else {
-			logx.Log.Warn().Str("status", func() string {
-				if resp != nil {
-					return resp.Status
-				}
-				return ""
-			}()).Msg("backend probe failed")
-		}
-		msg := ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: 0, Status: "not_ready"}
-		sendStatusUpdate(ch, msg)
-		return errIfNil(err, resp)
-	}
-	_ = resp.Body.Close()
-	prev := GetState().ConnectedToBackend
-	SetConnectedToBackend(true)
-	SetWorkerInfo(cfg.ClientID, cfg.ClientName, cfg.MaxConcurrency)
-	if GetState().ConnectedToServer && !IsDraining() && GetState().CurrentJobs == 0 {
-		SetState("connected_idle")
-	}
-	SetLastError("")
-	if !prev {
-		logx.Log.Info().Msg("backend ready")
-		msg := ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: cfg.MaxConcurrency, Status: "idle"}
-		sendStatusUpdate(ch, msg)
-	}
-	return nil
+    // Custom probe hook takes precedence
+    if cfg.ProbeFunc != nil {
+        healthTO := 10 * time.Second
+        if cfg.RequestTimeout > 0 && cfg.RequestTimeout < healthTO { healthTO = cfg.RequestTimeout }
+        pctx, cancel := context.WithTimeout(ctx, healthTO)
+        defer cancel()
+        res, err := cfg.ProbeFunc(pctx)
+        if err != nil || !res.Ready {
+            was := GetState().ConnectedToBackend
+            SetConnectedToBackend(false)
+            SetWorkerInfo(cfg.ClientID, cfg.ClientName, 0)
+            SetLabels(nil)
+            SetState("not_ready")
+            if err != nil { SetLastError(err.Error()) }
+            if was { logx.Log.Warn().Err(err).Msg("backend probe failed; became not_ready") } else { logx.Log.Warn().Err(err).Msg("backend probe failed") }
+            msg := ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: 0, Status: "not_ready"}
+            sendStatusUpdate(ch, msg)
+            return errIfNil(err, nil)
+        }
+        // Ready
+        prevConnected := GetState().ConnectedToBackend
+        prevModels := append([]string(nil), GetState().Labels...)
+        prevMaxC := GetState().MaxConcurrency
+        SetConnectedToBackend(true)
+        maxc := cfg.MaxConcurrency
+        if res.MaxConcurrency > 0 { maxc = res.MaxConcurrency }
+        SetWorkerInfo(cfg.ClientID, cfg.ClientName, maxc)
+        if len(res.Models) > 0 { SetLabels(res.Models) } else { SetLabels(nil) }
+        if GetState().ConnectedToServer && !IsDraining() && GetState().CurrentJobs == 0 {
+            SetState("connected_idle")
+        }
+        SetLastError("")
+        // Notify on connectivity flip, models change, or concurrency change
+        changed := !prevConnected
+        if !changed {
+            a := GetState().Labels; b := prevModels
+            if len(a) != len(b) { changed = true } else {
+                for i := range a { if a[i] != b[i] { changed = true; break } }
+            }
+        }
+        if !changed && prevMaxC != maxc { changed = true }
+        if changed {
+            logx.Log.Info().Int("models", len(GetState().Labels)).Msg("backend ready")
+            msg := ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: GetState().MaxConcurrency, Models: GetState().Labels, Status: "idle"}
+            sendStatusUpdate(ch, msg)
+        }
+        return nil
+    }
+    // No probe configured
+    return nil
 }
 
 func errIfNil(err error, resp *http.Response) error {
@@ -202,7 +205,10 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg Conf
 	SetState("connected_idle")
 	SetLastError("")
 
-	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: cfg.ClientID, WorkerName: cfg.ClientName, ClientKey: cfg.ClientKey, Models: nil, MaxConcurrency: cfg.MaxConcurrency, EmbeddingBatchSize: 0}
+    // Populate AgentConfig for extensible values
+    agentCfg := map[string]string{}
+    for k, v := range cfg.AgentConfig { agentCfg[k] = v }
+    regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: cfg.ClientID, WorkerName: cfg.ClientName, ClientKey: cfg.ClientKey, Models: GetState().Labels, MaxConcurrency: GetState().MaxConcurrency, AgentConfig: agentCfg}
 	b, _ := json.Marshal(regMsg)
 	if err := ws.Write(connCtx, websocket.MessageText, b); err != nil {
 		cancelConn()
@@ -232,16 +238,20 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg Conf
 	senderWG.Add(1)
 	go func() {
 		defer senderWG.Done()
-		for {
-			select {
-			case su := <-statusUpdates:
-				mb, _ := json.Marshal(su)
-				sendMsg(connCtx, sendCh, mb)
-			case <-connCtx.Done():
-				return
-			}
-		}
-	}()
+        for {
+            select {
+            case su := <-statusUpdates:
+                // Merge baseline agent config if not provided
+                if su.AgentConfig == nil { su.AgentConfig = map[string]string{} }
+                for k, v := range cfg.AgentConfig { if _, ok := su.AgentConfig[k]; !ok { su.AgentConfig[k] = v } }
+                if len(su.Models) == 0 { su.Models = GetState().Labels }
+                mb, _ := json.Marshal(su)
+                sendMsg(connCtx, sendCh, mb)
+            case <-connCtx.Done():
+                return
+            }
+        }
+    }()
 	senderWG.Add(1)
 	go func() {
 		defer senderWG.Done()
