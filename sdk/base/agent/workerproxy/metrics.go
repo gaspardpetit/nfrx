@@ -1,12 +1,14 @@
-package worker
+package workerproxy
 
 import (
 	"context"
+
 	"github.com/gaspardpetit/nfrx/core/logx"
 	"github.com/gaspardpetit/nfrx/sdk/base/agent"
 )
 
-// Reuse base agent server; this agent does not expose custom collectors beyond defaults.
+// StartMetricsServer reuses the base agent metrics server; this agent does not
+// expose custom collectors beyond defaults.
 func StartMetricsServer(ctx context.Context, addr string) (string, error) {
 	addrOut, err := agent.StartMetricsServer(ctx, addr, nil)
 	if err == nil {
@@ -14,7 +16,3 @@ func StartMetricsServer(ctx context.Context, addr string) (string, error) {
 	}
 	return addrOut, err
 }
-
-func JobStarted()                              {}
-func JobCompleted(success bool, d interface{}) {}
-func setCurrentJobs(int)                       {}

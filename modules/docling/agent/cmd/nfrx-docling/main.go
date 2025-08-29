@@ -11,7 +11,7 @@ import (
 
 	"github.com/gaspardpetit/nfrx/core/logx"
 	aconfig "github.com/gaspardpetit/nfrx/modules/docling/agent/internal/config"
-	"github.com/gaspardpetit/nfrx/modules/docling/agent/internal/worker"
+	wp "github.com/gaspardpetit/nfrx/sdk/base/agent/workerproxy"
 )
 
 var (
@@ -37,7 +37,25 @@ func main() {
 	logx.Configure(cfg.LogLevel)
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
-	if err := worker.Run(ctx, cfg); err != nil {
+	// Bridge docling config to the generic worker-proxy runner.
+	gcfg := wp.Config{
+		ServerURL:      cfg.ServerURL,
+		ClientKey:      cfg.ClientKey,
+		BaseURL:        cfg.BaseURL,
+		APIKey:         cfg.APIKey,
+		ProbePath:      "/health",
+		MaxConcurrency: cfg.MaxConcurrency,
+		ClientID:       cfg.ClientID,
+		ClientName:     cfg.ClientName,
+		StatusAddr:     cfg.StatusAddr,
+		MetricsAddr:    cfg.MetricsAddr,
+		TokenBasename:  "docling",
+		DrainTimeout:   cfg.DrainTimeout,
+		RequestTimeout: cfg.RequestTimeout,
+		Reconnect:      cfg.Reconnect,
+		ConfigFile:     cfg.ConfigFile,
+	}
+	if err := wp.Run(ctx, gcfg); err != nil {
 		logx.Log.Fatal().Err(err).Msg("agent exited")
 	}
 }

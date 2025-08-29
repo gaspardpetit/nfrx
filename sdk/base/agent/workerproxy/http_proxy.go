@@ -1,4 +1,4 @@
-package worker
+package workerproxy
 
 import (
 	"bytes"
@@ -10,11 +10,10 @@ import (
 	"sync"
 
 	"github.com/gaspardpetit/nfrx/core/logx"
-	aconfig "github.com/gaspardpetit/nfrx/modules/docling/agent/internal/config"
 	ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
 )
 
-func handleHTTPProxy(ctx context.Context, cfg aconfig.WorkerConfig, sendCh chan []byte, req ctrl.HTTPProxyRequestMessage, cancels map[string]context.CancelFunc, mu *sync.Mutex, onDone func()) {
+func handleHTTPProxy(ctx context.Context, cfg Config, sendCh chan []byte, req ctrl.HTTPProxyRequestMessage, cancels map[string]context.CancelFunc, mu *sync.Mutex, onDone func()) {
 	reqCtx, cancel := context.WithCancel(ctx)
 	mu.Lock()
 	cancels[req.RequestID] = cancel
