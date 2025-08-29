@@ -32,15 +32,7 @@ var (
 	drainCheck func()
 )
 
-func resetState() {
-	stateMu.Lock()
-	stateData = State{State: "disconnected"}
-	stateMu.Unlock()
-	draining.Store(false)
-	setDrainCheck(nil)
-	dr.Stop()
-	dr.OnCheck(nil)
-}
+// (no resetState in production build)
 
 func SetBuildInfo(v, sha, date string) {
 	buildInfo = VersionInfo{Version: v, BuildSHA: sha, BuildDate: date}

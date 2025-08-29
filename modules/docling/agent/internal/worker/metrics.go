@@ -17,7 +17,4 @@ func StartMetricsServer(ctx context.Context, addr string) (string, error) {
 
 func JobStarted()                              {}
 func JobCompleted(success bool, d interface{}) {}
-func setConnectedToServer(bool)                {}
-func setConnectedToBackend(bool)               {}
 func setCurrentJobs(int)                       {}
-func setMaxConcurrency(int)                    {}
