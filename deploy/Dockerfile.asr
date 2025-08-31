@@ -1,0 +1,14 @@
+FROM --platform=$BUILDPLATFORM golang:1.24 AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+COPY sdk/go.mod sdk/go.mod
+RUN go mod download
+COPY . .
+ARG TARGETOS TARGETARCH VERSION=dev GIT_SHA=unknown BUILD_DATE=unknown
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
+    go build -ldflags "-s -w -X main.version=${VERSION} -X main.buildSHA=${GIT_SHA} -X main.buildDate=${BUILD_DATE}" \
+      -o /out/nfrx-asr ./modules/asr/agent/cmd/nfrx-asr
+
+FROM gcr.io/distroless/base-debian12
+COPY --from=build /out/nfrx-asr /nfrx-asr
+ENTRYPOINT ["/nfrx-asr"]

@@ -57,6 +57,22 @@ These endpoints are present when the `llm` plugin is enabled.
 | `GET /api/llm/v1/models` | – | List models. | API key |
 | `GET /api/llm/v1/models/{id}` | Path `{id}` | Get model details. | API key |
 
+## Audio Transcription API
+
+These endpoints are present when the `asr` plugin is enabled.
+
+### Worker Registration
+
+| Verb & Endpoint | Parameters | Description | Auth |
+| --- | --- | --- | --- |
+| `GET /api/asr/connect` (WS) | Initial message `{ type: "register", client_key?: string, worker_id?: string, worker_name?: string, models?: [string], max_concurrency?: int }` | Worker connects to server. | Client key |
+
+### Client Usage
+
+| Verb & Endpoint | Parameters | Description | Auth |
+| --- | --- | --- | --- |
+| `POST /api/asr/v1/audio/transcriptions` | Multipart form data: `file`, `model`, optional fields; `stream=true` for SSE | Proxy audio transcription requests. | API key |
+
 ## MCP API
 
 These endpoints are present when the `mcp` plugin is enabled.

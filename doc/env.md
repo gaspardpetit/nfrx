@@ -63,6 +63,29 @@ The worker optionally reads settings from a YAML config file. Defaults:
 | `RECONNECT` | — | reconnect to server on failure | `false` | `--reconnect`, `-r` |
 | `REQUEST_TIMEOUT` | — | seconds without backend feedback before failing a job | `300` | `--request-timeout` |
 
+## nfrx-asr
+
+The worker optionally reads settings from a YAML config file. Defaults:
+
+- macOS: `~/Library/Application Support/nfrx/asr.yaml`
+- Windows: `%ProgramData%\\nfrx\\asr.yaml`
+- Linux: `/etc/nfrx/asr.yaml`
+
+| Variable | Config key | Purpose | Default | CLI flag |
+|----------|------------|---------|---------|----------|
+| `CONFIG_FILE` | — | worker config file path | OS-specific | `--config` |
+| `SERVER_URL` | `server_url` | server WebSocket URL for registration | `ws://localhost:8080/api/asr/connect` | `--server-url` |
+| `CLIENT_KEY` | `client_key` | shared secret for authenticating with the server | unset | `--client-key` |
+| `ASR_BASE_URL` | `asr_base_url` | base URL of the ASR service | `http://127.0.0.1:5002` | `--asr-base-url` |
+| `ASR_API_KEY` | `asr_api_key` | API key for the ASR service | unset | `--asr-api-key` |
+| `MAX_CONCURRENCY` | `max_concurrency` | maximum number of jobs processed concurrently | `2` | `--max-concurrency` |
+| `CLIENT_ID` | — | client identifier | unset | `--client-id` |
+| `CLIENT_NAME` | — | worker display name | hostname (or random) | `--client-name` |
+| `STATUS_ADDR` | `status_addr` | local status HTTP listen address | unset (disabled) | `--status-addr` |
+| `METRICS_PORT` | `metrics_addr` | Prometheus metrics listen address or port | unset (disabled) | `--metrics-port` |
+| `DRAIN_TIMEOUT` | — | time to wait for in-flight jobs on shutdown | `1m` | `--drain-timeout` |
+| `REQUEST_TIMEOUT` | — | seconds without backend feedback before failing a job | `300` | `--request-timeout` |
+| `RECONNECT` | — | reconnect to server on failure | `false` | `--reconnect`, `-r` |
 
 ## nfrx-mcp
 

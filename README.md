@@ -53,7 +53,7 @@ PORT=${MY_SERVER_PORT} CLIENT_KEY="${MY_CLIENT_KEY}" API_KEY="${MY_API_KEY}" \
 
 You may then choose to expose an LLM provider, an MCP server and/or a RAG system from private hardware behind a NAT/Firewall.
 
-Set `PLUGINS` to control which modules load (`llm`, `mcp`, `docling`; defaults to all available). For example, `PLUGINS=llm` disables the MCP relay.
+Set `PLUGINS` to control which modules load (`llm`, `mcp`, `docling`, `asr`; defaults to all available). For example, `PLUGINS=llm` disables the MCP relay.
 
 ### Expose a local Docling converter (document extraction)
 
@@ -92,6 +92,38 @@ curl -X POST "https://${MY_SERVER_ADDR}/api/docling/v1/convert/source" \
 ```
 
 For file uploads, POST multipart/form-data to `/api/docling/v1/convert/file` with the same headers.
+
+### Expose a local ASR transcriber (speech to text)
+
+Run the ASR agent on your private machine to proxy audio transcription requests to a local service such as Verbatim.
+
+##### Docker
+
+```bash
+docker run --rm \
+  -e SERVER_URL="wss://${MY_SERVER_ADDR}/api/asr/connect" \
+  -e CLIENT_KEY="${MY_CLIENT_KEY}" \
+  -e ASR_BASE_URL="http://host.docker.internal:5002" \
+  ghcr.io/gaspardpetit/nfrx-asr:main
+```
+
+##### Bare (Linux)
+
+```bash
+SERVER_URL="wss://${MY_SERVER_ADDR}/api/asr/connect" \
+CLIENT_KEY="${MY_CLIENT_KEY}" \
+ASR_BASE_URL="http://127.0.0.1:5002" \
+nfrx-asr   # or: go run ./modules/asr/agent/cmd/nfrx-asr
+```
+
+After connecting, transcribe audio via the public server:
+
+```bash
+curl -X POST "https://${MY_SERVER_ADDR}/api/asr/v1/audio/transcriptions" \
+  -H "Authorization: Bearer ${MY_API_KEY}" \
+  -F file="@speech.mp3" \
+  -F model="gpt-4o-transcribe"
+```
 
 ### Expose a local LLM worker (Ollama shown)
 
@@ -670,6 +702,7 @@ For manual end-to-end verification on a clean VM, see [desktop/windows/ACCEPTANC
 | Model alias fallback | ✅ | Falls back to base model when exact quantization not available |
 | OpenAI-compatible `POST /api/llm/v1/chat/completions` | ✅ | Proxied to workers without payload mutation |
 | OpenAI-compatible `POST /api/llm/v1/embeddings` | ✅ | Requests with large input arrays are split and processed in parallel across workers respecting each worker's ideal embedding batch size |
+| OpenAI-compatible `POST /api/asr/v1/audio/transcriptions` | ✅ | Proxies audio transcription requests, including SSE streaming |
 | API key authentication for clients | ✅ | `Authorization: Bearer <API_KEY>` for `/api` (including `/api/llm/v1`) |
 | Client key authentication | ✅ | Workers authenticate over WebSocket using `CLIENT_KEY` |
 | Dynamic model discovery | ✅ | Workers advertise supported models; server aggregates |
