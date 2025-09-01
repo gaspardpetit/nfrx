@@ -75,6 +75,8 @@ func (r *Registry) WSHandler(expectKey string, decode RegisterAdapter, reader Re
 		if err != nil {
 			return
 		}
+		// Disable default 32KiB read limit to support large messages
+		c.SetReadLimit(-1)
 		// Use background context for long-lived WS loops; request context may be canceled when handler returns.
 		ctx := context.Background()
 		_, data, err := c.Read(ctx)
