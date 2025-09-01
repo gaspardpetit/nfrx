@@ -3,6 +3,7 @@ package plugin
 import (
 	"net/http"
 
+	asr "github.com/gaspardpetit/nfrx/modules/asr/ext"
 	docling "github.com/gaspardpetit/nfrx/modules/docling/ext"
 	llm "github.com/gaspardpetit/nfrx/modules/llm/ext"
 	mcp "github.com/gaspardpetit/nfrx/modules/mcp/ext"
@@ -65,4 +66,7 @@ func init() {
 	Register("docling", func(state spi.ServerState, connect http.Handler, workers spi.WorkerRegistry, sched spi.Scheduler, metrics spi.Metrics, stateProvider func() any, version, sha, date string, opts spi.Options, authMW spi.Middleware) spi.Plugin {
 		return docling.New(state, version, sha, date, opts, authMW)
 	}, docling.Descriptor())
+	Register("asr", func(state spi.ServerState, connect http.Handler, workers spi.WorkerRegistry, sched spi.Scheduler, metrics spi.Metrics, stateProvider func() any, version, sha, date string, opts spi.Options, authMW spi.Middleware) spi.Plugin {
+		return asr.New(state, version, sha, date, opts, authMW)
+	}, asr.Descriptor())
 }

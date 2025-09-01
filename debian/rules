@@ -39,14 +39,15 @@ GO_LDFLAGS := $(GO_STRIP_FLAGS) \
 override_dh_auto_build:
 	mkdir -p build/bin
 	set -e; \
-	for pkg in \
-	    server/cmd/nfrx \
-	    modules/llm/agent/cmd/nfrx-llm \
-	    modules/mcp/agent/cmd/nfrx-mcp \
-	    modules/docling/agent/cmd/nfrx-docling; do \
-	    bin=$$(basename $$pkg); \
-	    go build -ldflags "$(GO_LDFLAGS)" -o build/bin/$$bin ./$$pkg; \
-	done
+        for pkg in \
+            server/cmd/nfrx \
+            modules/llm/agent/cmd/nfrx-llm \
+            modules/mcp/agent/cmd/nfrx-mcp \
+            modules/docling/agent/cmd/nfrx-docling \
+            modules/asr/agent/cmd/nfrx-asr; do \
+            bin=$$(basename $$pkg); \
+            go build -ldflags "$(GO_LDFLAGS)" -o build/bin/$$bin ./$$pkg; \
+        done
 
 override_dh_auto_install:
 	# Installation handled via .install files

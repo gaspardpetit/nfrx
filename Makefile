@@ -19,6 +19,7 @@ build:
 	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./modules/llm/agent/cmd/nfrx-llm
 	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./modules/mcp/agent/cmd/nfrx-mcp
 	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./modules/docling/agent/cmd/nfrx-docling
+	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" ./modules/asr/agent/cmd/nfrx-asr
 
 test:
 	go test ./... -race -count=1

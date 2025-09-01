@@ -8,6 +8,7 @@ The repository contains four binaries:
 - `nfrx-llm`: connects to the server and forwards requests to a local Ollama
 - `nfrx-mcp`: bridges private MCP providers to the public server
 - `nfrx-docling`: connects to the server and forwards document conversion requests to a local Docling service
+- `nfrx-asr`: connects to the server and forwards audio transcription requests to a local ASR service
 
 ## Build & Commands
 - Build all binaries: `make build`
@@ -48,7 +49,7 @@ The repository contains four binaries:
 
 ## Git Hygiene
 - Always review `git status` before committing. Avoid adding built executables or other generated artifacts.
-- Do not commit the server binaries produced by `make build` (they appear at repo root): `nfrx`, `nfrx-llm`, `nfrx-mcp`, `nfrx-docling`.
+- Do not commit the server binaries produced by `make build` (they appear at repo root): `nfrx`, `nfrx-llm`, `nfrx-mcp`, `nfrx-docling`, `nfrx-asr`.
 - If you accidentally stage generated files, unstage them before committing (e.g., `git restore --staged <file>`).
 - Prefer small, focused commits with descriptive messages. Group refactors and moves separately from behavioral changes.
 

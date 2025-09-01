@@ -30,3 +30,9 @@ Architecture: any
 Depends: ${misc:Depends}, adduser
 Description: nfrx docling worker component (daemon)
  The docling worker for nfrx.
+
+Package: nfrx-asr
+Architecture: any
+Depends: ${misc:Depends}, adduser
+Description: nfrx asr worker component (daemon)
+ The asr worker for nfrx.
