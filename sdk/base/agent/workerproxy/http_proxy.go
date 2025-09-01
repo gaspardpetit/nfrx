@@ -30,6 +30,14 @@ func handleHTTPProxy(ctx context.Context, cfg Config, sendCh chan []byte, req ct
 
 	logx.Log.Info().Str("request_id", req.RequestID).Msg("proxy start")
 	url := cfg.BaseURL + req.Path
+	if evt := logx.Log.Debug(); evt.Enabled() {
+		evt.Str("request_id", req.RequestID).
+			Str("method", req.Method).
+			Str("url", url).
+			Interface("headers", req.Headers).
+			Bytes("body", req.Body).
+			Msg("proxy request")
+	}
 	httpReq, err := http.NewRequestWithContext(reqCtx, req.Method, url, bytes.NewReader(req.Body))
 	if err != nil {
 		sendProxyError(reqCtx, req.RequestID, sendCh, err)
@@ -59,6 +67,12 @@ func handleHTTPProxy(ctx context.Context, cfg Config, sendCh chan []byte, req ct
 	hmsg := ctrl.HTTPProxyResponseHeadersMessage{Type: "http_proxy_response_headers", RequestID: req.RequestID, Status: resp.StatusCode, Headers: hdrs}
 	b, _ := json.Marshal(hmsg)
 	sendMsg(reqCtx, sendCh, b)
+	if evt := logx.Log.Debug(); evt.Enabled() {
+		evt.Str("request_id", req.RequestID).
+			Int("status", resp.StatusCode).
+			Interface("headers", hdrs).
+			Msg("proxy response headers")
+	}
 
 	buf := make([]byte, 32*1024)
 	for {
@@ -67,16 +81,30 @@ func handleHTTPProxy(ctx context.Context, cfg Config, sendCh chan []byte, req ct
 			cmsg := ctrl.HTTPProxyResponseChunkMessage{Type: "http_proxy_response_chunk", RequestID: req.RequestID, Data: append([]byte(nil), buf[:n]...)}
 			bb, _ := json.Marshal(cmsg)
 			sendMsg(reqCtx, sendCh, bb)
+			if evt := logx.Log.Debug(); evt.Enabled() {
+				evt.Str("request_id", req.RequestID).
+					Int("bytes", n).
+					Bytes("chunk", buf[:n]).
+					Msg("proxy response chunk")
+			}
 		}
 		if err != nil {
 			if err == io.EOF {
 				end := ctrl.HTTPProxyResponseEndMessage{Type: "http_proxy_response_end", RequestID: req.RequestID}
 				eb, _ := json.Marshal(end)
 				sendMsg(reqCtx, sendCh, eb)
+				if evt := logx.Log.Debug(); evt.Enabled() {
+					evt.Str("request_id", req.RequestID).Msg("proxy response end")
+				}
 			} else {
 				end := ctrl.HTTPProxyResponseEndMessage{Type: "http_proxy_response_end", RequestID: req.RequestID, Error: &ctrl.HTTPProxyError{Code: "upstream_error", Message: err.Error()}}
 				eb, _ := json.Marshal(end)
 				sendMsg(reqCtx, sendCh, eb)
+				if evt := logx.Log.Debug(); evt.Enabled() {
+					evt.Str("request_id", req.RequestID).
+						Err(err).
+						Msg("proxy response error")
+				}
 			}
 			break
 		}
