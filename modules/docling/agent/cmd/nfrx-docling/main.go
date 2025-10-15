@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/gaspardpetit/nfrx/core/logx"
@@ -25,12 +26,8 @@ func main() {
 	showVersion := flag.Bool("version", false, "print version and exit")
 	var cfg aconfig.WorkerConfig
 	cfg.BindFlags()
+	cliOverrides := captureCLIOverrides(os.Args[1:])
 	flag.Parse()
-
-	overrides := map[string]string{}
-	flag.CommandLine.Visit(func(f *flag.Flag) {
-		overrides[f.Name] = f.Value.String()
-	})
 	if *showVersion {
 		fmt.Printf("nfrx-docling version=%s sha=%s date=%s\n", version, buildSHA, buildDate)
 		return
@@ -41,13 +38,13 @@ func main() {
 				logx.Log.Fatal().Err(err).Str("path", cfg.ConfigFile).Msg("load config")
 			}
 		} else {
-			for name, value := range overrides {
-				if f := flag.CommandLine.Lookup(name); f != nil {
+			flag.CommandLine.Visit(func(f *flag.Flag) {
+				if value, ok := cliOverrides[f.Name]; ok {
 					if err := f.Value.Set(value); err != nil {
-						logx.Log.Fatal().Err(err).Str("flag", name).Msg("restore cli flag")
+						logx.Log.Fatal().Err(err).Str("flag", f.Name).Msg("restore cli flag")
 					}
 				}
-			}
+			})
 		}
 	}
 	logx.Configure(cfg.LogLevel)
@@ -89,4 +86,35 @@ func main() {
 	if err := wp.Run(ctx, gcfg); err != nil {
 		logx.Log.Fatal().Err(err).Msg("agent exited")
 	}
+}
+
+func captureCLIOverrides(args []string) map[string]string {
+	overrides := map[string]string{}
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "--" {
+			break
+		}
+		if len(arg) < 2 || arg[0] != '-' {
+			continue
+		}
+		name := strings.TrimLeft(arg, "-")
+		if name == "" {
+			continue
+		}
+		var value string
+		if eq := strings.IndexByte(name, '='); eq >= 0 {
+			value = name[eq+1:]
+			name = name[:eq]
+		} else {
+			if i+1 < len(args) && (len(args[i+1]) == 0 || args[i+1][0] != '-') {
+				value = args[i+1]
+				i++
+			} else {
+				value = "true"
+			}
+		}
+		overrides[name] = value
+	}
+	return overrides
 }
