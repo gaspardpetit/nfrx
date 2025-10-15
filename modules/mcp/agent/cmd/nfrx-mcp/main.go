@@ -25,13 +25,28 @@ func main() {
 	var cfg aconfig.MCPConfig
 	cfg.BindFlags()
 	flag.Parse()
+
+	overrides := map[string]string{}
+	flag.CommandLine.Visit(func(f *flag.Flag) {
+		overrides[f.Name] = f.Value.String()
+	})
 	if *showVersion {
 		fmt.Printf("nfrx-mcp version=%s sha=%s date=%s\n", version, buildSHA, buildDate)
 		return
 	}
 	if cfg.ConfigFile != "" {
-		if err := cfg.LoadFile(cfg.ConfigFile); err != nil && !errors.Is(err, os.ErrNotExist) {
-			logx.Log.Fatal().Err(err).Str("path", cfg.ConfigFile).Msg("load config")
+		if err := cfg.LoadFile(cfg.ConfigFile); err != nil {
+			if !errors.Is(err, os.ErrNotExist) {
+				logx.Log.Fatal().Err(err).Str("path", cfg.ConfigFile).Msg("load config")
+			}
+		} else {
+			for name, value := range overrides {
+				if f := flag.CommandLine.Lookup(name); f != nil {
+					if err := f.Value.Set(value); err != nil {
+						logx.Log.Fatal().Err(err).Str("flag", name).Msg("restore cli flag")
+					}
+				}
+			}
 		}
 	}
 	logx.Configure(cfg.LogLevel)
