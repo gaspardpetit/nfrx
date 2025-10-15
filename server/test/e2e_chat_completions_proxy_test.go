@@ -17,8 +17,8 @@ import (
 	llm "github.com/gaspardpetit/nfrx/modules/llm/ext"
 	mcp "github.com/gaspardpetit/nfrx/modules/mcp/ext"
 	"github.com/gaspardpetit/nfrx/sdk/api/spi"
-	llmctrl "github.com/gaspardpetit/nfrx/sdk/base/worker"
 	wp "github.com/gaspardpetit/nfrx/sdk/base/agent/workerproxy"
+	llmctrl "github.com/gaspardpetit/nfrx/sdk/base/worker"
 	"github.com/gaspardpetit/nfrx/server/internal/adapters"
 	"github.com/gaspardpetit/nfrx/server/internal/config"
 	"github.com/gaspardpetit/nfrx/server/internal/plugin"
@@ -38,13 +38,13 @@ func TestE2EChatCompletionsProxy(t *testing.T) {
 
 	var gotAuth atomic.Value
 	ollama := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.URL.Path == "/api/tags":
+		switch r.URL.Path {
+		case "/api/tags":
 			w.Header().Set("Content-Type", "application/json")
 			if _, err := w.Write([]byte(`{"models":[{"name":"llama3"}]}`)); err != nil {
 				t.Fatalf("write tags: %v", err)
 			}
-		case r.URL.Path == "/v1/chat/completions":
+		case "/v1/chat/completions":
 			gotAuth.Store(r.Header.Get("Authorization"))
 			w.Header().Set("Content-Type", "text/event-stream")
 			w.Header().Set("Cache-Control", "no-store")
@@ -72,8 +72,10 @@ func TestE2EChatCompletionsProxy(t *testing.T) {
 	defer cancel()
 	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/api/llm/connect"
 	go func() {
-        probe := func(pctx context.Context) (wp.ProbeResult, error) { return wp.ProbeResult{Ready: true, Models: []string{"llama3"}, MaxConcurrency: 2}, nil }
-        _ = wp.Run(ctx, wp.Config{ServerURL: wsURL, ClientKey: "secret", BaseURL: ollama.URL + "/v1", APIKey: "secret-123", ProbeFunc: probe, ProbeInterval: 50 * time.Millisecond, ClientID: "w1", ClientName: "w1", MaxConcurrency: 2})
+		probe := func(pctx context.Context) (wp.ProbeResult, error) {
+			return wp.ProbeResult{Ready: true, Models: []string{"llama3"}, MaxConcurrency: 2}, nil
+		}
+		_ = wp.Run(ctx, wp.Config{ServerURL: wsURL, ClientKey: "secret", BaseURL: ollama.URL + "/v1", APIKey: "secret-123", ProbeFunc: probe, ProbeInterval: 50 * time.Millisecond, ClientID: "w1", ClientName: "w1", MaxConcurrency: 2})
 	}()
 
 	// wait for worker registration

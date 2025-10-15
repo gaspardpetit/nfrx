@@ -1,0 +1,3 @@
+build/bin/nfrx-asr usr/bin/
+debian/nfrx-asr.service usr/lib/systemd/system/
+debian/examples/asr.env etc/nfrx/asr.env

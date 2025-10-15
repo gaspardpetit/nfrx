@@ -1,4 +1,24 @@
-nfrx (0.7.4-1ubuntu1) UNRELEASED; urgency=medium
+nfrx (0.7.5-1ubuntu1) UNRELEASED; urgency=medium
+
+  * Release: v0.7.5 —
+    https://github.com/gaspardpetit/nfrx/releases/tag/v0.7.5
+  * ## What's Changed
+  * * Feat/use generic agent for docling by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/227
+  * * Use a generic agent for the llm agent by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/232
+  * * feat: add ASR worker proxy by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/234
+  * * fix: remove websocket read limit and add debug proxy logs by
+    @gaspardpetit in https://github.com/gaspardpetit/nfrx/pull/235
+  *
+  *
+  * **Full Changelog**:
+    https://github.com/gaspardpetit/nfrx/compare/v0.7.4...v0.7.5
+
+ -- CI <ci@example.invalid>  Mon, 01 Sep 2025 06:47:20 +0000
+
+nfrx (0.7.5-1) unstable; urgency=medium
 
   * Release: v0.7.4 —
     https://github.com/gaspardpetit/nfrx/releases/tag/v0.7.4
@@ -19,8 +39,9 @@ nfrx (0.7.4-1ubuntu1) UNRELEASED; urgency=medium
   *
   * **Full Changelog**:
     https://github.com/gaspardpetit/nfrx/compare/v0.7.3...v0.7.4
+  *
 
- -- CI <ci@example.invalid>  Fri, 29 Aug 2025 14:05:46 +0000
+ -- CI <ci@example.invalid>  Mon, 01 Sep 2025 06:47:20 +0000
 
 nfrx (0.7.4-1) unstable; urgency=medium
 
