@@ -1,8 +1,8 @@
 package workerproxy
 
 import (
-    "context"
-    "time"
+	"context"
+	"time"
 )
 
 // Config holds the settings for the generic worker HTTP-proxy agent.
@@ -15,20 +15,20 @@ type Config struct {
 	BaseURL string
 	APIKey  string
 
-    // Health probe
-    // ProbeFunc is responsible for returning readiness information, including
-    // optional model metadata for schedulers. When nil, the agent assumes the
-    // backend is ready at startup and advertises the configured MaxConcurrency
-    // without probing.
-    ProbeFunc   ProbeFunc
-    ProbeInterval time.Duration // when zero, defaults to 20s
+	// Health probe
+	// ProbeFunc is responsible for returning readiness information, including
+	// optional model metadata for schedulers. When nil, the agent assumes the
+	// backend is ready at startup and advertises the configured MaxConcurrency
+	// without probing.
+	ProbeFunc     ProbeFunc
+	ProbeInterval time.Duration // when zero, defaults to 20s
 
-    // Concurrency and identity
-    MaxConcurrency int
-    ClientID       string
-    ClientName     string
-    // Optional extra config sent to the server via AgentConfig (e.g., embedding_batch_size)
-    AgentConfig map[string]string
+	// Concurrency and identity
+	MaxConcurrency int
+	ClientID       string
+	ClientName     string
+	// Optional extra config sent to the server via AgentConfig (e.g., embedding_batch_size)
+	AgentConfig map[string]string
 
 	// Local servers
 	StatusAddr    string        // status + drain control HTTP server (optional)
@@ -40,15 +40,15 @@ type Config struct {
 	RequestTimeout time.Duration
 	Reconnect      bool
 
-    // Optional: path of config file to co-locate token file
-    ConfigFile string
+	// Optional: path of config file to co-locate token file
+	ConfigFile string
 }
 
 // ProbeResult reports backend readiness and optional scheduling metadata.
 type ProbeResult struct {
-    Ready              bool
-    Models             []string
-    MaxConcurrency     int
+	Ready          bool
+	Models         []string
+	MaxConcurrency int
 }
 
 // ProbeFunc queries the upstream backend for readiness and metadata.

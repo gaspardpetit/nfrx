@@ -595,6 +595,39 @@ Each file contains `KEY=value` pairs, for example:
 
 Commented example files are installed to `/etc/nfrx/`; edit these files to configure the services.
 
+### Authentication and reverse proxy roles
+
+There are two ways to authenticate in nfrx:
+
+- API clients call HTTP endpoints with `Authorization: Bearer <API_KEY>`.
+- Private agents (LLM/ASR/MCP) connect over WebSocket with a `CLIENT_KEY`.
+
+In reverse proxy deployments, you can allow the proxy to authenticate users and convey their roles to the server via `X-User-Roles`. When enabled, nfrx authorizes requests based on roles without requiring the bearer or client key:
+
+- Set `API_HTTP_ROLES` to a comma-separated list of roles. If any role in `X-User-Roles` matches, the HTTP request is accepted as if the correct `API_KEY` was supplied.
+- Set `CLIENT_HTTP_ROLES` to a comma-separated list of roles. If any role in `X-User-Roles` matches on the WebSocket upgrade request, the worker/MCP connection is accepted as if the correct `CLIENT_KEY` was supplied.
+
+Notes:
+
+- The `X-User-Roles` header is a comma-separated list; roles and spaces are trimmed before comparison.
+- Only enable this behind a trusted reverse proxy. Ensure the proxy strips any inbound `X-User-Roles` from the internet and sets its own trusted value.
+
+Examples:
+
+```bash
+# Allow API access for callers tagged by the proxy as api-user
+API_HTTP_ROLES="api-user,admin" \
+  nfrx
+
+# Call without Authorization; proxy injects roles
+curl -H 'X-User-Roles: api-user' \
+  http://localhost:8080/api/llm/v1/models
+
+# Allow worker/MCP connects when proxy sets connector role on the WS upgrade
+CLIENT_HTTP_ROLES="connector" \
+  nfrx
+```
+
 When no explicit paths are provided, the worker falls back to OS defaults for
 its configuration and logs:
 
@@ -725,4 +758,5 @@ For manual end-to-end verification on a clean VM, see [desktop/windows/ACCEPTANC
 | Desktop Trays | In Progress | Windows and macOS tray applications to launch, configure and monitor the worker |
 | Server dashboard | ✅ | `/state` HTML page visualizes workers via SSE |
 | MCP endpoint bearer auth | ✅ | `nfrx-mcp` requires `Authorization: Bearer <AUTH_TOKEN>` when set |
+| Role-based auth via reverse proxy | ✅ | `X-User-Roles` matched against `API_HTTP_ROLES` / `CLIENT_HTTP_ROLES` |
 | Private MCP Endpoints | ✅ | Allow clients to expose an ephemeral MCP server through the `nfrx-mcp` relay |

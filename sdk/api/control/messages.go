@@ -3,28 +3,28 @@ package ctrl
 import "encoding/json"
 
 type RegisterMessage struct {
-    Type               string   `json:"type"`
-    WorkerID           string   `json:"worker_id"`
-    WorkerName         string   `json:"worker_name,omitempty"`
-    ClientKey          string   `json:"client_key"`
-    Token              string   `json:"token,omitempty"`
-    Models             []string `json:"models"`
-    MaxConcurrency     int      `json:"max_concurrency"`
-    Version            string   `json:"version,omitempty"`
-    BuildSHA           string   `json:"build_sha,omitempty"`
-    BuildDate          string   `json:"build_date,omitempty"`
-    // AgentConfig carries optional, extension-specific config values.
-    // Prefer snake_case keys; values should be JSON-encodable strings.
-    AgentConfig        map[string]string `json:"agent_config,omitempty"`
+	Type           string   `json:"type"`
+	WorkerID       string   `json:"worker_id"`
+	WorkerName     string   `json:"worker_name,omitempty"`
+	ClientKey      string   `json:"client_key"`
+	Token          string   `json:"token,omitempty"`
+	Models         []string `json:"models"`
+	MaxConcurrency int      `json:"max_concurrency"`
+	Version        string   `json:"version,omitempty"`
+	BuildSHA       string   `json:"build_sha,omitempty"`
+	BuildDate      string   `json:"build_date,omitempty"`
+	// AgentConfig carries optional, extension-specific config values.
+	// Prefer snake_case keys; values should be JSON-encodable strings.
+	AgentConfig map[string]string `json:"agent_config,omitempty"`
 }
 
 type StatusUpdateMessage struct {
-    Type               string   `json:"type"`
-    MaxConcurrency     int      `json:"max_concurrency"`
-    Models             []string `json:"models,omitempty"`
-    Status             string   `json:"status,omitempty"`
-    // AgentConfig carries optional, extension-specific config updates.
-    AgentConfig        map[string]string `json:"agent_config,omitempty"`
+	Type           string   `json:"type"`
+	MaxConcurrency int      `json:"max_concurrency"`
+	Models         []string `json:"models,omitempty"`
+	Status         string   `json:"status,omitempty"`
+	// AgentConfig carries optional, extension-specific config updates.
+	AgentConfig map[string]string `json:"agent_config,omitempty"`
 }
 
 type HeartbeatMessage struct {

@@ -57,7 +57,7 @@ func New(
 func (p *Plugin) RegisterRoutes(r spi.Router) {
 	// Register base descriptor endpoint at "/api/mcp/" and then specific endpoints
 	p.Base.RegisterRoutes(r)
-	r.Handle("/connect", p.reg.WSHandler(p.clientKey, adapters.MCPRegisterDecoder, adapters.MCPReadLoop))
+	r.Handle("/connect", p.reg.WSHandler(p.clientKey, adapters.MCPRegisterDecoder, adapters.MCPReadLoop, p.srvOpts.ClientHTTPRoles...))
 	getID := func(req *http.Request) string { return chi.URLParam(req, "id") }
 	r.Handle("/id/{id}", p.reg.HTTPHandler("mcp", getID, adapters.MCPAdapter{}, p.srvOpts.RequestTimeout, opt.Int64(p.srvOpts.PluginOptions, p.ID(), "max_req_bytes", 10*1024*1024), opt.Int64(p.srvOpts.PluginOptions, p.ID(), "max_resp_bytes", 10*1024*1024)))
 }

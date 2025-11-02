@@ -65,7 +65,10 @@ type RegisterAdapter func(first []byte) (id, name, clientKey string, err error)
 // ReadLoop should invoke onClose exactly once before returning.
 type ReadLoop func(ctx context.Context, rl *Relay, onClose func())
 
-func (r *Registry) WSHandler(expectKey string, decode RegisterAdapter, reader ReadLoop) http.HandlerFunc {
+// WSHandler accepts tunnel connections. Authorization is granted when either the
+// provided register key matches expectKey or when X-User-Roles contains any role
+// listed in allowedRoles.
+func (r *Registry) WSHandler(expectKey string, decode RegisterAdapter, reader ReadLoop, allowedRoles ...string) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		if r.draining != nil && r.draining() {
 			http.Error(w, "draining", http.StatusServiceUnavailable)
@@ -89,13 +92,16 @@ func (r *Registry) WSHandler(expectKey string, decode RegisterAdapter, reader Re
 			_ = c.Close(websocket.StatusPolicyViolation, "invalid register")
 			return
 		}
-		if expectKey == "" && key != "" {
-			_ = c.Close(websocket.StatusPolicyViolation, "unauthorized")
-			return
-		}
-		if expectKey != "" && key != expectKey {
-			_ = c.Close(websocket.StatusPolicyViolation, "unauthorized")
-			return
+		authorizedByRole := hasAnyAllowedRole(req.Header.Get("X-User-Roles"), allowedRoles)
+		if !authorizedByRole {
+			if expectKey == "" && key != "" {
+				_ = c.Close(websocket.StatusPolicyViolation, "unauthorized")
+				return
+			}
+			if expectKey != "" && key != expectKey {
+				_ = c.Close(websocket.StatusPolicyViolation, "unauthorized")
+				return
+			}
 		}
 
 		// Assign a server-side ID when none is provided and reject duplicates
@@ -116,6 +122,25 @@ func (r *Registry) WSHandler(expectKey string, decode RegisterAdapter, reader Re
 			go reader(ctx, rl, func() { r.mu.Lock(); delete(r.relays, id); r.mu.Unlock() })
 		}
 	}
+}
+
+func hasAnyAllowedRole(header string, allowed []string) bool {
+	if header == "" || len(allowed) == 0 {
+		return false
+	}
+	m := map[string]struct{}{}
+	for _, r := range allowed {
+		rr := strings.TrimSpace(r)
+		if rr != "" {
+			m[rr] = struct{}{}
+		}
+	}
+	for _, it := range strings.Split(header, ",") {
+		if _, ok := m[strings.TrimSpace(it)]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 func (r *Registry) heartbeatLoop(ctx context.Context, id string, rl *Relay) {

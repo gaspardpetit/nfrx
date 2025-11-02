@@ -32,7 +32,7 @@ func (p *Plugin) RegisterRoutes(r spi.Router) {
 	// Register base descriptor endpoint at "/api/llm/" and then mount specific endpoints
 	p.Base.RegisterRoutes(r)
 	// Mount LLM worker connect endpoint owned by the extension
-	r.Handle("/connect", baseworker.WSHandler(p.reg, p.mxreg, p.srvOpts.ClientKey, p.srvState))
+	r.Handle("/connect", baseworker.WSHandler(p.reg, p.mxreg, p.srvOpts.ClientKey, p.srvState, p.srvOpts.ClientHTTPRoles...))
 	r.Group(func(g spi.Router) {
 		// During server drain, reject new public API requests for this extension.
 		if p.srvState != nil {

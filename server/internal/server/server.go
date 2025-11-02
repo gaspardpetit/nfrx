@@ -52,8 +52,8 @@ func New(cfg config.ServerConfig, stateReg *serverstate.Registry, plugins []plug
 			cr.Get("/*", api.SwaggerHandler())
 		})
 		ar.Group(func(g chi.Router) {
-			if cfg.APIKey != "" {
-				g.Use(api.APIKeyMiddleware(cfg.APIKey))
+			if cfg.APIKey != "" || len(cfg.APIHTTPRoles) > 0 {
+				g.Use(api.APIAuthMiddleware(cfg.APIKey, cfg.APIHTTPRoles))
 			}
 			g.Get("/state", wrapper.GetApiState)
 			g.Get("/state/stream", wrapper.GetApiStateStream)

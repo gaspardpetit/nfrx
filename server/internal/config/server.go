@@ -15,18 +15,22 @@ import (
 
 // ServerConfig holds configuration for the nfrx server.
 type ServerConfig struct {
-	Port           int
-	MetricsAddr    string
-	APIKey         string
-	ClientKey      string
-	RequestTimeout time.Duration
-	DrainTimeout   time.Duration
-	AllowedOrigins []string
-	ConfigFile     string
-	LogLevel       string
-	RedisAddr      string
-	Plugins        []string                     `yaml:"plugins"`
-	PluginOptions  map[string]map[string]string `yaml:"plugin_options"`
+	Port        int
+	MetricsAddr string
+	APIKey      string
+	ClientKey   string
+	// APIHTTPRoles are roles that, when present in X-User-Roles, grant API access
+	APIHTTPRoles []string `yaml:"api_http_roles"`
+	// ClientHTTPRoles are roles that, when present in X-User-Roles, grant client connect access
+	ClientHTTPRoles []string `yaml:"client_http_roles"`
+	RequestTimeout  time.Duration
+	DrainTimeout    time.Duration
+	AllowedOrigins  []string
+	ConfigFile      string
+	LogLevel        string
+	RedisAddr       string
+	Plugins         []string                     `yaml:"plugins"`
+	PluginOptions   map[string]map[string]string `yaml:"plugin_options"`
 }
 
 // SetDefaults initializes c with built-in defaults.
@@ -82,6 +86,12 @@ func (c *ServerConfig) ApplyEnv() {
 	if v := commoncfg.GetEnv("CLIENT_KEY", ""); v != "" {
 		c.ClientKey = v
 	}
+	if v := commoncfg.GetEnv("API_HTTP_ROLES", ""); v != "" {
+		c.APIHTTPRoles = splitComma(v)
+	}
+	if v := commoncfg.GetEnv("CLIENT_HTTP_ROLES", ""); v != "" {
+		c.ClientHTTPRoles = splitComma(v)
+	}
 	if v := commoncfg.GetEnv("REDIS_ADDR", ""); v != "" {
 		c.RedisAddr = v
 	}
@@ -111,6 +121,14 @@ func (c *ServerConfig) BindFlagsFromCurrent() {
 	flag.StringVar(&c.MetricsAddr, "metrics-port", c.MetricsAddr, "Prometheus metrics listen address or port; defaults to the value of --port")
 	flag.StringVar(&c.APIKey, "api-key", c.APIKey, "client API key required for HTTP requests; leave empty to disable auth")
 	flag.StringVar(&c.ClientKey, "client-key", c.ClientKey, "shared key clients must present when registering")
+	flag.Func("api-http-roles", "comma separated list of roles that grant API access via X-User-Roles", func(v string) error {
+		c.APIHTTPRoles = splitComma(v)
+		return nil
+	})
+	flag.Func("client-http-roles", "comma separated list of roles that grant client connect via X-User-Roles", func(v string) error {
+		c.ClientHTTPRoles = splitComma(v)
+		return nil
+	})
 	flag.StringVar(&c.RedisAddr, "redis-addr", c.RedisAddr, "redis connection URL for server state")
 	flag.Func("plugins", "comma separated list of enabled plugins", func(v string) error {
 		c.Plugins = splitComma(v)
@@ -150,6 +168,12 @@ func (c *ServerConfig) BindFlags() {
 	}
 	c.APIKey = commoncfg.GetEnv("API_KEY", "")
 	c.ClientKey = commoncfg.GetEnv("CLIENT_KEY", "")
+	if v := commoncfg.GetEnv("API_HTTP_ROLES", ""); v != "" {
+		c.APIHTTPRoles = splitComma(v)
+	}
+	if v := commoncfg.GetEnv("CLIENT_HTTP_ROLES", ""); v != "" {
+		c.ClientHTTPRoles = splitComma(v)
+	}
 	c.RedisAddr = commoncfg.GetEnv("REDIS_ADDR", "")
 	if v, err := strconv.ParseFloat(commoncfg.GetEnv("REQUEST_TIMEOUT", "120"), 64); err == nil {
 		c.RequestTimeout = time.Duration(v * float64(time.Second))
@@ -175,6 +199,14 @@ func (c *ServerConfig) BindFlags() {
 	flag.StringVar(&c.MetricsAddr, "metrics-port", c.MetricsAddr, "Prometheus metrics listen address or port; defaults to the value of --port")
 	flag.StringVar(&c.APIKey, "api-key", c.APIKey, "client API key required for HTTP requests; leave empty to disable auth")
 	flag.StringVar(&c.ClientKey, "client-key", c.ClientKey, "shared key clients must present when registering")
+	flag.Func("api-http-roles", "comma separated list of roles that grant API access via X-User-Roles", func(v string) error {
+		c.APIHTTPRoles = splitComma(v)
+		return nil
+	})
+	flag.Func("client-http-roles", "comma separated list of roles that grant client connect via X-User-Roles", func(v string) error {
+		c.ClientHTTPRoles = splitComma(v)
+		return nil
+	})
 	flag.StringVar(&c.RedisAddr, "redis-addr", c.RedisAddr, "redis connection URL for server state")
 	flag.Func("plugins", "comma separated list of enabled plugins", func(v string) error {
 		c.Plugins = splitComma(v)

@@ -25,7 +25,7 @@ type Plugin struct {
 
 func (p *Plugin) RegisterRoutes(r spi.Router) {
 	p.Base.RegisterRoutes(r)
-	r.Handle("/connect", baseworker.WSHandler(p.reg, p.mxreg, p.srvOpts.ClientKey, p.srvState))
+	r.Handle("/connect", baseworker.WSHandler(p.reg, p.mxreg, p.srvOpts.ClientKey, p.srvState, p.srvOpts.ClientHTTPRoles...))
 	r.Group(func(g spi.Router) {
 		if p.srvState != nil {
 			g.Use(func(next http.Handler) http.Handler {
