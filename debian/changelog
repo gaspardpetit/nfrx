@@ -1,4 +1,20 @@
-nfrx (0.7.5-1ubuntu1) UNRELEASED; urgency=medium
+nfrx (0.7.6-1ubuntu1) UNRELEASED; urgency=medium
+
+  * Release: v0.7.6 —
+    https://github.com/gaspardpetit/nfrx/releases/tag/v0.7.6
+  * ## What's Changed
+  * * Fix/reconnect by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/236
+  * * Add support for reverse proxy authorization using `X-User-Roles`
+    by @gaspardpetit in https://github.com/gaspardpetit/nfrx/pull/237
+  *
+  *
+  * **Full Changelog**:
+    https://github.com/gaspardpetit/nfrx/compare/v0.7.5...v0.7.6
+
+ -- CI <ci@example.invalid>  Sun, 02 Nov 2025 22:53:23 +0000
+
+nfrx (0.7.6-1) unstable; urgency=medium
 
   * Release: v0.7.5 —
     https://github.com/gaspardpetit/nfrx/releases/tag/v0.7.5
@@ -15,8 +31,9 @@ nfrx (0.7.5-1ubuntu1) UNRELEASED; urgency=medium
   *
   * **Full Changelog**:
     https://github.com/gaspardpetit/nfrx/compare/v0.7.4...v0.7.5
+  *
 
- -- CI <ci@example.invalid>  Mon, 01 Sep 2025 06:47:20 +0000
+ -- CI <ci@example.invalid>  Sun, 02 Nov 2025 22:53:23 +0000
 
 nfrx (0.7.5-1) unstable; urgency=medium
 
