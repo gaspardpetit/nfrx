@@ -9,17 +9,17 @@ import (
 )
 
 type State struct {
-    State              string    `json:"state"`
-    ConnectedToServer  bool      `json:"connected_to_server"`
-    ConnectedToBackend bool      `json:"connected_to_backend"`
-    CurrentJobs        int       `json:"current_jobs"`
-    MaxConcurrency     int       `json:"max_concurrency"`
-    LastError          string    `json:"last_error"`
-    LastHeartbeat      time.Time `json:"last_heartbeat"`
-    WorkerID           string    `json:"worker_id"`
-    WorkerName         string    `json:"worker_name"`
-    Version            string    `json:"version"`
-    Labels             []string  `json:"labels,omitempty"`
+	State              string    `json:"state"`
+	ConnectedToServer  bool      `json:"connected_to_server"`
+	ConnectedToBackend bool      `json:"connected_to_backend"`
+	CurrentJobs        int       `json:"current_jobs"`
+	MaxConcurrency     int       `json:"max_concurrency"`
+	LastError          string    `json:"last_error"`
+	LastHeartbeat      time.Time `json:"last_heartbeat"`
+	WorkerID           string    `json:"worker_id"`
+	WorkerName         string    `json:"worker_name"`
+	Version            string    `json:"version"`
+	Labels             []string  `json:"labels,omitempty"`
 }
 
 type VersionInfo struct{ Version, BuildSHA, BuildDate string }
@@ -41,15 +41,19 @@ func SetBuildInfo(v, sha, date string) {
 }
 func GetVersionInfo() VersionInfo { return buildInfo }
 func SetWorkerInfo(id, name string, maxConc int) {
-    stateMu.Lock()
-    stateData.WorkerID = id
-    stateData.WorkerName = name
-    stateData.MaxConcurrency = maxConc
-    cur := stateData.CurrentJobs
-    stateMu.Unlock()
-    setCurrentJobs(cur)
+	stateMu.Lock()
+	stateData.WorkerID = id
+	stateData.WorkerName = name
+	stateData.MaxConcurrency = maxConc
+	cur := stateData.CurrentJobs
+	stateMu.Unlock()
+	setCurrentJobs(cur)
 }
-func SetLabels(labels []string)   { stateMu.Lock(); stateData.Labels = append([]string(nil), labels...); stateMu.Unlock() }
+func SetLabels(labels []string) {
+	stateMu.Lock()
+	stateData.Labels = append([]string(nil), labels...)
+	stateMu.Unlock()
+}
 func SetState(s string)           { stateMu.Lock(); stateData.State = s; stateMu.Unlock() }
 func SetConnectedToServer(v bool) { stateMu.Lock(); stateData.ConnectedToServer = v; stateMu.Unlock() }
 func SetConnectedToBackend(v bool) {

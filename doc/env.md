@@ -23,6 +23,8 @@ The server optionally reads settings from a YAML config file. Defaults:
 | `METRICS_PORT` | `metrics_addr` | Prometheus metrics listen address or port | same as `PORT` | `--metrics-port` |
 | `API_KEY` | — | client API key required for HTTP requests | unset (auth disabled) | `--api-key` |
 | `CLIENT_KEY` | — | shared key clients must present when registering | unset | `--client-key` |
+| `API_HTTP_ROLES` | `api_http_roles` | comma separated roles that grant API access via `X-User-Roles` | unset | `--api-http-roles` |
+| `CLIENT_HTTP_ROLES` | `client_http_roles` | comma separated roles that grant client connect via `X-User-Roles` | unset | `--client-http-roles` |
 | `REQUEST_TIMEOUT` | — | seconds without worker or MCP activity before timing out a request | `120` | `--request-timeout` |
 | `DRAIN_TIMEOUT` | — | time to wait for in-flight requests on shutdown | `5m` | `--drain-timeout` |
 | `ALLOWED_ORIGINS` | — | comma separated list of allowed CORS origins | unset (deny all) | `--allowed-origins` |

@@ -15,7 +15,9 @@ import (
 )
 
 // WSHandler handles incoming client websocket connections for worker-style agents.
-func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state spi.ServerState) http.HandlerFunc {
+// Authorization is granted when either the provided clientKey matches the registering key
+// or when the HTTP request contains X-User-Roles with any role listed in allowedRoles.
+func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state spi.ServerState, allowedRoles ...string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Reject new worker connections when server is draining
 		if state != nil && state.IsDraining() {
@@ -50,14 +52,18 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
 			logx.Log.Error().Err(err).Str("remote", r.RemoteAddr).Msg("ws decode register")
 			return
 		}
+		// Determine if request is authorized via X-User-Roles header
+		authorizedByRole := hasAnyAllowedRole(r.Header.Get("X-User-Roles"), allowedRoles)
 		key := rm.ClientKey
-		if clientKey == "" && key != "" {
-			_ = c.Close(websocket.StatusPolicyViolation, "unauthorized")
-			return
-		}
-		if clientKey != "" && key != clientKey {
-			_ = c.Close(websocket.StatusPolicyViolation, "unauthorized")
-			return
+		if !authorizedByRole {
+			if clientKey == "" && key != "" {
+				_ = c.Close(websocket.StatusPolicyViolation, "unauthorized")
+				return
+			}
+			if clientKey != "" && key != clientKey {
+				_ = c.Close(websocket.StatusPolicyViolation, "unauthorized")
+				return
+			}
 		}
 
 		name := rm.WorkerName
@@ -246,4 +252,23 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
 			}
 		}
 	}
+}
+
+func hasAnyAllowedRole(header string, allowed []string) bool {
+	if header == "" || len(allowed) == 0 {
+		return false
+	}
+	m := map[string]struct{}{}
+	for _, r := range allowed {
+		rr := strings.TrimSpace(r)
+		if rr != "" {
+			m[rr] = struct{}{}
+		}
+	}
+	for _, it := range strings.Split(header, ",") {
+		if _, ok := m[strings.TrimSpace(it)]; ok {
+			return true
+		}
+	}
+	return false
 }

@@ -9,6 +9,8 @@ type Options struct {
 	RequestTimeout time.Duration
 	// Shared key clients must present when registering.
 	ClientKey string
+	// Roles that grant client connect access when present in X-User-Roles.
+	ClientHTTPRoles []string
 	// AgentHeartbeatInterval controls how often connected agents are expected to send heartbeats.
 	// If zero, defaults are used by the server.
 	AgentHeartbeatInterval time.Duration

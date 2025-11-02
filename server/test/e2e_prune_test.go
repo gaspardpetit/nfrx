@@ -39,7 +39,7 @@ func TestDisconnectRemovesModels(t *testing.T) {
 		t.Fatalf("dial: %v", err)
 	}
 	defer func() { _ = conn.Close(websocket.StatusNormalClosure, "") }()
-    regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w1", ClientKey: "secret", Models: []string{"m"}, MaxConcurrency: 1}
+	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w1", ClientKey: "secret", Models: []string{"m"}, MaxConcurrency: 1}
 	b, _ := json.Marshal(regMsg)
 	if err := conn.Write(ctx, websocket.MessageText, b); err != nil {
 		t.Fatalf("write: %v", err)
@@ -107,7 +107,7 @@ func TestPruneLastWorkerTogglesNotReady(t *testing.T) {
 		t.Fatalf("dial: %v", err)
 	}
 	defer func() { _ = conn.Close(websocket.StatusNormalClosure, "") }()
-    regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w2", ClientKey: "secret", Models: []string{"m"}, MaxConcurrency: 1}
+	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w2", ClientKey: "secret", Models: []string{"m"}, MaxConcurrency: 1}
 	b, _ := json.Marshal(regMsg)
 	if err := conn.Write(ctx, websocket.MessageText, b); err != nil {
 		t.Fatalf("write: %v", err)

@@ -178,15 +178,16 @@ func main() {
 
 	// Build common server options for all extensions
 	commonOpts := spicontracts.Options{
-		RequestTimeout: cfg.RequestTimeout,
-		ClientKey:      cfg.ClientKey,
-		PluginOptions:  cfg.PluginOptions,
+		RequestTimeout:  cfg.RequestTimeout,
+		ClientKey:       cfg.ClientKey,
+		ClientHTTPRoles: cfg.ClientHTTPRoles,
+		PluginOptions:   cfg.PluginOptions,
 	}
 
 	// Server-side API auth (for server endpoints); plugins wire their own
 	authMW := (func(http.Handler) http.Handler)(nil)
-	if cfg.APIKey != "" {
-		authMW = baseauth.BearerSecretMiddleware(cfg.APIKey)
+	if cfg.APIKey != "" || len(cfg.APIHTTPRoles) > 0 {
+		authMW = baseauth.BearerOrRolesMiddleware(cfg.APIKey, cfg.APIHTTPRoles)
 	}
 
 	ids := cfg.Plugins

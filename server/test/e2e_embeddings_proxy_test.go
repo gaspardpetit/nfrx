@@ -58,8 +58,10 @@ func TestE2EEmbeddingsProxy(t *testing.T) {
 	defer cancel()
 	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/api/llm/connect"
 	go func() {
-        probe := func(pctx context.Context) (wp.ProbeResult, error) { return wp.ProbeResult{Ready: true, Models: []string{"llama3"}, MaxConcurrency: 2}, nil }
-        _ = wp.Run(ctx, wp.Config{ServerURL: wsURL, ClientKey: "secret", BaseURL: ollama.URL + "/v1", APIKey: "secret-123", ProbeFunc: probe, ProbeInterval: 50 * time.Millisecond, ClientID: "w1", ClientName: "w1", MaxConcurrency: 2})
+		probe := func(pctx context.Context) (wp.ProbeResult, error) {
+			return wp.ProbeResult{Ready: true, Models: []string{"llama3"}, MaxConcurrency: 2}, nil
+		}
+		_ = wp.Run(ctx, wp.Config{ServerURL: wsURL, ClientKey: "secret", BaseURL: ollama.URL + "/v1", APIKey: "secret-123", ProbeFunc: probe, ProbeInterval: 50 * time.Millisecond, ClientID: "w1", ClientName: "w1", MaxConcurrency: 2})
 	}()
 
 	for i := 0; i < 20; i++ {
