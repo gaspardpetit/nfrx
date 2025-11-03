@@ -33,15 +33,25 @@ func Run(ctx context.Context, cfg aconfig.MCPConfig) error {
 	return agent.RunWithReconnect(ctx, cfg.Reconnect, func(runCtx context.Context) error {
     // Send client key as Authorization bearer header when present (for proxy auth)
     var dialOpts *websocket.DialOptions
+    hasAuth := false
     if cfg.ClientKey != "" {
         hdr := make(http.Header)
         hdr.Set("Authorization", "Bearer "+cfg.ClientKey)
         dialOpts = &websocket.DialOptions{HTTPHeader: hdr}
+        hasAuth = true
     }
-    conn, _, err := websocket.Dial(runCtx, cfg.ServerURL, dialOpts)
-		if err != nil {
-			return err
-		}
+    logx.Log.Info().Str("server", cfg.ServerURL).Bool("auth_header", hasAuth).Msg("dialing server")
+    dctx, cancelDial := context.WithTimeout(runCtx, 15*time.Second)
+    defer cancelDial()
+    conn, resp, err := websocket.Dial(dctx, cfg.ServerURL, dialOpts)
+    if err != nil {
+        if resp != nil {
+            logx.Log.Warn().Err(err).Str("server", cfg.ServerURL).Int("status", resp.StatusCode).Interface("headers", resp.Header).Msg("websocket dial failed")
+        } else {
+            logx.Log.Warn().Err(err).Str("server", cfg.ServerURL).Msg("websocket dial failed")
+        }
+        return err
+    }
 
     reg := map[string]string{"id": cfg.ClientID, "client_name": cfg.ClientName}
 		b, _ := json.Marshal(reg)
