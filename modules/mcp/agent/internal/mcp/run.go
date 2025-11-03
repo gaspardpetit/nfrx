@@ -31,15 +31,19 @@ func Run(ctx context.Context, cfg aconfig.MCPConfig) error {
 	}
 
 	return agent.RunWithReconnect(ctx, cfg.Reconnect, func(runCtx context.Context) error {
-		conn, _, err := websocket.Dial(runCtx, cfg.ServerURL, nil)
+    // Send client key as Authorization bearer header when present (for proxy auth)
+    var dialOpts *websocket.DialOptions
+    if cfg.ClientKey != "" {
+        hdr := make(http.Header)
+        hdr.Set("Authorization", "Bearer "+cfg.ClientKey)
+        dialOpts = &websocket.DialOptions{HTTPHeader: hdr}
+    }
+    conn, _, err := websocket.Dial(runCtx, cfg.ServerURL, dialOpts)
 		if err != nil {
 			return err
 		}
 
-		reg := map[string]string{"id": cfg.ClientID, "client_name": cfg.ClientName}
-		if cfg.ClientKey != "" {
-			reg["client_key"] = cfg.ClientKey
-		}
+    reg := map[string]string{"id": cfg.ClientID, "client_name": cfg.ClientName}
 		b, _ := json.Marshal(reg)
 		if err := conn.Write(runCtx, websocket.MessageText, b); err != nil {
 			_ = conn.Close(websocket.StatusInternalError, "closing")

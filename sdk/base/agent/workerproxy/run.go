@@ -218,7 +218,14 @@ func errIfNil(err error, resp *http.Response) error {
 
 func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg Config, statusUpdates <-chan ctrl.StatusUpdateMessage) (bool, error) {
 	connCtx, cancelConn := context.WithCancel(ctx)
-	ws, _, err := websocket.Dial(connCtx, cfg.ServerURL, nil)
+    // When a client key is configured, send it as an Authorization bearer header for proxies expecting header-based auth
+    var dialOpts *websocket.DialOptions
+    if cfg.ClientKey != "" {
+        hdr := make(http.Header)
+        hdr.Set("Authorization", "Bearer "+cfg.ClientKey)
+        dialOpts = &websocket.DialOptions{HTTPHeader: hdr}
+    }
+    ws, _, err := websocket.Dial(connCtx, cfg.ServerURL, dialOpts)
 	if err != nil {
 		cancelConn()
 		SetLastError(err.Error())
@@ -238,7 +245,7 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg Conf
 	for k, v := range cfg.AgentConfig {
 		agentCfg[k] = v
 	}
-	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: cfg.ClientID, WorkerName: cfg.ClientName, ClientKey: cfg.ClientKey, Models: GetState().Labels, MaxConcurrency: GetState().MaxConcurrency, AgentConfig: agentCfg}
+    regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: cfg.ClientID, WorkerName: cfg.ClientName, Models: GetState().Labels, MaxConcurrency: GetState().MaxConcurrency, AgentConfig: agentCfg}
 	b, _ := json.Marshal(regMsg)
 	if err := ws.Write(connCtx, websocket.MessageText, b); err != nil {
 		cancelConn()
