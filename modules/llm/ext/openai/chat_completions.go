@@ -131,18 +131,46 @@ func ChatCompletionsHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics
             return true, wk, ch
         }
 
+        // Helper to determine if any worker could theoretically serve this model (ignoring capacity),
+        // considering alias fallback semantics.
+        modelSupported := func(model string) bool {
+            // exact first
+            if _, ok := reg.AggregatedModel(model); ok {
+                return true
+            }
+            if ak, ok := ctrl.AliasKey(model); ok {
+                for _, m := range reg.AggregatedModels() {
+                    if mk, ok2 := ctrl.AliasKey(m.ID); ok2 && mk == ak {
+                        return true
+                    }
+                }
+            }
+            return false
+        }
+
         // First attempt to dispatch immediately.
         dispatched, worker, ch := tryDispatch()
         if !dispatched {
             // Queue path
             if queue == nil || opts.QueueSize == 0 {
                 // No queueing configured: behave as busy
-                w.Header().Set("Content-Type", "application/json")
-                w.WriteHeader(http.StatusServiceUnavailable)
-                _, _ = w.Write([]byte(`{"error":"worker_busy"}`))
+                // Distinguish between unsupported model and temporary saturation
+                if !modelSupported(meta.Model) {
+                    http.Error(w, "no worker", http.StatusNotFound)
+                } else {
+                    w.Header().Set("Content-Type", "application/json")
+                    w.WriteHeader(http.StatusServiceUnavailable)
+                    _, _ = w.Write([]byte(`{"error":"worker_busy"}`))
+                }
+                return
+            }
+            // Before entering the queue, reject unsupported models
+            if !modelSupported(meta.Model) {
+                http.Error(w, "no worker", http.StatusNotFound)
                 return
             }
             if pos, ok := queue.Enter(reqID); !ok {
+                // Queue full -> 503 busy
                 w.Header().Set("Content-Type", "application/json")
                 w.WriteHeader(http.StatusServiceUnavailable)
                 _, _ = w.Write([]byte(`{"error":"worker_busy"}`))
@@ -168,6 +196,12 @@ func ChatCompletionsHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics
                     queue.Leave(reqID)
                     return
                 case <-retryTicker.C:
+                    // If model is no longer supported (e.g., workers disconnected/updated), cancel with 404
+                    if !modelSupported(meta.Model) {
+                        queue.Leave(reqID)
+                        http.Error(w, "no worker", http.StatusNotFound)
+                        return
+                    }
                     if queue.IsHead(reqID) {
                         if d, wk, c := tryDispatch(); d {
                             // leave queue and continue with proxy loop
