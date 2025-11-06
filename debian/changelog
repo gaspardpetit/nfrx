@@ -1,4 +1,20 @@
-nfrx (0.7.6-1ubuntu1) UNRELEASED; urgency=medium
+nfrx (0.7.7-1ubuntu1) UNRELEASED; urgency=medium
+
+  * Release: v0.7.7 —
+    https://github.com/gaspardpetit/nfrx/releases/tag/v0.7.7
+  * ## What's Changed
+  * * nfrx clients provide client key through http headers by
+    @gaspardpetit in https://github.com/gaspardpetit/nfrx/pull/238
+  * * Added queuing of requests for chat completion endpoint by
+    @gaspardpetit in https://github.com/gaspardpetit/nfrx/pull/239
+  *
+  *
+  * **Full Changelog**:
+    https://github.com/gaspardpetit/nfrx/compare/v0.7.6...v0.7.7
+
+ -- CI <ci@example.invalid>  Thu, 06 Nov 2025 22:03:21 +0000
+
+nfrx (0.7.7-1) unstable; urgency=medium
 
   * Release: v0.7.6 —
     https://github.com/gaspardpetit/nfrx/releases/tag/v0.7.6
@@ -11,8 +27,9 @@ nfrx (0.7.6-1ubuntu1) UNRELEASED; urgency=medium
   *
   * **Full Changelog**:
     https://github.com/gaspardpetit/nfrx/compare/v0.7.5...v0.7.6
+  *
 
- -- CI <ci@example.invalid>  Sun, 02 Nov 2025 22:53:23 +0000
+ -- CI <ci@example.invalid>  Thu, 06 Nov 2025 22:03:21 +0000
 
 nfrx (0.7.6-1) unstable; urgency=medium
 
