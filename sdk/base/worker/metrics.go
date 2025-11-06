@@ -39,16 +39,17 @@ type WorkerSnapshot struct {
 }
 
 type ServerSnapshot struct {
-	Now                time.Time `json:"now"`
-	Version            string    `json:"version"`
-	BuildSHA           string    `json:"build_sha,omitempty"`
-	BuildDate          string    `json:"build_date,omitempty"`
-	State              string    `json:"state"`
-	UptimeSeconds      uint64    `json:"uptime_s"`
-	JobsInflight       int       `json:"jobs_inflight_total"`
-	JobsCompletedTotal uint64    `json:"jobs_completed_total"`
-	JobsFailedTotal    uint64    `json:"jobs_failed_total"`
-	SchedulerQueueLen  int       `json:"scheduler_queue_len"`
+    Now                time.Time `json:"now"`
+    Version            string    `json:"version"`
+    BuildSHA           string    `json:"build_sha,omitempty"`
+    BuildDate          string    `json:"build_date,omitempty"`
+    State              string    `json:"state"`
+    UptimeSeconds      uint64    `json:"uptime_s"`
+    JobsInflight       int       `json:"jobs_inflight_total"`
+    JobsCompletedTotal uint64    `json:"jobs_completed_total"`
+    JobsFailedTotal    uint64    `json:"jobs_failed_total"`
+    SchedulerQueueLen  int       `json:"scheduler_queue_len"`
+    SchedulerQueueCapacity int   `json:"scheduler_queue_capacity"`
 }
 
 type WorkersSummary struct {
@@ -76,7 +77,8 @@ type MetricsRegistry struct {
 	serverVer, serverSHA, serverDate    string
 	jobsInflight                        int
 	jobsCompletedTotal, jobsFailedTotal uint64
-	schedulerQueueLen                   int
+    schedulerQueueLen                   int
+    schedulerQueueCapacity              int
 	workers                             map[string]*workerMetrics
 	// state string is provided by the extension if desired
 	stateFunc func() string
@@ -179,9 +181,16 @@ func (m *MetricsRegistry) SetWorkerQueueLen(id string, n int) {
 	m.mu.Unlock()
 }
 func (m *MetricsRegistry) SetSchedulerQueueLen(n int) {
-	m.mu.Lock()
-	m.schedulerQueueLen = n
-	m.mu.Unlock()
+    m.mu.Lock()
+    m.schedulerQueueLen = n
+    m.mu.Unlock()
+}
+
+// SetSchedulerQueueCapacity updates the configured capacity for the global scheduler queue.
+func (m *MetricsRegistry) SetSchedulerQueueCapacity(n int) {
+    m.mu.Lock()
+    m.schedulerQueueCapacity = n
+    m.mu.Unlock()
 }
 
 // AddWorkerTokens increments worker token counters by kind ("in" or "out").
@@ -195,7 +204,7 @@ func (m *MetricsRegistry) Snapshot() StateResponse {
 	if m.stateFunc != nil {
 		state = m.stateFunc()
 	}
-	resp.Server = ServerSnapshot{State: state, Now: time.Now(), Version: m.serverVer, BuildSHA: m.serverSHA, BuildDate: m.serverDate, UptimeSeconds: uint64(time.Since(m.serverStart).Seconds()), JobsInflight: m.jobsInflight, JobsCompletedTotal: m.jobsCompletedTotal, JobsFailedTotal: m.jobsFailedTotal, SchedulerQueueLen: m.schedulerQueueLen}
+    resp.Server = ServerSnapshot{State: state, Now: time.Now(), Version: m.serverVer, BuildSHA: m.serverSHA, BuildDate: m.serverDate, UptimeSeconds: uint64(time.Since(m.serverStart).Seconds()), JobsInflight: m.jobsInflight, JobsCompletedTotal: m.jobsCompletedTotal, JobsFailedTotal: m.jobsFailedTotal, SchedulerQueueLen: m.schedulerQueueLen, SchedulerQueueCapacity: m.schedulerQueueCapacity}
 	workers := make([]*workerMetrics, 0, len(m.workers))
 	for _, w := range m.workers {
 		workers = append(workers, w)
