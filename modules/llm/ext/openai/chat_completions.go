@@ -296,6 +296,9 @@ func ChatCompletionsHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics
                 }
                 switch m := msg.(type) {
                 case ctrl.HTTPProxyResponseHeadersMessage:
+                    // If synthetic headers were already sent (e.g., queued SSE), don't rewrite status.
+                    // Capture prior state before marking sent.
+                    priorHeadersSent := headersSent
                     headersSent = true
                     for k, v := range m.Headers {
                         if strings.EqualFold(k, "Transfer-Encoding") || strings.EqualFold(k, "Connection") {
@@ -306,7 +309,8 @@ func ChatCompletionsHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics
                     if strings.EqualFold(w.Header().Get("Content-Type"), "text/event-stream") {
                         w.Header().Set("Cache-Control", "no-store")
                     }
-                    if !meta.Stream { // if we already sent synthetic headers for stream, avoid duplicating
+                    // Write upstream status if we have not already sent headers earlier.
+                    if !priorHeadersSent {
                         w.WriteHeader(m.Status)
                     }
                     if m.Status >= http.StatusBadRequest {
