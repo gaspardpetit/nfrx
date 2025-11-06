@@ -222,6 +222,8 @@ func ChatCompletionsHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics
         // Ensure in-flight is decremented at the end if we dispatched to a worker.
         defer func() {
             if worker != nil {
+                // Ensure we unregister the job channel to avoid leaks.
+                worker.RemoveJob(reqID)
                 // Per-request metrics (only once dispatched)
                 dur := time.Since(start)
                 metrics.RecordJobEnd(worker.ID(), meta.Model, dur, tokensIn, tokensOut, 0, success, errMsg)
