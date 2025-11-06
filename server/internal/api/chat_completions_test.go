@@ -21,7 +21,7 @@ func (f *flushRecorder) Flush() { f.flushed = true }
 
 func TestChatCompletionsHeaders(t *testing.T) {
 	wk := newTestWorker("w1", []string{"m"})
-	h := openai.ChatCompletionsHandler(testReg{w: wk}, testSched{w: wk}, testMetrics{}, time.Second)
+    h := openai.ChatCompletionsHandler(testReg{w: wk}, testSched{w: wk}, testMetrics{}, openai.Options{RequestTimeout: time.Second}, nil)
 
 	go func() {
 		msg := <-wk.send
@@ -53,7 +53,7 @@ func TestChatCompletionsHeaders(t *testing.T) {
 
 func TestChatCompletionsOpaque(t *testing.T) {
 	wk := newTestWorker("w1", []string{"m"})
-	h := openai.ChatCompletionsHandler(testReg{w: wk}, testSched{w: wk}, testMetrics{}, time.Second)
+    h := openai.ChatCompletionsHandler(testReg{w: wk}, testSched{w: wk}, testMetrics{}, openai.Options{RequestTimeout: time.Second}, nil)
 
 	go func() {
 		msg := <-wk.send
@@ -76,7 +76,7 @@ func TestChatCompletionsOpaque(t *testing.T) {
 
 func TestChatCompletionsEarlyError(t *testing.T) {
 	wk := newTestWorker("w1", []string{"m"})
-	h := openai.ChatCompletionsHandler(testReg{w: wk}, testSched{w: wk}, testMetrics{}, time.Second)
+    h := openai.ChatCompletionsHandler(testReg{w: wk}, testSched{w: wk}, testMetrics{}, openai.Options{RequestTimeout: time.Second}, nil)
 
 	go func() {
 		msg := <-wk.send
