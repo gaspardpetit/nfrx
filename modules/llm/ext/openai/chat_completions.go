@@ -88,7 +88,8 @@ func ChatCompletionsHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics
                 headersSent = true
             }
             created := time.Now().Unix()
-            payload := fmt.Sprintf(`{"id":"%s","object":"chat.completion.chunk","created":%d,"model":"%s","system_fingerprint":"nfrx","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"Requests queued, number %d in line"},"finish_reason":null}]}`,
+            // Note: use \\n so the JSON contains an escaped newline, not a literal line break.
+            payload := fmt.Sprintf(`{"id":"%s","object":"chat.completion.chunk","created":%d,"model":"%s","system_fingerprint":"nfrx","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"Requests queued, number %d in line...\\n"},"finish_reason":null}]}`,
                 reqID, created, meta.Model, pos)
             _, _ = w.Write([]byte("data: "))
             _, _ = w.Write([]byte(payload))
