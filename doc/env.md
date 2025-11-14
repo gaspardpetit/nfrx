@@ -65,6 +65,16 @@ The worker optionally reads settings from a YAML config file. Defaults:
 | `RECONNECT` | — | reconnect to server on failure | `false` | `--reconnect`, `-r` |
 | `REQUEST_TIMEOUT` | — | seconds without backend feedback before failing a job | `300` | `--request-timeout` |
 
+## nfrx (LLM plugin options)
+
+These apply to the `llm` plugin surface under `/api/llm/*` and are configured via the server config (not the worker).
+
+| Variable | Config key | Purpose | Default | CLI flag |
+|----------|------------|---------|---------|----------|
+| `LLM_MAX_PARALLEL_EMBEDDINGS` | `plugin_options.llm.max_parallel_embeddings` | maximum agents to split embeddings across | `8` | `--llm-max-parallel-embeddings` |
+| `LLM_QUEUE_SIZE` | `plugin_options.llm.queue_size` | maximum queued chat requests (0 disables queueing) | `100` | `--llm-queue-size` |
+| `LLM_QUEUE_UPDATE_SECONDS` | `plugin_options.llm.queue_update_seconds` | interval in seconds between SSE status updates for queued streaming requests (0 disables updates) | `10` | `--llm-queue-update-seconds` |
+
 ## nfrx-asr
 
 The worker optionally reads settings from a YAML config file. Defaults:
@@ -105,6 +115,7 @@ The worker optionally reads settings from a YAML config file. Defaults:
 | `CLIENT_NAME` | — | client display name | hostname (or random) | `--client-name` |
 | `PROVIDER_URL` | — | MCP provider URL | `http://127.0.0.1:7777/` | — |
 | `AUTH_TOKEN` | — | authorization token for broker requests | unset | — |
+| `MCP_HTTP_ALLOW_STREAMING` | — | include `text/event-stream` in `Accept` header when calling providers (auto-fallback to JSON on 406) | `true` | `--mcp-http-allow-streaming` |
 | `CLIENT_KEY` | — | shared secret for authenticating with the server | unset | `--client-key` |
 | `CONFIG_FILE` | — | path to YAML config file | OS-specific | `--config` |
 | `METRICS_PORT` | `metrics_addr` | Prometheus metrics listen address or port | unset (disabled) | `--metrics-port` |

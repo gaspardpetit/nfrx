@@ -31,29 +31,29 @@ func Run(ctx context.Context, cfg aconfig.MCPConfig) error {
 	}
 
 	return agent.RunWithReconnect(ctx, cfg.Reconnect, func(runCtx context.Context) error {
-    // Send client key as Authorization bearer header when present (for proxy auth)
-    var dialOpts *websocket.DialOptions
-    hasAuth := false
-    if cfg.ClientKey != "" {
-        hdr := make(http.Header)
-        hdr.Set("Authorization", "Bearer "+cfg.ClientKey)
-        dialOpts = &websocket.DialOptions{HTTPHeader: hdr}
-        hasAuth = true
-    }
-    logx.Log.Info().Str("server", cfg.ServerURL).Bool("auth_header", hasAuth).Msg("dialing server")
-    dctx, cancelDial := context.WithTimeout(runCtx, 15*time.Second)
-    defer cancelDial()
-    conn, resp, err := websocket.Dial(dctx, cfg.ServerURL, dialOpts)
-    if err != nil {
-        if resp != nil {
-            logx.Log.Warn().Err(err).Str("server", cfg.ServerURL).Int("status", resp.StatusCode).Interface("headers", resp.Header).Msg("websocket dial failed")
-        } else {
-            logx.Log.Warn().Err(err).Str("server", cfg.ServerURL).Msg("websocket dial failed")
-        }
-        return err
-    }
+		// Send client key as Authorization bearer header when present (for proxy auth)
+		var dialOpts *websocket.DialOptions
+		hasAuth := false
+		if cfg.ClientKey != "" {
+			hdr := make(http.Header)
+			hdr.Set("Authorization", "Bearer "+cfg.ClientKey)
+			dialOpts = &websocket.DialOptions{HTTPHeader: hdr}
+			hasAuth = true
+		}
+		logx.Log.Info().Str("server", cfg.ServerURL).Bool("auth_header", hasAuth).Msg("dialing server")
+		dctx, cancelDial := context.WithTimeout(runCtx, 15*time.Second)
+		defer cancelDial()
+		conn, resp, err := websocket.Dial(dctx, cfg.ServerURL, dialOpts)
+		if err != nil {
+			if resp != nil {
+				logx.Log.Warn().Err(err).Str("server", cfg.ServerURL).Int("status", resp.StatusCode).Interface("headers", resp.Header).Msg("websocket dial failed")
+			} else {
+				logx.Log.Warn().Err(err).Str("server", cfg.ServerURL).Msg("websocket dial failed")
+			}
+			return err
+		}
 
-    reg := map[string]string{"id": cfg.ClientID, "client_name": cfg.ClientName}
+		reg := map[string]string{"id": cfg.ClientID, "client_name": cfg.ClientName}
 		b, _ := json.Marshal(reg)
 		if err := conn.Write(runCtx, websocket.MessageText, b); err != nil {
 			_ = conn.Close(websocket.StatusInternalError, "closing")
@@ -72,9 +72,10 @@ func Run(ctx context.Context, cfg aconfig.MCPConfig) error {
 
 		childCtx, cancel := context.WithCancel(runCtx)
 		defer cancel()
-		go monitorProvider(childCtx, cfg.ProviderURL, cfg.Reconnect)
+		streamPref := newStreamPref(cfg.AllowHTTPStreaming)
+		go monitorProvider(childCtx, cfg.ProviderURL, cfg.Reconnect, streamPref)
 
-		relay := NewRelayClient(conn, cfg.ProviderURL, cfg.AuthToken, cfg.RequestTimeout)
+		relay := newRelayClientWithPref(conn, cfg.ProviderURL, cfg.AuthToken, cfg.RequestTimeout, streamPref)
 		if err := relay.Run(childCtx); err != nil {
 			_ = conn.Close(websocket.StatusInternalError, "closing")
 			return err
@@ -84,15 +85,23 @@ func Run(ctx context.Context, cfg aconfig.MCPConfig) error {
 	})
 }
 
-func monitorProvider(ctx context.Context, url string, shouldReconnect bool) {
+func monitorProvider(ctx context.Context, url string, shouldReconnect bool, pref *streamPref) {
 	attempt := 0
+	streaming := pref.Allow()
 	for {
 		logx.Log.Debug().Int("attempt", attempt).Str("url", url).Msg("checking mcp provider")
 		// Apply a finite timeout to each probe
 		pctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-		err := ProbeProvider(pctx, url)
+		err := ProbeProvider(pctx, url, streaming)
 		cancel()
 		if err != nil {
+			if isNotAcceptable(err) && streaming {
+				logx.Log.Warn().Msg("provider rejected streaming; retrying without SSE")
+				streaming = false
+				pref.Set(false)
+				attempt = 0
+				continue
+			}
 			lvl := logx.Log.Warn()
 			if strings.Contains(err.Error(), "status 401") || strings.Contains(err.Error(), "status 403") {
 				lvl = logx.Log.Error()
@@ -110,7 +119,10 @@ func monitorProvider(ctx context.Context, url string, shouldReconnect bool) {
 			}
 			continue
 		}
-		logx.Log.Info().Msg("mcp provider ready")
+		if pref.Allow() != streaming {
+			pref.Set(streaming)
+		}
+		logx.Log.Info().Bool("streaming", streaming).Msg("mcp provider ready")
 		attempt = 0
 		select {
 		case <-ctx.Done():
@@ -122,8 +134,8 @@ func monitorProvider(ctx context.Context, url string, shouldReconnect bool) {
 
 // ProbeProvider checks if the MCP provider at the given URL responds to a basic
 // tools/list request.
-func ProbeProvider(ctx context.Context, url string) error {
-	logx.Log.Debug().Str("url", url).Msg("probing mcp provider")
+func ProbeProvider(ctx context.Context, url string, allowStreaming bool) error {
+	logx.Log.Debug().Str("url", url).Bool("streaming", allowStreaming).Msg("probing mcp provider")
 	payload := map[string]any{
 		"jsonrpc": "2.0",
 		"id":      "1",
@@ -139,20 +151,34 @@ func ProbeProvider(ctx context.Context, url string) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json, text/event-stream")
+	if allowStreaming {
+		req.Header.Set("Accept", "application/json, text/event-stream")
+	} else {
+		req.Header.Set("Accept", "application/json")
+	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = resp.Body.Close() }()
-	logx.Log.Debug().Str("status", resp.Status).Msg("probe response")
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	logx.Log.Debug().Str("status", resp.Status).Str("body", summarizeBody(respBody, 512)).Msg("probe response")
 	if resp.StatusCode >= http.StatusBadRequest {
-		b, _ := io.ReadAll(resp.Body)
-		msg := strings.TrimSpace(string(b))
+		msg := strings.TrimSpace(string(respBody))
 		if msg != "" {
 			return fmt.Errorf("status %s: %s", resp.Status, msg)
 		}
 		return fmt.Errorf("status %s", resp.Status)
 	}
 	return nil
+}
+
+func isNotAcceptable(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "406") || strings.Contains(strings.ToLower(err.Error()), "not acceptable")
 }

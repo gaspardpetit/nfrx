@@ -15,23 +15,25 @@ import (
 
 // MCPConfig holds configuration for the MCP relay.
 type MCPConfig struct {
-	ServerURL      string
-	ClientKey      string
-	ClientID       string
-	ClientName     string
-	ProviderURL    string
-	AuthToken      string
-	MetricsAddr    string
-	RequestTimeout time.Duration
-	Reconnect      bool
-	ConfigFile     string
-	LogLevel       string
+	ServerURL          string
+	ClientKey          string
+	ClientID           string
+	ClientName         string
+	ProviderURL        string
+	AuthToken          string
+	MetricsAddr        string
+	RequestTimeout     time.Duration
+	Reconnect          bool
+	ConfigFile         string
+	LogLevel           string
+	AllowHTTPStreaming bool
 }
 
 // BindFlags populates the struct with defaults from environment variables and
 // binds command line flags so main can call flag.Parse().
 func (c *MCPConfig) BindFlags() {
 	cfgPath := commoncfg.DefaultConfigPath("mcp.yaml")
+	c.AllowHTTPStreaming = true
 	c.ConfigFile = commoncfg.GetEnv("CONFIG_FILE", cfgPath)
 	c.LogLevel = commoncfg.GetEnv("LOG_LEVEL", "info")
 
@@ -58,6 +60,11 @@ func (c *MCPConfig) BindFlags() {
 	if b, err := strconv.ParseBool(commoncfg.GetEnv("RECONNECT", "false")); err == nil {
 		c.Reconnect = b
 	}
+	if v := commoncfg.GetEnv("MCP_HTTP_ALLOW_STREAMING", ""); v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			c.AllowHTTPStreaming = b
+		}
+	}
 
 	flag.StringVar(&c.ConfigFile, "config", c.ConfigFile, "mcp config file path")
 	flag.StringVar(&c.LogLevel, "log-level", c.LogLevel, "log verbosity (all, debug, info, warn, error, fatal, none)")
@@ -78,6 +85,7 @@ func (c *MCPConfig) BindFlags() {
 	flag.StringVar(&c.ClientName, "client-name", c.ClientName, "client display name shown in logs and status")
 	flag.BoolVar(&c.Reconnect, "reconnect", c.Reconnect, "reconnect to server on failure")
 	flag.BoolVar(&c.Reconnect, "r", c.Reconnect, "short for --reconnect")
+	flag.BoolVar(&c.AllowHTTPStreaming, "mcp-http-allow-streaming", c.AllowHTTPStreaming, "allow HTTP streaming responses (Accept: text/event-stream)")
 }
 
 // LoadFile populates the config from a YAML file. Fields already set remain unless

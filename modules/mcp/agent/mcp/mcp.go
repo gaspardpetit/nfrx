@@ -12,8 +12,8 @@ import (
 // (no config type yet; placeholder for future expansion)
 
 // NewRelayClient exposes the internal MCP relay client.
-func NewRelayClient(conn *websocket.Conn, providerURL, token string, timeout time.Duration) *internal.RelayClient {
-	return internal.NewRelayClient(conn, providerURL, token, timeout)
+func NewRelayClient(conn *websocket.Conn, providerURL, token string, timeout time.Duration, allowStreaming bool) *internal.RelayClient {
+	return internal.NewRelayClient(conn, providerURL, token, timeout, allowStreaming)
 }
 
 // StartMetricsServer exposes the internal metrics server helper.
