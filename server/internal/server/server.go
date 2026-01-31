@@ -108,17 +108,25 @@ func New(cfg config.ServerConfig, stateReg *serverstate.Registry, plugins []plug
 			})
 		})
 		ar.Route("/", func(jr chi.Router) {
-			roles := append([]string{}, cfg.APIHTTPRoles...)
-			roles = append(roles, cfg.ClientHTTPRoles...)
-			secrets := make([]string, 0, 2)
+			clientRoles := append([]string{}, cfg.APIHTTPRoles...)
+			clientSecrets := make([]string, 0, 1)
 			if cfg.APIKey != "" {
-				secrets = append(secrets, cfg.APIKey)
+				clientSecrets = append(clientSecrets, cfg.APIKey)
 			}
-			if cfg.ClientKey != "" && cfg.ClientKey != cfg.APIKey {
-				secrets = append(secrets, cfg.ClientKey)
+			jr.Group(func(cr chi.Router) {
+				cr.Use(baseauth.BearerAnyOrRolesMiddleware(clientSecrets, clientRoles))
+				jobReg.RegisterClientRoutes(cr)
+			})
+
+			workerRoles := append([]string{}, cfg.ClientHTTPRoles...)
+			workerSecrets := make([]string, 0, 1)
+			if cfg.ClientKey != "" {
+				workerSecrets = append(workerSecrets, cfg.ClientKey)
 			}
-			jr.Use(baseauth.BearerAnyOrRolesMiddleware(secrets, roles))
-			jobReg.RegisterRoutes(jr)
+			jr.Group(func(wr chi.Router) {
+				wr.Use(baseauth.BearerAnyOrRolesMiddleware(workerSecrets, workerRoles))
+				jobReg.RegisterWorkerRoutes(wr)
+			})
 		})
 		ar.Group(func(g chi.Router) {
 			if cfg.APIKey != "" || len(cfg.APIHTTPRoles) > 0 {

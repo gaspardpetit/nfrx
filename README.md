@@ -262,6 +262,8 @@ curl -v -X POST http://localhost:8080/api/transfer/<channel_id> --data-binary @/
 
 The jobs API provides a lightweight in‑memory queue with SSE updates and transfer‑channel coordination. It is designed for simple client/worker integration without persisting payloads on the server.
 
+See `doc/api/jobs.md` for full details, SSE event formats, and auth notes.
+
 ### Client flow
 
 1) Create a job:

@@ -108,10 +108,18 @@ func NewRegistry(tr *transfer.Registry) *Registry {
 }
 
 func (r *Registry) RegisterRoutes(router chi.Router) {
+	r.RegisterClientRoutes(router)
+	r.RegisterWorkerRoutes(router)
+}
+
+func (r *Registry) RegisterClientRoutes(router chi.Router) {
 	router.Post("/jobs", r.HandleCreateJob)
 	router.Get("/jobs/{job_id}", r.HandleGetJob)
 	router.Get("/jobs/{job_id}/events", r.HandleJobEvents)
 	router.Post("/jobs/{job_id}/cancel", r.HandleCancelJob)
+}
+
+func (r *Registry) RegisterWorkerRoutes(router chi.Router) {
 	router.Post("/jobs/claim", r.HandleClaimJob)
 	router.Post("/jobs/{job_id}/payload", r.HandlePayloadRequest)
 	router.Post("/jobs/{job_id}/result", r.HandleResultRequest)
@@ -366,12 +374,6 @@ func (r *Registry) HandleStatusUpdate(w http.ResponseWriter, req *http.Request) 
 	r.mu.Unlock()
 
 	r.publish(jobID, Event{Type: "status", Data: view})
-	if body.Progress != nil {
-		r.publish(jobID, Event{Type: "progress", Data: body.Progress})
-	}
-	if body.Error != nil && (state == StatusFailed || state == StatusCanceled) {
-		r.publish(jobID, Event{Type: "error", Data: body.Error})
-	}
 	writeJSON(w, http.StatusOK, map[string]any{"status": job.Status})
 }
 
