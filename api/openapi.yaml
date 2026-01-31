@@ -9,6 +9,130 @@ components:
     BearerAuth:
       type: http
       scheme: bearer
+  schemas:
+    TransferCreateResponse:
+      type: object
+      properties:
+        channel_id:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+      required: [channel_id, expires_at]
+    TransferInfo:
+      type: object
+      properties:
+        channel_id:
+          type: string
+        method:
+          type: string
+        url:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+      required: [channel_id, method, url, expires_at]
+    JobError:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      required: [code, message]
+    JobCreateRequest:
+      type: object
+      properties:
+        type:
+          type: string
+        priority:
+          type: integer
+        metadata:
+          type: object
+          additionalProperties: true
+      required: [type]
+    JobCreateResponse:
+      type: object
+      properties:
+        job_id:
+          type: string
+        status:
+          type: string
+      required: [job_id, status]
+    JobClaimRequest:
+      type: object
+      properties:
+        types:
+          type: array
+          items:
+            type: string
+        max_wait_seconds:
+          type: integer
+    JobClaimResponse:
+      type: object
+      properties:
+        job_id:
+          type: string
+        type:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+      required: [job_id, type]
+    JobStatusUpdateRequest:
+      type: object
+      properties:
+        state:
+          type: string
+        progress:
+          type: object
+          additionalProperties: true
+        error:
+          $ref: '#/components/schemas/JobError'
+      required: [state]
+    JobView:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        status:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        progress:
+          type: object
+          additionalProperties: true
+        error:
+          $ref: '#/components/schemas/JobError'
+        payload:
+          $ref: '#/components/schemas/TransferInfo'
+        result:
+          $ref: '#/components/schemas/TransferInfo'
+        queue_position:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required: [id, type, status, created_at, updated_at]
+    TransferRequestResponse:
+      type: object
+      properties:
+        channel_id:
+          type: string
+        reader_url:
+          type: string
+        writer_url:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+      required: [channel_id, expires_at]
 paths:
   /healthz:
     get:
@@ -47,3 +171,206 @@ paths:
             text/event-stream:
               schema:
                 type: string
+  /api/transfer:
+    post:
+      security: [ { BearerAuth: [] } ]
+      summary: Create a transfer channel
+      responses:
+        '200':
+          description: Transfer channel created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferCreateResponse'
+  /api/transfer/{channel_id}:
+    get:
+      security: [ { BearerAuth: [] } ]
+      summary: Receive transfer data (reader)
+      parameters:
+        - in: path
+          name: channel_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Streamed response body
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+    post:
+      security: [ { BearerAuth: [] } ]
+      summary: Send transfer data (writer)
+      parameters:
+        - in: path
+          name: channel_id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: Transfer completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+  /api/jobs:
+    post:
+      security: [ { BearerAuth: [] } ]
+      summary: Create a job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobCreateRequest'
+      responses:
+        '200':
+          description: Job created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobCreateResponse'
+  /api/jobs/claim:
+    post:
+      security: [ { BearerAuth: [] } ]
+      summary: Claim the next queued job
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobClaimRequest'
+      responses:
+        '200':
+          description: Job claimed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobClaimResponse'
+        '204':
+          description: No jobs available
+  /api/jobs/{job_id}:
+    get:
+      security: [ { BearerAuth: [] } ]
+      summary: Get job status
+      parameters:
+        - in: path
+          name: job_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobView'
+  /api/jobs/{job_id}/events:
+    get:
+      security: [ { BearerAuth: [] } ]
+      summary: Stream job events
+      parameters:
+        - in: path
+          name: job_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Event stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+  /api/jobs/{job_id}/cancel:
+    post:
+      security: [ { BearerAuth: [] } ]
+      summary: Cancel a job
+      parameters:
+        - in: path
+          name: job_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job canceled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+  /api/jobs/{job_id}/payload:
+    post:
+      security: [ { BearerAuth: [] } ]
+      summary: Request payload transfer channel
+      parameters:
+        - in: path
+          name: job_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transfer channel created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferRequestResponse'
+  /api/jobs/{job_id}/result:
+    post:
+      security: [ { BearerAuth: [] } ]
+      summary: Request result transfer channel
+      parameters:
+        - in: path
+          name: job_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transfer channel created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferRequestResponse'
+  /api/jobs/{job_id}/status:
+    post:
+      security: [ { BearerAuth: [] } ]
+      summary: Update job status
+      parameters:
+        - in: path
+          name: job_id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobStatusUpdateRequest'
+      responses:
+        '200':
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string

@@ -17,6 +17,7 @@ type API struct {
 	Timeout  time.Duration
 	Health   HealthChecker
 	StateReg *serverstate.Registry
+	generated.Unimplemented
 }
 
 var _ generated.ServerInterface = (*API)(nil)

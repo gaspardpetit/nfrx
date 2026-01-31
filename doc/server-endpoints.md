@@ -108,3 +108,20 @@ These endpoints are present when the `mcp` plugin is enabled.
 Notes:
 - Channels are in-memory and time-limited; they expire if the other side does not connect before the TTL.
 - Only one reader and one writer can attach to a channel; reuse returns `409`.
+
+## Jobs API
+
+| Verb & Endpoint | Parameters | Description | Auth |
+| --- | --- | --- | --- |
+| `POST /api/jobs` | Body `{ type: string, metadata?: object }` | Create a new job. | API key or API roles |
+| `GET /api/jobs/{job_id}` | Path `{job_id}` | Fetch current job status (polling). | API key or API roles |
+| `GET /api/jobs/{job_id}/events` | Path `{job_id}` | SSE stream of job events. | API key or API roles |
+| `POST /api/jobs/{job_id}/cancel` | Path `{job_id}` | Cancel a job. | API key or API roles |
+| `POST /api/jobs/claim` | Body `{ types?: [string], max_wait_seconds?: int }` | Claim the next queued job. | Client key or client roles |
+| `POST /api/jobs/{job_id}/payload` | Path `{job_id}` | Request a payload transfer channel (worker reads, client writes). | Client key or client roles |
+| `POST /api/jobs/{job_id}/result` | Path `{job_id}` | Request a result transfer channel (worker writes, client reads). | Client key or client roles |
+| `POST /api/jobs/{job_id}/status` | Path `{job_id}` | Update job status/progress/error. | Client key or client roles |
+
+Notes:
+- Jobs are stored in memory; this is not a durable queue.
+- `payload` and `result` endpoints create transfer channels and emit events to the client.

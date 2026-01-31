@@ -258,6 +258,90 @@ curl -v http://localhost:8080/api/transfer/<channel_id> -o /tmp/received.bin
 curl -v -X POST http://localhost:8080/api/transfer/<channel_id> --data-binary @/path/to/file
 ```
 
+## Jobs API
+
+The jobs API provides a lightweight in‑memory queue with SSE updates and transfer‑channel coordination. It is designed for simple client/worker integration without persisting payloads on the server.
+
+See `doc/api/jobs.md` for full details, SSE event formats, and auth notes.
+
+### Client flow
+
+1) Create a job:
+
+```
+curl -s -X POST http://localhost:8080/api/jobs \
+  -H "Content-Type: application/json" \
+  -d '{"type":"asr.transcribe","metadata":{"filename":"sample.wav"}}'
+```
+
+2) Listen for updates (SSE):
+
+```
+curl -N http://localhost:8080/api/jobs/<job_id>/events
+```
+
+Events include `status`, `payload`, `result`, and `progress`.
+
+3) When a `payload` event arrives, POST the payload to the transfer URL.
+
+4) When a `result` event arrives, GET the result from the transfer URL.
+
+5) Optional cancel:
+
+```
+curl -X POST http://localhost:8080/api/jobs/<job_id>/cancel
+```
+
+### Worker flow
+
+1) Claim a job (FIFO). Optionally filter by type:
+
+```
+curl -s -X POST http://localhost:8080/api/jobs/claim \
+  -H "Content-Type: application/json" \
+  -d '{"types":["asr.transcribe"],"max_wait_seconds":30}'
+```
+
+2) Request payload channel (worker reads, client writes):
+
+```
+curl -s -X POST http://localhost:8080/api/jobs/<job_id>/payload
+```
+
+3) Update status/progress:
+
+```
+curl -X POST http://localhost:8080/api/jobs/<job_id>/status \
+  -H "Content-Type: application/json" \
+  -d '{"state":"running","progress":{"percent":42}}'
+```
+
+4) Request result channel (worker writes, client reads):
+
+```
+curl -s -X POST http://localhost:8080/api/jobs/<job_id>/result
+```
+
+5) Mark completed or failed:
+
+```
+curl -X POST http://localhost:8080/api/jobs/<job_id>/status \
+  -H "Content-Type: application/json" \
+  -d '{"state":"completed"}'
+```
+
+```
+curl -X POST http://localhost:8080/api/jobs/<job_id>/status \
+  -H "Content-Type: application/json" \
+  -d '{"state":"failed","error":{"code":"upstream_error","message":"timeout"}}'
+```
+
+### Polling (no SSE)
+
+```
+curl http://localhost:8080/api/jobs/<job_id>
+```
+
 You should see something like:
 
 > "My favorite color is: blue with a hint of green."

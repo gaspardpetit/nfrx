@@ -12,12 +12,15 @@ import (
 
 	"github.com/gaspardpetit/nfrx/api/generated"
 	baseauth "github.com/gaspardpetit/nfrx/sdk/base/auth"
+	"github.com/gaspardpetit/nfrx/sdk/base/inflight"
 	"github.com/gaspardpetit/nfrx/server/internal/adapters"
 	"github.com/gaspardpetit/nfrx/server/internal/api"
 	"github.com/gaspardpetit/nfrx/server/internal/config"
+	"github.com/gaspardpetit/nfrx/server/internal/jobs"
 	"github.com/gaspardpetit/nfrx/server/internal/metrics"
 	"github.com/gaspardpetit/nfrx/server/internal/plugin"
 	"github.com/gaspardpetit/nfrx/server/internal/serverstate"
+	"github.com/gaspardpetit/nfrx/server/internal/transfer"
 )
 
 // New constructs the HTTP handler for the server.
@@ -37,6 +40,36 @@ func New(cfg config.ServerConfig, stateReg *serverstate.Registry, plugins []plug
 	if stateReg == nil {
 		stateReg = serverstate.NewRegistry()
 	}
+	stateReg.Add(serverstate.Element{
+		ID: "server",
+		Data: func() interface{} {
+			return map[string]any{
+				"drainable_inflight": inflight.DrainableCount(),
+			}
+		},
+		HTML: func() string {
+			return `
+<div class="server-view">
+  <div class="server-metric">drainable inflight: <span class="drainable-count">0</span></div>
+  <script>(function(){
+    function render(state, container){
+      var el = container.querySelector('.drainable-count');
+      if (!el) return;
+      var n = 0;
+      if (state) {
+        if (state.drainable_inflight != null) n = state.drainable_inflight;
+        else if (state.DrainableInflight != null) n = state.DrainableInflight;
+      }
+      el.textContent = n;
+    }
+    if (!window.NFRX) window.NFRX = { _renderers:{}, registerRenderer:function(id,fn){ this._renderers[id]=fn; } };
+    var section = (document.currentScript && document.currentScript.closest('section')) || null;
+    var id = (section && section.dataset && section.dataset.pluginId) || 'server';
+    window.NFRX.registerRenderer(id, function(state, container){ render(state, container); });
+  })();</script>
+</div>`
+		},
+	})
 	preg := prometheus.NewRegistry()
 	prometheus.DefaultRegisterer = preg
 	prometheus.DefaultGatherer = preg
@@ -46,7 +79,8 @@ func New(cfg config.ServerConfig, stateReg *serverstate.Registry, plugins []plug
 
 	impl := &api.API{StateReg: stateReg}
 	wrapper := generated.ServerInterfaceWrapper{Handler: impl}
-	transferReg := api.NewTransferRegistry(60 * time.Second)
+	transferReg := transfer.NewRegistry(60 * time.Second)
+	jobReg := jobs.NewRegistry(transferReg)
 
 	r.Get("/healthz", wrapper.GetHealthz)
 	r.Route("/api", func(ar chi.Router) {
@@ -71,6 +105,27 @@ func New(cfg config.ServerConfig, stateReg *serverstate.Registry, plugins []plug
 			})
 			tr.Post("/{channel_id}", func(w http.ResponseWriter, r *http.Request) {
 				transferReg.HandleWriter(w, r, chi.URLParam(r, "channel_id"))
+			})
+		})
+		ar.Route("/", func(jr chi.Router) {
+			clientRoles := append([]string{}, cfg.APIHTTPRoles...)
+			clientSecrets := make([]string, 0, 1)
+			if cfg.APIKey != "" {
+				clientSecrets = append(clientSecrets, cfg.APIKey)
+			}
+			jr.Group(func(cr chi.Router) {
+				cr.Use(baseauth.BearerAnyOrRolesMiddleware(clientSecrets, clientRoles))
+				jobReg.RegisterClientRoutes(cr)
+			})
+
+			workerRoles := append([]string{}, cfg.ClientHTTPRoles...)
+			workerSecrets := make([]string, 0, 1)
+			if cfg.ClientKey != "" {
+				workerSecrets = append(workerSecrets, cfg.ClientKey)
+			}
+			jr.Group(func(wr chi.Router) {
+				wr.Use(baseauth.BearerAnyOrRolesMiddleware(workerSecrets, workerRoles))
+				jobReg.RegisterWorkerRoutes(wr)
 			})
 		})
 		ar.Group(func(g chi.Router) {

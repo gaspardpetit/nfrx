@@ -12,13 +12,13 @@ import (
 	"sort"
 	"strings"
 	"syscall"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/gaspardpetit/nfrx/core/logx"
 	spicontracts "github.com/gaspardpetit/nfrx/sdk/api/spi"
 	baseauth "github.com/gaspardpetit/nfrx/sdk/base/auth"
+	"github.com/gaspardpetit/nfrx/sdk/base/inflight"
 	"github.com/gaspardpetit/nfrx/server/internal/adapters"
 	"github.com/gaspardpetit/nfrx/server/internal/config"
 	"github.com/gaspardpetit/nfrx/server/internal/metrics"
@@ -258,18 +258,30 @@ func main() {
 				return
 			}
 			serverstate.StartDrain()
+			logx.Log.Info().Int64("drainable_inflight", inflight.DrainableCount()).Msg("drain requested")
+			waitCtx := ctx
+			var stop context.CancelFunc
 			if cfg.DrainTimeout > 0 {
 				logx.Log.Info().Dur("timeout", cfg.DrainTimeout).Msg("draining; send SIGTERM again to terminate immediately")
-				go func(d time.Duration) {
-					time.Sleep(d)
-					if serverstate.IsDraining() {
-						logx.Log.Warn().Msg("drain timeout exceeded; terminating")
-						cancel()
-					}
-				}(cfg.DrainTimeout)
+				waitCtx, stop = context.WithTimeout(ctx, cfg.DrainTimeout)
 			} else {
 				logx.Log.Info().Msg("draining; send SIGTERM again to terminate immediately")
 			}
+			go func(stop context.CancelFunc, waitCtx context.Context) {
+				logx.Log.Info().Int64("drainable_inflight", inflight.DrainableCount()).Msg("waiting for drainable in-flight to reach zero")
+				if stop != nil {
+					defer stop()
+				}
+				if inflight.DrainableWaitForZero(waitCtx) {
+					logx.Log.Info().Int64("drainable_inflight", inflight.DrainableCount()).Msg("drain complete; terminating")
+					cancel()
+					return
+				}
+				if errors.Is(waitCtx.Err(), context.DeadlineExceeded) {
+					logx.Log.Warn().Int64("drainable_inflight", inflight.DrainableCount()).Msg("drain timeout exceeded; terminating")
+					cancel()
+				}
+			}(stop, waitCtx)
 		}
 	}()
 	go func() {

@@ -8,6 +8,7 @@ import (
 	llmadapt "github.com/gaspardpetit/nfrx/modules/llm/ext/adapters"
 	"github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
 	"github.com/gaspardpetit/nfrx/sdk/api/spi"
+	"github.com/gaspardpetit/nfrx/sdk/base/inflight"
 	basemetrics "github.com/gaspardpetit/nfrx/sdk/base/metrics"
 	baseplugin "github.com/gaspardpetit/nfrx/sdk/base/plugin"
 	baseworker "github.com/gaspardpetit/nfrx/sdk/base/worker"
@@ -51,6 +52,7 @@ func (p *Plugin) RegisterRoutes(r spi.Router) {
 		if p.authMW != nil {
 			g.Use(p.authMW)
 		}
+		g.Use(inflight.DrainableMiddleware())
 		g.Route("/v1", func(v1 spi.Router) {
 			// Adapt shared options to OpenAI-specific options
 			mpe := opt.Int(p.srvOpts.PluginOptions, p.ID(), "max_parallel_embeddings", 8)

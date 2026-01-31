@@ -1,4 +1,4 @@
-package api
+package transfer
 
 import (
 	"encoding/json"
@@ -11,33 +11,33 @@ import (
 	"github.com/google/uuid"
 )
 
-const defaultTransferTTL = 60 * time.Second
+const DefaultTTL = 60 * time.Second
 
 var (
-	errTransferNotFound  = errors.New("transfer not found")
-	errTransferExpired   = errors.New("transfer expired")
-	errTransferRoleTaken = errors.New("transfer role already attached")
-	errTransferClosed    = errors.New("transfer closed")
+	ErrNotFound  = errors.New("transfer not found")
+	ErrExpired   = errors.New("transfer expired")
+	ErrRoleTaken = errors.New("transfer role already attached")
+	ErrClosed    = errors.New("transfer closed")
 )
 
-type transferRole int
+type Role int
 
 const (
-	transferReader transferRole = iota
-	transferWriter
+	Reader Role = iota
+	Writer
 )
 
-type TransferRegistry struct {
+type Registry struct {
 	mu       sync.Mutex
-	channels map[string]*transferChannel
+	channels map[string]*channel
 	ttl      time.Duration
 }
 
-type transferChannel struct {
+type channel struct {
 	id        string
 	expiresAt time.Time
-	reader    *transferEndpoint
-	writer    *transferEndpoint
+	reader    *endpoint
+	writer    *endpoint
 	ready     chan struct{}
 	done      chan struct{}
 	timer     *time.Timer
@@ -46,76 +46,76 @@ type transferChannel struct {
 	err       error
 }
 
-type transferEndpoint struct {
+type endpoint struct {
 	w http.ResponseWriter
 	r *http.Request
 }
 
-func NewTransferRegistry(ttl time.Duration) *TransferRegistry {
+func NewRegistry(ttl time.Duration) *Registry {
 	if ttl <= 0 {
-		ttl = defaultTransferTTL
+		ttl = DefaultTTL
 	}
-	return &TransferRegistry{channels: make(map[string]*transferChannel), ttl: ttl}
+	return &Registry{channels: make(map[string]*channel), ttl: ttl}
 }
 
-func (tr *TransferRegistry) Create() (string, time.Time) {
+func (r *Registry) Create() (string, time.Time) {
 	id := uuid.NewString()
-	expires := time.Now().Add(tr.ttl)
-	ch := &transferChannel{
+	expires := time.Now().Add(r.ttl)
+	ch := &channel{
 		id:        id,
 		expiresAt: expires,
 		ready:     make(chan struct{}),
 		done:      make(chan struct{}),
 	}
-	ch.timer = time.AfterFunc(tr.ttl, func() {
-		tr.expire(id)
+	ch.timer = time.AfterFunc(r.ttl, func() {
+		r.expire(id)
 	})
-	tr.mu.Lock()
-	tr.channels[id] = ch
-	tr.mu.Unlock()
+	r.mu.Lock()
+	r.channels[id] = ch
+	r.mu.Unlock()
 	return id, expires
 }
 
-func (tr *TransferRegistry) expire(id string) {
-	tr.mu.Lock()
-	ch := tr.channels[id]
+func (r *Registry) expire(id string) {
+	r.mu.Lock()
+	ch := r.channels[id]
 	if ch == nil {
-		tr.mu.Unlock()
+		r.mu.Unlock()
 		return
 	}
-	delete(tr.channels, id)
-	tr.mu.Unlock()
-	ch.close(errTransferExpired)
+	delete(r.channels, id)
+	r.mu.Unlock()
+	ch.close(ErrExpired)
 }
 
-func (tr *TransferRegistry) Attach(id string, role transferRole, ep *transferEndpoint) (*transferChannel, error) {
-	tr.mu.Lock()
-	ch := tr.channels[id]
-	tr.mu.Unlock()
+func (r *Registry) Attach(id string, role Role, ep *endpoint) (*channel, error) {
+	r.mu.Lock()
+	ch := r.channels[id]
+	r.mu.Unlock()
 	if ch == nil {
-		return nil, errTransferNotFound
+		return nil, ErrNotFound
 	}
 	ch.mu.Lock()
 	defer ch.mu.Unlock()
 	if ch.closed {
-		if errors.Is(ch.err, errTransferExpired) {
-			return nil, errTransferExpired
+		if errors.Is(ch.err, ErrExpired) {
+			return nil, ErrExpired
 		}
-		return nil, errTransferClosed
+		return nil, ErrClosed
 	}
 	switch role {
-	case transferReader:
+	case Reader:
 		if ch.reader != nil {
-			return nil, errTransferRoleTaken
+			return nil, ErrRoleTaken
 		}
 		ch.reader = ep
-	case transferWriter:
+	case Writer:
 		if ch.writer != nil {
-			return nil, errTransferRoleTaken
+			return nil, ErrRoleTaken
 		}
 		ch.writer = ep
 	default:
-		return nil, errTransferClosed
+		return nil, ErrClosed
 	}
 	if ch.reader != nil && ch.writer != nil {
 		if ch.timer != nil {
@@ -131,19 +131,19 @@ func (tr *TransferRegistry) Attach(id string, role transferRole, ep *transferEnd
 	return ch, nil
 }
 
-func (tr *TransferRegistry) Close(id string, err error) {
-	tr.mu.Lock()
-	ch := tr.channels[id]
+func (r *Registry) Close(id string, err error) {
+	r.mu.Lock()
+	ch := r.channels[id]
 	if ch != nil {
-		delete(tr.channels, id)
+		delete(r.channels, id)
 	}
-	tr.mu.Unlock()
+	r.mu.Unlock()
 	if ch != nil {
 		ch.close(err)
 	}
 }
 
-func (ch *transferChannel) close(err error) {
+func (ch *channel) close(err error) {
 	ch.mu.Lock()
 	if ch.closed {
 		ch.mu.Unlock()
@@ -155,14 +155,14 @@ func (ch *transferChannel) close(err error) {
 	close(ch.done)
 }
 
-func (ch *transferChannel) error() error {
+func (ch *channel) error() error {
 	ch.mu.Lock()
 	defer ch.mu.Unlock()
 	return ch.err
 }
 
-func (tr *TransferRegistry) HandleCreate(w http.ResponseWriter, r *http.Request) {
-	id, expires := tr.Create()
+func (r *Registry) HandleCreate(w http.ResponseWriter, _ *http.Request) {
+	id, expires := r.Create()
 	resp := map[string]any{
 		"channel_id": id,
 		"expires_at": expires.UTC().Format(time.RFC3339),
@@ -170,48 +170,47 @@ func (tr *TransferRegistry) HandleCreate(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusOK, resp)
 }
 
-func (tr *TransferRegistry) HandleReader(w http.ResponseWriter, r *http.Request, id string) {
-	ep := &transferEndpoint{w: w, r: r}
-	ch, err := tr.Attach(id, transferReader, ep)
+func (r *Registry) HandleReader(w http.ResponseWriter, req *http.Request, id string) {
+	ep := &endpoint{w: w, r: req}
+	ch, err := r.Attach(id, Reader, ep)
 	if err != nil {
-		writeTransferError(w, err)
+		writeError(w, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/octet-stream")
 
-	ctx := r.Context()
+	ctx := req.Context()
 	select {
 	case <-ch.ready:
-		// Wait for transfer to complete; writer will stream into this response.
 	case <-ch.done:
-		writeTransferError(w, ch.error())
+		writeError(w, ch.error())
 		return
 	case <-ctx.Done():
-		tr.Close(id, ctx.Err())
+		r.Close(id, ctx.Err())
 		return
 	}
 	<-ch.done
 }
 
-func (tr *TransferRegistry) HandleWriter(w http.ResponseWriter, r *http.Request, id string) {
-	ep := &transferEndpoint{w: w, r: r}
-	ch, err := tr.Attach(id, transferWriter, ep)
+func (r *Registry) HandleWriter(w http.ResponseWriter, req *http.Request, id string) {
+	ep := &endpoint{w: w, r: req}
+	ch, err := r.Attach(id, Writer, ep)
 	if err != nil {
-		writeTransferError(w, err)
+		writeError(w, err)
 		return
 	}
-	ctx := r.Context()
+	ctx := req.Context()
 	select {
 	case <-ch.ready:
 	case <-ch.done:
-		writeTransferError(w, ch.error())
+		writeError(w, ch.error())
 		return
 	case <-ctx.Done():
-		tr.Close(id, ctx.Err())
+		r.Close(id, ctx.Err())
 		return
 	}
-	copyErr := pipeTransfer(ch)
-	tr.Close(id, copyErr)
+	copyErr := pipe(ch)
+	r.Close(id, copyErr)
 	if copyErr != nil {
 		writeJSON(w, http.StatusBadGateway, map[string]any{"error": "transfer_failed"})
 		return
@@ -219,13 +218,13 @@ func (tr *TransferRegistry) HandleWriter(w http.ResponseWriter, r *http.Request,
 	writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
 }
 
-func pipeTransfer(ch *transferChannel) error {
+func pipe(ch *channel) error {
 	ch.mu.Lock()
 	reader := ch.reader
 	writer := ch.writer
 	ch.mu.Unlock()
 	if reader == nil || writer == nil {
-		return errTransferClosed
+		return ErrClosed
 	}
 	flusher, _ := reader.w.(http.Flusher)
 	dst := io.Writer(reader.w)
@@ -250,19 +249,19 @@ func (fw *flushWriter) Write(p []byte) (int, error) {
 	return n, err
 }
 
-func writeTransferError(w http.ResponseWriter, err error) {
+func writeError(w http.ResponseWriter, err error) {
 	if err == nil {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid_transfer"})
 		return
 	}
 	switch {
-	case errors.Is(err, errTransferNotFound):
+	case errors.Is(err, ErrNotFound):
 		writeJSON(w, http.StatusNotFound, map[string]any{"error": "transfer_not_found"})
-	case errors.Is(err, errTransferExpired):
+	case errors.Is(err, ErrExpired):
 		writeJSON(w, http.StatusGone, map[string]any{"error": "transfer_expired"})
-	case errors.Is(err, errTransferRoleTaken):
+	case errors.Is(err, ErrRoleTaken):
 		writeJSON(w, http.StatusConflict, map[string]any{"error": "transfer_in_use"})
-	case errors.Is(err, errTransferClosed):
+	case errors.Is(err, ErrClosed):
 		writeJSON(w, http.StatusGone, map[string]any{"error": "transfer_closed"})
 	default:
 		writeJSON(w, http.StatusBadGateway, map[string]any{"error": "transfer_failed"})
