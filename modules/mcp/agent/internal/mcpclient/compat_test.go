@@ -131,7 +131,7 @@ func TestCompatibility_OAuth(t *testing.T) {
 	defer srv.Close()
 
 	tokenStore := transport.NewMemoryTokenStore()
-	_ = tokenStore.SaveToken(&transport.Token{AccessToken: "test-token", TokenType: "Bearer"})
+	_ = tokenStore.SaveToken(context.Background(), &transport.Token{AccessToken: "test-token", TokenType: "Bearer"})
 
 	cfg := Config{Order: []string{"http", "oauth"}, InitTimeout: 5 * time.Second}
 	cfg.HTTP.URL = srv.URL

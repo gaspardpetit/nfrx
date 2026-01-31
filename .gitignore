@@ -43,3 +43,4 @@ desktop/windows/**/obj/
 /nfrx-mcp
 /nfrx-docling
 /nfrx-asr
+**/__pycache__/*

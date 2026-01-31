@@ -1,6 +1,7 @@
 package mcpclient
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 
@@ -17,7 +18,8 @@ type FileTokenStore struct {
 func NewFileTokenStore(path string) *FileTokenStore { return &FileTokenStore{path: path} }
 
 // GetToken reads the token from disk.
-func (s *FileTokenStore) GetToken() (*transport.Token, error) {
+func (s *FileTokenStore) GetToken(ctx context.Context) (*transport.Token, error) {
+	_ = ctx
 	data, err := os.ReadFile(s.path)
 	if err != nil {
 		return nil, err
@@ -30,7 +32,8 @@ func (s *FileTokenStore) GetToken() (*transport.Token, error) {
 }
 
 // SaveToken writes the token to disk with 0600 permissions.
-func (s *FileTokenStore) SaveToken(tok *transport.Token) error {
+func (s *FileTokenStore) SaveToken(ctx context.Context, tok *transport.Token) error {
+	_ = ctx
 	data, err := json.Marshal(tok)
 	if err != nil {
 		return err
