@@ -220,6 +220,44 @@ curl https://api.openai.com/v1/responses \
 }'
 ```
 
+## Transfer API
+
+The transfer API creates short‑lived in‑memory channels for streaming payloads between two peers without persistence. Each channel supports exactly one reader (GET) and one writer (POST). Channels expire if the peer does not connect before the TTL.
+
+Endpoints:
+
+```
+POST /api/transfer
+GET  /api/transfer/{channel_id}
+POST /api/transfer/{channel_id}
+```
+
+Response for channel creation:
+
+```
+{"channel_id":"<uuid>","expires_at":"<rfc3339>"}
+```
+
+Basic flow:
+
+1. Create a channel with `POST /api/transfer` and extract the `channel_id`.
+2. One peer opens `GET /api/transfer/{channel_id}` (reader).
+3. The other peer streams bytes to `POST /api/transfer/{channel_id}` (writer).
+
+Authentication:
+The transfer endpoints accept the same auth schemes as the server API. They authorize when any of the following are valid:
+- `Authorization: Bearer <API_KEY>`
+- `Authorization: Bearer <CLIENT_KEY>`
+- `X-User-Roles` containing a configured API or client role
+
+Example (no auth):
+
+```
+curl -s -X POST http://localhost:8080/api/transfer
+curl -v http://localhost:8080/api/transfer/<channel_id> -o /tmp/received.bin
+curl -v -X POST http://localhost:8080/api/transfer/<channel_id> --data-binary @/path/to/file
+```
+
 You should see something like:
 
 > "My favorite color is: blue with a hint of green."

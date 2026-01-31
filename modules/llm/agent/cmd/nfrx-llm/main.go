@@ -102,12 +102,10 @@ func main() {
 	log.Msg("worker starting")
 	// Bridge LLM config to the generic worker-proxy runner with a custom probe
 	// that discovers models via Ollama tags (CompletionBaseURL typically ends with /v1).
-    // Normalize base URL: remove trailing slash, and strip a trailing /v1 if present
-    base := strings.TrimRight(cfg.CompletionBaseURL, "/")
-    if strings.HasSuffix(base, "/v1") {
-        base = strings.TrimSuffix(base, "/v1")
-    }
-    client := ollama.New(base)
+	// Normalize base URL: remove trailing slash, and strip a trailing /v1 if present
+	base := strings.TrimRight(cfg.CompletionBaseURL, "/")
+	base = strings.TrimSuffix(base, "/v1")
+	client := ollama.New(base)
 	probe := func(pctx context.Context) (wp.ProbeResult, error) {
 		models, err := client.Health(pctx)
 		if err != nil {

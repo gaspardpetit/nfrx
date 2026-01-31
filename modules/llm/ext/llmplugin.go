@@ -32,7 +32,7 @@ func (p *Plugin) RegisterRoutes(r spi.Router) {
 	// Register base descriptor endpoint at "/api/llm/" and then mount specific endpoints
 	p.Base.RegisterRoutes(r)
 	// Mount LLM worker connect endpoint owned by the extension
-    r.Handle("/connect", baseworker.WSHandler(p.reg, p.mxreg, p.srvOpts.ClientKey, p.srvState, p.srvOpts.ClientHTTPRoles...))
+	r.Handle("/connect", baseworker.WSHandler(p.reg, p.mxreg, p.srvOpts.ClientKey, p.srvState, p.srvOpts.ClientHTTPRoles...))
 	r.Group(func(g spi.Router) {
 		// During server drain, reject new public API requests for this extension.
 		if p.srvState != nil {
@@ -52,26 +52,26 @@ func (p *Plugin) RegisterRoutes(r spi.Router) {
 			g.Use(p.authMW)
 		}
 		g.Route("/v1", func(v1 spi.Router) {
-        // Adapt shared options to OpenAI-specific options
-        mpe := opt.Int(p.srvOpts.PluginOptions, p.ID(), "max_parallel_embeddings", 8)
-        qsz := opt.Int(p.srvOpts.PluginOptions, p.ID(), "queue_size", 100)
-        qus := opt.Int(p.srvOpts.PluginOptions, p.ID(), "queue_update_seconds", 10)
-        oa := openai.Options{RequestTimeout: p.srvOpts.RequestTimeout, MaxParallelEmbeddings: mpe, QueueSize: qsz, QueueUpdateSeconds: qus}
-        // Adapt internal control plane to SPI
-        wr := llmadapt.NewWorkerRegistry(p.reg)
-        sch := llmadapt.NewScheduler(p.sch)
-        mx := llmadapt.NewMetrics(p.mxreg)
-        // Construct a global completion queue for chat requests and surface capacity in state
-        var cq *openai.CompletionQueue
-        if qsz > 0 {
-            cq = openai.NewCompletionQueue(p.mxreg, qsz)
-        } else {
-            // still set capacity so UI reflects disabled queue
-            p.mxreg.SetSchedulerQueueCapacity(0)
-        }
-        openai.Mount(v1, wr, sch, mx, oa, cq)
-        })
-    })
+			// Adapt shared options to OpenAI-specific options
+			mpe := opt.Int(p.srvOpts.PluginOptions, p.ID(), "max_parallel_embeddings", 8)
+			qsz := opt.Int(p.srvOpts.PluginOptions, p.ID(), "queue_size", 100)
+			qus := opt.Int(p.srvOpts.PluginOptions, p.ID(), "queue_update_seconds", 10)
+			oa := openai.Options{RequestTimeout: p.srvOpts.RequestTimeout, MaxParallelEmbeddings: mpe, QueueSize: qsz, QueueUpdateSeconds: qus}
+			// Adapt internal control plane to SPI
+			wr := llmadapt.NewWorkerRegistry(p.reg)
+			sch := llmadapt.NewScheduler(p.sch)
+			mx := llmadapt.NewMetrics(p.mxreg)
+			// Construct a global completion queue for chat requests and surface capacity in state
+			var cq *openai.CompletionQueue
+			if qsz > 0 {
+				cq = openai.NewCompletionQueue(p.mxreg, qsz)
+			} else {
+				// still set capacity so UI reflects disabled queue
+				p.mxreg.SetSchedulerQueueCapacity(0)
+			}
+			openai.Mount(v1, wr, sch, mx, oa, cq)
+		})
+	})
 }
 
 // Scheduler returns the plugin's scheduler.
@@ -173,7 +173,7 @@ func New(
 	minScore := opt.Float(srvOpts.PluginOptions, Descriptor().ID, "min_score", 0.01)
 	sch := baseworker.NewScoreSchedulerWithMinScore(reg, NewLLMScorer(), minScore)
 	// Start pruning expired workers in the background
-    go func() {
+	go func() {
 		tick := srvOpts.AgentHeartbeatInterval
 		if tick == 0 {
 			tick = baseworker.HeartbeatInterval
@@ -185,15 +185,15 @@ func New(
 		ticker := time.NewTicker(tick)
 		for range ticker.C {
 			// Prune expired workers and update readiness if pool becomes empty
-            reg.PruneExpired(expire)
-            if state != nil && !state.IsDraining() && reg.WorkerCount() == 0 {
-                // No active workers remain and we're not draining: mark server not_ready
-                state.SetStatus("not_ready")
-            }
-        }
-    }()
-    id := Descriptor().ID
-    return &Plugin{Base: baseplugin.NewBase(Descriptor(), srvOpts.PluginOptions[id]), reg: reg, mxreg: mx, sch: sch, authMW: authMW, srvOpts: srvOpts, srvState: state}
+			reg.PruneExpired(expire)
+			if state != nil && !state.IsDraining() && reg.WorkerCount() == 0 {
+				// No active workers remain and we're not draining: mark server not_ready
+				state.SetStatus("not_ready")
+			}
+		}
+	}()
+	id := Descriptor().ID
+	return &Plugin{Base: baseplugin.NewBase(Descriptor(), srvOpts.PluginOptions[id]), reg: reg, mxreg: mx, sch: sch, authMW: authMW, srvOpts: srvOpts, srvState: state}
 }
 
 // (compat constructor removed) — use New with spi.Options

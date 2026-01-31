@@ -34,14 +34,14 @@ func TestDisconnectRemovesModels(t *testing.T) {
 
 	ctx := context.Background()
 	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/api/llm/connect"
-    hdr := make(http.Header)
-    hdr.Set("Authorization", "Bearer "+cfg.ClientKey)
-    conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: hdr})
+	hdr := make(http.Header)
+	hdr.Set("Authorization", "Bearer "+cfg.ClientKey)
+	conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: hdr})
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}
 	defer func() { _ = conn.Close(websocket.StatusNormalClosure, "") }()
-    regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w1", Models: []string{"m"}, MaxConcurrency: 1}
+	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w1", Models: []string{"m"}, MaxConcurrency: 1}
 	b, _ := json.Marshal(regMsg)
 	if err := conn.Write(ctx, websocket.MessageText, b); err != nil {
 		t.Fatalf("write: %v", err)
@@ -104,14 +104,14 @@ func TestPruneLastWorkerTogglesNotReady(t *testing.T) {
 
 	ctx := context.Background()
 	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/api/llm/connect"
-    hdr2 := make(http.Header)
-    hdr2.Set("Authorization", "Bearer "+cfg.ClientKey)
-    conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: hdr2})
+	hdr2 := make(http.Header)
+	hdr2.Set("Authorization", "Bearer "+cfg.ClientKey)
+	conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: hdr2})
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}
 	defer func() { _ = conn.Close(websocket.StatusNormalClosure, "") }()
-    regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w2", Models: []string{"m"}, MaxConcurrency: 1}
+	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w2", Models: []string{"m"}, MaxConcurrency: 1}
 	b, _ := json.Marshal(regMsg)
 	if err := conn.Write(ctx, websocket.MessageText, b); err != nil {
 		t.Fatalf("write: %v", err)
