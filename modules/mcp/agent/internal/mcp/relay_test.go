@@ -68,3 +68,36 @@ func TestCallProviderParsesSSE(t *testing.T) {
 		t.Fatalf("expected %s got %s", expected, got)
 	}
 }
+
+func TestCallProviderFallbackOnNotAcceptable(t *testing.T) {
+	var calls int
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if r.Header.Get("Accept") == "application/json, text/event-stream" {
+			w.WriteHeader(http.StatusNotAcceptable)
+			_, _ = w.Write([]byte("no sse"))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":1,"result":{"ok":true}}`))
+	}))
+	defer ts.Close()
+	pref := newStreamPref(true)
+	rc := &RelayClient{providerURL: ts.URL, requestTimeout: time.Second, streamPref: pref}
+	payload := []byte(`{"jsonrpc":"2.0","id":1,"method":"tools/list"}`)
+	resp, err := rc.callProvider(context.Background(), payload, 1, "tools/list")
+	if err != nil {
+		t.Fatalf("callProvider: %v", err)
+	}
+	if calls < 2 {
+		t.Fatalf("expected retry after 406, got %d calls", calls)
+	}
+	got := strings.TrimSpace(string(resp))
+	expected := `{"jsonrpc":"2.0","id":1,"result":{"ok":true}}`
+	if got != expected {
+		t.Fatalf("expected %s got %s", expected, got)
+	}
+	if pref.Allow() {
+		t.Fatalf("expected streaming preference to be disabled after 406")
+	}
+}

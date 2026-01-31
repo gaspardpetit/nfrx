@@ -112,7 +112,12 @@ func (r *RelayClient) handleRPC(ctx context.Context, f mcpc.Frame) {
 		delete(r.cancels, f.SID)
 		r.mu.Unlock()
 	}()
-	logx.Log.Info().Str("sid", f.SID).Str("method", env.Method).Msg("relay forwarding rpc to provider")
+	logx.Log.Info().
+		Str("sid", f.SID).
+		Str("method", env.Method).
+		Int("req_bytes", len(f.Payload)).
+		Str("body", summarizeBody(f.Payload, 512)).
+		Msg("relay forwarding rpc to provider")
 	resp, err := r.callProvider(rpcCtx, f.Payload, env.ID, env.Method)
 	if rpcCtx.Err() != nil {
 		logx.Log.Warn().Str("sid", f.SID).Msg("relay rpc context canceled")
@@ -150,61 +155,70 @@ func (r *RelayClient) send(ctx context.Context, f mcpc.Frame) error {
 }
 
 func (r *RelayClient) callProvider(ctx context.Context, reqPayload []byte, reqID any, method string) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, r.providerURL, bytes.NewReader(reqPayload))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	if r.streamPref != nil && r.streamPref.Allow() {
-		req.Header.Set("Accept", "application/json, text/event-stream")
-	} else {
-		req.Header.Set("Accept", "application/json")
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = resp.Body.Close() }()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	logx.Log.Debug().Str("method", method).Int("status", resp.StatusCode).Int("bytes", len(body)).Msg("provider response received")
-	isSSE := isSSEBody(resp.Header.Get("Content-Type"), body)
-	payload := body
-	if isSSE {
-		if data, err := extractFirstSSEData(body); err == nil {
-			payload = data
-			logx.Log.Debug().Str("method", method).Int("bytes", len(payload)).Msg("parsed sse payload")
+	for attempt := 0; attempt < 2; attempt++ {
+		allowStreaming := r.streamPref != nil && r.streamPref.Allow()
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, r.providerURL, bytes.NewReader(reqPayload))
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Content-Type", "application/json")
+		if allowStreaming {
+			req.Header.Set("Accept", "application/json, text/event-stream")
 		} else {
-			logx.Log.Warn().Err(err).Msg("failed parsing sse payload; forwarding raw body")
+			req.Header.Set("Accept", "application/json")
 		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		body, err := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		if err != nil {
+			return nil, err
+		}
+		logx.Log.Debug().Str("method", method).Int("status", resp.StatusCode).Int("bytes", len(body)).Msg("provider response received")
+		if resp.StatusCode == http.StatusNotAcceptable && allowStreaming && r.streamPref != nil {
+			logx.Log.Warn().Str("method", method).Msg("provider rejected streaming; retrying without SSE")
+			r.streamPref.Set(false)
+			continue
+		}
+		isSSE := isSSEBody(resp.Header.Get("Content-Type"), body)
+		payload := body
+		if isSSE {
+			if data, err := extractFirstSSEData(body); err == nil {
+				payload = data
+				logx.Log.Debug().Str("method", method).Int("bytes", len(payload)).Msg("parsed sse payload")
+			} else {
+				logx.Log.Warn().Err(err).Msg("failed parsing sse payload; forwarding raw body")
+			}
+		}
+		if method == "tools/list" {
+			logx.Log.Info().Str("method", method).Int("status", resp.StatusCode).Str("body", summarizeBody(payload, 512)).Msg("provider handshake response")
+		}
+		if resp.StatusCode != http.StatusOK {
+			data := map[string]any{
+				"mcp":    mcpcommon.ErrUpstreamError,
+				"status": resp.StatusCode,
+			}
+			if len(body) > 0 {
+				data["body"] = string(body)
+			}
+			errObj := map[string]any{
+				"jsonrpc": "2.0",
+				"id":      reqID,
+				"error": map[string]any{
+					"code":    -32000,
+					"message": "Provider error",
+					"data":    data,
+				},
+			}
+			b, _ := json.Marshal(errObj)
+			return b, nil
+		}
+		logProviderPayload(method, payload)
+		return payload, nil
 	}
-	if method == "tools/list" {
-		logx.Log.Info().Str("method", method).Int("status", resp.StatusCode).Str("body", summarizeBody(payload, 512)).Msg("provider handshake response")
-	}
-	if resp.StatusCode != http.StatusOK {
-		data := map[string]any{
-			"mcp":    mcpcommon.ErrUpstreamError,
-			"status": resp.StatusCode,
-		}
-		if len(body) > 0 {
-			data["body"] = string(body)
-		}
-		errObj := map[string]any{
-			"jsonrpc": "2.0",
-			"id":      reqID,
-			"error": map[string]any{
-				"code":    -32000,
-				"message": "Provider error",
-				"data":    data,
-			},
-		}
-		b, _ := json.Marshal(errObj)
-		return b, nil
-	}
-	logProviderPayload(method, payload)
-	return payload, nil
+	return nil, fmt.Errorf("provider rejected streaming")
 }
 
 func summarizeBody(body []byte, limit int) string {
