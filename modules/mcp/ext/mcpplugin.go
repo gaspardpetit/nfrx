@@ -7,6 +7,7 @@ import (
 	opt "github.com/gaspardpetit/nfrx/core/options"
 	"github.com/gaspardpetit/nfrx/modules/mcp/ext/adapters"
 	"github.com/gaspardpetit/nfrx/sdk/api/spi"
+	"github.com/gaspardpetit/nfrx/sdk/base/inflight"
 	baseplugin "github.com/gaspardpetit/nfrx/sdk/base/plugin"
 	"github.com/gaspardpetit/nfrx/sdk/base/tunnel"
 	"github.com/go-chi/chi/v5"
@@ -59,7 +60,10 @@ func (p *Plugin) RegisterRoutes(r spi.Router) {
 	p.Base.RegisterRoutes(r)
 	r.Handle("/connect", p.reg.WSHandler(p.clientKey, adapters.MCPRegisterDecoder, adapters.MCPReadLoop, p.srvOpts.ClientHTTPRoles...))
 	getID := func(req *http.Request) string { return chi.URLParam(req, "id") }
-	r.Handle("/id/{id}", p.reg.HTTPHandler("mcp", getID, adapters.MCPAdapter{}, p.srvOpts.RequestTimeout, opt.Int64(p.srvOpts.PluginOptions, p.ID(), "max_req_bytes", 10*1024*1024), opt.Int64(p.srvOpts.PluginOptions, p.ID(), "max_resp_bytes", 10*1024*1024)))
+	r.Group(func(g spi.Router) {
+		g.Use(inflight.DrainableMiddleware())
+		g.Handle("/id/{id}", p.reg.HTTPHandler("mcp", getID, adapters.MCPAdapter{}, p.srvOpts.RequestTimeout, opt.Int64(p.srvOpts.PluginOptions, p.ID(), "max_req_bytes", 10*1024*1024), opt.Int64(p.srvOpts.PluginOptions, p.ID(), "max_resp_bytes", 10*1024*1024)))
+	})
 }
 
 // RegisterMetrics registers Prometheus collectors; MCP has none currently.
