@@ -1,4 +1,22 @@
-nfrx (0.7.7-1ubuntu1) UNRELEASED; urgency=medium
+nfrx (0.8.0-1ubuntu1) UNRELEASED; urgency=medium
+
+  * Release: v0.8.0 —
+    https://github.com/gaspardpetit/nfrx/releases/tag/v0.8.0
+  * ## What's Changed
+  * * Added support for SSE (streaming) MCP by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/240
+  * * Added support for transfer channels by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/241
+  * * Added job API by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/242
+  *
+  *
+  * **Full Changelog**:
+    https://github.com/gaspardpetit/nfrx/compare/v0.7.7...v0.8.0
+
+ -- CI <ci@example.invalid>  Sat, 31 Jan 2026 02:22:34 +0000
+
+nfrx (0.8.0-1) unstable; urgency=medium
 
   * Release: v0.7.7 —
     https://github.com/gaspardpetit/nfrx/releases/tag/v0.7.7
@@ -11,8 +29,9 @@ nfrx (0.7.7-1ubuntu1) UNRELEASED; urgency=medium
   *
   * **Full Changelog**:
     https://github.com/gaspardpetit/nfrx/compare/v0.7.6...v0.7.7
+  *
 
- -- CI <ci@example.invalid>  Thu, 06 Nov 2025 22:03:21 +0000
+ -- CI <ci@example.invalid>  Sat, 31 Jan 2026 02:22:34 +0000
 
 nfrx (0.7.7-1) unstable; urgency=medium
 
