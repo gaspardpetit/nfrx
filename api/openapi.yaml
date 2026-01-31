@@ -22,6 +22,8 @@ components:
     TransferInfo:
       type: object
       properties:
+        key:
+          type: string
         channel_id:
           type: string
         method:
@@ -32,6 +34,11 @@ components:
           type: string
           format: date-time
       required: [channel_id, method, url, expires_at]
+    TransferRequest:
+      type: object
+      properties:
+        key:
+          type: string
     JobError:
       type: object
       properties:
@@ -107,10 +114,14 @@ components:
           additionalProperties: true
         error:
           $ref: '#/components/schemas/JobError'
-        payload:
-          $ref: '#/components/schemas/TransferInfo'
-        result:
-          $ref: '#/components/schemas/TransferInfo'
+        payloads:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/TransferInfo'
+        results:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/TransferInfo'
         queue_position:
           type: integer
         created_at:
@@ -123,6 +134,8 @@ components:
     TransferRequestResponse:
       type: object
       properties:
+        key:
+          type: string
         channel_id:
           type: string
         reader_url:
@@ -324,6 +337,12 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferRequest'
       responses:
         '200':
           description: Transfer channel created
@@ -341,6 +360,12 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferRequest'
       responses:
         '200':
           description: Transfer channel created

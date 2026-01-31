@@ -22,15 +22,17 @@ type ServerConfig struct {
 	// APIHTTPRoles are roles that, when present in X-User-Roles, grant API access
 	APIHTTPRoles []string `yaml:"api_http_roles"`
 	// ClientHTTPRoles are roles that, when present in X-User-Roles, grant client connect access
-	ClientHTTPRoles []string `yaml:"client_http_roles"`
-	RequestTimeout  time.Duration
-	DrainTimeout    time.Duration
-	AllowedOrigins  []string
-	ConfigFile      string
-	LogLevel        string
-	RedisAddr       string
-	Plugins         []string                     `yaml:"plugins"`
-	PluginOptions   map[string]map[string]string `yaml:"plugin_options"`
+	ClientHTTPRoles   []string `yaml:"client_http_roles"`
+	RequestTimeout    time.Duration
+	DrainTimeout      time.Duration
+	JobsSSECloseDelay time.Duration `yaml:"jobs_sse_close_delay"`
+	JobsClientTTL     time.Duration `yaml:"jobs_client_ttl"`
+	AllowedOrigins    []string
+	ConfigFile        string
+	LogLevel          string
+	RedisAddr         string
+	Plugins           []string                     `yaml:"plugins"`
+	PluginOptions     map[string]map[string]string `yaml:"plugin_options"`
 }
 
 // SetDefaults initializes c with built-in defaults.
@@ -49,6 +51,12 @@ func (c *ServerConfig) SetDefaults() {
 	}
 	if c.DrainTimeout == 0 {
 		c.DrainTimeout = 5 * time.Minute
+	}
+	if c.JobsSSECloseDelay == 0 {
+		c.JobsSSECloseDelay = 5 * time.Second
+	}
+	if c.JobsClientTTL == 0 {
+		c.JobsClientTTL = 30 * time.Second
 	}
 	if c.Plugins == nil {
 		c.Plugins = []string{"*"}
@@ -100,6 +108,16 @@ func (c *ServerConfig) ApplyEnv() {
 			c.RequestTimeout = time.Duration(f * float64(time.Second))
 		}
 	}
+	if v := commoncfg.GetEnv("JOBS_SSE_CLOSE_DELAY", ""); v != "" {
+		if d, err := time.ParseDuration(v); err == nil {
+			c.JobsSSECloseDelay = d
+		}
+	}
+	if v := commoncfg.GetEnv("JOBS_CLIENT_TTL", ""); v != "" {
+		if d, err := time.ParseDuration(v); err == nil {
+			c.JobsClientTTL = d
+		}
+	}
 	if v := commoncfg.GetEnv("DRAIN_TIMEOUT", ""); v != "" {
 		if d, err := time.ParseDuration(v); err == nil {
 			c.DrainTimeout = d
@@ -142,6 +160,8 @@ func (c *ServerConfig) BindFlagsFromCurrent() {
 		c.RequestTimeout = time.Duration(f * float64(time.Second))
 		return nil
 	})
+	flag.DurationVar(&c.JobsSSECloseDelay, "jobs-sse-close-delay", c.JobsSSECloseDelay, "delay before closing job SSE after completion")
+	flag.DurationVar(&c.JobsClientTTL, "jobs-client-ttl", c.JobsClientTTL, "client inactivity TTL for jobs when no client is connected (0 to disable)")
 	flag.DurationVar(&c.DrainTimeout, "drain-timeout", c.DrainTimeout, "time to wait for in-flight requests on shutdown (-1 to wait indefinitely, 0 to exit immediately)")
 	flag.Func("allowed-origins", "comma separated list of allowed CORS origins", func(v string) error {
 		c.AllowedOrigins = splitComma(v)
@@ -179,6 +199,16 @@ func (c *ServerConfig) BindFlags() {
 		c.RequestTimeout = time.Duration(v * float64(time.Second))
 	} else {
 		c.RequestTimeout = 120 * time.Second
+	}
+	if d, err := time.ParseDuration(commoncfg.GetEnv("JOBS_SSE_CLOSE_DELAY", "5s")); err == nil {
+		c.JobsSSECloseDelay = d
+	} else {
+		c.JobsSSECloseDelay = 5 * time.Second
+	}
+	if d, err := time.ParseDuration(commoncfg.GetEnv("JOBS_CLIENT_TTL", "30s")); err == nil {
+		c.JobsClientTTL = d
+	} else {
+		c.JobsClientTTL = 30 * time.Second
 	}
 	if d, err := time.ParseDuration(commoncfg.GetEnv("DRAIN_TIMEOUT", "5m")); err == nil {
 		c.DrainTimeout = d
@@ -220,6 +250,8 @@ func (c *ServerConfig) BindFlags() {
 		c.RequestTimeout = time.Duration(f * float64(time.Second))
 		return nil
 	})
+	flag.DurationVar(&c.JobsSSECloseDelay, "jobs-sse-close-delay", c.JobsSSECloseDelay, "delay before closing job SSE after completion")
+	flag.DurationVar(&c.JobsClientTTL, "jobs-client-ttl", c.JobsClientTTL, "client inactivity TTL for jobs when no client is connected (0 to disable)")
 	flag.DurationVar(&c.DrainTimeout, "drain-timeout", c.DrainTimeout, "time to wait for in-flight requests on shutdown (-1 to wait indefinitely, 0 to exit immediately)")
 	flag.Func("allowed-origins", "comma separated list of allowed CORS origins", func(v string) error {
 		c.AllowedOrigins = splitComma(v)

@@ -28,12 +28,15 @@ const (
 )
 
 type Registry struct {
-	mu       sync.Mutex
-	jobs     map[string]*Job
-	queue    []string
-	notify   chan struct{}
-	subs     map[string]map[chan Event]struct{}
-	transfer *transfer.Registry
+	mu            sync.Mutex
+	jobs          map[string]*Job
+	queue         []string
+	notify        chan struct{}
+	subs          map[string]map[chan Event]struct{}
+	transfer      *transfer.Registry
+	sseCloseDelay time.Duration
+	clientTTL     time.Duration
+	clientTimers  map[string]*time.Timer
 }
 
 type Job struct {
@@ -43,8 +46,8 @@ type Job struct {
 	Metadata  map[string]any
 	Progress  map[string]any
 	Error     *JobError
-	Payload   *TransferInfo
-	Result    *TransferInfo
+	Payloads  map[string]*TransferInfo
+	Results   map[string]*TransferInfo
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -59,6 +62,7 @@ type TransferInfo struct {
 	Method    string `json:"method"`
 	URL       string `json:"url"`
 	ExpiresAt string `json:"expires_at"`
+	Key       string `json:"key,omitempty"`
 }
 
 type Event struct {
@@ -83,27 +87,34 @@ type StatusUpdateRequest struct {
 	Error    *JobError      `json:"error,omitempty"`
 }
 
-type JobView struct {
-	ID            string         `json:"id"`
-	Type          string         `json:"type"`
-	Status        string         `json:"status"`
-	Metadata      map[string]any `json:"metadata,omitempty"`
-	Progress      map[string]any `json:"progress,omitempty"`
-	Error         *JobError      `json:"error,omitempty"`
-	Payload       *TransferInfo  `json:"payload,omitempty"`
-	Result        *TransferInfo  `json:"result,omitempty"`
-	QueuePosition int            `json:"queue_position,omitempty"`
-	CreatedAt     string         `json:"created_at"`
-	UpdatedAt     string         `json:"updated_at"`
+type TransferRequest struct {
+	Key *string `json:"key,omitempty"`
 }
 
-func NewRegistry(tr *transfer.Registry) *Registry {
+type JobView struct {
+	ID            string                   `json:"id"`
+	Type          string                   `json:"type"`
+	Status        string                   `json:"status"`
+	Metadata      map[string]any           `json:"metadata,omitempty"`
+	Progress      map[string]any           `json:"progress,omitempty"`
+	Error         *JobError                `json:"error,omitempty"`
+	Payloads      map[string]*TransferInfo `json:"payloads,omitempty"`
+	Results       map[string]*TransferInfo `json:"results,omitempty"`
+	QueuePosition int                      `json:"queue_position,omitempty"`
+	CreatedAt     string                   `json:"created_at"`
+	UpdatedAt     string                   `json:"updated_at"`
+}
+
+func NewRegistry(tr *transfer.Registry, sseCloseDelay time.Duration, clientTTL time.Duration) *Registry {
 	return &Registry{
-		jobs:     make(map[string]*Job),
-		queue:    []string{},
-		notify:   make(chan struct{}, 1),
-		subs:     make(map[string]map[chan Event]struct{}),
-		transfer: tr,
+		jobs:          make(map[string]*Job),
+		queue:         []string{},
+		notify:        make(chan struct{}, 1),
+		subs:          make(map[string]map[chan Event]struct{}),
+		transfer:      tr,
+		sseCloseDelay: sseCloseDelay,
+		clientTTL:     clientTTL,
+		clientTimers:  make(map[string]*time.Timer),
 	}
 }
 
@@ -150,6 +161,7 @@ func (r *Registry) HandleCreateJob(w http.ResponseWriter, req *http.Request) {
 	view := r.viewLocked(job)
 	r.mu.Unlock()
 	r.publish(job.ID, Event{Type: "status", Data: view})
+	r.startClientTimerIfIdle(job.ID)
 	r.signal()
 	writeJSON(w, http.StatusOK, map[string]any{"job_id": job.ID, "status": job.Status})
 }
@@ -180,21 +192,65 @@ func (r *Registry) HandleJobEvents(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	ch := r.subscribe(jobID)
+	defer r.onClientDisconnect(jobID)
 	defer r.unsubscribe(jobID, ch)
+	r.onClientConnect(jobID)
 
 	// send initial status
 	r.writeEvent(w, Event{Type: "status", Data: view})
 	flusher.Flush()
 
 	ctx := req.Context()
+	var closeTimer *time.Timer
+	var closeCh <-chan time.Time
 	for {
 		select {
 		case <-ctx.Done():
 			return
+		case <-closeCh:
+			return
 		case ev := <-ch:
 			r.writeEvent(w, ev)
 			flusher.Flush()
+			if r.sseCloseDelay >= 0 && shouldCloseAfter(ev) {
+				if r.sseCloseDelay == 0 {
+					return
+				}
+				if closeTimer == nil {
+					closeTimer = time.NewTimer(r.sseCloseDelay)
+					closeCh = closeTimer.C
+				}
+			}
 		}
+	}
+}
+
+func shouldCloseAfter(ev Event) bool {
+	if ev.Type != "status" {
+		return false
+	}
+	switch v := ev.Data.(type) {
+	case JobView:
+		return isTerminalStatus(v.Status)
+	case *JobView:
+		if v == nil {
+			return false
+		}
+		return isTerminalStatus(v.Status)
+	case map[string]any:
+		if status, ok := v["status"].(string); ok {
+			return isTerminalStatus(status)
+		}
+	}
+	return false
+}
+
+func isTerminalStatus(status string) bool {
+	switch status {
+	case StatusCompleted, StatusFailed, StatusCanceled:
+		return true
+	default:
+		return false
 	}
 }
 
@@ -215,6 +271,7 @@ func (r *Registry) HandleCancelJob(w http.ResponseWriter, req *http.Request) {
 	job.UpdatedAt = time.Now()
 	view = r.viewLocked(job)
 	r.mu.Unlock()
+	r.clearClientTimer(jobID)
 	r.publish(jobID, Event{Type: "status", Data: view})
 	writeJSON(w, http.StatusOK, map[string]any{"status": "canceled"})
 }
@@ -259,6 +316,7 @@ func (r *Registry) HandleClaimJob(w http.ResponseWriter, req *http.Request) {
 func (r *Registry) HandlePayloadRequest(w http.ResponseWriter, req *http.Request) {
 	jobID := chi.URLParam(req, "job_id")
 	var view JobView
+	var body TransferRequest
 	r.mu.Lock()
 	job := r.jobs[jobID]
 	if job == nil {
@@ -272,6 +330,14 @@ func (r *Registry) HandlePayloadRequest(w http.ResponseWriter, req *http.Request
 		return
 	}
 	r.mu.Unlock()
+	if err := json.NewDecoder(req.Body).Decode(&body); err != nil && !errors.Is(err, io.EOF) {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid_request"})
+		return
+	}
+	key := "payload"
+	if body.Key != nil {
+		key = strings.TrimSpace(*body.Key)
+	}
 	channelID, expires := r.transfer.Create()
 	readerURL := "/api/transfer/" + channelID
 	writerURL := "/api/transfer/" + channelID
@@ -281,9 +347,13 @@ func (r *Registry) HandlePayloadRequest(w http.ResponseWriter, req *http.Request
 		Method:    http.MethodPost,
 		URL:       writerURL,
 		ExpiresAt: expires.UTC().Format(time.RFC3339),
+		Key:       key,
 	}
 	r.mu.Lock()
-	job.Payload = info
+	if job.Payloads == nil {
+		job.Payloads = make(map[string]*TransferInfo)
+	}
+	job.Payloads[key] = info
 	job.Status = StatusAwaitingPayload
 	job.UpdatedAt = time.Now()
 	view = r.viewLocked(job)
@@ -292,6 +362,7 @@ func (r *Registry) HandlePayloadRequest(w http.ResponseWriter, req *http.Request
 	r.publish(jobID, Event{Type: "payload", Data: info})
 	r.publish(jobID, Event{Type: "status", Data: view})
 	writeJSON(w, http.StatusOK, map[string]any{
+		"key":        key,
 		"channel_id": channelID,
 		"reader_url": readerURL,
 		"expires_at": expires.UTC().Format(time.RFC3339),
@@ -301,6 +372,7 @@ func (r *Registry) HandlePayloadRequest(w http.ResponseWriter, req *http.Request
 func (r *Registry) HandleResultRequest(w http.ResponseWriter, req *http.Request) {
 	jobID := chi.URLParam(req, "job_id")
 	var view JobView
+	var body TransferRequest
 	r.mu.Lock()
 	job := r.jobs[jobID]
 	if job == nil {
@@ -314,6 +386,14 @@ func (r *Registry) HandleResultRequest(w http.ResponseWriter, req *http.Request)
 		return
 	}
 	r.mu.Unlock()
+	if err := json.NewDecoder(req.Body).Decode(&body); err != nil && !errors.Is(err, io.EOF) {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid_request"})
+		return
+	}
+	key := "result"
+	if body.Key != nil {
+		key = strings.TrimSpace(*body.Key)
+	}
 	channelID, expires := r.transfer.Create()
 	readerURL := "/api/transfer/" + channelID
 	writerURL := "/api/transfer/" + channelID
@@ -323,9 +403,13 @@ func (r *Registry) HandleResultRequest(w http.ResponseWriter, req *http.Request)
 		Method:    http.MethodGet,
 		URL:       readerURL,
 		ExpiresAt: expires.UTC().Format(time.RFC3339),
+		Key:       key,
 	}
 	r.mu.Lock()
-	job.Result = info
+	if job.Results == nil {
+		job.Results = make(map[string]*TransferInfo)
+	}
+	job.Results[key] = info
 	job.Status = StatusAwaitingResult
 	job.UpdatedAt = time.Now()
 	view = r.viewLocked(job)
@@ -334,6 +418,7 @@ func (r *Registry) HandleResultRequest(w http.ResponseWriter, req *http.Request)
 	r.publish(jobID, Event{Type: "result", Data: info})
 	r.publish(jobID, Event{Type: "status", Data: view})
 	writeJSON(w, http.StatusOK, map[string]any{
+		"key":        key,
 		"channel_id": channelID,
 		"writer_url": writerURL,
 		"expires_at": expires.UTC().Format(time.RFC3339),
@@ -373,6 +458,9 @@ func (r *Registry) HandleStatusUpdate(w http.ResponseWriter, req *http.Request) 
 	view = r.viewLocked(job)
 	r.mu.Unlock()
 
+	if isTerminalStatus(state) {
+		r.clearClientTimer(jobID)
+	}
 	r.publish(jobID, Event{Type: "status", Data: view})
 	writeJSON(w, http.StatusOK, map[string]any{"status": job.Status})
 }
@@ -452,6 +540,87 @@ func (r *Registry) publishLocked(jobID string, ev Event) {
 	}
 }
 
+func (r *Registry) onClientConnect(jobID string) {
+	if r.clientTTL <= 0 {
+		return
+	}
+	r.mu.Lock()
+	if timer := r.clientTimers[jobID]; timer != nil {
+		timer.Stop()
+		delete(r.clientTimers, jobID)
+	}
+	r.mu.Unlock()
+}
+
+func (r *Registry) onClientDisconnect(jobID string) {
+	r.startClientTimerIfIdle(jobID)
+}
+
+func (r *Registry) startClientTimerIfIdle(jobID string) {
+	if r.clientTTL <= 0 {
+		return
+	}
+	r.mu.Lock()
+	subs := r.subs[jobID]
+	if len(subs) > 0 {
+		r.mu.Unlock()
+		return
+	}
+	if r.clientTimers[jobID] != nil {
+		r.mu.Unlock()
+		return
+	}
+	ttl := r.clientTTL
+	timer := time.AfterFunc(ttl, func() {
+		r.expireJobIfIdle(jobID)
+	})
+	r.clientTimers[jobID] = timer
+	r.mu.Unlock()
+}
+
+func (r *Registry) clearClientTimer(jobID string) {
+	r.mu.Lock()
+	if timer := r.clientTimers[jobID]; timer != nil {
+		timer.Stop()
+		delete(r.clientTimers, jobID)
+	}
+	r.mu.Unlock()
+}
+
+func (r *Registry) expireJobIfIdle(jobID string) {
+	r.mu.Lock()
+	subs := r.subs[jobID]
+	if len(subs) > 0 {
+		r.mu.Unlock()
+		return
+	}
+	if r.clientTimers[jobID] == nil {
+		r.mu.Unlock()
+		return
+	}
+	delete(r.clientTimers, jobID)
+	job := r.jobs[jobID]
+	if job == nil {
+		r.mu.Unlock()
+		return
+	}
+	if isTerminalStatus(job.Status) {
+		r.mu.Unlock()
+		return
+	}
+	if job.Status == StatusQueued {
+		r.removeFromQueue(jobID)
+	}
+	job.Status = StatusCanceled
+	job.Error = &JobError{Code: "client_inactive", Message: "client inactive"}
+	job.UpdatedAt = time.Now()
+	view := r.viewLocked(job)
+	r.mu.Unlock()
+
+	logx.Log.Warn().Str("job_id", jobID).Msg("canceled job due to client inactivity")
+	r.publish(jobID, Event{Type: "status", Data: view})
+}
+
 func (r *Registry) writeEvent(w http.ResponseWriter, ev Event) {
 	data, err := json.Marshal(ev.Data)
 	if err != nil {
@@ -496,8 +665,8 @@ func (r *Registry) viewLocked(job *Job) JobView {
 		Metadata:  copyMap(job.Metadata),
 		Progress:  copyMap(job.Progress),
 		Error:     copyError(job.Error),
-		Payload:   copyTransfer(job.Payload),
-		Result:    copyTransfer(job.Result),
+		Payloads:  copyTransfers(job.Payloads),
+		Results:   copyTransfers(job.Results),
 		CreatedAt: job.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt: job.UpdatedAt.UTC().Format(time.RFC3339),
 	}
@@ -546,6 +715,17 @@ func copyTransfer(info *TransferInfo) *TransferInfo {
 	}
 	cp := *info
 	return &cp
+}
+
+func copyTransfers(src map[string]*TransferInfo) map[string]*TransferInfo {
+	if src == nil {
+		return nil
+	}
+	dst := make(map[string]*TransferInfo, len(src))
+	for k, v := range src {
+		dst[k] = copyTransfer(v)
+	}
+	return dst
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {

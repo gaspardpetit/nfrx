@@ -6,6 +6,8 @@ metrics_addr: ":8080"        # Prometheus metrics listen address
 # client_key: ""             # shared key clients must present when registering
 request_timeout: 120s         # request timeout without worker activity
 drain_timeout: 5m             # wait time for in-flight requests on shutdown
+jobs_sse_close_delay: 5s      # delay before closing job SSE after terminal status
+jobs_client_ttl: 30s          # client inactivity TTL for jobs when no SSE client is connected
 # max_parallel_embeddings: 8  # maximum number of workers to split embeddings across
 # allowed_origins: []         # comma separated list of allowed CORS origins
 # redis_addr: redis://127.0.0.1:6379/0  # redis connection URL for server state

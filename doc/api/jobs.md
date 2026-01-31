@@ -92,11 +92,14 @@ Response (example):
   "type": "asr.transcribe",
   "status": "awaiting_payload",
   "metadata": {"filename": "sample.wav"},
-  "payload": {
-    "channel_id": "<uuid>",
-    "method": "POST",
-    "url": "/api/transfer/<uuid>",
-    "expires_at": "2026-01-31T01:00:00Z"
+  "payloads": {
+    "payload": {
+      "key": "payload",
+      "channel_id": "<uuid>",
+      "method": "POST",
+      "url": "/api/transfer/<uuid>",
+      "expires_at": "2026-01-31T01:00:00Z"
+    }
   },
   "queue_position": 1,
   "created_at": "2026-01-31T01:00:00Z",
@@ -131,8 +134,8 @@ X-User-Roles: <api_role>
 SSE event types:
 
 - `status` — full job snapshot (JobView), including `progress` and `error` when present
-- `payload` — transfer info for **client to write** payload (POST)
-- `result` — transfer info for **client to read** result (GET)
+- `payload` — transfer info for **client to write** payload (POST); includes optional `key`
+- `result` — transfer info for **client to read** result (GET); includes optional `key`
 
 SSE format notes:
 
@@ -149,11 +152,11 @@ data: {"id":"...","status":"queued",...}
 
 
 event: payload
-data: {"channel_id":"...","method":"POST","url":"/api/transfer/...","expires_at":"..."}
+data: {"key":"payload","channel_id":"...","method":"POST","url":"/api/transfer/...","expires_at":"..."}
 
 
 event: result
-data: {"channel_id":"...","method":"GET","url":"/api/transfer/...","expires_at":"..."}
+data: {"key":"result","channel_id":"...","method":"GET","url":"/api/transfer/...","expires_at":"..."}
 
 
 event: status
@@ -264,16 +267,24 @@ X-User-Roles: <client_role>
 
 `POST /api/jobs/{job_id}/payload`
 
+Request body (optional):
+
+```json
+{ "key": "payload" }
+```
+
 Response:
 
 ```json
 {
+  "key": "payload",
   "channel_id": "<uuid>",
   "reader_url": "/api/transfer/<uuid>",
   "expires_at": "2026-01-31T01:00:00Z"
 }
 ```
 
+- `key` is optional; if omitted the server defaults to `"payload"`. Explicit empty is allowed.
 - Worker should **GET** `reader_url` to receive payload.
 - Client receives a `payload` event with a POST URL to send bytes.
 
@@ -351,16 +362,24 @@ X-User-Roles: <client_role>
 
 `POST /api/jobs/{job_id}/result`
 
+Request body (optional):
+
+```json
+{ "key": "result" }
+```
+
 Response:
 
 ```json
 {
+  "key": "result",
   "channel_id": "<uuid>",
   "writer_url": "/api/transfer/<uuid>",
   "expires_at": "2026-01-31T01:00:00Z"
 }
 ```
 
+- `key` is optional; if omitted the server defaults to `"result"`. Explicit empty is allowed.
 - Worker should **POST** bytes to `writer_url`.
 - Client receives a `result` event with a GET URL to read bytes.
 
@@ -401,7 +420,7 @@ Clients should expect the server to emit `status` events with these values.
 
 ## Transfer channel behavior
 
-Transfer channels are created by `/payload` and `/result` or directly via `/api/transfer`:
+Transfer channels are created by `/payload` and `/result` (optional `key`) or directly via `/api/transfer`:
 
 - **One‑time**: exactly one reader and one writer can attach.
 - **Time‑limited**: channels expire if the other side does not connect in time.
@@ -411,4 +430,58 @@ Transfer channels are created by `/payload` and `/result` or directly via `/api/
 
 - Transfer channels are one‑time, time‑limited, and in‑memory only.
 - Jobs are in‑memory; a server restart clears the queue.
-- For clients without SSE, poll `GET /api/jobs/{job_id}` and look for `payload` / `result` fields.
+- For clients without SSE, poll `GET /api/jobs/{job_id}` and look for `payloads` / `results` fields.
+- When no SSE client is connected, jobs are canceled after `JOBS_CLIENT_TTL` (default `30s`).
+
+## Python client usage (minimal)
+
+To use the Python client in your own project, copy these example files into your codebase:
+
+- `examples/python/example_nfrx_jobs_client.py`
+- `examples/python/nfrx_sdk/transfer_client.py`
+
+Install dependencies:
+
+```bash
+pip install httpx httpx-sse
+```
+
+Minimal usage with provider/consumer delegates:
+
+```python
+import asyncio
+from typing import Dict, Any, Optional
+
+from example_nfrx_jobs_client import NfrxJobsRunner
+
+
+async def payload_provider(key: str, payload: Dict[str, Any]) -> Optional[tuple[bytes, str | None]]:
+    _ = key, payload
+    return b"hello world", "application/octet-stream"
+
+
+async def result_consumer(key: str, data: bytes, payload: Dict[str, Any]) -> None:
+    _ = key, payload
+    print("result:", data.decode("utf-8", errors="replace"))
+
+
+async def on_status(status: Dict[str, Any]) -> None:
+    print("status:", status.get("status"))
+
+
+async def main() -> None:
+    runner = NfrxJobsRunner("http://localhost:8080", api_key=None, timeout=30)
+    try:
+        session = await runner.create_job_session(
+            job_type="asr.transcribe",
+            metadata={"language": "en"},
+            payload_provider=payload_provider,
+            result_consumer=result_consumer,
+        )
+        await runner.run_session(session, on_status=on_status, timeout=30)
+    finally:
+        await runner.close()
+
+
+asyncio.run(main())
+```

@@ -27,6 +27,8 @@ The server optionally reads settings from a YAML config file. Defaults:
 | `CLIENT_HTTP_ROLES` | `client_http_roles` | comma separated roles that grant client connect via `X-User-Roles` | unset | `--client-http-roles` |
 | `REQUEST_TIMEOUT` | — | seconds without worker or MCP activity before timing out a request | `120` | `--request-timeout` |
 | `DRAIN_TIMEOUT` | — | time to wait for in-flight requests on shutdown | `5m` | `--drain-timeout` |
+| `JOBS_SSE_CLOSE_DELAY` | `jobs_sse_close_delay` | delay before closing job SSE after terminal status | `5s` | `--jobs-sse-close-delay` |
+| `JOBS_CLIENT_TTL` | `jobs_client_ttl` | client inactivity TTL for jobs when no SSE client is connected (0 disables) | `30s` | `--jobs-client-ttl` |
 | `ALLOWED_ORIGINS` | — | comma separated list of allowed CORS origins | unset (deny all) | `--allowed-origins` |
 | `REDIS_ADDR` | `redis_addr` | Redis connection URL for server state (e.g. `redis://:pass@host:6379/0`, `redis-sentinel://host:26379/mymaster`) | unset | `--redis-addr` |
 | `PLUGINS` | `plugins` | comma separated list of plugins to enable (use `*` for all) | `*` | `--plugins` |

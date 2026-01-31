@@ -52,17 +52,17 @@ type JobStatusUpdateRequest struct {
 
 // JobView defines model for JobView.
 type JobView struct {
-	CreatedAt     time.Time               `json:"created_at"`
-	Error         *JobError               `json:"error,omitempty"`
-	Id            string                  `json:"id"`
-	Metadata      *map[string]interface{} `json:"metadata,omitempty"`
-	Payload       *TransferInfo           `json:"payload,omitempty"`
-	Progress      *map[string]interface{} `json:"progress,omitempty"`
-	QueuePosition *int                    `json:"queue_position,omitempty"`
-	Result        *TransferInfo           `json:"result,omitempty"`
-	Status        string                  `json:"status"`
-	Type          string                  `json:"type"`
-	UpdatedAt     time.Time               `json:"updated_at"`
+	CreatedAt     time.Time                `json:"created_at"`
+	Error         *JobError                `json:"error,omitempty"`
+	Id            string                   `json:"id"`
+	Metadata      *map[string]interface{}  `json:"metadata,omitempty"`
+	Payloads      *map[string]TransferInfo `json:"payloads,omitempty"`
+	Progress      *map[string]interface{}  `json:"progress,omitempty"`
+	QueuePosition *int                     `json:"queue_position,omitempty"`
+	Results       *map[string]TransferInfo `json:"results,omitempty"`
+	Status        string                   `json:"status"`
+	Type          string                   `json:"type"`
+	UpdatedAt     time.Time                `json:"updated_at"`
 }
 
 // TransferCreateResponse defines model for TransferCreateResponse.
@@ -75,14 +75,21 @@ type TransferCreateResponse struct {
 type TransferInfo struct {
 	ChannelId string    `json:"channel_id"`
 	ExpiresAt time.Time `json:"expires_at"`
+	Key       *string   `json:"key,omitempty"`
 	Method    string    `json:"method"`
 	Url       string    `json:"url"`
+}
+
+// TransferRequest defines model for TransferRequest.
+type TransferRequest struct {
+	Key *string `json:"key,omitempty"`
 }
 
 // TransferRequestResponse defines model for TransferRequestResponse.
 type TransferRequestResponse struct {
 	ChannelId string    `json:"channel_id"`
 	ExpiresAt time.Time `json:"expires_at"`
+	Key       *string   `json:"key,omitempty"`
 	ReaderUrl *string   `json:"reader_url,omitempty"`
 	WriterUrl *string   `json:"writer_url,omitempty"`
 }
@@ -92,6 +99,12 @@ type PostApiJobsJSONRequestBody = JobCreateRequest
 
 // PostApiJobsClaimJSONRequestBody defines body for PostApiJobsClaim for application/json ContentType.
 type PostApiJobsClaimJSONRequestBody = JobClaimRequest
+
+// PostApiJobsJobIdPayloadJSONRequestBody defines body for PostApiJobsJobIdPayload for application/json ContentType.
+type PostApiJobsJobIdPayloadJSONRequestBody = TransferRequest
+
+// PostApiJobsJobIdResultJSONRequestBody defines body for PostApiJobsJobIdResult for application/json ContentType.
+type PostApiJobsJobIdResultJSONRequestBody = TransferRequest
 
 // PostApiJobsJobIdStatusJSONRequestBody defines body for PostApiJobsJobIdStatus for application/json ContentType.
 type PostApiJobsJobIdStatusJSONRequestBody = JobStatusUpdateRequest

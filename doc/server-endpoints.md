@@ -118,10 +118,10 @@ Notes:
 | `GET /api/jobs/{job_id}/events` | Path `{job_id}` | SSE stream of job events. | API key or API roles |
 | `POST /api/jobs/{job_id}/cancel` | Path `{job_id}` | Cancel a job. | API key or API roles |
 | `POST /api/jobs/claim` | Body `{ types?: [string], max_wait_seconds?: int }` | Claim the next queued job. | Client key or client roles |
-| `POST /api/jobs/{job_id}/payload` | Path `{job_id}` | Request a payload transfer channel (worker reads, client writes). | Client key or client roles |
-| `POST /api/jobs/{job_id}/result` | Path `{job_id}` | Request a result transfer channel (worker writes, client reads). | Client key or client roles |
+| `POST /api/jobs/{job_id}/payload` | Path `{job_id}`; Body `{ key?: string }` | Request a payload transfer channel (worker reads, client writes). | Client key or client roles |
+| `POST /api/jobs/{job_id}/result` | Path `{job_id}`; Body `{ key?: string }` | Request a result transfer channel (worker writes, client reads). | Client key or client roles |
 | `POST /api/jobs/{job_id}/status` | Path `{job_id}` | Update job status/progress/error. | Client key or client roles |
 
 Notes:
 - Jobs are stored in memory; this is not a durable queue.
-- `payload` and `result` endpoints create transfer channels and emit events to the client.
+- `payload` and `result` endpoints create transfer channels (optional `key`, defaulting to `payload`/`result`) and emit events to the client.
