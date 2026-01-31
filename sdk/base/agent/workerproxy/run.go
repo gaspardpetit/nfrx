@@ -218,32 +218,32 @@ func errIfNil(err error, resp *http.Response) error {
 
 func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg Config, statusUpdates <-chan ctrl.StatusUpdateMessage) (bool, error) {
 	connCtx, cancelConn := context.WithCancel(ctx)
-    // When a client key is configured, send it as an Authorization bearer header for proxies expecting header-based auth
-    var dialOpts *websocket.DialOptions
-    hasAuth := false
-    if cfg.ClientKey != "" {
-        hdr := make(http.Header)
-        hdr.Set("Authorization", "Bearer "+cfg.ClientKey)
-        dialOpts = &websocket.DialOptions{HTTPHeader: hdr}
-        hasAuth = true
-    }
-    logx.Log.Info().Str("server", cfg.ServerURL).Bool("auth_header", hasAuth).Msg("dialing server")
-    // Bound the WebSocket handshake so we don't hang indefinitely behind misconfigured proxies.
-    dctx, cancelDial := context.WithTimeout(connCtx, 15*time.Second)
-    defer cancelDial()
-    ws, resp, err := websocket.Dial(dctx, cfg.ServerURL, dialOpts)
-    if err != nil {
-        if resp != nil {
-            // Log status and a subset of headers to help diagnose proxy issues
-            logx.Log.Warn().Err(err).Str("server", cfg.ServerURL).Int("status", resp.StatusCode).Interface("headers", resp.Header).Msg("websocket dial failed")
-        } else {
-            logx.Log.Warn().Err(err).Str("server", cfg.ServerURL).Msg("websocket dial failed")
-        }
-        cancelConn()
-        SetLastError(err.Error())
-        SetState("error")
-        return false, err
-    }
+	// When a client key is configured, send it as an Authorization bearer header for proxies expecting header-based auth
+	var dialOpts *websocket.DialOptions
+	hasAuth := false
+	if cfg.ClientKey != "" {
+		hdr := make(http.Header)
+		hdr.Set("Authorization", "Bearer "+cfg.ClientKey)
+		dialOpts = &websocket.DialOptions{HTTPHeader: hdr}
+		hasAuth = true
+	}
+	logx.Log.Info().Str("server", cfg.ServerURL).Bool("auth_header", hasAuth).Msg("dialing server")
+	// Bound the WebSocket handshake so we don't hang indefinitely behind misconfigured proxies.
+	dctx, cancelDial := context.WithTimeout(connCtx, 15*time.Second)
+	defer cancelDial()
+	ws, resp, err := websocket.Dial(dctx, cfg.ServerURL, dialOpts)
+	if err != nil {
+		if resp != nil {
+			// Log status and a subset of headers to help diagnose proxy issues
+			logx.Log.Warn().Err(err).Str("server", cfg.ServerURL).Int("status", resp.StatusCode).Interface("headers", resp.Header).Msg("websocket dial failed")
+		} else {
+			logx.Log.Warn().Err(err).Str("server", cfg.ServerURL).Msg("websocket dial failed")
+		}
+		cancelConn()
+		SetLastError(err.Error())
+		SetState("error")
+		return false, err
+	}
 	// Disable default 32KiB read limit to allow large control messages
 	ws.SetReadLimit(-1)
 	defer func() { _ = ws.Close(websocket.StatusInternalError, "closing") }()
@@ -257,7 +257,7 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg Conf
 	for k, v := range cfg.AgentConfig {
 		agentCfg[k] = v
 	}
-    regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: cfg.ClientID, WorkerName: cfg.ClientName, Models: GetState().Labels, MaxConcurrency: GetState().MaxConcurrency, AgentConfig: agentCfg}
+	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: cfg.ClientID, WorkerName: cfg.ClientName, Models: GetState().Labels, MaxConcurrency: GetState().MaxConcurrency, AgentConfig: agentCfg}
 	b, _ := json.Marshal(regMsg)
 	if err := ws.Write(connCtx, websocket.MessageText, b); err != nil {
 		cancelConn()

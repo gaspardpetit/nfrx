@@ -260,25 +260,20 @@ func extractFirstSSEData(body []byte) ([]byte, error) {
 	buf := make([]byte, 0, 64*1024)
 	scanner.Buffer(buf, 4*1024*1024)
 	var data bytes.Buffer
-	currentEvent := ""
-	for {
-		if !scanner.Scan() {
-			break
-		}
+	for scanner.Scan() {
 		line := scanner.Text()
 		if len(line) == 0 {
 			if data.Len() > 0 {
 				return data.Bytes(), nil
 			}
-			currentEvent = ""
 			continue
 		}
 		if strings.HasPrefix(line, ":") {
 			continue
 		}
 		if strings.HasPrefix(line, "event:") {
-			currentEvent = strings.TrimSpace(line[6:])
-			if currentEvent == "close" {
+			eventName := strings.TrimSpace(line[6:])
+			if eventName == "close" {
 				break
 			}
 			continue

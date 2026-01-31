@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-    "strings"
+	"strings"
 
 	llmcommon "github.com/gaspardpetit/nfrx/modules/llm/common"
 )
@@ -23,8 +23,8 @@ func New(base string) *Client {
 }
 
 func (c *Client) Tags(ctx context.Context) ([]string, error) {
-    base := strings.TrimRight(c.BaseURL, "/")
-    req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+"/api/tags", nil)
+	base := strings.TrimRight(c.BaseURL, "/")
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+"/api/tags", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -57,9 +57,9 @@ func (c *Client) Health(ctx context.Context) ([]string, error) {
 }
 
 func (c *Client) GenerateStream(ctx context.Context, req llmcommon.GenerateRequest) (io.ReadCloser, error) {
-    b, _ := json.Marshal(req)
-    base := strings.TrimRight(c.BaseURL, "/")
-    httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, base+"/api/generate?stream=true", bytes.NewReader(b))
+	b, _ := json.Marshal(req)
+	base := strings.TrimRight(c.BaseURL, "/")
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, base+"/api/generate?stream=true", bytes.NewReader(b))
 	if err != nil {
 		return nil, err
 	}
@@ -72,9 +72,9 @@ func (c *Client) GenerateStream(ctx context.Context, req llmcommon.GenerateReque
 }
 
 func (c *Client) Generate(ctx context.Context, req llmcommon.GenerateRequest) ([]byte, error) {
-    b, _ := json.Marshal(req)
-    base := strings.TrimRight(c.BaseURL, "/")
-    httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, base+"/api/generate", bytes.NewReader(b))
+	b, _ := json.Marshal(req)
+	base := strings.TrimRight(c.BaseURL, "/")
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, base+"/api/generate", bytes.NewReader(b))
 	if err != nil {
 		return nil, err
 	}

@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
@@ -10,6 +11,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/gaspardpetit/nfrx/api/generated"
+	baseauth "github.com/gaspardpetit/nfrx/sdk/base/auth"
 	"github.com/gaspardpetit/nfrx/server/internal/adapters"
 	"github.com/gaspardpetit/nfrx/server/internal/api"
 	"github.com/gaspardpetit/nfrx/server/internal/config"
@@ -44,12 +46,32 @@ func New(cfg config.ServerConfig, stateReg *serverstate.Registry, plugins []plug
 
 	impl := &api.API{StateReg: stateReg}
 	wrapper := generated.ServerInterfaceWrapper{Handler: impl}
+	transferReg := api.NewTransferRegistry(60 * time.Second)
 
 	r.Get("/healthz", wrapper.GetHealthz)
 	r.Route("/api", func(ar chi.Router) {
 		ar.Route("/client", func(cr chi.Router) {
 			cr.Get("/openapi.json", api.OpenAPIHandler())
 			cr.Get("/*", api.SwaggerHandler())
+		})
+		ar.Route("/transfer", func(tr chi.Router) {
+			roles := append([]string{}, cfg.APIHTTPRoles...)
+			roles = append(roles, cfg.ClientHTTPRoles...)
+			secrets := make([]string, 0, 2)
+			if cfg.APIKey != "" {
+				secrets = append(secrets, cfg.APIKey)
+			}
+			if cfg.ClientKey != "" && cfg.ClientKey != cfg.APIKey {
+				secrets = append(secrets, cfg.ClientKey)
+			}
+			tr.Use(baseauth.BearerAnyOrRolesMiddleware(secrets, roles))
+			tr.Post("/", transferReg.HandleCreate)
+			tr.Get("/{channel_id}", func(w http.ResponseWriter, r *http.Request) {
+				transferReg.HandleReader(w, r, chi.URLParam(r, "channel_id"))
+			})
+			tr.Post("/{channel_id}", func(w http.ResponseWriter, r *http.Request) {
+				transferReg.HandleWriter(w, r, chi.URLParam(r, "channel_id"))
+			})
 		})
 		ar.Group(func(g chi.Router) {
 			if cfg.APIKey != "" || len(cfg.APIHTTPRoles) > 0 {

@@ -1,11 +1,11 @@
 package worker
 
 import (
-    "encoding/json"
-    "errors"
-    "net/http"
-    "strings"
-    "time"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"strings"
+	"time"
 
 	"github.com/coder/websocket"
 	"github.com/gaspardpetit/nfrx/core/logx"
@@ -52,12 +52,12 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
 			logx.Log.Error().Err(err).Str("remote", r.RemoteAddr).Msg("ws decode register")
 			return
 		}
-        // Authorize via header roles or bearer token; if no expected key is configured, allow
-        authorized := clientKey == "" || hasAnyAllowedRole(r.Header.Get("X-User-Roles"), allowedRoles) || checkBearer(r.Header.Get("Authorization"), clientKey)
-        if !authorized {
-            _ = c.Close(websocket.StatusPolicyViolation, "unauthorized")
-            return
-        }
+		// Authorize via header roles or bearer token; if no expected key is configured, allow
+		authorized := clientKey == "" || hasAnyAllowedRole(r.Header.Get("X-User-Roles"), allowedRoles) || checkBearer(r.Header.Get("Authorization"), clientKey)
+		if !authorized {
+			_ = c.Close(websocket.StatusPolicyViolation, "unauthorized")
+			return
+		}
 
 		name := rm.WorkerName
 		if name == "" {
@@ -267,16 +267,16 @@ func hasAnyAllowedRole(header string, allowed []string) bool {
 }
 
 func checkBearer(authHeader, expected string) bool {
-    if expected == "" {
-        return false
-    }
-    ah := strings.TrimSpace(authHeader)
-    if ah == "" {
-        return false
-    }
-    if strings.HasPrefix(strings.ToLower(ah), "bearer ") {
-        tok := strings.TrimSpace(ah[7:])
-        return tok == expected
-    }
-    return false
+	if expected == "" {
+		return false
+	}
+	ah := strings.TrimSpace(authHeader)
+	if ah == "" {
+		return false
+	}
+	if strings.HasPrefix(strings.ToLower(ah), "bearer ") {
+		tok := strings.TrimSpace(ah[7:])
+		return tok == expected
+	}
+	return false
 }

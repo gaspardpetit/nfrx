@@ -13,6 +13,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/gaspardpetit/nfrx/core/logx"
+	baseauth "github.com/gaspardpetit/nfrx/sdk/base/auth"
 )
 
 type loggingResponseWriter struct {
@@ -106,47 +107,5 @@ func APIKeyMiddleware(apiKey string) func(http.Handler) http.Handler {
 // APIAuthMiddleware authorizes requests when either the bearer token matches apiKey
 // or when X-User-Roles contains any role listed in allowedRoles.
 func APIAuthMiddleware(apiKey string, allowedRoles []string) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if apiKey == "" && len(allowedRoles) == 0 {
-				next.ServeHTTP(w, r)
-				return
-			}
-			// bearer match
-			auth := r.Header.Get("Authorization")
-			if strings.HasPrefix(auth, "Bearer ") && strings.TrimPrefix(auth, "Bearer ") == apiKey && apiKey != "" {
-				next.ServeHTTP(w, r)
-				return
-			}
-			// role match
-			if hasAnyAllowedRole(r.Header.Get("X-User-Roles"), allowedRoles) {
-				next.ServeHTTP(w, r)
-				return
-			}
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			if _, err := w.Write([]byte(`{"error":"unauthorized"}`)); err != nil {
-				logx.Log.Error().Err(err).Msg("write unauthorized")
-			}
-		})
-	}
-}
-
-func hasAnyAllowedRole(header string, allowed []string) bool {
-	if header == "" || len(allowed) == 0 {
-		return false
-	}
-	m := map[string]struct{}{}
-	for _, r := range allowed {
-		rr := strings.TrimSpace(r)
-		if rr != "" {
-			m[rr] = struct{}{}
-		}
-	}
-	for _, it := range strings.Split(header, ",") {
-		if _, ok := m[strings.TrimSpace(it)]; ok {
-			return true
-		}
-	}
-	return false
+	return baseauth.BearerOrRolesMiddleware(apiKey, allowedRoles)
 }

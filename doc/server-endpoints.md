@@ -96,3 +96,15 @@ These endpoints are present when the `mcp` plugin is enabled.
 - **API key** – `Authorization: Bearer <API_KEY>`.
 - **Client key** – WebSocket `register` message must include `client_key` matching server configuration. Providing a key when the server is configured without one results in an immediate failure.
 - **MCP token** – Optional `Authorization: Bearer <AUTH_TOKEN>` forwarded to the MCP relay. The server neither validates nor requires this header; if the relay is configured with a token it will reject missing or invalid tokens. Future improvements may allow the relay to signal this requirement so the server can reject unauthenticated requests early.
+
+## Transfer API
+
+| Verb & Endpoint | Parameters | Description | Auth |
+| --- | --- | --- | --- |
+| `POST /api/transfer` | – | Create a new transfer channel; returns `channel_id` and `expires_at`. | API key or client key or roles |
+| `GET /api/transfer/{channel_id}` | Path `{channel_id}` | Initiate downstream transfer (reader). | API key or client key or roles |
+| `POST /api/transfer/{channel_id}` | Path `{channel_id}` | Initiate upstream transfer (writer). | API key or client key or roles |
+
+Notes:
+- Channels are in-memory and time-limited; they expire if the other side does not connect before the TTL.
+- Only one reader and one writer can attach to a channel; reuse returns `409`.

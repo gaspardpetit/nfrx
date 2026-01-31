@@ -33,17 +33,17 @@ func TestWorkerAuth(t *testing.T) {
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
-    ctx := context.Background()
-    wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/api/llm/connect"
+	ctx := context.Background()
+	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/api/llm/connect"
 
-    // bad key via Authorization header
-    hdrBad := make(http.Header)
-    hdrBad.Set("Authorization", "Bearer nope")
-    connBad, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: hdrBad})
+	// bad key via Authorization header
+	hdrBad := make(http.Header)
+	hdrBad.Set("Authorization", "Bearer nope")
+	connBad, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: hdrBad})
 	if err != nil {
 		t.Fatalf("dial bad: %v", err)
 	}
-    regBad := ctrl.RegisterMessage{Type: "register", WorkerID: "wbad", Models: []string{"m"}, MaxConcurrency: 1}
+	regBad := ctrl.RegisterMessage{Type: "register", WorkerID: "wbad", Models: []string{"m"}, MaxConcurrency: 1}
 	b, _ := json.Marshal(regBad)
 	if err := connBad.Write(ctx, websocket.MessageText, b); err != nil {
 		t.Fatalf("write bad: %v", err)
@@ -71,17 +71,17 @@ func TestWorkerAuth(t *testing.T) {
 		}
 	}
 
-    // good key via Authorization header
-    hdr := make(http.Header)
-    hdr.Set("Authorization", "Bearer "+cfg.ClientKey)
-    conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: hdr})
+	// good key via Authorization header
+	hdr := make(http.Header)
+	hdr.Set("Authorization", "Bearer "+cfg.ClientKey)
+	conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: hdr})
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}
 	defer func() {
 		_ = conn.Close(websocket.StatusNormalClosure, "")
 	}()
-    regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w1", Models: []string{"m"}, MaxConcurrency: 1}
+	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w1", Models: []string{"m"}, MaxConcurrency: 1}
 	b, _ = json.Marshal(regMsg)
 	if err := conn.Write(ctx, websocket.MessageText, b); err != nil {
 		t.Fatalf("write: %v", err)
@@ -115,7 +115,7 @@ func TestWorkerAuth(t *testing.T) {
 }
 
 func TestWorkerAuthNotRequiredWhenNoServerKey(t *testing.T) {
-    cfg := config.ServerConfig{RequestTimeout: 5 * time.Second}
+	cfg := config.ServerConfig{RequestTimeout: 5 * time.Second}
 	mcpPlugin := mcp.New(adapters.ServerState{}, nil, nil, nil, nil, nil, "test", "", "", spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg := serverstate.NewRegistry()
 	srvOpts := spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}
@@ -126,20 +126,20 @@ func TestWorkerAuthNotRequiredWhenNoServerKey(t *testing.T) {
 
 	ctx := context.Background()
 	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/api/llm/connect"
-    // Even when a client sends an Authorization header, server without ClientKey allows connection
-    hdr := make(http.Header)
-    hdr.Set("Authorization", "Bearer secret")
-    conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: hdr})
+	// Even when a client sends an Authorization header, server without ClientKey allows connection
+	hdr := make(http.Header)
+	hdr.Set("Authorization", "Bearer secret")
+	conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: hdr})
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}
-    regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w1", Models: []string{"m"}, MaxConcurrency: 1}
+	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: "w1", Models: []string{"m"}, MaxConcurrency: 1}
 	b, _ := json.Marshal(regMsg)
 	if err := conn.Write(ctx, websocket.MessageText, b); err != nil {
 		t.Fatalf("write: %v", err)
 	}
-    // should remain connected; close explicitly
-    _ = conn.Close(websocket.StatusNormalClosure, "")
+	// should remain connected; close explicitly
+	_ = conn.Close(websocket.StatusNormalClosure, "")
 }
 
 func TestMCPAuth(t *testing.T) {
@@ -155,13 +155,13 @@ func TestMCPAuth(t *testing.T) {
 	ctx := context.Background()
 	wsURL := strings.Replace(srv.URL, "http", "ws", 1) + "/api/mcp/connect"
 
-    hdrBad := make(http.Header)
-    hdrBad.Set("Authorization", "Bearer nope")
-    connBad, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: hdrBad})
+	hdrBad := make(http.Header)
+	hdrBad.Set("Authorization", "Bearer nope")
+	connBad, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: hdrBad})
 	if err != nil {
 		t.Fatalf("dial bad: %v", err)
 	}
-    regBad := map[string]string{"id": "bad"}
+	regBad := map[string]string{"id": "bad"}
 	b, _ := json.Marshal(regBad)
 	if err := connBad.Write(ctx, websocket.MessageText, b); err != nil {
 		t.Fatalf("write bad: %v", err)
@@ -171,13 +171,13 @@ func TestMCPAuth(t *testing.T) {
 	}
 	_ = connBad.Close(websocket.StatusNormalClosure, "")
 
-    hdr := make(http.Header)
-    hdr.Set("Authorization", "Bearer "+cfg.ClientKey)
-    conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: hdr})
+	hdr := make(http.Header)
+	hdr.Set("Authorization", "Bearer "+cfg.ClientKey)
+	conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: hdr})
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}
-    regMsg := map[string]string{"id": "good"}
+	regMsg := map[string]string{"id": "good"}
 	b, _ = json.Marshal(regMsg)
 	if err := conn.Write(ctx, websocket.MessageText, b); err != nil {
 		t.Fatalf("write: %v", err)
@@ -190,7 +190,7 @@ func TestMCPAuth(t *testing.T) {
 	srv.Close()
 
 	// unexpected key when server has none
-    cfg = config.ServerConfig{RequestTimeout: 5 * time.Second}
+	cfg = config.ServerConfig{RequestTimeout: 5 * time.Second}
 	mcpReg := mcp.New(adapters.ServerState{}, nil, nil, nil, nil, nil, "test", "", "", spi.Options{RequestTimeout: cfg.RequestTimeout, ClientKey: cfg.ClientKey}, nil)
 	stateReg = serverstate.NewRegistry()
 	// rebuild deps for second server
@@ -200,18 +200,18 @@ func TestMCPAuth(t *testing.T) {
 	srv2 := httptest.NewServer(handler)
 	defer srv2.Close()
 	wsURL2 := strings.Replace(srv2.URL, "http", "ws", 1) + "/api/mcp/connect"
-    // Server without ClientKey: allow connection even if client sends Authorization header
-    hdr2 := make(http.Header)
-    hdr2.Set("Authorization", "Bearer secret")
-    conn2, _, err := websocket.Dial(ctx, wsURL2, &websocket.DialOptions{HTTPHeader: hdr2})
+	// Server without ClientKey: allow connection even if client sends Authorization header
+	hdr2 := make(http.Header)
+	hdr2.Set("Authorization", "Bearer secret")
+	conn2, _, err := websocket.Dial(ctx, wsURL2, &websocket.DialOptions{HTTPHeader: hdr2})
 	if err != nil {
 		t.Fatalf("dial2: %v", err)
 	}
-    regMsg2 := map[string]string{"id": "bad"}
+	regMsg2 := map[string]string{"id": "bad"}
 	b, _ = json.Marshal(regMsg2)
 	if err := conn2.Write(ctx, websocket.MessageText, b); err != nil {
 		t.Fatalf("write2: %v", err)
 	}
-    // should remain connected; close explicitly
-    _ = conn2.Close(websocket.StatusNormalClosure, "")
+	// should remain connected; close explicitly
+	_ = conn2.Close(websocket.StatusNormalClosure, "")
 }

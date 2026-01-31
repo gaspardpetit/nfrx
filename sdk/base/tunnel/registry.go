@@ -1,13 +1,13 @@
 package tunnel
 
 import (
-    "context"
-    "encoding/json"
-    "io"
-    "net/http"
-    "strings"
-    "sync"
-    "time"
+	"context"
+	"encoding/json"
+	"io"
+	"net/http"
+	"strings"
+	"sync"
+	"time"
 
 	"github.com/coder/websocket"
 	basemetrics "github.com/gaspardpetit/nfrx/sdk/base/metrics"
@@ -87,16 +87,16 @@ func (r *Registry) WSHandler(expectKey string, decode RegisterAdapter, reader Re
 			_ = c.Close(websocket.StatusPolicyViolation, "expected register")
 			return
 		}
-	id, name, _, err := decode(data)
+		id, name, _, err := decode(data)
 		if err != nil {
 			_ = c.Close(websocket.StatusPolicyViolation, "invalid register")
 			return
 		}
-        authorized := expectKey == "" || hasAnyAllowedRole(req.Header.Get("X-User-Roles"), allowedRoles) || checkBearer(req.Header.Get("Authorization"), expectKey)
-        if !authorized {
-            _ = c.Close(websocket.StatusPolicyViolation, "unauthorized")
-            return
-        }
+		authorized := expectKey == "" || hasAnyAllowedRole(req.Header.Get("X-User-Roles"), allowedRoles) || checkBearer(req.Header.Get("Authorization"), expectKey)
+		if !authorized {
+			_ = c.Close(websocket.StatusPolicyViolation, "unauthorized")
+			return
+		}
 
 		// Assign a server-side ID when none is provided and reject duplicates
 		if id == "" {
@@ -138,18 +138,18 @@ func hasAnyAllowedRole(header string, allowed []string) bool {
 }
 
 func checkBearer(authHeader, expected string) bool {
-    if expected == "" {
-        return false
-    }
-    ah := strings.TrimSpace(authHeader)
-    if ah == "" {
-        return false
-    }
-    if strings.HasPrefix(strings.ToLower(ah), "bearer ") {
-        tok := strings.TrimSpace(ah[7:])
-        return tok == expected
-    }
-    return false
+	if expected == "" {
+		return false
+	}
+	ah := strings.TrimSpace(authHeader)
+	if ah == "" {
+		return false
+	}
+	if strings.HasPrefix(strings.ToLower(ah), "bearer ") {
+		tok := strings.TrimSpace(ah[7:])
+		return tok == expected
+	}
+	return false
 }
 
 func (r *Registry) heartbeatLoop(ctx context.Context, id string, rl *Relay) {
