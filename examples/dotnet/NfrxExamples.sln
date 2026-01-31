@@ -1,0 +1,50 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36915.13
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "nfrx-sdk", "nfrx-sdk\nfrx-sdk.csproj", "{4959B9EE-1DEA-4BE7-851F-249D34D6715D}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "examples", "examples", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "example-nfrx-jobs-client", "example-nfrx-jobs-client\example-nfrx-jobs-client.csproj", "{2FF6495D-6515-4746-BE12-63E2B6407245}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "example-nfrx-transfer", "example-nfrx-transfer\example-nfrx-transfer.csproj", "{491D1BB2-E795-4F74-B60B-A8F4C60E5F64}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "example-nfrx-jobs-worker", "example-nfrx-jobs-worker\example-nfrx-jobs-worker.csproj", "{01EA6FCB-20FF-4ED3-90D8-C9FEC1D5B212}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4959B9EE-1DEA-4BE7-851F-249D34D6715D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4959B9EE-1DEA-4BE7-851F-249D34D6715D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4959B9EE-1DEA-4BE7-851F-249D34D6715D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4959B9EE-1DEA-4BE7-851F-249D34D6715D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2FF6495D-6515-4746-BE12-63E2B6407245}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2FF6495D-6515-4746-BE12-63E2B6407245}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2FF6495D-6515-4746-BE12-63E2B6407245}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2FF6495D-6515-4746-BE12-63E2B6407245}.Release|Any CPU.Build.0 = Release|Any CPU
+		{491D1BB2-E795-4F74-B60B-A8F4C60E5F64}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{491D1BB2-E795-4F74-B60B-A8F4C60E5F64}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{491D1BB2-E795-4F74-B60B-A8F4C60E5F64}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{491D1BB2-E795-4F74-B60B-A8F4C60E5F64}.Release|Any CPU.Build.0 = Release|Any CPU
+		{01EA6FCB-20FF-4ED3-90D8-C9FEC1D5B212}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{01EA6FCB-20FF-4ED3-90D8-C9FEC1D5B212}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{01EA6FCB-20FF-4ED3-90D8-C9FEC1D5B212}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{01EA6FCB-20FF-4ED3-90D8-C9FEC1D5B212}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{2FF6495D-6515-4746-BE12-63E2B6407245} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{491D1BB2-E795-4F74-B60B-A8F4C60E5F64} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{01EA6FCB-20FF-4ED3-90D8-C9FEC1D5B212} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {683505AA-6F60-45B7-A060-FEAEEA163532}
+	EndGlobalSection
+EndGlobal
