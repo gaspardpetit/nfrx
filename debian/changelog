@@ -1,4 +1,20 @@
-nfrx (0.8.0-1ubuntu1) UNRELEASED; urgency=medium
+nfrx (0.8.1-1ubuntu1) UNRELEASED; urgency=medium
+
+  * Release: v0.8.1 —
+    https://github.com/gaspardpetit/nfrx/releases/tag/v0.8.1
+  * ## What's Changed
+  * * Added python sdk by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/243
+  * * Added c# examples by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/244
+  *
+  *
+  * **Full Changelog**:
+    https://github.com/gaspardpetit/nfrx/compare/v0.8.0...v0.8.1
+
+ -- CI <ci@example.invalid>  Sat, 31 Jan 2026 04:50:26 +0000
+
+nfrx (0.8.1-1) unstable; urgency=medium
 
   * Release: v0.8.0 —
     https://github.com/gaspardpetit/nfrx/releases/tag/v0.8.0
@@ -13,8 +29,9 @@ nfrx (0.8.0-1ubuntu1) UNRELEASED; urgency=medium
   *
   * **Full Changelog**:
     https://github.com/gaspardpetit/nfrx/compare/v0.7.7...v0.8.0
+  *
 
- -- CI <ci@example.invalid>  Sat, 31 Jan 2026 02:22:34 +0000
+ -- CI <ci@example.invalid>  Sat, 31 Jan 2026 04:50:26 +0000
 
 nfrx (0.8.0-1) unstable; urgency=medium
 
