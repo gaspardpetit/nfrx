@@ -435,6 +435,11 @@ func (r *Registry) HandleStatusUpdate(w http.ResponseWriter, req *http.Request) 
 		writeJSON(w, http.StatusNotFound, map[string]any{"error": "not_found"})
 		return
 	}
+	if isTerminalStatus(job.Status) {
+		r.mu.Unlock()
+		writeJSON(w, http.StatusConflict, map[string]any{"error": "invalid_state"})
+		return
+	}
 	var body StatusUpdateRequest
 	r.mu.Unlock()
 	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
