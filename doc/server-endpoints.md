@@ -125,3 +125,4 @@ Notes:
 Notes:
 - Jobs are stored in memory; this is not a durable queue.
 - `payload` and `result` endpoints create transfer channels (optional `key`, defaulting to `payload`/`result`) and emit events to the client.
+- `POST /api/jobs/{job_id}/status` returns `409` with `{ "error": "invalid_state" }` if the job is in a terminal state.
