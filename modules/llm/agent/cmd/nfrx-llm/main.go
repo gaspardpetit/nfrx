@@ -15,6 +15,7 @@ import (
 	"github.com/gaspardpetit/nfrx/core/logx"
 	aconfig "github.com/gaspardpetit/nfrx/modules/llm/agent/internal/config"
 	"github.com/gaspardpetit/nfrx/modules/llm/agent/internal/ollama"
+	openaiclient "github.com/gaspardpetit/nfrx/modules/llm/agent/internal/openai"
 	wp "github.com/gaspardpetit/nfrx/sdk/base/agent/workerproxy"
 	"strconv"
 )
@@ -101,17 +102,45 @@ func main() {
 	}
 	log.Msg("worker starting")
 	// Bridge LLM config to the generic worker-proxy runner with a custom probe
-	// that discovers models via Ollama tags (CompletionBaseURL typically ends with /v1).
-	// Normalize base URL: remove trailing slash, and strip a trailing /v1 if present
-	base := strings.TrimRight(cfg.CompletionBaseURL, "/")
-	base = strings.TrimSuffix(base, "/v1")
-	client := ollama.New(base)
-	probe := func(pctx context.Context) (wp.ProbeResult, error) {
-		models, err := client.Health(pctx)
-		if err != nil {
-			return wp.ProbeResult{Ready: false}, err
+	// that discovers models based on the configured API style.
+	normalizedBase, err := normalizeV1Base(cfg.CompletionBaseURL)
+	if err != nil {
+		logx.Log.Fatal().Err(err).Msg("invalid completion base url")
+	}
+	var probe wp.ProbeFunc
+	switch strings.ToLower(cfg.APIStyle) {
+	case "", "openai":
+		modelsURL := normalizedBase + "/models"
+		client := openaiclient.New(normalizedBase, cfg.CompletionAPIKey)
+		probe = func(pctx context.Context) (wp.ProbeResult, error) {
+			models, err := client.Models(pctx)
+			if err != nil {
+				return wp.ProbeResult{Ready: false}, fmt.Errorf("probe %s: %w", modelsURL, err)
+			}
+			return wp.ProbeResult{Ready: true, Models: models, MaxConcurrency: cfg.MaxConcurrency}, nil
 		}
-		return wp.ProbeResult{Ready: true, Models: models, MaxConcurrency: cfg.MaxConcurrency}, nil
+	case "ollama":
+		base := strings.TrimSuffix(normalizedBase, "/v1")
+		tagsURL := base + "/api/tags"
+		client := ollama.New(base)
+		probe = func(pctx context.Context) (wp.ProbeResult, error) {
+			models, err := client.Health(pctx)
+			if err != nil {
+				return wp.ProbeResult{Ready: false}, fmt.Errorf("probe %s: %w", tagsURL, err)
+			}
+			return wp.ProbeResult{Ready: true, Models: models, MaxConcurrency: cfg.MaxConcurrency}, nil
+		}
+	default:
+		logx.Log.Warn().Str("api_style", cfg.APIStyle).Msg("unknown api style; defaulting to openai")
+		modelsURL := normalizedBase + "/models"
+		client := openaiclient.New(normalizedBase, cfg.CompletionAPIKey)
+		probe = func(pctx context.Context) (wp.ProbeResult, error) {
+			models, err := client.Models(pctx)
+			if err != nil {
+				return wp.ProbeResult{Ready: false}, fmt.Errorf("probe %s: %w", modelsURL, err)
+			}
+			return wp.ProbeResult{Ready: true, Models: models, MaxConcurrency: cfg.MaxConcurrency}, nil
+		}
 	}
 	agentCfg := map[string]string{}
 	if cfg.EmbeddingBatchSize > 0 {
@@ -139,6 +168,19 @@ func main() {
 	if err := wp.Run(ctx, gcfg); err != nil {
 		logx.Log.Fatal().Err(err).Msg("worker exited")
 	}
+}
+
+func normalizeV1Base(raw string) (string, error) {
+	if raw == "" {
+		return "", fmt.Errorf("completion base url must be set")
+	}
+	if strings.HasSuffix(raw, "/v1/") {
+		return strings.TrimRight(raw, "/"), nil
+	}
+	if strings.HasSuffix(raw, "/v1") {
+		return raw, nil
+	}
+	return "", fmt.Errorf("completion base url must end with /v1 (got %q)", raw)
 }
 
 func captureCLIOverrides(args []string) map[string]string {
