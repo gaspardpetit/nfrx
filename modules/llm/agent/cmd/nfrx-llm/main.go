@@ -5,8 +5,10 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"net/url"
 	"os"
 	"os/signal"
+	"path"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -103,10 +105,7 @@ func main() {
 	log.Msg("worker starting")
 	// Bridge LLM config to the generic worker-proxy runner with a custom probe
 	// that discovers models based on the configured API style.
-	normalizedBase, err := normalizeV1Base(cfg.CompletionBaseURL)
-	if err != nil {
-		logx.Log.Fatal().Err(err).Msg("invalid completion base url")
-	}
+	normalizedBase := normalizeBase(cfg.CompletionBaseURL)
 	var probe wp.ProbeFunc
 	switch strings.ToLower(cfg.APIStyle) {
 	case "", "openai":
@@ -120,7 +119,7 @@ func main() {
 			return wp.ProbeResult{Ready: true, Models: models, MaxConcurrency: cfg.MaxConcurrency}, nil
 		}
 	case "ollama":
-		base := strings.TrimSuffix(normalizedBase, "/v1")
+		base := parentBase(normalizedBase)
 		tagsURL := base + "/api/tags"
 		client := ollama.New(base)
 		probe = func(pctx context.Context) (wp.ProbeResult, error) {
@@ -170,17 +169,32 @@ func main() {
 	}
 }
 
-func normalizeV1Base(raw string) (string, error) {
-	if raw == "" {
-		return "", fmt.Errorf("completion base url must be set")
+func normalizeBase(raw string) string {
+	return strings.TrimRight(raw, "/")
+}
+
+func parentBase(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme == "" {
+		base := strings.TrimRight(raw, "/")
+		if base == "" {
+			return base
+		}
+		if i := strings.LastIndexByte(base, '/'); i > 0 {
+			return base[:i]
+		}
+		return base
 	}
-	if strings.HasSuffix(raw, "/v1/") {
-		return strings.TrimRight(raw, "/"), nil
+	p := strings.TrimRight(u.Path, "/")
+	if p == "" {
+		return u.String()
 	}
-	if strings.HasSuffix(raw, "/v1") {
-		return raw, nil
+	dir := path.Dir(p)
+	if dir == "." {
+		dir = ""
 	}
-	return "", fmt.Errorf("completion base url must end with /v1 (got %q)", raw)
+	u.Path = dir
+	return u.String()
 }
 
 func captureCLIOverrides(args []string) map[string]string {
