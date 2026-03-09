@@ -136,10 +136,21 @@ func (p *Plugin) RegisterState(reg spi.StateRegistry) {
         var avg=(w.avg_processing_ms||0);
         var avgText=(avg && avg.toFixed)? avg.toFixed(0) : avg;
         var processed=(w.processed_total||0);
+        var version=(w.version || '');
+        var hostSummary=[w.host_os, w.host_platform, w.host_platform_version].filter(Boolean).join(' / ');
+        var hostName=(w.host_hostname || '');
+        var completionAgentVersion=(w.completion_agent_version || '');
+        var cpu=(typeof w.host_cpu_percent === 'number') ? w.host_cpu_percent.toFixed(1) : '';
+        var ram=(typeof w.host_ram_used_percent === 'number') ? w.host_ram_used_percent.toFixed(1) : '';
         div.innerHTML=
           '<div class="busy-bar"><div class="fill" style="height:'+Math.round(busy*100)+'%"></div></div>'+
           '<div class="emoji">🦙</div>'+
           '<div class="name"><span class="status-dot" style="background:'+status+'"></span>'+name+'</div>'+
+          '<div>version: '+(version || 'unknown')+'</div>'+
+          '<div>backend: '+(completionAgentVersion || 'unknown')+'</div>'+
+          '<div>host: '+((hostName && hostSummary) ? (hostName+' / '+hostSummary) : (hostName || hostSummary || 'unknown'))+'</div>'+
+          '<div>host cpu: '+(cpu || '0.0')+'%</div>'+
+          '<div>host ram: '+(ram || '0.0')+'%</div>'+
           '<div>'+(w.status || '')+'</div>'+
           '<div>inflight: '+inflight+'</div>'+
           '<div>embed batch: '+(w.embedding_batch_size||0)+'</div>'+

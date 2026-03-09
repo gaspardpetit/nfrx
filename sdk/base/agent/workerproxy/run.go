@@ -258,6 +258,10 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg Conf
 		agentCfg[k] = v
 	}
 	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: cfg.ClientID, WorkerName: cfg.ClientName, Models: GetState().Labels, MaxConcurrency: GetState().MaxConcurrency, AgentConfig: agentCfg}
+	vi := GetVersionInfo()
+	regMsg.Version = vi.Version
+	regMsg.BuildSHA = vi.BuildSHA
+	regMsg.BuildDate = vi.BuildDate
 	b, _ := json.Marshal(regMsg)
 	if err := ws.Write(connCtx, websocket.MessageText, b); err != nil {
 		cancelConn()
@@ -320,6 +324,14 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg Conf
 				return
 			case t := <-ticker.C:
 				hb := ctrl.HeartbeatMessage{Type: "heartbeat", TS: t.Unix()}
+				if cfg.HeartbeatSampleFunc != nil {
+					sample, err := cfg.HeartbeatSampleFunc()
+					hb.HostCPUPercent = sample.HostCPUPercent
+					hb.HostRAMUsedPercent = sample.HostRAMUsedPercent
+					if err != nil {
+						logx.Log.Warn().Err(err).Msg("heartbeat telemetry sample failed")
+					}
+				}
 				bb, _ := json.Marshal(hb)
 				sendMsg(connCtx, sendCh, bb)
 				SetLastHeartbeat(t)

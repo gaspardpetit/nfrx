@@ -28,8 +28,10 @@ type StatusUpdateMessage struct {
 }
 
 type HeartbeatMessage struct {
-	Type string `json:"type"`
-	TS   int64  `json:"ts"`
+	Type               string  `json:"type"`
+	TS                 int64   `json:"ts"`
+	HostCPUPercent     float64 `json:"host_cpu_percent,omitempty"`
+	HostRAMUsedPercent float64 `json:"host_ram_used_percent,omitempty"`
 }
 
 type ModelsUpdateMessage struct {

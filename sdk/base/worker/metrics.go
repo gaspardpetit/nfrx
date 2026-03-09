@@ -18,15 +18,24 @@ const (
 )
 
 type WorkerSnapshot struct {
-	ID             string       `json:"id"`
-	Name           string       `json:"name"`
-	Version        string       `json:"version"`
-	BuildSHA       string       `json:"build_sha,omitempty"`
-	BuildDate      string       `json:"build_date,omitempty"`
-	Status         WorkerStatus `json:"status"`
-	ConnectedAt    time.Time    `json:"connected_at"`
-	LastHeartbeat  time.Time    `json:"last_heartbeat"`
-	MaxConcurrency int          `json:"max_concurrency"`
+	ID                     string       `json:"id"`
+	Name                   string       `json:"name"`
+	Version                string       `json:"version"`
+	BuildSHA               string       `json:"build_sha,omitempty"`
+	BuildDate              string       `json:"build_date,omitempty"`
+	HostOS                 string       `json:"host_os,omitempty"`
+	HostPlatform           string       `json:"host_platform,omitempty"`
+	HostPlatformFamily     string       `json:"host_platform_family,omitempty"`
+	HostPlatformVersion    string       `json:"host_platform_version,omitempty"`
+	HostKernelVersion      string       `json:"host_kernel_version,omitempty"`
+	HostHostname           string       `json:"host_hostname,omitempty"`
+	CompletionAgentVersion string       `json:"completion_agent_version,omitempty"`
+	HostCPUPercent         float64      `json:"host_cpu_percent,omitempty"`
+	HostRAMUsedPercent     float64      `json:"host_ram_used_percent,omitempty"`
+	Status                 WorkerStatus `json:"status"`
+	ConnectedAt            time.Time    `json:"connected_at"`
+	LastHeartbeat          time.Time    `json:"last_heartbeat"`
+	MaxConcurrency         int          `json:"max_concurrency"`
 	// Keep historical UI label for preferred batch size
 	PreferredBatchSize int     `json:"embedding_batch_size"`
 	ProcessedTotal     uint64  `json:"processed_total"`
@@ -89,6 +98,12 @@ type workerMetrics struct {
 	status                             WorkerStatus
 	connectedAt, lastHeartbeat         time.Time
 	version, buildSHA, buildDate       string
+	hostOS, hostPlatform               string
+	hostPlatformFamily                 string
+	hostPlatformVersion                string
+	hostKernelVersion, hostHostname    string
+	completionAgentVersion             string
+	hostCPUPercent, hostRAMUsedPercent float64
 	maxConcurrency, preferredBatchSize int
 	processedTotal, processingMsTotal  uint64
 	inflight                           int
@@ -117,6 +132,22 @@ func (m *MetricsRegistry) UpsertWorker(id, name, version, buildSHA, buildDate st
 	}
 }
 
+func (m *MetricsRegistry) SetWorkerHostInfo(id string, agentConfig map[string]string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	w, ok := m.workers[id]
+	if !ok || agentConfig == nil {
+		return
+	}
+	w.hostOS = agentConfig["host_os"]
+	w.hostPlatform = agentConfig["host_platform"]
+	w.hostPlatformFamily = agentConfig["host_platform_family"]
+	w.hostPlatformVersion = agentConfig["host_platform_version"]
+	w.hostKernelVersion = agentConfig["host_kernel_version"]
+	w.hostHostname = agentConfig["host_hostname"]
+	w.completionAgentVersion = agentConfig["completion_agent_version"]
+}
+
 func (m *MetricsRegistry) RemoveWorker(id string) { m.mu.Lock(); delete(m.workers, id); m.mu.Unlock() }
 func (m *MetricsRegistry) SetWorkerStatus(id string, status WorkerStatus) {
 	m.mu.Lock()
@@ -133,10 +164,12 @@ func (m *MetricsRegistry) UpdateWorker(id string, maxConcurrency, embeddingBatch
 	}
 	m.mu.Unlock()
 }
-func (m *MetricsRegistry) RecordHeartbeat(id string) {
+func (m *MetricsRegistry) RecordHeartbeat(id string, hostCPUPercent, hostRAMUsedPercent float64) {
 	m.mu.Lock()
 	if w, ok := m.workers[id]; ok {
 		w.lastHeartbeat = time.Now()
+		w.hostCPUPercent = hostCPUPercent
+		w.hostRAMUsedPercent = hostRAMUsedPercent
 	}
 	m.mu.Unlock()
 }
@@ -225,7 +258,34 @@ func (m *MetricsRegistry) Snapshot() StateResponse {
 		if w.processedTotal > 0 {
 			avg = float64(w.processingMsTotal) / float64(w.processedTotal)
 		}
-		snapshot := WorkerSnapshot{ID: w.id, Name: w.name, Status: w.status, ConnectedAt: w.connectedAt, LastHeartbeat: w.lastHeartbeat, Version: w.version, BuildSHA: w.buildSHA, BuildDate: w.buildDate, MaxConcurrency: w.maxConcurrency, PreferredBatchSize: w.preferredBatchSize, ProcessedTotal: w.processedTotal, ProcessingMsTotal: w.processingMsTotal, AvgProcessingMs: avg, Inflight: w.inflight, FailuresTotal: w.failuresTotal, QueueLen: w.queueLen, LastError: w.lastError}
+		snapshot := WorkerSnapshot{
+			ID:                     w.id,
+			Name:                   w.name,
+			Status:                 w.status,
+			ConnectedAt:            w.connectedAt,
+			LastHeartbeat:          w.lastHeartbeat,
+			Version:                w.version,
+			BuildSHA:               w.buildSHA,
+			BuildDate:              w.buildDate,
+			HostOS:                 w.hostOS,
+			HostPlatform:           w.hostPlatform,
+			HostPlatformFamily:     w.hostPlatformFamily,
+			HostPlatformVersion:    w.hostPlatformVersion,
+			HostKernelVersion:      w.hostKernelVersion,
+			HostHostname:           w.hostHostname,
+			CompletionAgentVersion: w.completionAgentVersion,
+			HostCPUPercent:         w.hostCPUPercent,
+			HostRAMUsedPercent:     w.hostRAMUsedPercent,
+			MaxConcurrency:         w.maxConcurrency,
+			PreferredBatchSize:     w.preferredBatchSize,
+			ProcessedTotal:         w.processedTotal,
+			ProcessingMsTotal:      w.processingMsTotal,
+			AvgProcessingMs:        avg,
+			Inflight:               w.inflight,
+			FailuresTotal:          w.failuresTotal,
+			QueueLen:               w.queueLen,
+			LastError:              w.lastError,
+		}
 		resp.Workers = append(resp.Workers, snapshot)
 	}
 	// Leave Models empty in generic base; extensions can expose their own catalogs

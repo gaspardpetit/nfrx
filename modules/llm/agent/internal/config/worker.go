@@ -16,24 +16,25 @@ import (
 
 // WorkerConfig holds configuration for the worker agent.
 type WorkerConfig struct {
-	ServerURL          string
-	ClientKey          string
-	CompletionBaseURL  string
-	CompletionAPIKey   string
-	APIStyle           string
-	MaxConcurrency     int
-	EmbeddingBatchSize int
-	ClientID           string
-	ClientName         string
-	StatusAddr         string
-	MetricsAddr        string
-	DrainTimeout       time.Duration
-	ModelPollInterval  time.Duration
-	ConfigFile         string
-	LogDir             string
-	Reconnect          bool
-	RequestTimeout     time.Duration
-	LogLevel           string
+	ServerURL              string
+	ClientKey              string
+	CompletionBaseURL      string
+	CompletionAPIKey       string
+	CompletionAgentVersion string
+	APIStyle               string
+	MaxConcurrency         int
+	EmbeddingBatchSize     int
+	ClientID               string
+	ClientName             string
+	StatusAddr             string
+	MetricsAddr            string
+	DrainTimeout           time.Duration
+	ModelPollInterval      time.Duration
+	ConfigFile             string
+	LogDir                 string
+	Reconnect              bool
+	RequestTimeout         time.Duration
+	LogLevel               string
 }
 
 func (c *WorkerConfig) BindFlags() {
@@ -47,6 +48,7 @@ func (c *WorkerConfig) BindFlags() {
 	base := commoncfg.GetEnv("COMPLETION_BASE_URL", "http://127.0.0.1:11434/v1")
 	c.CompletionBaseURL = base
 	c.CompletionAPIKey = commoncfg.GetEnv("COMPLETION_API_KEY", commoncfg.GetEnv("OLLAMA_API_KEY", ""))
+	c.CompletionAgentVersion = commoncfg.GetEnv("COMPLETION_AGENT_VERSION", "")
 	c.APIStyle = strings.ToLower(commoncfg.GetEnv("API_STYLE", "openai"))
 	mc := commoncfg.GetEnv("MAX_CONCURRENCY", "2")
 	if v, err := strconv.Atoi(mc); err == nil {
@@ -94,6 +96,7 @@ func (c *WorkerConfig) BindFlags() {
 	flag.StringVar(&c.ClientKey, "client-key", c.ClientKey, "shared secret for authenticating with the server")
 	flag.StringVar(&c.CompletionBaseURL, "completion-base-url", c.CompletionBaseURL, "base URL of the completion API (e.g. http://127.0.0.1:11434/v1)")
 	flag.StringVar(&c.CompletionAPIKey, "completion-api-key", c.CompletionAPIKey, "API key for the completion API; leave empty for no auth")
+	flag.StringVar(&c.CompletionAgentVersion, "completion-agent-version", c.CompletionAgentVersion, "backend completion agent version to advertise to the server (e.g. ollama 0.9.6)")
 	flag.StringVar(&c.APIStyle, "api-style", c.APIStyle, "backend API style for model discovery (openai or ollama)")
 	flag.IntVar(&c.MaxConcurrency, "max-concurrency", c.MaxConcurrency, "maximum number of jobs processed concurrently")
 	flag.IntVar(&c.EmbeddingBatchSize, "embedding-batch-size", c.EmbeddingBatchSize, "ideal embedding batch size for embeddings")

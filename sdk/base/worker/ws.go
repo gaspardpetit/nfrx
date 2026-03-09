@@ -88,6 +88,7 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
 			state.SetStatus("ready")
 		}
 		metrics.UpsertWorker(wk.ID, wk.Name, rm.Version, rm.BuildSHA, rm.BuildDate, rm.MaxConcurrency, prefBatch, rm.Models)
+		metrics.SetWorkerHostInfo(wk.ID, rm.AgentConfig)
 		status := StatusIdle
 		if rm.MaxConcurrency == 0 {
 			status = StatusNotReady
@@ -140,8 +141,11 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
 			}
 			switch env.Type {
 			case "heartbeat":
-				reg.UpdateHeartbeat(wk.ID)
-				metrics.RecordHeartbeat(wk.ID)
+				var m ctrl.HeartbeatMessage
+				if err := json.Unmarshal(msg, &m); err == nil {
+					reg.UpdateHeartbeat(wk.ID)
+					metrics.RecordHeartbeat(wk.ID, m.HostCPUPercent, m.HostRAMUsedPercent)
+				}
 			case "status_update":
 				var m ctrl.StatusUpdateMessage
 				if err := json.Unmarshal(msg, &m); err == nil {

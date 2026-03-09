@@ -17,7 +17,17 @@ import (
 func TestGetState(t *testing.T) {
 	metricsReg := llmctrl.NewMetricsRegistry("v", "sha", "date", func() string { return "" })
 	metricsReg.UpsertWorker("w1", "w1", "1", "a", "d", 1, 0, []string{"m"})
+	metricsReg.SetWorkerHostInfo("w1", map[string]string{
+		"host_os":                  "windows",
+		"host_platform":            "windows",
+		"host_platform_family":     "windows",
+		"host_platform_version":    "11",
+		"host_kernel_version":      "10.0",
+		"host_hostname":            "box1",
+		"completion_agent_version": "ollama 0.9.6",
+	})
 	metricsReg.SetWorkerStatus("w1", llmctrl.StatusConnected)
+	metricsReg.RecordHeartbeat("w1", 12.5, 43.75)
 	metricsReg.RecordJobStart("w1")
 	metricsReg.RecordJobEnd("w1", "m", 50*time.Millisecond, 5, 7, 0, true, "")
 
@@ -46,6 +56,9 @@ func TestGetState(t *testing.T) {
 	}
 	if resp.Workers[0].Name != "w1" {
 		t.Fatalf("expected worker name")
+	}
+	if resp.Workers[0].Version != "1" || resp.Workers[0].HostHostname != "box1" || resp.Workers[0].CompletionAgentVersion != "ollama 0.9.6" || resp.Workers[0].HostCPUPercent != 12.5 || resp.Workers[0].HostRAMUsedPercent != 43.75 {
+		t.Fatalf("expected host telemetry %+v", resp.Workers[0])
 	}
 }
 

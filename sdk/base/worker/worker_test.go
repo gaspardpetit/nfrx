@@ -55,11 +55,24 @@ func TestMinScoreThreshold(t *testing.T) {
 func TestMetricsSnapshotBasic(t *testing.T) {
 	reg := NewMetricsRegistry("v", "sha", "date", func() string { return "" })
 	reg.UpsertWorker("w1", "w1", "1", "", "", 1, 0, []string{"m"})
+	reg.SetWorkerHostInfo("w1", map[string]string{
+		"host_os":                  "windows",
+		"host_platform":            "windows",
+		"host_platform_family":     "windows",
+		"host_platform_version":    "11",
+		"host_kernel_version":      "10.0",
+		"host_hostname":            "box1",
+		"completion_agent_version": "ollama 0.9.6",
+	})
 	reg.RecordJobStart("w1")
 	reg.RecordJobEnd("w1", "m", 10*time.Millisecond, 1, 2, 0, true, "")
+	reg.RecordHeartbeat("w1", 12.5, 43.75)
 	snap := reg.Snapshot()
 	if len(snap.Workers) != 1 || snap.Server.JobsCompletedTotal != 1 {
 		t.Fatalf("bad snapshot %+v", snap)
+	}
+	if snap.Workers[0].HostHostname != "box1" || snap.Workers[0].CompletionAgentVersion != "ollama 0.9.6" || snap.Workers[0].HostCPUPercent != 12.5 || snap.Workers[0].HostRAMUsedPercent != 43.75 {
+		t.Fatalf("bad host snapshot %+v", snap.Workers[0])
 	}
 }
 
@@ -94,6 +107,63 @@ func TestWSRegisterStoresWorkerName(t *testing.T) {
 	}
 }
 
+func TestWSRegisterAndHeartbeatStoreHostTelemetry(t *testing.T) {
+	reg := NewRegistry()
+	mx := NewMetricsRegistry("test", "", "", func() string { return "" })
+	srv := httptest.NewServer(WSHandler(reg, mx, "", nil))
+	defer srv.Close()
+	ctx := context.Background()
+	wsURL := strings.Replace(srv.URL, "http", "ws", 1)
+	c, _, err := websocket.Dial(ctx, wsURL, nil)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer func() { _ = c.Close(websocket.StatusNormalClosure, "") }()
+	rm := ctrl.RegisterMessage{
+		Type:           "register",
+		WorkerID:       "w1abcdef",
+		WorkerName:     "Alpha",
+		Models:         []string{"m"},
+		MaxConcurrency: 1,
+		Version:        "v1.2.3",
+		BuildSHA:       "abc123",
+		BuildDate:      "2026-03-09",
+		AgentConfig: map[string]string{
+			"host_os":                  "windows",
+			"host_platform":            "windows",
+			"host_platform_family":     "windows",
+			"host_platform_version":    "11",
+			"host_kernel_version":      "10.0.26100",
+			"host_hostname":            "box1",
+			"completion_agent_version": "llama.cpp b4514",
+		},
+	}
+	b, _ := json.Marshal(rm)
+	if err := c.Write(ctx, websocket.MessageText, b); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	hb, _ := json.Marshal(ctrl.HeartbeatMessage{
+		Type:               "heartbeat",
+		TS:                 time.Now().Unix(),
+		HostCPUPercent:     22.5,
+		HostRAMUsedPercent: 67.25,
+	})
+	if err := c.Write(ctx, websocket.MessageText, hb); err != nil {
+		t.Fatalf("heartbeat write: %v", err)
+	}
+	for i := 0; i < 50; i++ {
+		snap := mx.Snapshot()
+		if len(snap.Workers) == 1 {
+			w := snap.Workers[0]
+			if w.Version == "v1.2.3" && w.HostHostname == "box1" && w.CompletionAgentVersion == "llama.cpp b4514" && w.HostCPUPercent == 22.5 && w.HostRAMUsedPercent == 67.25 {
+				return
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatalf("worker snapshot not updated: %+v", mx.Snapshot())
+}
+
 func TestMetricsRegistryRace(t *testing.T) {
 	reg := NewMetricsRegistry("v", "sha", "date", func() string { return "" })
 	reg.UpsertWorker("w", "w", "1", "", "", 1, 0, []string{"m"})
@@ -103,7 +173,7 @@ func TestMetricsRegistryRace(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for j := 0; j < 100; j++ {
-				reg.RecordHeartbeat("w")
+				reg.RecordHeartbeat("w", 0, 0)
 				reg.RecordJobStart("w")
 				reg.RecordJobEnd("w", "m", time.Millisecond, 0, 0, 0, true, "")
 			}
