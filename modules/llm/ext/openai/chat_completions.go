@@ -11,6 +11,6 @@ func ChatCompletionsHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics
 	return generationProxyHandler(reg, sched, metrics, opts, queue, generationProxySpec{
 		endpointPath:      "/chat/completions",
 		operationName:     "llm.completion",
-		queueStatusWriter: chatQueueStatusWriter,
+		queueStatusWriter: queueStatusWriter,
 	})
 }
