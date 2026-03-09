@@ -8,6 +8,7 @@ import (
 // Mount wires OpenAI-compatible endpoints. Requires a shared completion queue for chat requests.
 func Mount(v1 spi.Router, reg spi.WorkerRegistry, sched spi.Scheduler, metrics spi.Metrics, opts Options, queue *CompletionQueue) {
 	v1.Post("/chat/completions", ChatCompletionsHandler(reg, sched, metrics, opts, queue))
+	v1.Post("/responses", ResponsesHandler(reg, sched, metrics, opts, queue))
 	v1.Post("/embeddings", EmbeddingsHandler(reg, sched, metrics, opts.RequestTimeout, opts.MaxParallelEmbeddings))
 	v1.Get("/models", ListModelsHandler(reg))
 	v1.Get("/models/{id}", GetModelHandler(reg))
