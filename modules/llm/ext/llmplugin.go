@@ -186,7 +186,8 @@ func (p *Plugin) RegisterState(reg spi.StateRegistry) {
             '<div class="detail"><div class="detail-label">Processed</div><div class="detail-value"><strong>'+processed+'</strong> total</div></div>'+
             '<div class="detail"><div class="detail-label">Avg Processing</div><div class="detail-value"><strong>'+avgText+'</strong> ms</div></div>'+
             '<div class="detail"><div class="detail-label">Embed Batch</div><div class="detail-value"><strong>'+(w.embedding_batch_size||0)+'</strong></div></div>'+
-          '</div>';
+          '</div>'+
+          '<div class="worker-id">'+(w.id || '')+'</div>';
         host.appendChild(div);
       });
     }

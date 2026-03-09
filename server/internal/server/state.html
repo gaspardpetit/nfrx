@@ -256,7 +256,7 @@ select {
   min-height: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 1rem 1rem 1rem 1.15rem;
+  padding: 1rem 1rem 2.2rem 1.15rem;
   background: linear-gradient(180deg, rgba(255,255,255,0.08), transparent), var(--panel-strong);
 }
 .worker .emoji {
@@ -393,6 +393,20 @@ select {
 .worker .detail-value strong {
   color: var(--text);
   font-weight: 700;
+}
+.worker .worker-id {
+  position: absolute;
+  right: 0.9rem;
+  bottom: 0.8rem;
+  max-width: calc(100% - 1.8rem);
+  color: var(--muted);
+  opacity: 0.72;
+  font-size: 0.76rem;
+  font-family: var(--mono);
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .busy-bar {
   position: absolute;
