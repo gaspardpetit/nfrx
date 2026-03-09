@@ -108,10 +108,16 @@ func (p *Plugin) RegisterState(reg spi.StateRegistry) {
           '<div class="busy-bar"><div class="fill" style="height:'+Math.round(busy*100)+'%"></div></div>'+
           '<div class="emoji">📄</div>'+
           '<div class="name"><span class="status-dot" style="background:'+status+'"></span>'+name+'</div>'+
-          '<div>'+(w.status || '')+'</div>'+
-          '<div>inflight: '+inflight+'</div>'+
-          '<div>processed: '+processed+'</div>'+
-          '<div>avg processing: '+avgText+' ms</div>';
+          '<div class="worker-subtitle">'+(w.status || 'unknown')+'</div>'+
+          '<div class="worker-metrics">'+
+            '<div class="metric"><div class="metric-label">Inflight</div><div class="metric-value">'+inflight+'</div></div>'+
+            '<div class="metric"><div class="metric-label">Processed</div><div class="metric-value">'+processed+'</div></div>'+
+          '</div>'+
+          '<div class="worker-details">'+
+            '<div class="detail"><div class="detail-label">Avg Processing</div><div class="detail-value"><strong>'+avgText+'</strong> ms</div></div>'+
+            '<div class="detail"><div class="detail-label">Capacity</div><div class="detail-value"><strong>'+maxc+'</strong></div></div>'+
+          '</div>'+
+          '<div class="worker-id">'+(w.id || '')+'</div>';
         host.appendChild(div);
       });
     }
