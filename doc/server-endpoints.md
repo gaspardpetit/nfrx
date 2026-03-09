@@ -53,6 +53,7 @@ These endpoints are present when the `llm` plugin is enabled.
 | Verb & Endpoint | Parameters | Description | Auth |
 | --- | --- | --- | --- |
 | `POST /api/llm/v1/chat/completions` | Body `{ model: string, messages: [{role: string, content: string}], stream?: bool, ... }` | Proxy OpenAI chat completions. | API key |
+| `POST /api/llm/v1/responses` | Body `{ model: string, input: any, stream?: bool, ... }` | Proxy OpenAI responses. | API key |
 | `POST /api/llm/v1/embeddings` | Body `{ model: string, input: any, ... }` | Proxy OpenAI embeddings; large input arrays are automatically batched per worker. | API key |
 | `GET /api/llm/v1/models` | – | List models. | API key |
 | `GET /api/llm/v1/models/{id}` | Path `{id}` | Get model details. | API key |

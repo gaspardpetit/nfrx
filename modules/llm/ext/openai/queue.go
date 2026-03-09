@@ -6,7 +6,7 @@ import (
 	baseworker "github.com/gaspardpetit/nfrx/sdk/base/worker"
 )
 
-// CompletionQueue is a simple process-wide FIFO queue for chat completion requests.
+// CompletionQueue is a simple process-wide FIFO queue for generative LLM requests.
 // It tracks length and capacity in the LLM metrics registry for state reporting.
 type CompletionQueue struct {
 	mu    sync.Mutex
