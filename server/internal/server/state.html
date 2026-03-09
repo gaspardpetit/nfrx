@@ -6,93 +6,510 @@
 <title>nfrx State</title>
 <style>
 :root {
-  --bg: #fff;
-  --fg: #000;
-  --box-bg: #f9f9f9;
-  --box-border: #ccc;
+  color-scheme: light dark;
+  --bg: #f4f0e8;
+  --bg-accent: radial-gradient(circle at top left, rgba(191, 68, 51, 0.18), transparent 34%);
+  --panel: rgba(255, 251, 244, 0.88);
+  --panel-strong: rgba(255, 248, 238, 0.96);
+  --border: rgba(107, 73, 51, 0.18);
+  --border-strong: rgba(107, 73, 51, 0.3);
+  --text: #241b14;
+  --muted: #6b594d;
+  --accent: #bf4433;
+  --accent-soft: rgba(191, 68, 51, 0.12);
+  --ok: #237b4b;
+  --warn: #b98a12;
+  --error: #c34739;
+  --shadow: 0 18px 48px rgba(77, 48, 32, 0.12);
+  --radius-lg: 22px;
+  --radius-md: 16px;
+  --radius-sm: 12px;
+  --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  --sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #000;
-    --fg: #fff;
-    --box-bg: #111;
-    --box-border: #444;
+    --bg: #16110d;
+    --bg-accent: radial-gradient(circle at top left, rgba(255, 147, 107, 0.18), transparent 34%);
+    --panel: rgba(33, 25, 20, 0.9);
+    --panel-strong: rgba(39, 29, 23, 0.96);
+    --border: rgba(255, 223, 202, 0.14);
+    --border-strong: rgba(255, 223, 202, 0.22);
+    --text: #f8efe7;
+    --muted: #ccb9ab;
+    --accent: #ff936b;
+    --accent-soft: rgba(255, 147, 107, 0.14);
+    --ok: #69d29b;
+    --warn: #f2c35e;
+    --error: #ff7e72;
+    --shadow: 0 24px 56px rgba(0, 0, 0, 0.28);
   }
 }
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
 body {
-  background: var(--bg);
-  color: var(--fg);
-  font-family: sans-serif;
-  margin: 1rem;
+  margin: 0;
+  color: var(--text);
+  background:
+    var(--bg-accent),
+    linear-gradient(180deg, rgba(255,255,255,0.12), transparent 24rem),
+    var(--bg);
+  font-family: var(--sans);
 }
-h1 {
-  font-size: 1.5rem;
+a { color: inherit; }
+.page {
+  width: min(1200px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 1.25rem 0 3rem;
 }
-#summary {
+.hero {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.9fr);
+  align-items: stretch;
   margin-bottom: 1rem;
 }
-#workers {
+.hero-card,
+.toolbar,
+.plugin-section,
+.empty-state,
+.stat-card {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--shadow);
+}
+.hero-card {
+  padding: 1.5rem;
+  border-radius: var(--radius-lg);
+}
+.hero-card h1 {
+  margin: 0 0 0.35rem;
+  font-size: clamp(1.8rem, 3vw, 2.8rem);
+  line-height: 1.05;
+}
+.hero-card p {
+  margin: 0;
+  max-width: 54rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.hero-meta {
   display: flex;
   flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: rgba(255,255,255,0.16);
+  padding: 0.5rem 0.8rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+.dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: var(--warn);
+  box-shadow: 0 0 0 0.22rem rgba(242, 195, 94, 0.16);
+}
+.dot.live { background: var(--ok); box-shadow: 0 0 0 0.22rem rgba(105, 210, 155, 0.16); }
+.dot.error { background: var(--error); box-shadow: 0 0 0 0.22rem rgba(255, 126, 114, 0.16); }
+.toolbar {
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+.toolbar-title {
+  font-size: 0.8rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+}
+.toolbar-grid {
+  display: grid;
+  gap: 1rem;
+}
+.toolbar label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.92rem;
+  margin-bottom: 0.45rem;
+}
+select {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--border-strong);
+  background: var(--panel-strong);
+  color: var(--text);
+  padding: 0.75rem 0.9rem;
+  font: inherit;
+}
+.summary-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 1rem 0 1.5rem;
+}
+.stat-card {
+  border-radius: var(--radius-md);
+  padding: 1rem 1.1rem;
+}
+.stat-label {
+  color: var(--muted);
+  font-size: 0.84rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.stat-value {
+  margin-top: 0.4rem;
+  font-size: clamp(1.6rem, 2vw, 2.15rem);
+  font-weight: 700;
+  line-height: 1;
+}
+.stat-note {
+  margin-top: 0.45rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+.plugins-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.plugins-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+.plugins-header p {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+}
+#plugins {
+  display: grid;
+  gap: 1rem;
+}
+.plugin-section {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.plugin-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+.plugin-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+}
+.plugin-title h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.plugin-id {
+  padding: 0.18rem 0.45rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+.plugin-summary,
+.plugin-meta {
+  color: var(--muted);
+  font-size: 0.94rem;
+}
+.plugin-body {
+  padding: 1.1rem 1.25rem 1.25rem;
+}
+.empty-state {
+  border-radius: var(--radius-lg);
+  padding: 1.4rem;
+  color: var(--muted);
+}
+#workers,
+.llm-workers,
+.asr-workers,
+.docling-workers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 1rem;
 }
 .worker {
   position: relative;
-  border: 1px solid var(--box-border);
-  border-radius: 8px;
-  padding: 0.5rem 1rem;
-  background: var(--box-bg);
-  flex: 1 1 200px;
+  overflow: hidden;
+  min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1rem 1rem 1rem 1.15rem;
+  background: linear-gradient(180deg, rgba(255,255,255,0.08), transparent), var(--panel-strong);
 }
 .worker .emoji {
-  font-size: 2rem;
+  font-size: 1.6rem;
+  line-height: 1;
+}
+.worker .worker-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.9rem;
+  margin-bottom: 0.9rem;
+}
+.worker .worker-head-main {
+  min-width: 0;
 }
 .worker .name {
-  font-weight: bold;
-  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 0.18rem;
+}
+.worker .name-text {
+  min-width: 0;
 }
 .worker .status-dot {
-  width: 10px;
-  height: 10px;
+  width: 0.8rem;
+  height: 0.8rem;
   border-radius: 50%;
   display: inline-block;
-  margin-right: 0.5rem;
+  flex: 0 0 auto;
+}
+.worker .worker-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  padding: 0.18rem 0.48rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1;
+}
+.worker .worker-status-badge.busy {
+  color: var(--warn);
+}
+.worker .worker-status-badge.error {
+  color: var(--error);
+}
+.worker .worker-status-badge.warn {
+  color: var(--warn);
+}
+.worker .worker-status-spinner {
+  width: 0.72rem;
+  height: 0.72rem;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  display: inline-block;
+  animation: worker-spin 0.9s linear infinite;
+}
+.worker .worker-meta {
+  min-width: 0;
+  text-align: right;
+}
+.worker .worker-version {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.2;
+}
+.worker .worker-hostline {
+  margin-top: 0.2rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.3;
+  word-break: break-word;
+}
+.worker .worker-backend {
+  margin-top: 0.16rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.2;
+}
+.worker .worker-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+.worker .metric {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.06);
+  padding: 0.65rem 0.7rem;
+}
+.worker .metric-label {
+  color: var(--muted);
+  font-size: 0.76rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.worker .metric-value {
+  margin-top: 0.22rem;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.worker .worker-details {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 0.9rem;
+}
+.worker .detail {
+  min-width: 0;
+}
+.worker .detail-label {
+  color: var(--muted);
+  font-size: 0.76rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.worker .detail-value {
+  margin-top: 0.14rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.35;
+  word-break: break-word;
+}
+.worker .detail-value strong {
+  color: var(--text);
+  font-weight: 700;
 }
 .busy-bar {
   position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: var(--box-border);
+  inset: 0 auto 0 0;
+  width: 0.34rem;
+  background: rgba(255,255,255,0.08);
 }
 .busy-bar .fill {
   position: absolute;
-  bottom: 0;
+  inset: auto 0 0;
   width: 100%;
-  background: #0af;
+  background: linear-gradient(180deg, #f2c35e, var(--accent));
+  border-radius: 999px 999px 0 0;
 }
-@media (max-width: 600px) {
-  #workers { flex-direction: column; }
+@keyframes worker-spin {
+  to { transform: rotate(360deg); }
+}
+@media (max-width: 920px) {
+  .hero,
+  .summary-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 720px) {
+  .page {
+    width: min(100% - 1rem, 1200px);
+    padding-top: 0.75rem;
+  }
+  .hero,
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+  .plugins-header {
+    align-items: start;
+    flex-direction: column;
+  }
+  .worker .worker-metrics,
+  .worker .worker-details {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 520px) {
+  .worker .worker-head {
+    flex-direction: column;
+  }
+  .worker .worker-meta {
+    text-align: left;
+  }
+  .worker .worker-metrics,
+  .worker .worker-details {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
 </head>
 <body>
-<h1>nfrx state</h1>
-<div id="summary">Loading…</div>
-<div id="summary-details" style="opacity:0.8; font-size: 0.9rem; margin-bottom: 1rem;"></div>
-<div>Sort by: <select id="sort">
-  <option value="oldest">Oldest</option>
-  <option value="youngest">Youngest</option>
-  <option value="busyness">Busyness</option>
-  <option value="name">Name</option>
-  <option value="completed">Completed</option>
-  <option value="errors">Errors</option>
-</select></div>
-<h2>Plugin Views</h2>
-<div id="plugins"></div>
+<div class="page">
+  <section class="hero">
+    <div class="hero-card">
+      <h1>nfrx state</h1>
+      <p id="summary">Waiting for the first state update.</p>
+      <div class="hero-meta">
+        <div class="pill"><span id="stream-dot" class="dot"></span><span id="stream-status">Connecting to live stream</span></div>
+        <div class="pill">Updated <span id="last-updated">never</span></div>
+      </div>
+    </div>
+    <aside class="toolbar">
+      <p class="toolbar-title">Controls</p>
+      <div class="toolbar-grid">
+        <div>
+          <label for="sort">Sort workers</label>
+          <select id="sort">
+            <option value="oldest">Oldest</option>
+            <option value="youngest">Youngest</option>
+            <option value="busyness">Busyness</option>
+            <option value="name">Name</option>
+            <option value="completed">Completed</option>
+            <option value="errors">Errors</option>
+          </select>
+        </div>
+        <div id="summary-details" class="plugin-summary">Loading plugin descriptors.</div>
+      </div>
+    </aside>
+  </section>
+
+  <section id="summary-grid" class="summary-grid">
+    <article class="stat-card">
+      <div class="stat-label">Plugins</div>
+      <div class="stat-value" id="stat-plugins">0</div>
+      <div class="stat-note" id="stat-plugins-note">No plugin state loaded yet.</div>
+    </article>
+    <article class="stat-card">
+      <div class="stat-label">Workers</div>
+      <div class="stat-value" id="stat-workers">0</div>
+      <div class="stat-note" id="stat-workers-note">Connected workers across plugins.</div>
+    </article>
+    <article class="stat-card">
+      <div class="stat-label">Inflight Jobs</div>
+      <div class="stat-value" id="stat-inflight">0</div>
+      <div class="stat-note" id="stat-inflight-note">Current work plus queue pressure.</div>
+    </article>
+    <article class="stat-card">
+      <div class="stat-label">Completed Jobs</div>
+      <div class="stat-value" id="stat-completed">0</div>
+      <div class="stat-note" id="stat-completed-note">Successful work observed in state.</div>
+    </article>
+  </section>
+
+  <div class="plugins-header">
+    <div>
+      <h2>Plugin Views</h2>
+      <p>Live worker snapshots grouped by plugin.</p>
+    </div>
+  </div>
+  <div id="plugins" aria-live="polite"></div>
+</div>
 <script>
-// Plugin rendering registry
 window.NFRX = window.NFRX || { _renderers: {}, registerRenderer: function(id, fn){ this._renderers[id]=fn; } };
 
 let sortBy = 'oldest';
@@ -100,127 +517,259 @@ let token = null;
 const loadedViews = new Set();
 let descriptors = {};
 
-
-function getCookie(name){
-  const m = document.cookie.match('(?:^|; )'+name.replace(/([.$?*|{}()\[\]\\/+^])/g,'\\$1')+'=([^;]*)');
+function getCookie(name) {
+  const m = document.cookie.match('(?:^|; )' + name.replace(/([.$?*|{}()\[\]\\/+^])/g, '\\$1') + '=([^;]*)');
   return m ? decodeURIComponent(m[1]) : null;
 }
-function setTokenCookie(val){
+
+function setTokenCookie(val) {
   const secure = location.protocol === 'https:' ? '; Secure' : '';
-  document.cookie = 'nfrx_token=' + encodeURIComponent(val) + '; Path=/; SameSite=Lax; Max-Age=' + (60*60*24*30) + secure;
+  document.cookie = 'nfrx_token=' + encodeURIComponent(val) + '; Path=/; SameSite=Lax; Max-Age=' + (60 * 60 * 24 * 30) + secure;
 }
-function tryLoadToken(){
+
+function tryLoadToken() {
   const t = getCookie('nfrx_token');
-  if (t && t.trim()) { token = t.trim(); }
+  if (t && t.trim()) {
+    token = t.trim();
+  }
 }
-function authHeaders(){ return token ? { 'Authorization': 'Bearer ' + token } : {}; }
-async function authorizedFetch(url, opts){
+
+function authHeaders() {
+  return token ? { Authorization: 'Bearer ' + token } : {};
+}
+
+async function authorizedFetch(url, opts) {
   opts = opts || {};
-  const merged = Object.assign({}, opts, { headers: Object.assign({}, authHeaders(), opts.headers||{}) });
+  const merged = Object.assign({}, opts, { headers: Object.assign({}, authHeaders(), opts.headers || {}) });
   let resp = await fetch(url, merged);
   if (resp.status === 401 || resp.status === 403) {
     const t = prompt('Access token:');
-    if (t && t.trim()) { token = t.trim(); setTokenCookie(token); }
-    const retry = Object.assign({}, opts, { headers: Object.assign({}, authHeaders(), opts.headers||{}) });
+    if (t && t.trim()) {
+      token = t.trim();
+      setTokenCookie(token);
+    }
+    const retry = Object.assign({}, opts, { headers: Object.assign({}, authHeaders(), opts.headers || {}) });
     resp = await fetch(url, retry);
   }
   return resp;
 }
 
+function setStreamState(label, mode) {
+  var dot = document.getElementById('stream-dot');
+  var text = document.getElementById('stream-status');
+  if (!dot || !text) return;
+  dot.className = 'dot' + (mode ? ' ' + mode : '');
+  text.textContent = label;
+}
+
+function formatRelativeTime(ts) {
+  if (!ts) return 'never';
+  var delta = Math.max(0, Math.round((Date.now() - ts) / 1000));
+  if (delta < 5) return 'just now';
+  if (delta < 60) return delta + 's ago';
+  if (delta < 3600) return Math.floor(delta / 60) + 'm ago';
+  return Math.floor(delta / 3600) + 'h ago';
+}
+
+function pluginDisplayName(id) {
+  var d = descriptors[id] || {};
+  return d.name || id;
+}
+
+function shouldShowPluginID(id) {
+  return pluginDisplayName(id).toLowerCase() !== String(id).toLowerCase();
+}
+
+function pluginSummaryText(id) {
+  var d = descriptors[id] || {};
+  return d.summary || '';
+}
+
+function pluginWorkerCount(state) {
+  return ((state && state.workers) || []).length;
+}
+
+function sortedPluginIDs(plugins) {
+  return Object.keys(plugins || {}).sort(function(a, b) {
+    var aWorkers = pluginWorkerCount(plugins[a]);
+    var bWorkers = pluginWorkerCount(plugins[b]);
+    if ((aWorkers > 0) !== (bWorkers > 0)) {
+      return bWorkers - aWorkers;
+    }
+    return pluginDisplayName(a).localeCompare(pluginDisplayName(b));
+  });
+}
+
+function ensurePluginSection(id, plugins) {
+  var host = document.getElementById('plugins');
+  var section = document.getElementById('plugin-' + id);
+  if (!section) {
+    section = document.createElement('section');
+    section.id = 'plugin-' + id;
+    section.className = 'plugin-section';
+    section.dataset.pluginId = id;
+    section.innerHTML =
+      '<div class="plugin-head">' +
+        '<div>' +
+          '<div class="plugin-title">' +
+            '<h3></h3>' +
+            '<span class="plugin-id"></span>' +
+          '</div>' +
+          '<div class="plugin-summary"></div>' +
+        '</div>' +
+        '<div class="plugin-meta"></div>' +
+      '</div>' +
+      '<div class="plugin-body"></div>';
+    host.appendChild(section);
+  }
+  section.querySelector('h3').textContent = pluginDisplayName(id);
+  var idBadge = section.querySelector('.plugin-id');
+  if (shouldShowPluginID(id)) {
+    idBadge.textContent = id;
+    idBadge.style.display = 'inline-flex';
+  } else {
+    idBadge.textContent = '';
+    idBadge.style.display = 'none';
+  }
+  var summary = pluginSummaryText(id);
+  section.querySelector('.plugin-summary').textContent = summary || 'Live worker and server metrics.';
+  section.querySelector('.plugin-meta').textContent = pluginMetaText(id, plugins[id]);
+  return section;
+}
+
+function pluginMetaText(id, pluginState) {
+  var workers = pluginWorkerCount(pluginState);
+  var server = (pluginState && pluginState.server) || {};
+  var queueLen = server.scheduler_queue_len || 0;
+  var completed = server.jobs_completed_total || 0;
+  return workers + ' worker' + (workers === 1 ? '' : 's') + ' | queue ' + queueLen + ' | completed ' + completed;
+}
+
 async function maybeLoadViews(plugins) {
-  const host = document.getElementById('plugins');
-  for (const id of Object.keys(plugins || {})) {
-    if (loadedViews.has(id)) continue;
-    try {
-      const resp = await authorizedFetch(`/api/state/view/${id}.html`);
-      if (resp.status === 200) {
-        const html = await resp.text();
-        if (html && html.trim().length > 0) {
-          const section = document.createElement('section');
-          section.id = `plugin-${id}`;
-          const h = document.createElement('h3');
-          h.textContent = `Plugin: ${id}`;
-          section.dataset.pluginId = id;
-          section.appendChild(h);
-          // Append section to DOM first so dataset is visible to scripts
-          host.appendChild(section);
-          const div = document.createElement('div');
-          section.appendChild(div);
-          // Inject HTML and execute any inline scripts by recreating them
-          div.innerHTML = html;
-          const scripts = Array.from(div.querySelectorAll('script'));
-          for (const old of scripts) {
-            const s = document.createElement('script');
-            // Copy attributes (type, etc.) if present
-            for (const attr of Array.from(old.attributes)) {
-              s.setAttribute(attr.name, attr.value);
+  const ids = sortedPluginIDs(plugins);
+  for (const id of ids) {
+    const section = ensurePluginSection(id, plugins);
+    if (loadedViews.has(id)) {
+      section.querySelector('.plugin-meta').textContent = pluginMetaText(id, plugins[id]);
+    } else {
+      try {
+        const resp = await authorizedFetch('/api/state/view/' + id + '.html');
+        if (resp.status === 200) {
+          const html = await resp.text();
+          if (html && html.trim().length > 0) {
+            const div = section.querySelector('.plugin-body');
+            div.innerHTML = html;
+            const scripts = Array.from(div.querySelectorAll('script'));
+            for (const old of scripts) {
+              const s = document.createElement('script');
+              for (const attr of Array.from(old.attributes)) {
+                s.setAttribute(attr.name, attr.value);
+              }
+              s.textContent = old.textContent || '';
+              old.parentNode.replaceChild(s, old);
             }
-            s.textContent = old.textContent || '';
-            old.parentNode.replaceChild(s, old);
           }
         }
+      } catch (e) {
+        console.error('load view', id, e);
+      } finally {
+        section.querySelector('.plugin-meta').textContent = pluginMetaText(id, plugins[id]);
+        loadedViews.add(id);
       }
-    } catch (e) {
-      console.error('load view', id, e);
-    } finally {
-      loadedViews.add(id);
     }
+    document.getElementById('plugins').appendChild(section);
   }
+  if (!ids.length) {
+    document.getElementById('plugins').innerHTML = '<div class="empty-state">No plugin state is available yet.</div>';
+  }
+}
+
+function updateSummaryCards(plugins) {
+  var pluginIds = Object.keys(plugins || {});
+  var workerTotal = 0;
+  var inflightTotal = 0;
+  var queueTotal = 0;
+  var completedTotal = 0;
+  pluginIds.forEach(function(id) {
+    var pluginState = plugins[id] || {};
+    var server = pluginState.server || {};
+    var workers = pluginState.workers || [];
+    workerTotal += workers.length;
+    completedTotal += server.jobs_completed_total || 0;
+    queueTotal += server.scheduler_queue_len || 0;
+    workers.forEach(function(w) {
+      inflightTotal += w.inflight || 0;
+    });
+  });
+
+  document.getElementById('stat-plugins').textContent = String(pluginIds.length);
+  document.getElementById('stat-plugins-note').textContent = pluginIds.length ? pluginIds.map(pluginDisplayName).join(', ') : 'No plugin state loaded yet.';
+  document.getElementById('stat-workers').textContent = String(workerTotal);
+  document.getElementById('stat-workers-note').textContent = workerTotal ? 'Connected workers across all plugins.' : 'No active workers reported.';
+  document.getElementById('stat-inflight').textContent = String(inflightTotal + queueTotal);
+  document.getElementById('stat-inflight-note').textContent = queueTotal ? 'Includes ' + queueTotal + ' queued request' + (queueTotal === 1 ? '' : 's') + '.' : 'No queued requests in state.';
+  document.getElementById('stat-completed').textContent = String(completedTotal);
+  document.getElementById('stat-completed-note').textContent = 'Server-reported completed jobs across plugins.';
 }
 
 function update(envelope) {
-  const plugins = envelope.plugins || {};
-  const pluginIds = Object.keys(plugins || {});
-  // Build a friendly summary using descriptors when available
-  let parts = pluginIds.map(id => {
-    const d = descriptors[id] || {};
-    const name = d.name || id;
-    return `${name} (${id})`;
-  });
-  const summary = parts.length ? `Plugins: ${parts.join(', ')}` : 'Plugins: none';
+  var plugins = envelope.plugins || {};
+  var pluginIds = Object.keys(plugins);
+  var summary = pluginIds.length
+    ? 'Watching ' + pluginIds.length + ' plugin' + (pluginIds.length === 1 ? '' : 's') + ' with live worker and queue state.'
+    : 'No plugin state is currently being reported.';
   document.getElementById('summary').textContent = summary;
-  // Show tiny per-plugin summaries when available
-  const detailLines = pluginIds.map(id => {
-    const d = descriptors[id] || {};
-    if (d.summary) {
-      const name = d.name || id;
-      return `${name}: ${d.summary}`;
-    }
-    return null;
+  var availableSummaries = pluginIds.map(function(id) {
+    var text = pluginSummaryText(id);
+    return text ? (pluginDisplayName(id) + ': ' + text) : '';
   }).filter(Boolean);
-  document.getElementById('summary-details').textContent = detailLines.join(' • ');
-  // Lazy-load plugin views once per plugin id
+  document.getElementById('summary-details').textContent = availableSummaries.length
+    ? availableSummaries.join(' | ')
+    : (pluginIds.length
+      ? 'Loaded plugins: ' + pluginIds.map(pluginDisplayName).join(', ')
+      : 'Waiting for plugin descriptors.');
+  document.getElementById('last-updated').textContent = formatRelativeTime(Date.now());
+  updateSummaryCards(plugins);
   maybeLoadViews(plugins);
-  // Call plugin renderers if registered
   for (const id of pluginIds) {
     const fn = window.NFRX && window.NFRX._renderers && window.NFRX._renderers[id];
     const container = document.getElementById('plugin-' + id);
+    if (container) {
+      const meta = container.querySelector('.plugin-meta');
+      if (meta) meta.textContent = pluginMetaText(id, plugins[id]);
+    }
     if (typeof fn === 'function' && container) {
-      try { fn(plugins[id], container, envelope); } catch (e) { console.error('render', id, e); }
+      try {
+        fn(plugins[id], container, envelope);
+      } catch (e) {
+        console.error('render', id, e);
+      }
     }
   }
 }
 
-// statusColor moved into LLM view renderer
-
-document.getElementById('sort').addEventListener('change', (e) => {
+document.getElementById('sort').addEventListener('change', function(e) {
   sortBy = e.target.value;
-  // plugin renderers may react to sortBy
 });
 
 async function connect() {
+  setStreamState('Connecting to live stream', '');
   try {
     const resp = await authorizedFetch('/api/state/stream');
+    if (!resp.ok || !resp.body) {
+      throw new Error('stream unavailable: ' + resp.status);
+    }
+    setStreamState('Live stream connected', 'live');
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();
     let buf = '';
     while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buf += decoder.decode(value, { stream: true });
+      const result = await reader.read();
+      if (result.done) break;
+      buf += decoder.decode(result.value, { stream: true });
       const lines = buf.split('\n');
       buf = lines.pop();
-      lines.forEach(line => {
+      lines.forEach(function(line) {
         if (line.startsWith('data:')) {
           try {
             const data = JSON.parse(line.slice(5));
@@ -233,21 +782,22 @@ async function connect() {
     }
   } catch (err) {
     console.error('stream', err);
+    setStreamState('Reconnecting after stream error', 'error');
   }
   setTimeout(connect, 1000);
 }
 
-// Load descriptors once for friendly names
-// Initialize token from cookie before any authorized requests
 tryLoadToken();
 
-(async function loadDescriptors(){
+(async function loadDescriptors() {
   try {
     const resp = await authorizedFetch('/api/state/descriptors');
     if (resp.status === 200) {
       descriptors = await resp.json();
     }
-  } catch(e) { console.error('descriptors', e); }
+  } catch (e) {
+    console.error('descriptors', e);
+  }
 })();
 
 connect();

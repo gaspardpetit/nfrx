@@ -128,6 +128,7 @@ func (p *Plugin) RegisterState(reg spi.StateRegistry) {
         var div=document.createElement('div');
         div.className='worker';
         var status=statusColor(w);
+        var rawStatus=(w.status || '').toLowerCase();
         var inflight=(w.inflight||0);
         var qlen=(w.queue_len||0);
         var maxc=(w.max_concurrency||1);
@@ -144,22 +145,48 @@ func (p *Plugin) RegisterState(reg spi.StateRegistry) {
         var ram=(typeof w.host_ram_used_percent === 'number') ? w.host_ram_used_percent.toFixed(1) : '';
         var inputTokens=(w.input_tokens_total||0);
         var outputTokens=(w.output_tokens_total||0);
+        var hostText=((hostName && hostSummary) ? (hostName+' / '+hostSummary) : (hostName || hostSummary || 'unknown'));
+        var backendHTML=completionAgentVersion ? '<div class="worker-backend">'+completionAgentVersion+'</div>' : '';
+        var lastHb=(w.last_heartbeat || w.LastHeartbeat);
+        var stale=lastHb && (Date.now() - new Date(lastHb).getTime() > 15000);
+        var statusBadge='';
+        if (w.last_error || w.LastError) {
+          statusBadge='<span class="worker-status-badge error">error</span>';
+        } else if (stale || rawStatus === 'gone') {
+          statusBadge='<span class="worker-status-badge warn">stale</span>';
+        } else if (rawStatus === 'draining') {
+          statusBadge='<span class="worker-status-badge warn">draining</span>';
+        } else if (rawStatus === 'not_ready' || rawStatus === 'connected') {
+          statusBadge='<span class="worker-status-badge warn">'+rawStatus.replace('_', ' ')+'</span>';
+        } else if (inflight > 0 || qlen > 0 || rawStatus === 'working') {
+          statusBadge='<span class="worker-status-badge busy"><span class="worker-status-spinner"></span>busy</span>';
+        } else if (rawStatus === 'idle' || !rawStatus) {
+          statusBadge='<span class="worker-status-badge">idle</span>';
+        }
         div.innerHTML=
           '<div class="busy-bar"><div class="fill" style="height:'+Math.round(busy*100)+'%"></div></div>'+
-          '<div class="emoji">🦙</div>'+
-          '<div class="name"><span class="status-dot" style="background:'+status+'"></span>'+name+'</div>'+
-          '<div>version: '+(version || 'unknown')+'</div>'+
-          '<div>backend: '+(completionAgentVersion || 'unknown')+'</div>'+
-          '<div>host: '+((hostName && hostSummary) ? (hostName+' / '+hostSummary) : (hostName || hostSummary || 'unknown'))+'</div>'+
-          '<div>host cpu: '+(cpu || '0.0')+'%</div>'+
-          '<div>host ram: '+(ram || '0.0')+'%</div>'+
-          '<div>tokens in: '+inputTokens+'</div>'+
-          '<div>tokens out: '+outputTokens+'</div>'+
-          '<div>'+(w.status || '')+'</div>'+
-          '<div>inflight: '+inflight+'</div>'+
-          '<div>embed batch: '+(w.embedding_batch_size||0)+'</div>'+
-          '<div>processed: '+processed+'</div>'+
-          '<div>avg processing: '+avgText+' ms</div>';
+          '<div class="worker-head">'+
+            '<div class="worker-head-main">'+
+              '<div class="name"><span class="emoji">🦙</span><span class="status-dot" style="background:'+status+'"></span><span class="name-text">'+name+'</span>'+statusBadge+'</div>'+
+            '</div>'+
+            '<div class="worker-meta">'+
+              '<div class="worker-version">'+(version || 'unknown')+'</div>'+
+              '<div class="worker-hostline">'+hostText+'</div>'+
+              backendHTML+
+            '</div>'+
+          '</div>'+
+          '<div class="worker-metrics">'+
+            '<div class="metric"><div class="metric-label">Host CPU</div><div class="metric-value">'+(cpu || '0.0')+'%</div></div>'+
+            '<div class="metric"><div class="metric-label">Host RAM</div><div class="metric-value">'+(ram || '0.0')+'%</div></div>'+
+            '<div class="metric"><div class="metric-label">Tokens In</div><div class="metric-value">'+inputTokens+'</div></div>'+
+            '<div class="metric"><div class="metric-label">Tokens Out</div><div class="metric-value">'+outputTokens+'</div></div>'+
+          '</div>'+
+          '<div class="worker-details">'+
+            '<div class="detail"><div class="detail-label">Inflight</div><div class="detail-value"><strong>'+inflight+'</strong> / '+maxc+'</div></div>'+
+            '<div class="detail"><div class="detail-label">Processed</div><div class="detail-value"><strong>'+processed+'</strong> total</div></div>'+
+            '<div class="detail"><div class="detail-label">Avg Processing</div><div class="detail-value"><strong>'+avgText+'</strong> ms</div></div>'+
+            '<div class="detail"><div class="detail-label">Embed Batch</div><div class="detail-value"><strong>'+(w.embedding_batch_size||0)+'</strong></div></div>'+
+          '</div>';
         host.appendChild(div);
       });
     }
