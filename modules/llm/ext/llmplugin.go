@@ -142,6 +142,8 @@ func (p *Plugin) RegisterState(reg spi.StateRegistry) {
         var completionAgentVersion=(w.completion_agent_version || '');
         var cpu=(typeof w.host_cpu_percent === 'number') ? w.host_cpu_percent.toFixed(1) : '';
         var ram=(typeof w.host_ram_used_percent === 'number') ? w.host_ram_used_percent.toFixed(1) : '';
+        var inputTokens=(w.input_tokens_total||0);
+        var outputTokens=(w.output_tokens_total||0);
         div.innerHTML=
           '<div class="busy-bar"><div class="fill" style="height:'+Math.round(busy*100)+'%"></div></div>'+
           '<div class="emoji">🦙</div>'+
@@ -151,6 +153,8 @@ func (p *Plugin) RegisterState(reg spi.StateRegistry) {
           '<div>host: '+((hostName && hostSummary) ? (hostName+' / '+hostSummary) : (hostName || hostSummary || 'unknown'))+'</div>'+
           '<div>host cpu: '+(cpu || '0.0')+'%</div>'+
           '<div>host ram: '+(ram || '0.0')+'%</div>'+
+          '<div>tokens in: '+inputTokens+'</div>'+
+          '<div>tokens out: '+outputTokens+'</div>'+
           '<div>'+(w.status || '')+'</div>'+
           '<div>inflight: '+inflight+'</div>'+
           '<div>embed batch: '+(w.embedding_batch_size||0)+'</div>'+

@@ -32,7 +32,7 @@ func TestRegisterStateHTMLIncludesHostTelemetryFields(t *testing.T) {
 		t.Fatalf("missing llm state html")
 	}
 	html := elem.HTML()
-	for _, want := range []string{"host_cpu_percent", "host_ram_used_percent", "host_hostname", "completion_agent_version", "backend:"} {
+	for _, want := range []string{"host_cpu_percent", "host_ram_used_percent", "host_hostname", "completion_agent_version", "input_tokens_total", "output_tokens_total", "tokens in:", "tokens out:"} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("missing %q in html", want)
 		}
