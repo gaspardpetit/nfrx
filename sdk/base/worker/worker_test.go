@@ -67,11 +67,13 @@ func TestMetricsSnapshotBasic(t *testing.T) {
 	reg.RecordJobStart("w1")
 	reg.RecordJobEnd("w1", "m", 10*time.Millisecond, 1, 2, 0, true, "")
 	reg.RecordHeartbeat("w1", 12.5, 43.75)
+	reg.AddWorkerTokens("w1", "in", 123)
+	reg.AddWorkerTokens("w1", "out", 456)
 	snap := reg.Snapshot()
 	if len(snap.Workers) != 1 || snap.Server.JobsCompletedTotal != 1 {
 		t.Fatalf("bad snapshot %+v", snap)
 	}
-	if snap.Workers[0].HostHostname != "box1" || snap.Workers[0].CompletionAgentVersion != "ollama 0.9.6" || snap.Workers[0].HostCPUPercent != 12.5 || snap.Workers[0].HostRAMUsedPercent != 43.75 {
+	if snap.Workers[0].HostHostname != "box1" || snap.Workers[0].CompletionAgentVersion != "ollama 0.9.6" || snap.Workers[0].HostCPUPercent != 12.5 || snap.Workers[0].HostRAMUsedPercent != 43.75 || snap.Workers[0].InputTokensTotal != 123 || snap.Workers[0].OutputTokensTotal != 456 {
 		t.Fatalf("bad host snapshot %+v", snap.Workers[0])
 	}
 }

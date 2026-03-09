@@ -32,6 +32,8 @@ type WorkerSnapshot struct {
 	CompletionAgentVersion string       `json:"completion_agent_version,omitempty"`
 	HostCPUPercent         float64      `json:"host_cpu_percent,omitempty"`
 	HostRAMUsedPercent     float64      `json:"host_ram_used_percent,omitempty"`
+	InputTokensTotal       uint64       `json:"input_tokens_total"`
+	OutputTokensTotal      uint64       `json:"output_tokens_total"`
 	Status                 WorkerStatus `json:"status"`
 	ConnectedAt            time.Time    `json:"connected_at"`
 	LastHeartbeat          time.Time    `json:"last_heartbeat"`
@@ -94,22 +96,23 @@ type MetricsRegistry struct {
 }
 
 type workerMetrics struct {
-	id, name                           string
-	status                             WorkerStatus
-	connectedAt, lastHeartbeat         time.Time
-	version, buildSHA, buildDate       string
-	hostOS, hostPlatform               string
-	hostPlatformFamily                 string
-	hostPlatformVersion                string
-	hostKernelVersion, hostHostname    string
-	completionAgentVersion             string
-	hostCPUPercent, hostRAMUsedPercent float64
-	maxConcurrency, preferredBatchSize int
-	processedTotal, processingMsTotal  uint64
-	inflight                           int
-	failuresTotal                      uint64
-	queueLen                           int
-	lastError                          string
+	id, name                            string
+	status                              WorkerStatus
+	connectedAt, lastHeartbeat          time.Time
+	version, buildSHA, buildDate        string
+	hostOS, hostPlatform                string
+	hostPlatformFamily                  string
+	hostPlatformVersion                 string
+	hostKernelVersion, hostHostname     string
+	completionAgentVersion              string
+	hostCPUPercent, hostRAMUsedPercent  float64
+	inputTokensTotal, outputTokensTotal uint64
+	maxConcurrency, preferredBatchSize  int
+	processedTotal, processingMsTotal   uint64
+	inflight                            int
+	failuresTotal                       uint64
+	queueLen                            int
+	lastError                           string
 }
 
 func NewMetricsRegistry(serverVersion, serverSHA, serverDate string, stateFn func() string) *MetricsRegistry {
@@ -227,7 +230,20 @@ func (m *MetricsRegistry) SetSchedulerQueueCapacity(n int) {
 }
 
 // AddWorkerTokens increments worker token counters by kind ("in" or "out").
-func (m *MetricsRegistry) AddWorkerTokens(id, kind string, n uint64) { /* no-op in generic base */ }
+func (m *MetricsRegistry) AddWorkerTokens(id, kind string, n uint64) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	w, ok := m.workers[id]
+	if !ok || n == 0 {
+		return
+	}
+	switch kind {
+	case "in":
+		w.inputTokensTotal += n
+	case "out":
+		w.outputTokensTotal += n
+	}
+}
 
 func (m *MetricsRegistry) Snapshot() StateResponse {
 	m.mu.RLock()
@@ -276,6 +292,8 @@ func (m *MetricsRegistry) Snapshot() StateResponse {
 			CompletionAgentVersion: w.completionAgentVersion,
 			HostCPUPercent:         w.hostCPUPercent,
 			HostRAMUsedPercent:     w.hostRAMUsedPercent,
+			InputTokensTotal:       w.inputTokensTotal,
+			OutputTokensTotal:      w.outputTokensTotal,
 			MaxConcurrency:         w.maxConcurrency,
 			PreferredBatchSize:     w.preferredBatchSize,
 			ProcessedTotal:         w.processedTotal,

@@ -28,6 +28,8 @@ func TestGetState(t *testing.T) {
 	})
 	metricsReg.SetWorkerStatus("w1", llmctrl.StatusConnected)
 	metricsReg.RecordHeartbeat("w1", 12.5, 43.75)
+	metricsReg.AddWorkerTokens("w1", "in", 5)
+	metricsReg.AddWorkerTokens("w1", "out", 7)
 	metricsReg.RecordJobStart("w1")
 	metricsReg.RecordJobEnd("w1", "m", 50*time.Millisecond, 5, 7, 0, true, "")
 
@@ -57,7 +59,7 @@ func TestGetState(t *testing.T) {
 	if resp.Workers[0].Name != "w1" {
 		t.Fatalf("expected worker name")
 	}
-	if resp.Workers[0].Version != "1" || resp.Workers[0].HostHostname != "box1" || resp.Workers[0].CompletionAgentVersion != "ollama 0.9.6" || resp.Workers[0].HostCPUPercent != 12.5 || resp.Workers[0].HostRAMUsedPercent != 43.75 {
+	if resp.Workers[0].Version != "1" || resp.Workers[0].HostHostname != "box1" || resp.Workers[0].CompletionAgentVersion != "ollama 0.9.6" || resp.Workers[0].HostCPUPercent != 12.5 || resp.Workers[0].HostRAMUsedPercent != 43.75 || resp.Workers[0].InputTokensTotal != 5 || resp.Workers[0].OutputTokensTotal != 7 {
 		t.Fatalf("expected host telemetry %+v", resp.Workers[0])
 	}
 }
