@@ -5,6 +5,11 @@ import (
 	"time"
 )
 
+type HeartbeatSample struct {
+	HostCPUPercent     float64
+	HostRAMUsedPercent float64
+}
+
 // Config holds the settings for the generic worker HTTP-proxy agent.
 type Config struct {
 	// Control-plane connection
@@ -29,6 +34,8 @@ type Config struct {
 	ClientName     string
 	// Optional extra config sent to the server via AgentConfig (e.g., embedding_batch_size)
 	AgentConfig map[string]string
+	// Optional heartbeat telemetry sampler.
+	HeartbeatSampleFunc func() (HeartbeatSample, error)
 
 	// Local servers
 	StatusAddr    string        // status + drain control HTTP server (optional)

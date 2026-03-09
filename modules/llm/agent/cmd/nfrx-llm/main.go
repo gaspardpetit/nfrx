@@ -145,6 +145,9 @@ func main() {
 	if cfg.EmbeddingBatchSize > 0 {
 		agentCfg["embedding_batch_size"] = strconv.Itoa(cfg.EmbeddingBatchSize)
 	}
+	if cfg.CompletionAgentVersion != "" {
+		agentCfg["completion_agent_version"] = cfg.CompletionAgentVersion
+	}
 	gcfg := wp.Config{
 		ServerURL:      cfg.ServerURL,
 		ClientKey:      cfg.ClientKey,
@@ -163,6 +166,15 @@ func main() {
 		Reconnect:      cfg.Reconnect,
 		ConfigFile:     cfg.ConfigFile,
 		AgentConfig:    agentCfg,
+	}
+	hostAgentConfig, heartbeatSampler, err := buildHostTelemetry()
+	if err != nil {
+		logx.Log.Warn().Err(err).Msg("host telemetry unavailable")
+	} else {
+		for k, v := range hostAgentConfig {
+			gcfg.AgentConfig[k] = v
+		}
+		gcfg.HeartbeatSampleFunc = heartbeatSampler
 	}
 	if err := wp.Run(ctx, gcfg); err != nil {
 		logx.Log.Fatal().Err(err).Msg("worker exited")

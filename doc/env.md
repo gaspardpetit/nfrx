@@ -56,6 +56,7 @@ The worker optionally reads settings from a YAML config file. Defaults:
 | `CLIENT_KEY` | `client_key` | shared secret for authenticating with the server | unset | `--client-key` |
 | `COMPLETION_BASE_URL` | `completion_base_url` | base URL of the completion API | `http://127.0.0.1:11434/v1` | `--completion-base-url` |
 | `COMPLETION_API_KEY` | — | API key for the completion API | unset | `--completion-api-key` |
+| `COMPLETION_AGENT_VERSION` | `completion_agent_version` | backend completion agent version to advertise to the server | unset | `--completion-agent-version` |
 | `API_STYLE` | `api_style` | backend API style for model discovery (`openai` or `ollama`) | `openai` | `--api-style` |
 | `MAX_CONCURRENCY` | `max_concurrency` | maximum number of jobs processed concurrently | `2` | `--max-concurrency` |
 | `EMBEDDING_BATCH_SIZE` | `embedding_batch_size` | ideal number of inputs per embeddings call | `0` | `--embedding-batch-size` |
