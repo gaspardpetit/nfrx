@@ -1,4 +1,26 @@
-nfrx (0.8.2-1ubuntu1) UNRELEASED; urgency=medium
+nfrx (0.9.0-1ubuntu1) UNRELEASED; urgency=medium
+
+  * Release: v0.9.0 —
+    https://github.com/gaspardpetit/nfrx/releases/tag/v0.9.0
+  * ## What's Changed
+  * * Added support for proxying the openai Response API by
+    @gaspardpetit in https://github.com/gaspardpetit/nfrx/pull/249
+  * * Added host monitoring from nfrx-llm by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/250
+  * * Added nfrx.queue SSE event for providing queue status by
+    @gaspardpetit in https://github.com/gaspardpetit/nfrx/pull/251
+  * * Surface processed token count in server state monitoring by
+    @gaspardpetit in https://github.com/gaspardpetit/nfrx/pull/252
+  * * Improved dashboard by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/253
+  *
+  *
+  * **Full Changelog**:
+    https://github.com/gaspardpetit/nfrx/compare/v0.8.2...v0.9.0
+
+ -- CI <ci@example.invalid>  Mon, 09 Mar 2026 22:05:06 +0000
+
+nfrx (0.9.0-1) unstable; urgency=medium
 
   * Release: v0.8.2 —
     https://github.com/gaspardpetit/nfrx/releases/tag/v0.8.2
@@ -15,8 +37,9 @@ nfrx (0.8.2-1ubuntu1) UNRELEASED; urgency=medium
   *
   * **Full Changelog**:
     https://github.com/gaspardpetit/nfrx/compare/v0.8.1...v0.8.2
+  *
 
- -- CI <ci@example.invalid>  Mon, 16 Feb 2026 18:49:13 +0000
+ -- CI <ci@example.invalid>  Mon, 09 Mar 2026 22:05:06 +0000
 
 nfrx (0.8.2-1) unstable; urgency=medium
 
