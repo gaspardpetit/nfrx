@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os/exec"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -20,8 +21,8 @@ func TestVersionFlag(t *testing.T) {
 		t.Fatalf("command failed: %v\n%s", err, out)
 	}
 	got := strings.TrimSpace(string(out))
-	want := fmt.Sprintf("nfrx-llm version=%s sha=%s date=%s", v, sha, date)
-	if got != want {
-		t.Fatalf("unexpected output: got %q want %q", got, want)
+	pat := regexp.MustCompile(`^nfrx-llm(?:\.exe)? version=` + regexp.QuoteMeta(v) + ` sha=` + regexp.QuoteMeta(sha) + ` date=` + regexp.QuoteMeta(date) + `$`)
+	if !pat.MatchString(got) {
+		t.Fatalf("unexpected output: got %q", got)
 	}
 }

@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -90,7 +89,7 @@ func TestOrchestratorHTTPIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("connect: %v", err)
 	}
-	if err := conn.Close(); err != nil && !strings.Contains(err.Error(), "signal: killed") {
+	if err := conn.Close(); err != nil && !isAcceptableStdioCloseError(err) {
 		t.Fatalf("close: %v", err)
 	}
 }
@@ -120,7 +119,7 @@ func main(){
 	if err != nil {
 		t.Fatalf("connect: %v", err)
 	}
-	if err := conn.Close(); err != nil && !strings.Contains(err.Error(), "signal: killed") {
+	if err := conn.Close(); err != nil && !isAcceptableStdioCloseError(err) {
 		t.Fatalf("close: %v", err)
 	}
 }

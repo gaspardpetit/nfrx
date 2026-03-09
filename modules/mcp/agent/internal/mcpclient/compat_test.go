@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -180,9 +181,23 @@ func main(){
 	if err != nil {
 		t.Fatalf("connect: %v", err)
 	}
-	if err := conn.Close(); err != nil && !strings.Contains(err.Error(), "signal: killed") {
+	if err := conn.Close(); err != nil && !isAcceptableStdioCloseError(err) {
 		t.Fatalf("close: %v", err)
 	}
+}
+
+func isAcceptableStdioCloseError(err error) bool {
+	if err == nil {
+		return true
+	}
+	msg := err.Error()
+	if strings.Contains(msg, "signal: killed") {
+		return true
+	}
+	if runtime.GOOS == "windows" && strings.Contains(msg, "exit status 1") {
+		return true
+	}
+	return false
 }
 
 // TestCompatibility_InvalidJSON ensures graceful failure on bad responses.
