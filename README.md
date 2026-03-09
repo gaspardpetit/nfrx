@@ -626,6 +626,15 @@ SERVER_URL=ws://localhost:8080/api/llm/connect CLIENT_KEY=secret COMPLETION_BASE
 ```
 Optionally set `COMPLETION_API_KEY` to forward an API key to the backend. The worker proxies requests to `${COMPLETION_BASE_URL}/chat/completions`.
 
+For streaming `chat/completions` and `responses` requests that are waiting in the server queue, **nfrx** emits a dedicated SSE event before the upstream model starts responding:
+
+```text
+event: nfrx.queue
+data: {"request_id":"...","model":"...","position":3}
+```
+
+This queue event is an **nfrx** extension and is separate from the upstream model's normal stream events.
+
 On Windows (CMD)
 
 ```

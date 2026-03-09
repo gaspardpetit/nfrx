@@ -373,16 +373,16 @@ func generationProxyHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics
 	}
 }
 
-func chatQueueStatusWriter(w http.ResponseWriter, flusher http.Flusher, reqID, model string, pos int) bool {
+func queueStatusWriter(w http.ResponseWriter, flusher http.Flusher, reqID, model string, pos int) bool {
 	if !headerWritten(w.Header()) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.Header().Set("Cache-Control", "no-store")
 		w.WriteHeader(http.StatusOK)
 		flusher.Flush()
 	}
-	created := time.Now().Unix()
-	payload := fmt.Sprintf(`{"id":"%s","object":"chat.completion.chunk","created":%d,"model":"%s","system_fingerprint":"nfrx","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"Requests queued, number %d in line...\\n"},"finish_reason":null}]}`,
-		reqID, created, model, pos)
+	payload := fmt.Sprintf(`{"request_id":"%s","model":"%s","position":%d}`,
+		reqID, model, pos)
+	_, _ = w.Write([]byte("event: nfrx.queue\n"))
 	_, _ = w.Write([]byte("data: "))
 	_, _ = w.Write([]byte(payload))
 	_, _ = w.Write([]byte("\n\n"))
