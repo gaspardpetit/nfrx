@@ -67,6 +67,17 @@ func handleHTTPProxy(ctx context.Context, cfg Config, sendCh chan []byte, req ct
 	hmsg := ctrl.HTTPProxyResponseHeadersMessage{Type: "http_proxy_response_headers", RequestID: req.RequestID, Status: resp.StatusCode, Headers: hdrs}
 	b, _ := json.Marshal(hmsg)
 	sendMsg(reqCtx, sendCh, b)
+	if resp.StatusCode >= http.StatusBadRequest {
+		lvl := logx.Log.Warn()
+		if resp.StatusCode >= http.StatusInternalServerError {
+			lvl = logx.Log.Error()
+		}
+		lvl.Str("request_id", req.RequestID).
+			Str("method", req.Method).
+			Str("url", url).
+			Int("status", resp.StatusCode).
+			Msg("proxy upstream response")
+	}
 	if evt := logx.Log.Debug(); evt.Enabled() {
 		evt.Str("request_id", req.RequestID).
 			Int("status", resp.StatusCode).
