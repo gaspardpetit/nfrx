@@ -236,7 +236,11 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg Conf
 	if err != nil {
 		if resp != nil {
 			// Log status and a subset of headers to help diagnose proxy issues
-			logx.Log.Warn().Err(err).Str("server", cfg.ServerURL).Int("status", resp.StatusCode).Interface("headers", resp.Header).Msg("websocket dial failed")
+			lvl := logx.Log.Warn()
+			if resp.StatusCode >= http.StatusInternalServerError || resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+				lvl = logx.Log.Error()
+			}
+			lvl.Err(err).Str("server", cfg.ServerURL).Int("status", resp.StatusCode).Interface("headers", resp.Header).Msg("websocket dial failed")
 		} else {
 			logx.Log.Warn().Err(err).Str("server", cfg.ServerURL).Msg("websocket dial failed")
 		}
@@ -366,7 +370,11 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg Conf
 			SetConnectedToServer(false)
 			var ce websocket.CloseError
 			if errors.As(err, &ce) {
-				logx.Log.Error().Str("reason", ce.Reason).Msg("server connection closed")
+				lvl := logx.Log.Error()
+				if ce.Code == websocket.StatusNormalClosure || ce.Code == websocket.StatusGoingAway {
+					lvl = logx.Log.Warn()
+				}
+				lvl.Int("code", int(ce.Code)).Str("reason", ce.Reason).Msg("server connection closed")
 			} else {
 				logx.Log.Error().Err(err).Msg("server read error")
 			}
@@ -381,12 +389,14 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg Conf
 			Type string `json:"type"`
 		}
 		if err := json.Unmarshal(data, &env); err != nil {
+			logx.Log.Warn().Err(err).Str("body", summarizeBody(data, 512)).Msg("server message decode failed")
 			continue
 		}
 		switch env.Type {
 		case "http_proxy_request":
 			var hr ctrl.HTTPProxyRequestMessage
 			if err := json.Unmarshal(data, &hr); err != nil {
+				logx.Log.Warn().Err(err).Str("type", env.Type).Str("body", summarizeBody(data, 512)).Msg("server message decode failed")
 				continue
 			}
 			if IsDraining() {
@@ -408,6 +418,8 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg Conf
 					delete(reqCancels, hc.RequestID)
 				}
 				jobMu.Unlock()
+			} else {
+				logx.Log.Warn().Err(err).Str("type", env.Type).Str("body", summarizeBody(data, 512)).Msg("server message decode failed")
 			}
 		}
 	}

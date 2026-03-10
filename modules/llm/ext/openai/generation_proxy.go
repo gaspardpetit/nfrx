@@ -77,6 +77,10 @@ func generationProxyHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics
 		var tokensIn, tokensOut uint64
 		var sseBuf string
 		var bodyBuf []byte
+		var upstreamStatus int
+		var errorBytes int
+		debugErrorBody := logx.Log.Debug().Enabled()
+		var errorBody []byte
 		var idle *time.Timer
 		var timeoutCh <-chan time.Time
 
@@ -287,6 +291,7 @@ func generationProxyHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics
 				switch m := msg.(type) {
 				case ctrl.HTTPProxyResponseHeadersMessage:
 					priorHeadersSent := headersSent
+					upstreamStatus = m.Status
 					headersSent = true
 					for k, v := range m.Headers {
 						if strings.EqualFold(k, "Transfer-Encoding") || strings.EqualFold(k, "Connection") {
@@ -312,6 +317,12 @@ func generationProxyHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics
 					}
 				case ctrl.HTTPProxyResponseChunkMessage:
 					if len(m.Data) > 0 {
+						if upstreamStatus >= http.StatusBadRequest {
+							errorBytes += len(m.Data)
+							if debugErrorBody {
+								errorBody = append(errorBody, m.Data...)
+							}
+						}
 						if _, err := w.Write(m.Data); err != nil {
 							logx.Log.Error().Err(err).Msg("write chunk")
 						} else {
@@ -370,6 +381,16 @@ func generationProxyHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics
 						logx.Log.Error().Str("request_id", logID).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Str("model", meta.Model).Str("error_code", m.Error.Code).Str("error", m.Error.Message).Str("path", spec.endpointPath).Msg("upstream error")
 					} else {
 						success = true
+					}
+					if upstreamStatus >= http.StatusBadRequest && errorBytes > 0 {
+						lvl := logx.Log.Warn()
+						if upstreamStatus >= http.StatusInternalServerError || upstreamStatus == http.StatusUnauthorized || upstreamStatus == http.StatusForbidden {
+							lvl = logx.Log.Error()
+						}
+						lvl.Str("request_id", logID).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Str("model", meta.Model).Int("status", upstreamStatus).Str("path", spec.endpointPath).Int("body_bytes", errorBytes).Msg("upstream response body observed")
+						if debugErrorBody {
+							logx.Log.Debug().Str("request_id", logID).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Str("model", meta.Model).Int("status", upstreamStatus).Str("path", spec.endpointPath).Bytes("body", errorBody).Msg("upstream response body detail")
+						}
 					}
 					logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Str("model", meta.Model).Bool("stream", meta.Stream).Str("path", spec.endpointPath).Dur("duration", time.Since(start)).Msg("complete")
 					return

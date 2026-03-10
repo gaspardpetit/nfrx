@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 )
@@ -40,7 +41,8 @@ func (c *Client) Models(ctx context.Context) ([]string, error) {
 		_ = resp.Body.Close()
 	}()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("models status %s", resp.Status)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return nil, fmt.Errorf("models status %s body=%q", resp.Status, summarizeBody(body, 256))
 	}
 	var v struct {
 		Data []struct {
@@ -57,4 +59,18 @@ func (c *Client) Models(ctx context.Context) ([]string, error) {
 		}
 	}
 	return models, nil
+}
+
+func summarizeBody(body []byte, limit int) string {
+	if limit <= 0 || len(body) == 0 {
+		return ""
+	}
+	s := strings.TrimSpace(string(body))
+	if len(s) <= limit {
+		return s
+	}
+	if limit <= 3 {
+		return s[:limit]
+	}
+	return s[:limit-3] + "..."
 }
