@@ -40,7 +40,7 @@ func handleHTTPProxy(ctx context.Context, cfg Config, sendCh chan []byte, req ct
 	}
 	httpReq, err := http.NewRequestWithContext(reqCtx, req.Method, url, bytes.NewReader(req.Body))
 	if err != nil {
-		sendProxyError(reqCtx, req.RequestID, sendCh, err)
+		sendProxyError(reqCtx, req.RequestID, req.Method, url, sendCh, err)
 		return
 	}
 	for k, v := range req.Headers {
@@ -55,7 +55,7 @@ func handleHTTPProxy(ctx context.Context, cfg Config, sendCh chan []byte, req ct
 	httpReq.Header.Set("Connection", "close")
 	resp, err := http.DefaultClient.Do(httpReq)
 	if err != nil {
-		sendProxyError(reqCtx, req.RequestID, sendCh, err)
+		sendProxyError(reqCtx, req.RequestID, req.Method, url, sendCh, err)
 		return
 	}
 	defer func() { _ = resp.Body.Close() }()
@@ -123,7 +123,7 @@ func handleHTTPProxy(ctx context.Context, cfg Config, sendCh chan []byte, req ct
 	logx.Log.Info().Str("request_id", req.RequestID).Msg("proxy end")
 }
 
-func sendProxyError(ctx context.Context, id string, sendCh chan []byte, err error) {
+func sendProxyError(ctx context.Context, id, method, url string, sendCh chan []byte, err error) {
 	h := ctrl.HTTPProxyResponseHeadersMessage{Type: "http_proxy_response_headers", RequestID: id, Status: 502, Headers: map[string]string{"Content-Type": "application/json"}}
 	hb, _ := json.Marshal(h)
 	sendMsg(ctx, sendCh, hb)
@@ -133,6 +133,6 @@ func sendProxyError(ctx context.Context, id string, sendCh chan []byte, err erro
 	end := ctrl.HTTPProxyResponseEndMessage{Type: "http_proxy_response_end", RequestID: id, Error: &ctrl.HTTPProxyError{Code: "upstream_error", Message: err.Error()}}
 	eb, _ := json.Marshal(end)
 	sendMsg(ctx, sendCh, eb)
-	logx.Log.Error().Str("request_id", id).Err(err).Msg("proxy error")
+	logx.Log.Error().Str("request_id", id).Str("method", method).Str("url", url).Err(err).Msg("proxy error")
 	SetLastError(err.Error())
 }

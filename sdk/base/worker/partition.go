@@ -270,6 +270,9 @@ func proxyHTTPOnce(ctx context.Context, worker spi.WorkerRef, reqID, logID, mode
 	start := time.Now()
 	var status int
 	var buf bytes.Buffer
+	var errorBytes int
+	debugErrorBody := logx.Log.Debug().Enabled()
+	var errorBody []byte
 	success := false
 	errMsg := ""
 	var idle *time.Timer
@@ -327,6 +330,12 @@ func proxyHTTPOnce(ctx context.Context, worker spi.WorkerRef, reqID, logID, mode
 			case ctrl.HTTPProxyResponseChunkMessage:
 				if len(m.Data) > 0 {
 					buf.Write(m.Data)
+					if status >= http.StatusBadRequest {
+						errorBytes += len(m.Data)
+						if debugErrorBody {
+							errorBody = append(errorBody, m.Data...)
+						}
+					}
 				}
 			case ctrl.HTTPProxyResponseEndMessage:
 				if m.Error != nil {
@@ -341,6 +350,16 @@ func proxyHTTPOnce(ctx context.Context, worker spi.WorkerRef, reqID, logID, mode
 				}
 				metrics.RecordJobEnd(worker.ID(), model, dur, 0, 0, embCount, success, errMsg)
 				metrics.SetWorkerStatus(worker.ID(), spi.StatusIdle)
+				if status >= http.StatusBadRequest && errorBytes > 0 {
+					lvl := logx.Log.Warn()
+					if status >= http.StatusInternalServerError || status == http.StatusUnauthorized || status == http.StatusForbidden {
+						lvl = logx.Log.Error()
+					}
+					lvl.Str("request_id", logID).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Str("model", model).Str("path", path).Int("status", status).Int("body_bytes", errorBytes).Msg("upstream response body observed")
+					if debugErrorBody {
+						logx.Log.Debug().Str("request_id", logID).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Str("model", model).Str("path", path).Int("status", status).Bytes("body", errorBody).Msg("upstream response body detail")
+					}
+				}
 				logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Str("model", model).Dur("duration", dur).Msg("complete")
 				return buf.Bytes(), status, success && errMsg == "", errMsg
 			}
