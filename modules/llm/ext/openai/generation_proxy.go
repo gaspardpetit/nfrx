@@ -386,7 +386,7 @@ func queueStatusWriter(w http.ResponseWriter, flusher http.Flusher, reqID, model
 		w.WriteHeader(http.StatusOK)
 		flusher.Flush()
 	}
-	payload := fmt.Sprintf(`{"request_id":"%s","model":"%s","position":%d}`,
+	payload := fmt.Sprintf(`{"type":"nfrx.queue","request_id":"%s","model":"%s","position":%d}`,
 		reqID, model, pos)
 	_, _ = w.Write([]byte("event: nfrx.queue\n"))
 	_, _ = w.Write([]byte("data: "))
