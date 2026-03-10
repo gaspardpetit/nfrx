@@ -1,4 +1,27 @@
-nfrx (0.9.0-1ubuntu1) UNRELEASED; urgency=medium
+nfrx (0.9.1-1ubuntu1) UNRELEASED; urgency=medium
+
+  * Release: v0.9.1 —
+    https://github.com/gaspardpetit/nfrx/releases/tag/v0.9.1
+  * ## What's Changed
+  * * Test fixes for Windows by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/254
+  * * Allow the dashboard to be slightly wider by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/255
+  * * Schedule requests according to compatibility by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/256
+  * * Added worker-specific endpoint to perform inference on a specific
+    worker by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/257
+  * * Feat/dashboard links to worker models by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/258
+  *
+  *
+  * **Full Changelog**:
+    https://github.com/gaspardpetit/nfrx/compare/v0.9.0...v0.9.1
+
+ -- CI <ci@example.invalid>  Tue, 10 Mar 2026 00:52:32 +0000
+
+nfrx (0.9.1-1) unstable; urgency=medium
 
   * Release: v0.9.0 —
     https://github.com/gaspardpetit/nfrx/releases/tag/v0.9.0
@@ -17,8 +40,9 @@ nfrx (0.9.0-1ubuntu1) UNRELEASED; urgency=medium
   *
   * **Full Changelog**:
     https://github.com/gaspardpetit/nfrx/compare/v0.8.2...v0.9.0
+  *
 
- -- CI <ci@example.invalid>  Mon, 09 Mar 2026 22:05:06 +0000
+ -- CI <ci@example.invalid>  Tue, 10 Mar 2026 00:52:32 +0000
 
 nfrx (0.9.0-1) unstable; urgency=medium
 
