@@ -1,4 +1,18 @@
-nfrx (0.9.1-1ubuntu1) UNRELEASED; urgency=medium
+nfrx (0.9.2-1ubuntu1) UNRELEASED; urgency=medium
+
+  * Release: v0.9.2 —
+    https://github.com/gaspardpetit/nfrx/releases/tag/v0.9.2
+  * ## What's Changed
+  * * nfrx.queued event has a type by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/259
+  *
+  *
+  * **Full Changelog**:
+    https://github.com/gaspardpetit/nfrx/compare/v0.9.1...v0.9.2
+
+ -- CI <ci@example.invalid>  Tue, 10 Mar 2026 04:07:44 +0000
+
+nfrx (0.9.2-1) unstable; urgency=medium
 
   * Release: v0.9.1 —
     https://github.com/gaspardpetit/nfrx/releases/tag/v0.9.1
@@ -18,8 +32,9 @@ nfrx (0.9.1-1ubuntu1) UNRELEASED; urgency=medium
   *
   * **Full Changelog**:
     https://github.com/gaspardpetit/nfrx/compare/v0.9.0...v0.9.1
+  *
 
- -- CI <ci@example.invalid>  Tue, 10 Mar 2026 00:52:32 +0000
+ -- CI <ci@example.invalid>  Tue, 10 Mar 2026 04:07:44 +0000
 
 nfrx (0.9.1-1) unstable; urgency=medium
 
