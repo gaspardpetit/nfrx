@@ -57,6 +57,11 @@ These endpoints are present when the `llm` plugin is enabled.
 | `POST /api/llm/v1/embeddings` | Body `{ model: string, input: any, ... }` | Proxy OpenAI embeddings; large input arrays are automatically batched per worker. | API key |
 | `GET /api/llm/v1/models` | – | List models. | API key |
 | `GET /api/llm/v1/models/{id}` | Path `{id}` | Get model details. | API key |
+| `POST /api/llm/id/{id}/v1/chat/completions` | Path `{id}`; Body `{ model: string, messages: [{role: string, content: string}], stream?: bool, ... }` | Proxy OpenAI chat completions to a specific connected worker. | API key |
+| `POST /api/llm/id/{id}/v1/responses` | Path `{id}`; Body `{ model: string, input: any, stream?: bool, ... }` | Proxy OpenAI responses to a specific connected worker. | API key |
+| `POST /api/llm/id/{id}/v1/embeddings` | Path `{id}`; Body `{ model: string, input: any, ... }` | Proxy OpenAI embeddings to a specific connected worker. | API key |
+| `GET /api/llm/id/{id}/v1/models` | Path `{id}` | List models advertised by a specific connected worker. | API key |
+| `GET /api/llm/id/{id}/v1/models/{model}` | Path `{id}`, `{model}` | Get model details from a specific connected worker. | API key |
 
 ## Audio Transcription API
 

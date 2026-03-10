@@ -21,3 +21,12 @@ func Mount(v1 spi.Router, reg spi.WorkerRegistry, sched spi.Scheduler, metrics s
 		_ = baseworker.StatusIdle
 	}
 }
+
+// MountTargeted wires worker-targeted OpenAI-compatible endpoints under /id/{id}/v1.
+func MountTargeted(v1 spi.Router, reg spi.WorkerRegistry, metrics spi.Metrics, opts Options, queue *CompletionQueue) {
+	v1.Post("/chat/completions", TargetedChatCompletionsHandler(reg, metrics, opts, queue))
+	v1.Post("/responses", TargetedResponsesHandler(reg, metrics, opts, queue))
+	v1.Post("/embeddings", TargetedEmbeddingsHandler(reg, metrics, opts.RequestTimeout, opts.MaxParallelEmbeddings))
+	v1.Get("/models", TargetedListModelsHandler(reg))
+	v1.Get("/models/{model}", TargetedGetModelHandler(reg))
+}

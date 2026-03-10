@@ -25,6 +25,8 @@ type WorkerRegistry interface {
 	DecInFlight(id string)
 	AggregatedModels() []ModelInfo
 	AggregatedModel(id string) (ModelInfo, bool)
+	HasWorker(id string) bool
+	WorkerModels(id string) []ModelInfo
 }
 
 type Scheduler interface {

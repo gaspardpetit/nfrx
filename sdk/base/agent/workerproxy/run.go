@@ -22,6 +22,7 @@ func Run(ctx context.Context, cfg Config) error {
 	if cfg.ClientID == "" {
 		cfg.ClientID = time.Now().Format("20060102150405")
 	}
+	logx.Log.Info().Str("worker_id", cfg.ClientID).Str("worker_name", cfg.ClientName).Msg("worker id assigned")
 	// Start advertising with zero concurrency until backend health is known
 	SetWorkerInfo(cfg.ClientID, cfg.ClientName, 0)
 	SetState("not_ready")

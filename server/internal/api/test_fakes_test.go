@@ -61,6 +61,17 @@ func (r testReg) DecInFlight(id string) {
 }
 func (r testReg) AggregatedModels() []spi.ModelInfo               { return nil }
 func (r testReg) AggregatedModel(id string) (spi.ModelInfo, bool) { return spi.ModelInfo{}, false }
+func (r testReg) HasWorker(id string) bool                        { return r.w != nil && r.w.id == id }
+func (r testReg) WorkerModels(id string) []spi.ModelInfo {
+	if !r.HasWorker(id) {
+		return nil
+	}
+	var out []spi.ModelInfo
+	for model := range r.w.models {
+		out = append(out, spi.ModelInfo{ID: model, Owners: []string{r.w.Name()}})
+	}
+	return out
+}
 
 type testSched struct{ w spi.WorkerRef }
 
@@ -90,3 +101,26 @@ func (r testMultiReg) IncInFlight(id string)                           {}
 func (r testMultiReg) DecInFlight(id string)                           {}
 func (r testMultiReg) AggregatedModels() []spi.ModelInfo               { return nil }
 func (r testMultiReg) AggregatedModel(id string) (spi.ModelInfo, bool) { return spi.ModelInfo{}, false }
+func (r testMultiReg) HasWorker(id string) bool {
+	for _, w := range r.ws {
+		if w.ID() == id {
+			return true
+		}
+	}
+	return false
+}
+func (r testMultiReg) WorkerModels(id string) []spi.ModelInfo {
+	for _, w := range r.ws {
+		if w.ID() == id {
+			if tw, ok := w.(*testWorker); ok {
+				var out []spi.ModelInfo
+				for model := range tw.models {
+					out = append(out, spi.ModelInfo{ID: model, Owners: []string{w.Name()}})
+				}
+				return out
+			}
+			return []spi.ModelInfo{{ID: "m", Owners: []string{w.Name()}}}
+		}
+	}
+	return nil
+}

@@ -89,6 +89,43 @@ func (r *WorkerRegistry) AggregatedModel(id string) (spi.ModelInfo, bool) {
 	return m, true
 }
 
+func (r *WorkerRegistry) HasWorker(id string) bool {
+	ws := r.r.Snapshot()
+	for _, w := range ws {
+		if w.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *WorkerRegistry) WorkerModels(id string) []spi.ModelInfo {
+	ws := r.r.Snapshot()
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.firstSeen == nil {
+		r.firstSeen = make(map[string]int64)
+	}
+	now := time.Now().Unix()
+	for _, w := range ws {
+		if w.ID != id {
+			continue
+		}
+		name := w.NameValue()
+		modelIDs := w.LabelKeys()
+		res := make([]spi.ModelInfo, 0, len(modelIDs))
+		for _, modelID := range modelIDs {
+			if _, ok := r.firstSeen[modelID]; !ok {
+				r.firstSeen[modelID] = now
+			}
+			res = append(res, spi.ModelInfo{ID: modelID, Created: r.firstSeen[modelID], Owners: []string{name}})
+		}
+		sort.Slice(res, func(i, j int) bool { return res[i].ID < res[j].ID })
+		return res
+	}
+	return nil
+}
+
 type Scheduler struct{ s baseworker.Scheduler }
 
 func (s Scheduler) PickWorker(model string) (spi.WorkerRef, error) {
