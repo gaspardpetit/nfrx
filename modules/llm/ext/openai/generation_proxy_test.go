@@ -27,6 +27,7 @@ func TestQueueStatusWriterUsesDedicatedEvent(t *testing.T) {
 	payload = strings.TrimPrefix(payload, "data: ")
 	payload = strings.TrimSuffix(payload, "\n\n")
 	var msg struct {
+		Type      string `json:"type"`
 		RequestID string `json:"request_id"`
 		Model     string `json:"model"`
 		Position  int    `json:"position"`
@@ -34,7 +35,7 @@ func TestQueueStatusWriterUsesDedicatedEvent(t *testing.T) {
 	if err := json.Unmarshal([]byte(payload), &msg); err != nil {
 		t.Fatalf("unmarshal payload: %v", err)
 	}
-	if msg.RequestID != "req1" || msg.Model != "m" {
+	if msg.Type != "nfrx.queue" || msg.RequestID != "req1" || msg.Model != "m" {
 		t.Fatalf("unexpected queue payload %+v", msg)
 	}
 	if got := msg.Position; got != 2 {
