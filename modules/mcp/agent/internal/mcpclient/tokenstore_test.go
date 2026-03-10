@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/mark3labs/mcp-go/client/transport"
@@ -21,7 +22,7 @@ func TestFileTokenStore(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat: %v", err)
 	}
-	if info.Mode().Perm() != 0600 {
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0600 {
 		t.Fatalf("permissions: %v", info.Mode())
 	}
 	got, err := store.GetToken(context.Background())
