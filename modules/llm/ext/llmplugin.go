@@ -53,25 +53,28 @@ func (p *Plugin) RegisterRoutes(r spi.Router) {
 			g.Use(p.authMW)
 		}
 		g.Use(inflight.DrainableMiddleware())
+		// Adapt shared options to OpenAI-specific options
+		mpe := opt.Int(p.srvOpts.PluginOptions, p.ID(), "max_parallel_embeddings", 8)
+		qsz := opt.Int(p.srvOpts.PluginOptions, p.ID(), "queue_size", 100)
+		qus := opt.Int(p.srvOpts.PluginOptions, p.ID(), "queue_update_seconds", 10)
+		oa := openai.Options{RequestTimeout: p.srvOpts.RequestTimeout, MaxParallelEmbeddings: mpe, QueueSize: qsz, QueueUpdateSeconds: qus}
+		// Adapt internal control plane to SPI
+		wr := llmadapt.NewWorkerRegistry(p.reg)
+		sch := llmadapt.NewScheduler(p.sch)
+		mx := llmadapt.NewMetrics(p.mxreg)
+		// Construct a global completion queue for chat requests and surface capacity in state
+		var cq *openai.CompletionQueue
+		if qsz > 0 {
+			cq = openai.NewCompletionQueue(p.mxreg, qsz)
+		} else {
+			// still set capacity so UI reflects disabled queue
+			p.mxreg.SetSchedulerQueueCapacity(0)
+		}
 		g.Route("/v1", func(v1 spi.Router) {
-			// Adapt shared options to OpenAI-specific options
-			mpe := opt.Int(p.srvOpts.PluginOptions, p.ID(), "max_parallel_embeddings", 8)
-			qsz := opt.Int(p.srvOpts.PluginOptions, p.ID(), "queue_size", 100)
-			qus := opt.Int(p.srvOpts.PluginOptions, p.ID(), "queue_update_seconds", 10)
-			oa := openai.Options{RequestTimeout: p.srvOpts.RequestTimeout, MaxParallelEmbeddings: mpe, QueueSize: qsz, QueueUpdateSeconds: qus}
-			// Adapt internal control plane to SPI
-			wr := llmadapt.NewWorkerRegistry(p.reg)
-			sch := llmadapt.NewScheduler(p.sch)
-			mx := llmadapt.NewMetrics(p.mxreg)
-			// Construct a global completion queue for chat requests and surface capacity in state
-			var cq *openai.CompletionQueue
-			if qsz > 0 {
-				cq = openai.NewCompletionQueue(p.mxreg, qsz)
-			} else {
-				// still set capacity so UI reflects disabled queue
-				p.mxreg.SetSchedulerQueueCapacity(0)
-			}
 			openai.Mount(v1, wr, sch, mx, oa, cq)
+		})
+		g.Route("/id/{id}/v1", func(v1 spi.Router) {
+			openai.MountTargeted(v1, wr, mx, oa, cq)
 		})
 	})
 }

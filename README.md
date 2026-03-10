@@ -476,6 +476,12 @@ The Windows service runs `nfrx-llm` with the `--reconnect` flag and shuts down i
 - OpenAI Chat Completions: `POST /api/llm/v1/chat/completions`
 - OpenAI Responses: `POST /api/llm/v1/responses`
 - OpenAI Embeddings: `POST /api/llm/v1/embeddings`
+- Worker-targeted LLM routes:
+  - `GET /api/llm/id/{id}/v1/models`
+  - `GET /api/llm/id/{id}/v1/models/{model}`
+  - `POST /api/llm/id/{id}/v1/chat/completions`
+  - `POST /api/llm/id/{id}/v1/responses`
+  - `POST /api/llm/id/{id}/v1/embeddings`
 - nfrx API:
   - **State (JSON):** `GET /api/state`
   - **State (SSE):** `GET /api/state/stream`

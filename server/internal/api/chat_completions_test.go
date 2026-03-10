@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -10,6 +11,8 @@ import (
 
 	openai "github.com/gaspardpetit/nfrx/modules/llm/ext/openai"
 	ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
+	"github.com/gaspardpetit/nfrx/sdk/api/spi"
+	"github.com/go-chi/chi/v5"
 )
 
 type flushRecorder struct {
@@ -155,5 +158,62 @@ func TestResponsesOpaque(t *testing.T) {
 	h.ServeHTTP(rec, req)
 	if rec.Body.String() != `{"usage":{"input_tokens":3,"output_tokens":5}}` {
 		t.Fatalf("body %q", rec.Body.String())
+	}
+}
+
+func TestTargetedChatCompletionsDispatchesToSelectedWorker(t *testing.T) {
+	alpha := newTestWorker("alpha", []string{"m"})
+	beta := newTestWorker("beta", []string{"m"})
+	h := openai.TargetedChatCompletionsHandler(testMultiReg{ws: []spi.WorkerRef{alpha, beta}}, testMetrics{}, openai.Options{RequestTimeout: time.Second}, nil)
+
+	go func() {
+		msg := <-beta.send
+		req := msg.(ctrl.HTTPProxyRequestMessage)
+		ch := beta.jobs[req.RequestID]
+		ch <- ctrl.HTTPProxyResponseHeadersMessage{Type: "http_proxy_response_headers", RequestID: req.RequestID, Status: 200, Headers: map[string]string{"Content-Type": "application/json"}}
+		ch <- ctrl.HTTPProxyResponseChunkMessage{Type: "http_proxy_response_chunk", RequestID: req.RequestID, Data: []byte(`{"ok":true}`)}
+		ch <- ctrl.HTTPProxyResponseEndMessage{Type: "http_proxy_response_end", RequestID: req.RequestID}
+	}()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/llm/id/beta/v1/chat/completions", strings.NewReader(`{"model":"m"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "beta")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != 200 {
+		t.Fatalf("status %d", rec.Code)
+	}
+	if rec.Body.String() != `{"ok":true}` {
+		t.Fatalf("body %q", rec.Body.String())
+	}
+	select {
+	case <-alpha.send:
+		t.Fatalf("targeted request should not dispatch to alpha")
+	default:
+	}
+}
+
+func TestTargetedListModelsReturnsWorkerModels(t *testing.T) {
+	alpha := newTestWorker("alpha", []string{"m-alpha", "m-common"})
+	beta := newTestWorker("beta", []string{"m-beta"})
+	h := openai.TargetedListModelsHandler(testMultiReg{ws: []spi.WorkerRef{alpha, beta}})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/llm/id/alpha/v1/models", nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "alpha")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != 200 {
+		t.Fatalf("status %d", rec.Code)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "m-alpha") || !strings.Contains(body, "m-common") {
+		t.Fatalf("body %q", body)
+	}
+	if strings.Contains(body, "m-beta") {
+		t.Fatalf("unexpected targeted model from beta in body %q", body)
 	}
 }
