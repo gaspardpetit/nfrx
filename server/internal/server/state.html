@@ -58,6 +58,13 @@ body {
   font-family: var(--sans);
 }
 a { color: inherit; }
+.subtle-link {
+  color: var(--accent);
+  text-decoration: none;
+}
+.subtle-link:hover {
+  text-decoration: underline;
+}
 .page {
   width: min(var(--page-max-width), calc(100% - 2rem));
   margin: 0 auto;
@@ -218,6 +225,9 @@ select {
   align-items: center;
   gap: 0.65rem;
 }
+.plugin-title .copy-link {
+  color: var(--accent);
+}
 .plugin-title h3 {
   margin: 0;
   font-size: 1.05rem;
@@ -234,6 +244,27 @@ select {
 .plugin-meta {
   color: var(--muted);
   font-size: 0.94rem;
+}
+.plugin-summary a,
+.plugin-meta a {
+  color: var(--accent);
+  text-decoration: none;
+  cursor: pointer;
+}
+.copy-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+}
+.copy-icon {
+  width: 0.82rem;
+  height: 0.82rem;
+  display: inline-block;
+  opacity: 0.8;
+}
+.plugin-summary a:hover,
+.plugin-meta a:hover {
+  text-decoration: underline;
 }
 .plugin-body {
   padding: 1.1rem 1.25rem 1.25rem;
@@ -395,19 +426,29 @@ select {
   color: var(--text);
   font-weight: 700;
 }
-.worker .worker-id {
+.worker .worker-links {
   position: absolute;
   right: 0.9rem;
   bottom: 0.8rem;
   max-width: calc(100% - 1.8rem);
-  color: var(--muted);
-  opacity: 0.72;
   font-size: 0.76rem;
   font-family: var(--mono);
   text-align: right;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.worker .worker-links a {
+  color: var(--muted);
+  opacity: 0.78;
+  text-decoration: none;
+  cursor: pointer;
+}
+.worker .worker-links a:hover {
+  color: var(--accent);
+  opacity: 1;
+  text-decoration: underline;
 }
 .busy-bar {
   position: absolute;
@@ -604,6 +645,49 @@ function pluginWorkerCount(state) {
   return ((state && state.workers) || []).length;
 }
 
+async function copyText(text) {
+  if (!navigator.clipboard || !navigator.clipboard.writeText) {
+    throw new Error('clipboard unavailable');
+  }
+  var value = text || '';
+  if (value.startsWith('/')) {
+    value = new URL(value, window.location.origin).toString();
+  }
+  await navigator.clipboard.writeText(value);
+}
+
+function flashCopyState(el, ok) {
+  if (!el) return;
+  if (!el.dataset.originalLabel) {
+    el.dataset.originalLabel = el.textContent;
+  }
+  el.textContent = ok ? 'copied' : 'copy failed';
+  clearTimeout(el._copyTimer);
+  el._copyTimer = setTimeout(function() {
+    el.textContent = el.dataset.originalLabel || '';
+  }, 1100);
+}
+
+function bindCopyLinks(root) {
+  if (!root) return;
+  root.querySelectorAll('[data-copy-text]').forEach(function(el) {
+    if (el.dataset.copyBound === '1') return;
+    el.dataset.copyBound = '1';
+    el.addEventListener('click', async function(ev) {
+      ev.preventDefault();
+      try {
+        await copyText(el.dataset.copyText || '');
+        flashCopyState(el, true);
+      } catch (err) {
+        console.error('copy', err);
+        flashCopyState(el, false);
+      }
+    });
+  });
+}
+window.NFRX = window.NFRX || { _renderers: {}, registerRenderer: function(id, fn){ this._renderers[id]=fn; } };
+window.NFRX.bindCopyLinks = bindCopyLinks;
+
 function sortedPluginIDs(plugins) {
   return Object.keys(plugins || {}).sort(function(a, b) {
     var aWorkers = pluginWorkerCount(plugins[a]);
@@ -628,6 +712,7 @@ function ensurePluginSection(id, plugins) {
         '<div>' +
           '<div class="plugin-title">' +
             '<h3></h3>' +
+            '<a href="#" class="copy-link plugin-base-url" style="display:none"></a>' +
             '<span class="plugin-id"></span>' +
           '</div>' +
           '<div class="plugin-summary"></div>' +
@@ -646,18 +731,41 @@ function ensurePluginSection(id, plugins) {
     idBadge.textContent = '';
     idBadge.style.display = 'none';
   }
+  var baseLink = section.querySelector('.plugin-base-url');
+  if (id === 'llm') {
+    baseLink.dataset.copyText = '/api/llm/v1';
+    baseLink.innerHTML = copyIconSVG();
+    baseLink.style.display = 'inline-flex';
+    bindCopyLinks(baseLink.parentNode);
+  } else {
+    baseLink.dataset.copyText = '';
+    baseLink.innerHTML = '';
+    baseLink.style.display = 'none';
+  }
   var summary = pluginSummaryText(id);
   section.querySelector('.plugin-summary').textContent = summary || 'Live worker and server metrics.';
-  section.querySelector('.plugin-meta').textContent = pluginMetaText(id, plugins[id]);
+  renderPluginMeta(section.querySelector('.plugin-meta'), id, plugins[id]);
   return section;
 }
 
-function pluginMetaText(id, pluginState) {
+function pluginMetaParts(id, pluginState) {
   var workers = pluginWorkerCount(pluginState);
   var server = (pluginState && pluginState.server) || {};
   var queueLen = server.scheduler_queue_len || 0;
   var completed = server.jobs_completed_total || 0;
-  return workers + ' worker' + (workers === 1 ? '' : 's') + ' | queue ' + queueLen + ' | completed ' + completed;
+  return {
+    text: workers + ' worker' + (workers === 1 ? '' : 's') + ' | queue ' + queueLen + ' | completed ' + completed
+  };
+}
+
+function renderPluginMeta(el, id, pluginState) {
+  if (!el) return;
+  var meta = pluginMetaParts(id, pluginState);
+  el.textContent = meta.text;
+}
+
+function copyIconSVG() {
+  return '<svg class="copy-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg>';
 }
 
 async function maybeLoadViews(plugins) {
@@ -665,7 +773,7 @@ async function maybeLoadViews(plugins) {
   for (const id of ids) {
     const section = ensurePluginSection(id, plugins);
     if (loadedViews.has(id)) {
-      section.querySelector('.plugin-meta').textContent = pluginMetaText(id, plugins[id]);
+      renderPluginMeta(section.querySelector('.plugin-meta'), id, plugins[id]);
     } else {
       try {
         const resp = await authorizedFetch('/api/state/view/' + id + '.html');
@@ -688,7 +796,7 @@ async function maybeLoadViews(plugins) {
       } catch (e) {
         console.error('load view', id, e);
       } finally {
-        section.querySelector('.plugin-meta').textContent = pluginMetaText(id, plugins[id]);
+        renderPluginMeta(section.querySelector('.plugin-meta'), id, plugins[id]);
         loadedViews.add(id);
       }
     }
@@ -751,11 +859,12 @@ function update(envelope) {
     const container = document.getElementById('plugin-' + id);
     if (container) {
       const meta = container.querySelector('.plugin-meta');
-      if (meta) meta.textContent = pluginMetaText(id, plugins[id]);
+      if (meta) renderPluginMeta(meta, id, plugins[id]);
     }
     if (typeof fn === 'function' && container) {
       try {
         fn(plugins[id], container, envelope);
+        bindCopyLinks(container);
       } catch (e) {
         console.error('render', id, e);
       }

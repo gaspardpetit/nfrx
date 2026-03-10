@@ -150,6 +150,9 @@ func (p *Plugin) RegisterState(reg spi.StateRegistry) {
         var outputTokens=(w.output_tokens_total||0);
         var hostText=((hostName && hostSummary) ? (hostName+' / '+hostSummary) : (hostName || hostSummary || 'unknown'));
         var backendHTML=completionAgentVersion ? '<div class="worker-backend">'+completionAgentVersion+'</div>' : '';
+        var workerID=(w.id || '');
+        var workerBaseURL=new URL('/api/llm/id/'+encodeURIComponent(workerID)+'/v1', window.location.origin).toString();
+        var workerModelsURL=workerBaseURL+'/models';
         var lastHb=(w.last_heartbeat || w.LastHeartbeat);
         var stale=lastHb && (Date.now() - new Date(lastHb).getTime() > 15000);
         var statusBadge='';
@@ -190,9 +193,12 @@ func (p *Plugin) RegisterState(reg spi.StateRegistry) {
             '<div class="detail"><div class="detail-label">Avg Processing</div><div class="detail-value"><strong>'+avgText+'</strong> ms</div></div>'+
             '<div class="detail"><div class="detail-label">Embed Batch</div><div class="detail-value"><strong>'+(w.embedding_batch_size||0)+'</strong></div></div>'+
           '</div>'+
-          '<div class="worker-id">'+(w.id || '')+'</div>';
+          '<div class="worker-links"><a href="#" class="copy-link" data-copy-text="'+workerBaseURL+'">'+workerID+' '+(window.copyIconSVG ? window.copyIconSVG() : '')+'</a><a href="'+workerModelsURL+'">models</a></div>';
         host.appendChild(div);
       });
+      if (window.NFRX && typeof window.NFRX.bindCopyLinks === 'function') {
+        window.NFRX.bindCopyLinks(host);
+      }
     }
     if (!window.NFRX) window.NFRX = { _renderers:{}, registerRenderer:function(id,fn){ this._renderers[id]=fn; } };
     var section = (document.currentScript && document.currentScript.closest('section')) || null;
