@@ -151,7 +151,7 @@ func generationProxyHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics
 				http.Error(w, "no worker", http.StatusNotFound)
 				return
 			}
-			if pos, ok := queue.Enter(reqID); !ok {
+			if pos, ok := queue.Enter(reqID, meta.Model); !ok {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusServiceUnavailable)
 				_, _ = w.Write([]byte(`{"error":"worker_busy"}`))
@@ -179,7 +179,13 @@ func generationProxyHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics
 						http.Error(w, "no worker", http.StatusNotFound)
 						return
 					}
-					if queue.IsHead(reqID) {
+					if queue.IsFirstDispatchable(reqID, func(model string) bool {
+						if !modelSupported(model) {
+							return false
+						}
+						_, err := sched.PickWorker(model)
+						return err == nil
+					}) {
 						if d, wk, c := tryDispatch(); d {
 							queue.Leave(reqID)
 							worker, ch = wk, c

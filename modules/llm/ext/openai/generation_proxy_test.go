@@ -41,3 +41,22 @@ func TestQueueStatusWriterUsesDedicatedEvent(t *testing.T) {
 		t.Fatalf("expected position=2, got %d", got)
 	}
 }
+
+func TestCompletionQueueFirstDispatchableSkipsBlockedEntries(t *testing.T) {
+	q := NewCompletionQueue(nil, 4)
+	if _, ok := q.Enter("req-a", "model-a"); !ok {
+		t.Fatalf("expected req-a to enter queue")
+	}
+	if _, ok := q.Enter("req-b", "model-b"); !ok {
+		t.Fatalf("expected req-b to enter queue")
+	}
+	canDispatch := func(model string) bool {
+		return model == "model-b"
+	}
+	if q.IsFirstDispatchable("req-a", canDispatch) {
+		t.Fatalf("req-a should not be dispatchable")
+	}
+	if !q.IsFirstDispatchable("req-b", canDispatch) {
+		t.Fatalf("req-b should be first dispatchable entry")
+	}
+}

@@ -10,9 +10,14 @@ import (
 // It tracks length and capacity in the LLM metrics registry for state reporting.
 type CompletionQueue struct {
 	mu    sync.Mutex
-	items []string
+	items []queuedRequest
 	cap   int
 	mx    *baseworker.MetricsRegistry
+}
+
+type queuedRequest struct {
+	id    string
+	model string
 }
 
 func NewCompletionQueue(mx *baseworker.MetricsRegistry, capacity int) *CompletionQueue {
@@ -32,7 +37,7 @@ func (q *CompletionQueue) SetCapacity(n int) {
 }
 
 // Enter enqueues id if capacity allows; returns 1-based position and ok.
-func (q *CompletionQueue) Enter(id string) (int, bool) {
+func (q *CompletionQueue) Enter(id, model string) (int, bool) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if q.cap <= 0 {
@@ -41,7 +46,7 @@ func (q *CompletionQueue) Enter(id string) (int, bool) {
 	if len(q.items) >= q.cap {
 		return 0, false
 	}
-	q.items = append(q.items, id)
+	q.items = append(q.items, queuedRequest{id: id, model: model})
 	if q.mx != nil {
 		q.mx.SetSchedulerQueueLen(len(q.items))
 	}
@@ -53,7 +58,7 @@ func (q *CompletionQueue) Leave(id string) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	for i, v := range q.items {
-		if v == id {
+		if v.id == id {
 			q.items = append(q.items[:i], q.items[i+1:]...)
 			if q.mx != nil {
 				q.mx.SetSchedulerQueueLen(len(q.items))
@@ -68,18 +73,25 @@ func (q *CompletionQueue) Position(id string) int {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	for i, v := range q.items {
-		if v == id {
+		if v.id == id {
 			return i + 1
 		}
 	}
 	return 0
 }
 
-// IsHead reports whether id is currently at the head (position 1).
-func (q *CompletionQueue) IsHead(id string) bool {
+// IsFirstDispatchable reports whether id is the first queue entry that satisfies canDispatch.
+// Entries earlier in the queue that are not currently dispatchable do not block later compatible entries.
+func (q *CompletionQueue) IsFirstDispatchable(id string, canDispatch func(model string) bool) bool {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	return len(q.items) > 0 && q.items[0] == id
+	for _, item := range q.items {
+		if !canDispatch(item.model) {
+			continue
+		}
+		return item.id == id
+	}
+	return false
 }
 
 // Len returns the current queue length.
