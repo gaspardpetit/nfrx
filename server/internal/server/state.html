@@ -7,6 +7,7 @@
 <style>
 :root {
   color-scheme: light dark;
+  --page-max-width: 1600px;
   --bg: #f4f0e8;
   --bg-accent: radial-gradient(circle at top left, rgba(191, 68, 51, 0.18), transparent 34%);
   --panel: rgba(255, 251, 244, 0.88);
@@ -58,7 +59,7 @@ body {
 }
 a { color: inherit; }
 .page {
-  width: min(1200px, calc(100% - 2rem));
+  width: min(var(--page-max-width), calc(100% - 2rem));
   margin: 0 auto;
   padding: 1.25rem 0 3rem;
 }
@@ -90,7 +91,7 @@ a { color: inherit; }
 }
 .hero-card p {
   margin: 0;
-  max-width: 54rem;
+  max-width: 72rem;
   color: var(--muted);
   line-height: 1.5;
 }
@@ -432,7 +433,7 @@ select {
 }
 @media (max-width: 720px) {
   .page {
-    width: min(100% - 1rem, 1200px);
+    width: min(100% - 1rem, var(--page-max-width));
     padding-top: 0.75rem;
   }
   .hero,
