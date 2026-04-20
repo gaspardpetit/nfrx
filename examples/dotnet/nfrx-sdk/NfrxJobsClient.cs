@@ -24,13 +24,25 @@ public sealed class NfrxJobsClient
         _http = httpClient;
     }
 
-    public async Task<JobCreateResponse> CreateJobAsync(string jobType, Dictionary<string, object>? metadata)
+    public async Task<JobCreateResponse> CreateJobAsync(
+        string jobType,
+        Dictionary<string, object>? metadata,
+        string? workerId = null,
+        string? workerGroup = null)
     {
         var payload = new Dictionary<string, object>
         {
             { "type", jobType },
             { "metadata", metadata ?? new Dictionary<string, object>() }
         };
+        if (!string.IsNullOrWhiteSpace(workerId))
+        {
+            payload["worker_id"] = workerId;
+        }
+        if (!string.IsNullOrWhiteSpace(workerGroup))
+        {
+            payload["worker_group"] = workerGroup;
+        }
         using var req = new HttpRequestMessage(HttpMethod.Post, _baseUrl + "/api/jobs");
         AddAuth(req);
         req.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
@@ -157,10 +169,12 @@ public sealed class NfrxJobsRunner : IDisposable
     public async Task<JobSession> CreateJobSessionAsync(
         string jobType,
         Dictionary<string, object>? metadata,
+        string? workerId,
+        string? workerGroup,
         PayloadProvider payloadProvider,
         ResultConsumer resultConsumer)
     {
-        var created = await _jobs.CreateJobAsync(jobType, metadata);
+        var created = await _jobs.CreateJobAsync(jobType, metadata, workerId, workerGroup);
         return new JobSession(created.JobId, payloadProvider, resultConsumer);
     }
 
@@ -273,6 +287,8 @@ public sealed class NfrxJobsWorker : IDisposable
     public async Task<JobClaimResponse?> ClaimJobAsync(
         List<string>? types,
         int maxWaitSeconds,
+        string? workerId = null,
+        string? workerGroup = null,
         CancellationToken cancellationToken = default)
     {
         var payload = new Dictionary<string, object>();
@@ -281,6 +297,14 @@ public sealed class NfrxJobsWorker : IDisposable
             payload["types"] = types;
         }
         payload["max_wait_seconds"] = maxWaitSeconds;
+        if (!string.IsNullOrWhiteSpace(workerId))
+        {
+            payload["worker_id"] = workerId;
+        }
+        if (!string.IsNullOrWhiteSpace(workerGroup))
+        {
+            payload["worker_group"] = workerGroup;
+        }
         using var req = new HttpRequestMessage(HttpMethod.Post, _baseUrl + "/api/jobs/claim");
         AddAuth(req);
         req.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
@@ -380,10 +404,12 @@ public sealed class NfrxJobsWorker : IDisposable
         Func<JobClaimResponse, byte[], Task<(byte[] Result, string? ErrorMessage)>> handler,
         List<string>? types,
         int maxWaitSeconds,
+        string? workerId = null,
+        string? workerGroup = null,
         WorkerStatusHandler? onStatus = null,
         CancellationToken cancellationToken = default)
     {
-        var job = await ClaimJobAsync(types, maxWaitSeconds, cancellationToken).ConfigureAwait(false);
+        var job = await ClaimJobAsync(types, maxWaitSeconds, workerId, workerGroup, cancellationToken).ConfigureAwait(false);
         if (job == null)
         {
             return false;
@@ -477,10 +503,18 @@ public sealed class JobCreateResponse
 
 public sealed class JobClaimResponse
 {
+    [JsonPropertyName("claimed_worker_group")]
+    public string? ClaimedWorkerGroup { get; set; }
+    [JsonPropertyName("claimed_worker_id")]
+    public string? ClaimedWorkerId { get; set; }
     [JsonPropertyName("job_id")]
     public string JobId { get; set; } = string.Empty;
     public string Type { get; set; } = string.Empty;
     public Dictionary<string, JsonElement>? Metadata { get; set; }
+    [JsonPropertyName("worker_group")]
+    public string? WorkerGroup { get; set; }
+    [JsonPropertyName("worker_id")]
+    public string? WorkerId { get; set; }
 }
 
 public sealed class TransferRequest

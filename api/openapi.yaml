@@ -57,6 +57,10 @@ components:
         metadata:
           type: object
           additionalProperties: true
+        worker_id:
+          type: string
+        worker_group:
+          type: string
       required: [type]
     JobCreateResponse:
       type: object
@@ -75,6 +79,10 @@ components:
             type: string
         max_wait_seconds:
           type: integer
+        worker_id:
+          type: string
+        worker_group:
+          type: string
     JobClaimResponse:
       type: object
       properties:
@@ -85,6 +93,14 @@ components:
         metadata:
           type: object
           additionalProperties: true
+        worker_id:
+          type: string
+        worker_group:
+          type: string
+        claimed_worker_id:
+          type: string
+        claimed_worker_group:
+          type: string
       required: [job_id, type]
     JobStatusUpdateRequest:
       type: object
@@ -109,6 +125,14 @@ components:
         metadata:
           type: object
           additionalProperties: true
+        worker_id:
+          type: string
+        worker_group:
+          type: string
+        claimed_worker_id:
+          type: string
+        claimed_worker_group:
+          type: string
         progress:
           type: object
           additionalProperties: true
@@ -273,6 +297,34 @@ paths:
                 $ref: '#/components/schemas/JobClaimResponse'
         '204':
           description: No jobs available
+  /api/jobs/stream:
+    get:
+      security: [ { BearerAuth: [] } ]
+      summary: Stream compatible queued jobs for a worker
+      parameters:
+        - in: query
+          name: types
+          required: false
+          schema:
+            type: string
+          description: Optional comma-separated list of accepted job types.
+        - in: query
+          name: worker_id
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: worker_group
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Event stream of claimed jobs
+          content:
+            text/event-stream:
+              schema:
+                type: string
   /api/jobs/{job_id}:
     get:
       security: [ { BearerAuth: [] } ]

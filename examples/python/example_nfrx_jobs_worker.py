@@ -48,13 +48,21 @@ class NfrxJobsWorker:
         return headers
 
     async def claim_job(
-        self, types: Optional[list[str]] = None, max_wait_seconds: Optional[int] = None
+        self,
+        types: Optional[list[str]] = None,
+        max_wait_seconds: Optional[int] = None,
+        worker_id: Optional[str] = None,
+        worker_group: Optional[str] = None,
     ) -> Optional[JobClaim]:
         payload: Dict[str, Any] = {}
         if types:
             payload["types"] = types
         if max_wait_seconds is not None:
             payload["max_wait_seconds"] = max_wait_seconds
+        if worker_id:
+            payload["worker_id"] = worker_id
+        if worker_group:
+            payload["worker_group"] = worker_group
         resp = await self._client.post("/api/jobs/claim", json=payload, headers=self._headers())
         if resp.status_code == 204:
             return None
@@ -94,9 +102,16 @@ class NfrxJobsWorker:
         handler: ProcessHandler,
         types: Optional[list[str]],
         max_wait_seconds: int,
+        worker_id: Optional[str] = None,
+        worker_group: Optional[str] = None,
         on_status: Optional[StatusHandler] = None,
     ) -> bool:
-        job = await self.claim_job(types=types, max_wait_seconds=max_wait_seconds)
+        job = await self.claim_job(
+            types=types,
+            max_wait_seconds=max_wait_seconds,
+            worker_id=worker_id,
+            worker_group=worker_group,
+        )
         if not job:
             print("no job available")
             return False
@@ -164,6 +179,8 @@ async def run(args: argparse.Namespace) -> int:
                 handler=echo_handler,
                 types=types,
                 max_wait_seconds=args.max_wait_seconds,
+                worker_id=args.worker_id,
+                worker_group=args.worker_group,
             )
             if handled and args.once:
                 return 0
@@ -176,6 +193,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--base-url", default="http://localhost:8080")
     parser.add_argument("--client-key", default=None)
     parser.add_argument("--types", default=None, help="comma-separated job types")
+    parser.add_argument("--worker-id", default=None, help="claim identity for exact worker targeting")
+    parser.add_argument("--worker-group", default=None, help="claim affinity group for group-targeted jobs")
     parser.add_argument("--max-wait-seconds", type=int, default=30)
     parser.add_argument("--once", action="store_true", help="exit if no job claimed")
     return parser

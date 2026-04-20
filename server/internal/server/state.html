@@ -642,6 +642,9 @@ function pluginSummaryText(id) {
 }
 
 function pluginWorkerCount(state) {
+  if (state && state.summary && state.summary.active_workers != null) {
+    return state.summary.active_workers;
+  }
   return ((state && state.workers) || []).length;
 }
 
@@ -749,6 +752,12 @@ function ensurePluginSection(id, plugins) {
 }
 
 function pluginMetaParts(id, pluginState) {
+  if (id === 'jobs') {
+    var summary = (pluginState && pluginState.summary) || {};
+    return {
+      text: (summary.active_workers || 0) + ' active | queued ' + (summary.queued_jobs || 0) + ' | running ' + (summary.running_jobs || 0)
+    };
+  }
   var workers = pluginWorkerCount(pluginState);
   var server = (pluginState && pluginState.server) || {};
   var queueLen = server.scheduler_queue_len || 0;

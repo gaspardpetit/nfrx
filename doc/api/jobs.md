@@ -45,7 +45,8 @@ Request body:
 ```json
 {
   "type": "asr.transcribe",
-  "metadata": {"filename": "sample.wav"}
+  "metadata": {"filename": "sample.wav"},
+  "worker_group": "asr-cache-a"
 }
 ```
 
@@ -92,6 +93,9 @@ Response (example):
   "type": "asr.transcribe",
   "status": "awaiting_payload",
   "metadata": {"filename": "sample.wav"},
+  "worker_group": "asr-cache-a",
+  "claimed_worker_id": "worker-17",
+  "claimed_worker_group": "asr-cache-a",
   "payloads": {
     "payload": {
       "key": "payload",
@@ -222,12 +226,16 @@ Request body (optional):
 ```json
 {
   "types": ["asr.transcribe", "doc.convert"],
-  "max_wait_seconds": 30
+  "max_wait_seconds": 30,
+  "worker_id": "worker-17",
+  "worker_group": "asr-cache-a"
 }
 ```
 
 - `types` filters which job types the worker will accept. Omit to claim any type.
 - `max_wait_seconds` controls long-poll wait; `0` returns immediately.
+- `worker_id` identifies the claiming worker for traceability and exact-targeted jobs.
+- `worker_group` identifies the affinity pool for group-targeted jobs.
 
 Response (200):
 
@@ -235,7 +243,10 @@ Response (200):
 {
   "job_id": "<uuid>",
   "type": "asr.transcribe",
-  "metadata": {"filename": "sample.wav"}
+  "metadata": {"filename": "sample.wav"},
+  "worker_group": "asr-cache-a",
+  "claimed_worker_id": "worker-17",
+  "claimed_worker_group": "asr-cache-a"
 }
 ```
 
@@ -246,7 +257,46 @@ curl:
 ```bash
 curl -s -X POST http://localhost:8080/api/jobs/claim \
   -H "Content-Type: application/json" \
-  -d '{"types":["asr.transcribe"],"max_wait_seconds":30}'
+  -d '{"types":["asr.transcribe"],"max_wait_seconds":30,"worker_id":"worker-17","worker_group":"asr-cache-a"}'
+```
+
+Authorization (worker):
+
+```
+Authorization: Bearer <CLIENT_KEY>
+```
+
+or
+
+```
+X-User-Roles: <client_role>
+```
+
+---
+
+### Stream compatible jobs (worker SSE)
+
+`GET /api/jobs/stream`
+
+Query parameters:
+
+- `types` optional comma-separated job types
+- `worker_id` optional claiming worker identity
+- `worker_group` optional claiming worker affinity group
+
+The server applies the same compatibility rules as `POST /api/jobs/claim`. Each emitted `job` event claims the job immediately for that worker identity.
+
+Example:
+
+```text
+event: job
+data: {"job_id":"...","type":"asr.transcribe","worker_group":"asr-cache-a","claimed_worker_id":"worker-17","claimed_worker_group":"asr-cache-a"}
+```
+
+curl:
+
+```bash
+curl -N "http://localhost:8080/api/jobs/stream?types=asr.transcribe&worker_id=worker-17&worker_group=asr-cache-a"
 ```
 
 Authorization (worker):
@@ -430,6 +480,8 @@ Transfer channels are created by `/payload` and `/result` (optional `key`) or di
 
 - Transfer channels are one‑time, time‑limited, and in‑memory only.
 - Jobs are in‑memory; a server restart clears the queue.
+- Jobs may optionally target a `worker_id`, a `worker_group`, or both. A worker claim is compatible only when it satisfies all requested affinity fields.
+- Claimed jobs record `claimed_worker_id` and `claimed_worker_group` for traceability.
 - For clients without SSE, poll `GET /api/jobs/{job_id}` and look for `payloads` / `results` fields.
 - When no SSE client is connected, jobs are canceled after `JOBS_CLIENT_TTL` (default `30s`).
 
@@ -475,6 +527,8 @@ async def main() -> None:
         session = await runner.create_job_session(
             job_type="asr.transcribe",
             metadata={"language": "en"},
+            worker_id=None,
+            worker_group=None,
             payload_provider=payload_provider,
             result_consumer=result_consumer,
         )
