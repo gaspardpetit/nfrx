@@ -60,8 +60,18 @@ class NfrxJobsClient:
             headers["Authorization"] = f"Bearer {self._auth.api_key}"
         return headers
 
-    async def create_job(self, job_type: str, metadata: Optional[Dict[str, Any]] = None) -> JobCreateResponse:
+    async def create_job(
+        self,
+        job_type: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        worker_id: Optional[str] = None,
+        worker_group: Optional[str] = None,
+    ) -> JobCreateResponse:
         payload = {"type": job_type, "metadata": metadata or {}}
+        if worker_id:
+            payload["worker_id"] = worker_id
+        if worker_group:
+            payload["worker_group"] = worker_group
         resp = await self._client.post("/api/jobs", json=payload, headers=self._headers())
         resp.raise_for_status()
         return resp.json()
@@ -125,10 +135,12 @@ class NfrxJobsRunner:
         self,
         job_type: str,
         metadata: Optional[Dict[str, Any]],
+        worker_id: Optional[str],
+        worker_group: Optional[str],
         payload_provider: PayloadProvider,
         result_consumer: ResultConsumer,
     ) -> JobSession:
-        created = await self._jobs.create_job(job_type, metadata)
+        created = await self._jobs.create_job(job_type, metadata, worker_id, worker_group)
         return JobSession(
             job_id=created["job_id"],
             payload_provider=payload_provider,
@@ -250,6 +262,8 @@ async def run(args: argparse.Namespace) -> int:
         session = await runner.create_job_session(
             args.job_type,
             metadata,
+            args.worker_id,
+            args.worker_group,
             payload_provider,
             result_consumer,
         )
@@ -287,6 +301,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--poll", action="store_true", help="poll job once after creation")
     parser.add_argument("--sse", action="store_true", help="stream job events (SSE)")
     parser.add_argument("--timeout", type=float, default=10.0, help="SSE timeout in seconds")
+    parser.add_argument("--worker-id", default=None, help="target an exact worker")
+    parser.add_argument("--worker-group", default=None, help="target a worker affinity group")
     parser.add_argument("--payload-file", default=None, help="file to upload on payload event")
     parser.add_argument("--payload-content-type", default=None, help="Content-Type for payload upload")
     parser.add_argument("--result-file", default=None, help="file to write on result event")

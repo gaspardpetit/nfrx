@@ -24,6 +24,8 @@ class Program
         var session = await runner.CreateJobSessionAsync(
             jobType: "asr.transcribe",
             metadata: new Dictionary<string, object> { { "language", "en" } },
+            workerId: null,
+            workerGroup: null,
             payloadProvider: async (key, payload) =>
             {
                 _ = key;

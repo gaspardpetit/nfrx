@@ -264,6 +264,8 @@ The jobs API provides a lightweight in‑memory queue with SSE updates and trans
 
 See `doc/api/jobs.md` for full details, SSE event formats, and auth notes.
 
+Jobs can optionally target a specific `worker_id`, a shared `worker_group`, or both. Claims include the worker identity so claimed jobs remain traceable.
+
 ### Client flow
 
 1) Create a job:
@@ -299,7 +301,13 @@ curl -X POST http://localhost:8080/api/jobs/<job_id>/cancel
 ```
 curl -s -X POST http://localhost:8080/api/jobs/claim \
   -H "Content-Type: application/json" \
-  -d '{"types":["asr.transcribe"],"max_wait_seconds":30}'
+  -d '{"types":["asr.transcribe"],"max_wait_seconds":30,"worker_id":"worker-17","worker_group":"asr-cache-a"}'
+```
+
+Or keep a worker SSE stream open and receive claimed jobs as they become available:
+
+```
+curl -N "http://localhost:8080/api/jobs/stream?types=asr.transcribe&worker_id=worker-17&worker_group=asr-cache-a"
 ```
 
 2) Request payload channel (worker reads, client writes):

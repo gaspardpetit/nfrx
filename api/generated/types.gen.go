@@ -15,20 +15,28 @@ const (
 type JobClaimRequest struct {
 	MaxWaitSeconds *int      `json:"max_wait_seconds,omitempty"`
 	Types          *[]string `json:"types,omitempty"`
+	WorkerGroup    *string   `json:"worker_group,omitempty"`
+	WorkerId       *string   `json:"worker_id,omitempty"`
 }
 
 // JobClaimResponse defines model for JobClaimResponse.
 type JobClaimResponse struct {
-	JobId    string                  `json:"job_id"`
-	Metadata *map[string]interface{} `json:"metadata,omitempty"`
-	Type     string                  `json:"type"`
+	ClaimedWorkerGroup *string                 `json:"claimed_worker_group,omitempty"`
+	ClaimedWorkerId    *string                 `json:"claimed_worker_id,omitempty"`
+	JobId              string                  `json:"job_id"`
+	Metadata           *map[string]interface{} `json:"metadata,omitempty"`
+	Type               string                  `json:"type"`
+	WorkerGroup        *string                 `json:"worker_group,omitempty"`
+	WorkerId           *string                 `json:"worker_id,omitempty"`
 }
 
 // JobCreateRequest defines model for JobCreateRequest.
 type JobCreateRequest struct {
-	Metadata *map[string]interface{} `json:"metadata,omitempty"`
-	Priority *int                    `json:"priority,omitempty"`
-	Type     string                  `json:"type"`
+	Metadata    *map[string]interface{} `json:"metadata,omitempty"`
+	Priority    *int                    `json:"priority,omitempty"`
+	Type        string                  `json:"type"`
+	WorkerGroup *string                 `json:"worker_group,omitempty"`
+	WorkerId    *string                 `json:"worker_id,omitempty"`
 }
 
 // JobCreateResponse defines model for JobCreateResponse.
@@ -52,17 +60,21 @@ type JobStatusUpdateRequest struct {
 
 // JobView defines model for JobView.
 type JobView struct {
-	CreatedAt     time.Time                `json:"created_at"`
-	Error         *JobError                `json:"error,omitempty"`
-	Id            string                   `json:"id"`
-	Metadata      *map[string]interface{}  `json:"metadata,omitempty"`
-	Payloads      *map[string]TransferInfo `json:"payloads,omitempty"`
-	Progress      *map[string]interface{}  `json:"progress,omitempty"`
-	QueuePosition *int                     `json:"queue_position,omitempty"`
-	Results       *map[string]TransferInfo `json:"results,omitempty"`
-	Status        string                   `json:"status"`
-	Type          string                   `json:"type"`
-	UpdatedAt     time.Time                `json:"updated_at"`
+	ClaimedWorkerGroup *string                  `json:"claimed_worker_group,omitempty"`
+	ClaimedWorkerId    *string                  `json:"claimed_worker_id,omitempty"`
+	CreatedAt          time.Time                `json:"created_at"`
+	Error              *JobError                `json:"error,omitempty"`
+	Id                 string                   `json:"id"`
+	Metadata           *map[string]interface{}  `json:"metadata,omitempty"`
+	Payloads           *map[string]TransferInfo `json:"payloads,omitempty"`
+	Progress           *map[string]interface{}  `json:"progress,omitempty"`
+	QueuePosition      *int                     `json:"queue_position,omitempty"`
+	Results            *map[string]TransferInfo `json:"results,omitempty"`
+	Status             string                   `json:"status"`
+	Type               string                   `json:"type"`
+	UpdatedAt          time.Time                `json:"updated_at"`
+	WorkerGroup        *string                  `json:"worker_group,omitempty"`
+	WorkerId           *string                  `json:"worker_id,omitempty"`
 }
 
 // TransferCreateResponse defines model for TransferCreateResponse.

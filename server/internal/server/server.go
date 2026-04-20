@@ -81,6 +81,11 @@ func New(cfg config.ServerConfig, stateReg *serverstate.Registry, plugins []plug
 	wrapper := generated.ServerInterfaceWrapper{Handler: impl}
 	transferReg := transfer.NewRegistry(60 * time.Second)
 	jobReg := jobs.NewRegistry(transferReg, cfg.JobsSSECloseDelay, cfg.JobsClientTTL)
+	stateReg.Add(serverstate.Element{
+		ID:   "jobs",
+		Data: func() interface{} { return jobReg.StateSnapshot() },
+		HTML: func() string { return jobReg.StateHTML() },
+	})
 
 	r.Get("/healthz", wrapper.GetHealthz)
 	r.Route("/api", func(ar chi.Router) {
