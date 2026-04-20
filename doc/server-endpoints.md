@@ -36,6 +36,7 @@ JSON envelope shape:
 - The dashboard loads plugin-specific HTML fragments via `/api/state/view/{id}.html` and renders using the streamed envelope. If a plugin provides no view, it will not have a dedicated section in the dashboard.
 
 Notes:
+- The jobs state includes current queue/running/transfer counts, recent worker claim activity, oldest queued/inflight job age, and since-boot aggregates such as completed/failed/canceled counts and average queue/service/end-to-end timing. Queue-wait averages include jobs that were canceled before claim so queued backlog is not underreported.
 - The LLM plugin’s state includes server status (`ready`, `not_ready`, `draining`), workers, models, and aggregates. Other plugins (e.g., MCP) expose their own structures.
 
 ## Inference API

@@ -628,6 +628,9 @@ function formatRelativeTime(ts) {
 }
 
 function pluginDisplayName(id) {
+  if (id === 'jobs') {
+    return 'Jobs';
+  }
   var d = descriptors[id] || {};
   return d.name || id;
 }
@@ -637,6 +640,9 @@ function shouldShowPluginID(id) {
 }
 
 function pluginSummaryText(id) {
+  if (id === 'jobs') {
+    return 'Queue-backed jobs with worker claim activity, backlog age, and since-boot outcome timing.';
+  }
   var d = descriptors[id] || {};
   return d.summary || '';
 }
@@ -755,7 +761,7 @@ function pluginMetaParts(id, pluginState) {
   if (id === 'jobs') {
     var summary = (pluginState && pluginState.summary) || {};
     return {
-      text: (summary.active_workers || 0) + ' active | queued ' + (summary.queued_jobs || 0) + ' | running ' + (summary.running_jobs || 0)
+      text: (summary.active_workers || 0) + ' active | queued ' + (summary.queued_jobs || 0) + ' | running ' + (summary.running_jobs || 0) + ' | completed ' + (summary.completed_jobs || 0)
     };
   }
   var workers = pluginWorkerCount(pluginState);
@@ -822,8 +828,20 @@ function updateSummaryCards(plugins) {
   var inflightTotal = 0;
   var queueTotal = 0;
   var completedTotal = 0;
+  var failedTotal = 0;
+  var canceledTotal = 0;
   pluginIds.forEach(function(id) {
     var pluginState = plugins[id] || {};
+    if (id === 'jobs') {
+      var summary = pluginState.summary || {};
+      workerTotal += summary.active_workers || 0;
+      inflightTotal += (summary.claimed_jobs || 0) + (summary.running_jobs || 0) + (summary.awaiting_transfers || 0);
+      queueTotal += summary.queued_jobs || 0;
+      completedTotal += summary.completed_jobs || 0;
+      failedTotal += summary.failed_jobs || 0;
+      canceledTotal += summary.canceled_jobs || 0;
+      return;
+    }
     var server = pluginState.server || {};
     var workers = pluginState.workers || [];
     workerTotal += workers.length;
@@ -837,11 +855,13 @@ function updateSummaryCards(plugins) {
   document.getElementById('stat-plugins').textContent = String(pluginIds.length);
   document.getElementById('stat-plugins-note').textContent = pluginIds.length ? pluginIds.map(pluginDisplayName).join(', ') : 'No plugin state loaded yet.';
   document.getElementById('stat-workers').textContent = String(workerTotal);
-  document.getElementById('stat-workers-note').textContent = workerTotal ? 'Connected workers across all plugins.' : 'No active workers reported.';
+  document.getElementById('stat-workers-note').textContent = workerTotal ? 'Connected workers plus recent jobs claimers.' : 'No active workers reported.';
   document.getElementById('stat-inflight').textContent = String(inflightTotal + queueTotal);
-  document.getElementById('stat-inflight-note').textContent = queueTotal ? 'Includes ' + queueTotal + ' queued request' + (queueTotal === 1 ? '' : 's') + '.' : 'No queued requests in state.';
+  document.getElementById('stat-inflight-note').textContent = queueTotal ? 'Includes ' + queueTotal + ' queued request' + (queueTotal === 1 ? '' : 's') + ' or waiting job' + (queueTotal === 1 ? '' : 's') + '.' : 'No queued requests or jobs in state.';
   document.getElementById('stat-completed').textContent = String(completedTotal);
-  document.getElementById('stat-completed-note').textContent = 'Server-reported completed jobs across plugins.';
+  document.getElementById('stat-completed-note').textContent = failedTotal || canceledTotal
+    ? 'Completed jobs across plugins. Failed: ' + failedTotal + ', canceled: ' + canceledTotal + '.'
+    : 'Server-reported completed jobs across plugins.';
 }
 
 function update(envelope) {

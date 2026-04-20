@@ -197,6 +197,9 @@ Response:
 {"status":"canceled"}
 ```
 
+If the job is already terminal, cancel remains a successful no-op and returns the
+current terminal status (`completed`, `failed`, or `canceled`).
+
 curl:
 
 ```bash

@@ -45,3 +45,4 @@ desktop/windows/**/obj/
 /nfrx-asr
 **/__pycache__/*
 **/obj
+**/bin
