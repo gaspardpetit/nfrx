@@ -43,18 +43,25 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
 			Type string `json:"type"`
 		}
 		if err := json.Unmarshal(data, &env); err != nil || env.Type != "register" {
-			logx.Log.Warn().Err(err).Str("remote", r.RemoteAddr).Msg("ws invalid first message; expected register")
+			logx.Log.Warn().Err(err).Str("remote", r.RemoteAddr).Int("body_bytes", len(data)).Msg("ws invalid first message; expected register")
+			if evt := logx.Log.Debug(); evt.Enabled() {
+				evt.Err(err).Str("remote", r.RemoteAddr).Bytes("body", data).Msg("ws invalid first message detail")
+			}
 			_ = c.Close(websocket.StatusPolicyViolation, "expected register")
 			return
 		}
 		var rm ctrl.RegisterMessage
 		if err := json.Unmarshal(data, &rm); err != nil {
-			logx.Log.Error().Err(err).Str("remote", r.RemoteAddr).Msg("ws decode register")
+			logx.Log.Error().Err(err).Str("remote", r.RemoteAddr).Int("body_bytes", len(data)).Msg("ws decode register")
+			if evt := logx.Log.Debug(); evt.Enabled() {
+				evt.Err(err).Str("remote", r.RemoteAddr).Bytes("body", data).Msg("ws decode register detail")
+			}
 			return
 		}
 		// Authorize via header roles or bearer token; if no expected key is configured, allow
 		authorized := clientKey == "" || hasAnyAllowedRole(r.Header.Get("X-User-Roles"), allowedRoles) || checkBearer(r.Header.Get("Authorization"), clientKey)
 		if !authorized {
+			logx.Log.Warn().Str("remote", r.RemoteAddr).Str("worker_id", rm.WorkerID).Str("worker_name", rm.WorkerName).Msg("ws unauthorized register")
 			_ = c.Close(websocket.StatusPolicyViolation, "unauthorized")
 			return
 		}
@@ -123,10 +130,10 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
 				var ce websocket.CloseError
 				if errors.As(err, &ce) {
 					lvl := logx.Log.Info()
-					if ce.Code != websocket.StatusNormalClosure {
+					if ce.Code != websocket.StatusNormalClosure && ce.Code != websocket.StatusGoingAway {
 						lvl = logx.Log.Error()
 					}
-					lvl.Str("worker_id", wk.ID).Str("worker_name", wk.Name).Str("reason", ce.Reason).Msg("disconnected")
+					lvl.Str("worker_id", wk.ID).Str("worker_name", wk.Name).Int("code", int(ce.Code)).Str("reason", ce.Reason).Msg("disconnected")
 				} else {
 					logx.Log.Error().Err(err).Str("worker_id", wk.ID).Str("worker_name", wk.Name).Msg("disconnected")
 				}
@@ -136,7 +143,10 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
 				Type string `json:"type"`
 			}
 			if err := json.Unmarshal(msg, &env); err != nil {
-				logx.Log.Debug().Err(err).Str("worker_id", wk.ID).Str("worker_name", wk.Name).Msg("ws decode message")
+				logx.Log.Warn().Err(err).Str("worker_id", wk.ID).Str("worker_name", wk.Name).Int("body_bytes", len(msg)).Msg("ws decode message")
+				if evt := logx.Log.Debug(); evt.Enabled() {
+					evt.Err(err).Str("worker_id", wk.ID).Str("worker_name", wk.Name).Bytes("body", msg).Msg("ws decode message detail")
+				}
 				continue
 			}
 			switch env.Type {
@@ -145,6 +155,11 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
 				if err := json.Unmarshal(msg, &m); err == nil {
 					reg.UpdateHeartbeat(wk.ID)
 					metrics.RecordHeartbeat(wk.ID, m.HostCPUPercent, m.HostRAMUsedPercent)
+				} else {
+					logx.Log.Warn().Err(err).Str("worker_id", wk.ID).Str("worker_name", wk.Name).Str("type", env.Type).Int("body_bytes", len(msg)).Msg("ws decode message")
+					if evt := logx.Log.Debug(); evt.Enabled() {
+						evt.Err(err).Str("worker_id", wk.ID).Str("worker_name", wk.Name).Str("type", env.Type).Bytes("body", msg).Msg("ws decode message detail")
+					}
 				}
 			case "status_update":
 				var m ctrl.StatusUpdateMessage
@@ -171,6 +186,11 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
 					if m.Status != "" {
 						metrics.SetWorkerStatus(wk.ID, WorkerStatus(m.Status))
 					}
+				} else {
+					logx.Log.Warn().Err(err).Str("worker_id", wk.ID).Str("worker_name", wk.Name).Str("type", env.Type).Int("body_bytes", len(msg)).Msg("ws decode message")
+					if evt := logx.Log.Debug(); evt.Enabled() {
+						evt.Err(err).Str("worker_id", wk.ID).Str("worker_name", wk.Name).Str("type", env.Type).Bytes("body", msg).Msg("ws decode message detail")
+					}
 				}
 			case "job_chunk":
 				var m ctrl.JobChunkMessage
@@ -180,6 +200,11 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
 					wk.mu.Unlock()
 					if ok {
 						ch <- m
+					}
+				} else {
+					logx.Log.Warn().Err(err).Str("worker_id", wk.ID).Str("worker_name", wk.Name).Str("type", env.Type).Int("body_bytes", len(msg)).Msg("ws decode message")
+					if evt := logx.Log.Debug(); evt.Enabled() {
+						evt.Err(err).Str("worker_id", wk.ID).Str("worker_name", wk.Name).Str("type", env.Type).Bytes("body", msg).Msg("ws decode message detail")
 					}
 				}
 			case "job_result":
@@ -195,6 +220,11 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
 						ch <- m
 						close(ch)
 					}
+				} else {
+					logx.Log.Warn().Err(err).Str("worker_id", wk.ID).Str("worker_name", wk.Name).Str("type", env.Type).Int("body_bytes", len(msg)).Msg("ws decode message")
+					if evt := logx.Log.Debug(); evt.Enabled() {
+						evt.Err(err).Str("worker_id", wk.ID).Str("worker_name", wk.Name).Str("type", env.Type).Bytes("body", msg).Msg("ws decode message detail")
+					}
 				}
 			case "job_error":
 				var m ctrl.JobErrorMessage
@@ -209,6 +239,11 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
 						ch <- m
 						close(ch)
 					}
+				} else {
+					logx.Log.Warn().Err(err).Str("worker_id", wk.ID).Str("worker_name", wk.Name).Str("type", env.Type).Int("body_bytes", len(msg)).Msg("ws decode message")
+					if evt := logx.Log.Debug(); evt.Enabled() {
+						evt.Err(err).Str("worker_id", wk.ID).Str("worker_name", wk.Name).Str("type", env.Type).Bytes("body", msg).Msg("ws decode message detail")
+					}
 				}
 			case "http_proxy_response_headers":
 				var m ctrl.HTTPProxyResponseHeadersMessage
@@ -219,6 +254,11 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
 					if ok {
 						ch <- m
 					}
+				} else {
+					logx.Log.Warn().Err(err).Str("worker_id", wk.ID).Str("worker_name", wk.Name).Str("type", env.Type).Int("body_bytes", len(msg)).Msg("ws decode message")
+					if evt := logx.Log.Debug(); evt.Enabled() {
+						evt.Err(err).Str("worker_id", wk.ID).Str("worker_name", wk.Name).Str("type", env.Type).Bytes("body", msg).Msg("ws decode message detail")
+					}
 				}
 			case "http_proxy_response_chunk":
 				var m ctrl.HTTPProxyResponseChunkMessage
@@ -228,6 +268,11 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
 					wk.mu.Unlock()
 					if ok {
 						ch <- m
+					}
+				} else {
+					logx.Log.Warn().Err(err).Str("worker_id", wk.ID).Str("worker_name", wk.Name).Str("type", env.Type).Int("body_bytes", len(msg)).Msg("ws decode message")
+					if evt := logx.Log.Debug(); evt.Enabled() {
+						evt.Err(err).Str("worker_id", wk.ID).Str("worker_name", wk.Name).Str("type", env.Type).Bytes("body", msg).Msg("ws decode message detail")
 					}
 				}
 			case "http_proxy_response_end":
@@ -242,6 +287,11 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
 					if ok {
 						ch <- m
 						close(ch)
+					}
+				} else {
+					logx.Log.Warn().Err(err).Str("worker_id", wk.ID).Str("worker_name", wk.Name).Str("type", env.Type).Int("body_bytes", len(msg)).Msg("ws decode message")
+					if evt := logx.Log.Debug(); evt.Enabled() {
+						evt.Err(err).Str("worker_id", wk.ID).Str("worker_name", wk.Name).Str("type", env.Type).Bytes("body", msg).Msg("ws decode message detail")
 					}
 				}
 			default:

@@ -126,6 +126,10 @@ func EmbeddingsHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics spi.
 		success := false
 		var errMsg string
 		embeddingsCount := uint64(1)
+		var upstreamStatus int
+		var errorBytes int
+		debugErrorBody := logx.Log.Debug().Enabled()
+		var errorBody []byte
 		var idle *time.Timer
 		var timeoutCh <-chan time.Time
 		if timeout > 0 {
@@ -196,6 +200,7 @@ func EmbeddingsHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics spi.
 				}
 				switch m := msg.(type) {
 				case ctrl.HTTPProxyResponseHeadersMessage:
+					upstreamStatus = m.Status
 					headersSent = true
 					for k, v := range m.Headers {
 						if !strings.EqualFold(k, "Transfer-Encoding") && !strings.EqualFold(k, "Connection") {
@@ -218,6 +223,12 @@ func EmbeddingsHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics spi.
 					}
 				case ctrl.HTTPProxyResponseChunkMessage:
 					if len(m.Data) > 0 {
+						if upstreamStatus >= http.StatusBadRequest {
+							errorBytes += len(m.Data)
+							if debugErrorBody {
+								errorBody = append(errorBody, m.Data...)
+							}
+						}
 						if _, err := w.Write(m.Data); err != nil {
 							logx.Log.Error().Err(err).Msg("write chunk")
 						} else {
@@ -238,6 +249,16 @@ func EmbeddingsHandler(reg spi.WorkerRegistry, sched spi.Scheduler, metrics spi.
 						logx.Log.Error().Str("request_id", logID).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Str("model", meta.Model).Str("error_code", m.Error.Code).Str("error", m.Error.Message).Msg("upstream error")
 					} else {
 						success = true
+					}
+					if upstreamStatus >= http.StatusBadRequest && errorBytes > 0 {
+						lvl := logx.Log.Warn()
+						if upstreamStatus >= http.StatusInternalServerError || upstreamStatus == http.StatusUnauthorized || upstreamStatus == http.StatusForbidden {
+							lvl = logx.Log.Error()
+						}
+						lvl.Str("request_id", logID).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Str("model", meta.Model).Int("status", upstreamStatus).Int("body_bytes", errorBytes).Msg("upstream response body observed")
+						if debugErrorBody {
+							logx.Log.Debug().Str("request_id", logID).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Str("model", meta.Model).Int("status", upstreamStatus).Bytes("body", errorBody).Msg("upstream response body detail")
+						}
 					}
 					logx.Log.Info().Str("request_id", logID).Str("worker_id", worker.ID()).Str("worker_name", worker.Name()).Str("model", meta.Model).Dur("duration", time.Since(start)).Msg("complete")
 					return

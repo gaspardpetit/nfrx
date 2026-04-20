@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -35,6 +36,10 @@ func (c *Client) Tags(ctx context.Context) ([]string, error) {
 	defer func() {
 		_ = resp.Body.Close()
 	}()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return nil, fmt.Errorf("tags status %s body=%q", resp.Status, summarizeBody(body, 256))
+	}
 	var v struct {
 		Models []struct {
 			Name string `json:"name"`
@@ -100,4 +105,18 @@ func ReadLines(r io.Reader) <-chan string {
 		close(ch)
 	}()
 	return ch
+}
+
+func summarizeBody(body []byte, limit int) string {
+	if limit <= 0 || len(body) == 0 {
+		return ""
+	}
+	s := strings.TrimSpace(string(body))
+	if len(s) <= limit {
+		return s
+	}
+	if limit <= 3 {
+		return s[:limit]
+	}
+	return s[:limit-3] + "..."
 }
