@@ -24,6 +24,9 @@ components:
       properties:
         key:
           type: string
+        properties:
+          type: object
+          additionalProperties: true
         channel_id:
           type: string
         method:
@@ -39,6 +42,9 @@ components:
       properties:
         key:
           type: string
+        properties:
+          type: object
+          additionalProperties: true
     JobError:
       type: object
       properties:
@@ -160,6 +166,9 @@ components:
       properties:
         key:
           type: string
+        properties:
+          type: object
+          additionalProperties: true
         channel_id:
           type: string
         reader_url:

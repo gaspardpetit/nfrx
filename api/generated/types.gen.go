@@ -85,25 +85,28 @@ type TransferCreateResponse struct {
 
 // TransferInfo defines model for TransferInfo.
 type TransferInfo struct {
-	ChannelId string    `json:"channel_id"`
-	ExpiresAt time.Time `json:"expires_at"`
-	Key       *string   `json:"key,omitempty"`
-	Method    string    `json:"method"`
-	Url       string    `json:"url"`
+	ChannelId  string                  `json:"channel_id"`
+	ExpiresAt  time.Time               `json:"expires_at"`
+	Key        *string                 `json:"key,omitempty"`
+	Method     string                  `json:"method"`
+	Properties *map[string]interface{} `json:"properties,omitempty"`
+	Url        string                  `json:"url"`
 }
 
 // TransferRequest defines model for TransferRequest.
 type TransferRequest struct {
-	Key *string `json:"key,omitempty"`
+	Key        *string                 `json:"key,omitempty"`
+	Properties *map[string]interface{} `json:"properties,omitempty"`
 }
 
 // TransferRequestResponse defines model for TransferRequestResponse.
 type TransferRequestResponse struct {
-	ChannelId string    `json:"channel_id"`
-	ExpiresAt time.Time `json:"expires_at"`
-	Key       *string   `json:"key,omitempty"`
-	ReaderUrl *string   `json:"reader_url,omitempty"`
-	WriterUrl *string   `json:"writer_url,omitempty"`
+	ChannelId  string                  `json:"channel_id"`
+	ExpiresAt  time.Time               `json:"expires_at"`
+	Key        *string                 `json:"key,omitempty"`
+	Properties *map[string]interface{} `json:"properties,omitempty"`
+	ReaderUrl  *string                 `json:"reader_url,omitempty"`
+	WriterUrl  *string                 `json:"writer_url,omitempty"`
 }
 
 // PostApiJobsJSONRequestBody defines body for PostApiJobs for application/json ContentType.

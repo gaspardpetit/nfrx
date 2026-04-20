@@ -226,6 +226,8 @@ async def _handle_payload(
     provider: PayloadProvider,
 ) -> None:
     key = payload.get("key", "payload")
+    if "properties" in payload:
+        print("payload event properties:", json.dumps(payload["properties"]))
     provided = await provider(key, payload)
     if provided is None:
         print("payload event: provider returned no data")
@@ -245,6 +247,8 @@ async def _handle_result(
     consumer: ResultConsumer,
 ) -> None:
     key = payload.get("key", "result")
+    if "properties" in payload:
+        print("result event properties:", json.dumps(payload["properties"]))
     channel = payload.get("channel_id") or payload.get("url")
     if not channel:
         print("result event: missing channel info")

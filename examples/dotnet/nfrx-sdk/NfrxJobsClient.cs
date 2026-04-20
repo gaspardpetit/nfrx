@@ -322,13 +322,17 @@ public sealed class NfrxJobsWorker : IDisposable
     public async Task<TransferRequestResponse> RequestPayloadChannelAsync(
         string jobId,
         string? key,
+        Dictionary<string, object>? properties = null,
         CancellationToken cancellationToken = default)
     {
         using var req = new HttpRequestMessage(HttpMethod.Post, _baseUrl + $"/api/jobs/{jobId}/payload");
         AddAuth(req);
-        if (key != null)
+        if (key != null || properties != null)
         {
-            req.Content = new StringContent(JsonSerializer.Serialize(new TransferRequest { Key = key }), Encoding.UTF8, "application/json");
+            req.Content = new StringContent(
+                JsonSerializer.Serialize(new TransferRequest { Key = key, Properties = properties }),
+                Encoding.UTF8,
+                "application/json");
         }
         using var resp = await _http.SendAsync(req, cancellationToken).ConfigureAwait(false);
         resp.EnsureSuccessStatusCode();
@@ -340,13 +344,17 @@ public sealed class NfrxJobsWorker : IDisposable
     public async Task<TransferRequestResponse> RequestResultChannelAsync(
         string jobId,
         string? key,
+        Dictionary<string, object>? properties = null,
         CancellationToken cancellationToken = default)
     {
         using var req = new HttpRequestMessage(HttpMethod.Post, _baseUrl + $"/api/jobs/{jobId}/result");
         AddAuth(req);
-        if (key != null)
+        if (key != null || properties != null)
         {
-            req.Content = new StringContent(JsonSerializer.Serialize(new TransferRequest { Key = key }), Encoding.UTF8, "application/json");
+            req.Content = new StringContent(
+                JsonSerializer.Serialize(new TransferRequest { Key = key, Properties = properties }),
+                Encoding.UTF8,
+                "application/json");
         }
         using var resp = await _http.SendAsync(req, cancellationToken).ConfigureAwait(false);
         resp.EnsureSuccessStatusCode();
@@ -406,6 +414,8 @@ public sealed class NfrxJobsWorker : IDisposable
         int maxWaitSeconds,
         string? workerId = null,
         string? workerGroup = null,
+        Dictionary<string, object>? payloadProperties = null,
+        Dictionary<string, object>? resultProperties = null,
         WorkerStatusHandler? onStatus = null,
         CancellationToken cancellationToken = default)
     {
@@ -421,7 +431,7 @@ public sealed class NfrxJobsWorker : IDisposable
             await onStatus("claimed", null).ConfigureAwait(false);
         }
 
-        var payloadChannel = await RequestPayloadChannelAsync(jobId, null, cancellationToken).ConfigureAwait(false);
+        var payloadChannel = await RequestPayloadChannelAsync(jobId, null, payloadProperties, cancellationToken).ConfigureAwait(false);
         if (onStatus != null)
         {
             await onStatus("awaiting_payload", payloadChannel).ConfigureAwait(false);
@@ -447,7 +457,7 @@ public sealed class NfrxJobsWorker : IDisposable
             return true;
         }
 
-        var resultChannel = await RequestResultChannelAsync(jobId, null, cancellationToken).ConfigureAwait(false);
+        var resultChannel = await RequestResultChannelAsync(jobId, null, resultProperties, cancellationToken).ConfigureAwait(false);
         if (onStatus != null)
         {
             await onStatus("awaiting_result", resultChannel).ConfigureAwait(false);
@@ -520,11 +530,13 @@ public sealed class JobClaimResponse
 public sealed class TransferRequest
 {
     public string? Key { get; set; }
+    public Dictionary<string, object>? Properties { get; set; }
 }
 
 public sealed class TransferRequestResponse
 {
     public string? Key { get; set; }
+    public Dictionary<string, JsonElement>? Properties { get; set; }
     [JsonPropertyName("channel_id")]
     public string ChannelId { get; set; } = string.Empty;
     [JsonPropertyName("reader_url")]

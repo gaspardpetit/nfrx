@@ -266,6 +266,8 @@ See `doc/api/jobs.md` for full details, SSE event formats, and auth notes.
 
 Jobs can optionally target a specific `worker_id`, a shared `worker_group`, or both. Claims include the worker identity so claimed jobs remain traceable.
 
+The repo also includes secure example client/worker pairs in Python and .NET that demonstrate CMS/X.509 encrypted transfers built on top of job `metadata` and transfer `properties`.
+
 ### Client flow
 
 1) Create a job:
@@ -313,7 +315,9 @@ curl -N "http://localhost:8080/api/jobs/stream?types=asr.transcribe&worker_id=wo
 2) Request payload channel (worker reads, client writes):
 
 ```
-curl -s -X POST http://localhost:8080/api/jobs/<job_id>/payload
+curl -s -X POST http://localhost:8080/api/jobs/<job_id>/payload \
+  -H "Content-Type: application/json" \
+  -d '{"properties":{"protocol":"demo-v1","options":{"mode":"header-body","note":"opaque to nfrx"}}}'
 ```
 
 3) Update status/progress:
@@ -327,7 +331,9 @@ curl -X POST http://localhost:8080/api/jobs/<job_id>/status \
 4) Request result channel (worker writes, client reads):
 
 ```
-curl -s -X POST http://localhost:8080/api/jobs/<job_id>/result
+curl -s -X POST http://localhost:8080/api/jobs/<job_id>/result \
+  -H "Content-Type: application/json" \
+  -d '{"properties":{"protocol":"demo-v1","options":{"mode":"header-body","note":"opaque to nfrx"}}}'
 ```
 
 5) Mark completed or failed:

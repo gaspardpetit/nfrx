@@ -31,6 +31,14 @@ class JobClaim(TypedDict):
 ProcessHandler = Callable[[JobClaim, bytes], Awaitable[Tuple[bytes, Optional[str]]]]
 StatusHandler = Callable[[str, Optional[Dict[str, Any]]], Awaitable[None]]
 
+DEMO_TRANSFER_PROPERTIES: Dict[str, Any] = {
+    "protocol": "demo-v1",
+    "options": {
+        "mode": "header-body",
+        "note": "opaque to nfrx",
+    },
+}
+
 
 class NfrxJobsWorker:
     def __init__(self, base_url: str, auth: AuthConfig) -> None:
@@ -69,13 +77,31 @@ class NfrxJobsWorker:
         resp.raise_for_status()
         return resp.json()
 
-    async def request_payload_channel(self, job_id: str) -> Dict[str, Any]:
-        resp = await self._client.post(f"/api/jobs/{job_id}/payload", headers=self._headers())
+    async def request_payload_channel(
+        self, job_id: str, properties: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        payload: Dict[str, Any] = {}
+        if properties is not None:
+            payload["properties"] = properties
+        resp = await self._client.post(
+            f"/api/jobs/{job_id}/payload",
+            json=payload if payload else None,
+            headers=self._headers(),
+        )
         resp.raise_for_status()
         return resp.json()
 
-    async def request_result_channel(self, job_id: str) -> Dict[str, Any]:
-        resp = await self._client.post(f"/api/jobs/{job_id}/result", headers=self._headers())
+    async def request_result_channel(
+        self, job_id: str, properties: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        payload: Dict[str, Any] = {}
+        if properties is not None:
+            payload["properties"] = properties
+        resp = await self._client.post(
+            f"/api/jobs/{job_id}/result",
+            json=payload if payload else None,
+            headers=self._headers(),
+        )
         resp.raise_for_status()
         return resp.json()
 
@@ -122,8 +148,9 @@ class NfrxJobsWorker:
             if on_status:
                 await on_status("claimed", None)
 
-            payload_channel = await self.request_payload_channel(job_id)
+            payload_channel = await self.request_payload_channel(job_id, DEMO_TRANSFER_PROPERTIES)
             payload_url = payload_channel.get("reader_url") or payload_channel.get("url")
+            print("payload channel properties:", json.dumps(payload_channel.get("properties")))
             if on_status:
                 await on_status("awaiting_payload", payload_channel)
             payload_bytes = await self.read_payload(payload_url)
@@ -143,7 +170,7 @@ class NfrxJobsWorker:
                     await on_status("failed", {"error": {"code": "handler_error", "message": error_message}})
                 return True
 
-            result_channel = await self.request_result_channel(job_id)
+            result_channel = await self.request_result_channel(job_id, DEMO_TRANSFER_PROPERTIES)
             result_url = result_channel.get("writer_url") or result_channel.get("url")
             if on_status:
                 await on_status("awaiting_result", result_channel)

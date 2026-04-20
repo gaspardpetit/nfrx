@@ -2,9 +2,11 @@ package jobs
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -221,6 +223,67 @@ func TestClaimStreamEmitsCompatibleJobs(t *testing.T) {
 	}
 }
 
+func TestClaimStreamStopsClaimingAfterDisconnect(t *testing.T) {
+	reg := NewRegistry(transfer.NewRegistry(0), 0, 0)
+	now := time.Now()
+
+	reg.mu.Lock()
+	reg.jobs["job-a"] = &Job{ID: "job-a", Type: "test", Status: StatusQueued, WorkerGroup: "group-a", CreatedAt: now, UpdatedAt: now}
+	reg.jobs["job-b"] = &Job{ID: "job-b", Type: "test", Status: StatusQueued, WorkerGroup: "group-a", CreatedAt: now, UpdatedAt: now}
+	reg.queue = []string{"job-a"}
+	reg.mu.Unlock()
+
+	router := chi.NewRouter()
+	reg.RegisterWorkerRoutes(router)
+	srv := httptest.NewServer(router)
+	defer srv.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, srv.URL+"/jobs/stream?types=test&worker_id=worker-17&worker_group=group-a", nil)
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("stream request: %v", err)
+	}
+	reader := bufio.NewReader(resp.Body)
+	if _, err := reader.ReadString('\n'); err != nil {
+		t.Fatalf("read event line: %v", err)
+	}
+	if _, err := reader.ReadString('\n'); err != nil {
+		t.Fatalf("read data line: %v", err)
+	}
+	cancel()
+	if err := resp.Body.Close(); err != nil {
+		t.Fatalf("close body: %v", err)
+	}
+
+	reg.mu.Lock()
+	reg.queue = append(reg.queue, "job-b")
+	reg.mu.Unlock()
+	reg.signal()
+
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		reg.mu.Lock()
+		statusA := reg.jobs["job-a"].Status
+		statusB := reg.jobs["job-b"].Status
+		queueLen := len(reg.queue)
+		reg.mu.Unlock()
+		if statusA == StatusClaimed {
+			if statusB == StatusQueued && queueLen == 1 {
+				return
+			}
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("unexpected post-disconnect state: job-a=%q job-b=%q queue=%d", statusA, statusB, queueLen)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
 func TestStateSnapshotTracksRecentWorkers(t *testing.T) {
 	reg := NewRegistry(transfer.NewRegistry(0), 0, 0)
 	now := time.Now()
@@ -276,5 +339,192 @@ func TestStateSnapshotPrunesStaleWorkers(t *testing.T) {
 	}
 	if state.Workers[0].WorkerID != "worker-live" {
 		t.Fatalf("remaining worker = %q, want worker-live", state.Workers[0].WorkerID)
+	}
+}
+
+func TestHandlePayloadRequestStoresProperties(t *testing.T) {
+	reg := NewRegistry(transfer.NewRegistry(0), 0, 0)
+	job := &Job{
+		ID:        "job-payload",
+		Type:      "test",
+		Status:    StatusClaimed,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	reg.mu.Lock()
+	reg.jobs[job.ID] = job
+	reg.mu.Unlock()
+
+	ch := reg.subscribe(job.ID)
+	defer reg.unsubscribe(job.ID, ch)
+
+	router := chi.NewRouter()
+	reg.RegisterRoutes(router)
+
+	body := `{"key":"payload","properties":{"protocol":"demo-v1","options":{"mode":"header-body","note":"opaque to nfrx"}}}`
+	req := httptest.NewRequest(http.MethodPost, "/jobs/"+job.ID+"/payload", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("payload status = %d, want %d", resp.Code, http.StatusOK)
+	}
+
+	var payloadResp map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&payloadResp); err != nil {
+		t.Fatalf("decode payload response: %v", err)
+	}
+	want := map[string]any{
+		"protocol": "demo-v1",
+		"options": map[string]any{
+			"mode": "header-body",
+			"note": "opaque to nfrx",
+		},
+	}
+	if !reflect.DeepEqual(payloadResp["properties"], want) {
+		t.Fatalf("payload response properties = %#v, want %#v", payloadResp["properties"], want)
+	}
+
+	ev := expectEventType(t, ch, "payload")
+	info, ok := ev.Data.(*TransferInfo)
+	if !ok {
+		t.Fatalf("payload event data type = %T, want *TransferInfo", ev.Data)
+	}
+	if !reflect.DeepEqual(info.Properties, want) {
+		t.Fatalf("payload event properties = %#v, want %#v", info.Properties, want)
+	}
+	_ = expectEventType(t, ch, "status")
+
+	getReq := httptest.NewRequest(http.MethodGet, "/jobs/"+job.ID, nil)
+	getResp := httptest.NewRecorder()
+	router.ServeHTTP(getResp, getReq)
+	if getResp.Code != http.StatusOK {
+		t.Fatalf("get status = %d, want %d", getResp.Code, http.StatusOK)
+	}
+
+	var view JobView
+	if err := json.NewDecoder(getResp.Body).Decode(&view); err != nil {
+		t.Fatalf("decode get: %v", err)
+	}
+	got := view.Payloads["payload"]
+	if got == nil || !reflect.DeepEqual(got.Properties, want) {
+		t.Fatalf("job payload properties = %#v, want %#v", got, want)
+	}
+}
+
+func TestHandleResultRequestStoresProperties(t *testing.T) {
+	reg := NewRegistry(transfer.NewRegistry(0), 0, 0)
+	job := &Job{
+		ID:        "job-result",
+		Type:      "test",
+		Status:    StatusRunning,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	reg.mu.Lock()
+	reg.jobs[job.ID] = job
+	reg.mu.Unlock()
+
+	ch := reg.subscribe(job.ID)
+	defer reg.unsubscribe(job.ID, ch)
+
+	router := chi.NewRouter()
+	reg.RegisterRoutes(router)
+
+	body := `{"key":"result","properties":{"protocol":"demo-v1","options":{"mode":"header-body","note":"opaque to nfrx"}}}`
+	req := httptest.NewRequest(http.MethodPost, "/jobs/"+job.ID+"/result", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("result status = %d, want %d", resp.Code, http.StatusOK)
+	}
+
+	var resultResp map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&resultResp); err != nil {
+		t.Fatalf("decode result response: %v", err)
+	}
+	want := map[string]any{
+		"protocol": "demo-v1",
+		"options": map[string]any{
+			"mode": "header-body",
+			"note": "opaque to nfrx",
+		},
+	}
+	if !reflect.DeepEqual(resultResp["properties"], want) {
+		t.Fatalf("result response properties = %#v, want %#v", resultResp["properties"], want)
+	}
+
+	ev := expectEventType(t, ch, "result")
+	info, ok := ev.Data.(*TransferInfo)
+	if !ok {
+		t.Fatalf("result event data type = %T, want *TransferInfo", ev.Data)
+	}
+	if !reflect.DeepEqual(info.Properties, want) {
+		t.Fatalf("result event properties = %#v, want %#v", info.Properties, want)
+	}
+	_ = expectEventType(t, ch, "status")
+
+	getReq := httptest.NewRequest(http.MethodGet, "/jobs/"+job.ID, nil)
+	getResp := httptest.NewRecorder()
+	router.ServeHTTP(getResp, getReq)
+	if getResp.Code != http.StatusOK {
+		t.Fatalf("get status = %d, want %d", getResp.Code, http.StatusOK)
+	}
+
+	var view JobView
+	if err := json.NewDecoder(getResp.Body).Decode(&view); err != nil {
+		t.Fatalf("decode get: %v", err)
+	}
+	got := view.Results["result"]
+	if got == nil || !reflect.DeepEqual(got.Properties, want) {
+		t.Fatalf("job result properties = %#v, want %#v", got, want)
+	}
+}
+
+func TestHandlePayloadRequestOmitsPropertiesWhenUnset(t *testing.T) {
+	reg := NewRegistry(transfer.NewRegistry(0), 0, 0)
+	job := &Job{
+		ID:        "job-payload-empty",
+		Type:      "test",
+		Status:    StatusClaimed,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	reg.mu.Lock()
+	reg.jobs[job.ID] = job
+	reg.mu.Unlock()
+
+	router := chi.NewRouter()
+	reg.RegisterRoutes(router)
+
+	req := httptest.NewRequest(http.MethodPost, "/jobs/"+job.ID+"/payload", strings.NewReader(`{"key":"payload"}`))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("payload status = %d, want %d", resp.Code, http.StatusOK)
+	}
+
+	var payloadResp map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&payloadResp); err != nil {
+		t.Fatalf("decode payload response: %v", err)
+	}
+	if _, ok := payloadResp["properties"]; ok {
+		t.Fatalf("expected properties to be omitted, got %#v", payloadResp["properties"])
+	}
+}
+
+func expectEventType(t *testing.T, ch chan Event, typ string) Event {
+	t.Helper()
+	select {
+	case ev := <-ch:
+		if ev.Type != typ {
+			t.Fatalf("event type = %q, want %q", ev.Type, typ)
+		}
+		return ev
+	case <-time.After(2 * time.Second):
+		t.Fatalf("timed out waiting for event %q", typ)
+		return Event{}
 	}
 }
