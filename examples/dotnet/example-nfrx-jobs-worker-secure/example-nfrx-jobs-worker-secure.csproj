@@ -1,14 +1,15 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
-    <RootNamespace>NfrxSdk</RootNamespace>
+    <RootNamespace>example_nfrx_jobs_worker_secure</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="8.0.1" />
+    <ProjectReference Include="..\nfrx-sdk\nfrx-sdk.csproj" />
   </ItemGroup>
 
 </Project>

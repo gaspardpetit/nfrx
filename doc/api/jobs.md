@@ -535,6 +535,21 @@ Install dependencies:
 pip install httpx httpx-sse
 ```
 
+For the secure CMS/X.509 reference examples, also install:
+
+```bash
+pip install cryptography
+```
+
+Secure example reference implementations:
+
+- `examples/python/example_nfrx_jobs_client_secure.py`
+- `examples/python/example_nfrx_jobs_worker_secure.py`
+- `examples/dotnet/example-nfrx-jobs-client-secure/Program.cs`
+- `examples/dotnet/example-nfrx-jobs-worker-secure/Program.cs`
+
+These examples demonstrate one possible client-worker protocol built on top of opaque job `metadata` and transfer `properties`. They are not built-in `nfrx` protocol features.
+
 Minimal usage with provider/consumer delegates:
 
 ```python

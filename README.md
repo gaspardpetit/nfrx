@@ -266,6 +266,8 @@ See `doc/api/jobs.md` for full details, SSE event formats, and auth notes.
 
 Jobs can optionally target a specific `worker_id`, a shared `worker_group`, or both. Claims include the worker identity so claimed jobs remain traceable.
 
+The repo also includes secure example client/worker pairs in Python and .NET that demonstrate CMS/X.509 encrypted transfers built on top of job `metadata` and transfer `properties`.
+
 ### Client flow
 
 1) Create a job:
