@@ -115,7 +115,9 @@ func TestGetStateIncludesJobsSummaryAggregates(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create job: %v", err)
 	}
-	defer createResp.Body.Close()
+	defer func() {
+		_ = createResp.Body.Close()
+	}()
 	var created struct {
 		JobID string `json:"job_id"`
 	}
@@ -149,7 +151,9 @@ func TestGetStateIncludesJobsSummaryAggregates(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get state: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	var env PluginsEnvelope
 	if err := json.NewDecoder(resp.Body).Decode(&env); err != nil {
