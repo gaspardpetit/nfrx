@@ -515,6 +515,154 @@ func TestHandlePayloadRequestOmitsPropertiesWhenUnset(t *testing.T) {
 	}
 }
 
+func TestHandleCancelJobIsIdempotentForTerminalJobs(t *testing.T) {
+	reg := NewRegistry(transfer.NewRegistry(0), 0, 0)
+	job := &Job{
+		ID:        "job-completed",
+		Type:      "test",
+		Status:    StatusCompleted,
+		CreatedAt: time.Now().Add(-time.Minute),
+		UpdatedAt: time.Now().Add(-30 * time.Second),
+	}
+	reg.mu.Lock()
+	reg.jobs[job.ID] = job
+	reg.mu.Unlock()
+
+	router := chi.NewRouter()
+	reg.RegisterClientRoutes(router)
+
+	req := httptest.NewRequest(http.MethodPost, "/jobs/"+job.ID+"/cancel", nil)
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("cancel status = %d, want %d", resp.Code, http.StatusOK)
+	}
+
+	var body map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode cancel response: %v", err)
+	}
+	if body["status"] != StatusCompleted {
+		t.Fatalf("cancel response status = %v, want %q", body["status"], StatusCompleted)
+	}
+
+	reg.mu.Lock()
+	defer reg.mu.Unlock()
+	if reg.jobs[job.ID].Status != StatusCompleted {
+		t.Fatalf("job status = %q, want %q", reg.jobs[job.ID].Status, StatusCompleted)
+	}
+}
+
+func TestStateSnapshotTracksLifetimeOutcomesAndDurations(t *testing.T) {
+	reg := NewRegistry(transfer.NewRegistry(0), 0, 0)
+	base := time.Now().Add(-time.Hour)
+
+	jobCompleted := &Job{ID: "job-completed", Type: "test", Status: StatusQueued, CreatedAt: base, UpdatedAt: base}
+	jobFailed := &Job{ID: "job-failed", Type: "test", Status: StatusQueued, CreatedAt: base.Add(10 * time.Second), UpdatedAt: base.Add(10 * time.Second)}
+	jobCanceled := &Job{ID: "job-canceled", Type: "test", Status: StatusQueued, CreatedAt: base.Add(20 * time.Second), UpdatedAt: base.Add(20 * time.Second)}
+
+	reg.mu.Lock()
+	reg.jobs[jobCompleted.ID] = jobCompleted
+	reg.jobs[jobFailed.ID] = jobFailed
+	reg.jobs[jobCanceled.ID] = jobCanceled
+	reg.setJobStatusLocked(jobCompleted, StatusClaimed, base.Add(5*time.Second))
+	reg.setJobStatusLocked(jobCompleted, StatusCompleted, base.Add(20*time.Second))
+	reg.setJobStatusLocked(jobFailed, StatusClaimed, base.Add(20*time.Second))
+	reg.setJobStatusLocked(jobFailed, StatusRunning, base.Add(25*time.Second))
+	reg.setJobStatusLocked(jobFailed, StatusFailed, base.Add(40*time.Second))
+	reg.setJobStatusLocked(jobCanceled, StatusCanceled, base.Add(65*time.Second))
+	reg.mu.Unlock()
+
+	state := reg.StateSnapshot()
+	if state.Summary.CompletedJobs != 1 {
+		t.Fatalf("completed_jobs = %d, want 1", state.Summary.CompletedJobs)
+	}
+	if state.Summary.FailedJobs != 1 {
+		t.Fatalf("failed_jobs = %d, want 1", state.Summary.FailedJobs)
+	}
+	if state.Summary.CanceledJobs != 1 {
+		t.Fatalf("canceled_jobs = %d, want 1", state.Summary.CanceledJobs)
+	}
+	if state.Summary.AvgQueueWaitMS != 20000 {
+		t.Fatalf("avg_queue_wait_ms = %d, want 20000", state.Summary.AvgQueueWaitMS)
+	}
+	if state.Summary.AvgServiceMS != 17500 {
+		t.Fatalf("avg_service_ms = %d, want 17500", state.Summary.AvgServiceMS)
+	}
+	if state.Summary.AvgEndToEndMS != 31666 {
+		t.Fatalf("avg_end_to_end_ms = %d, want 31666", state.Summary.AvgEndToEndMS)
+	}
+	if state.Summary.LastCompletedAt != base.Add(20*time.Second).UTC().Format(time.RFC3339) {
+		t.Fatalf("last_completed_at = %q", state.Summary.LastCompletedAt)
+	}
+	if state.Summary.LastFailedAt != base.Add(40*time.Second).UTC().Format(time.RFC3339) {
+		t.Fatalf("last_failed_at = %q", state.Summary.LastFailedAt)
+	}
+	if state.Summary.LastCanceledAt != base.Add(65*time.Second).UTC().Format(time.RFC3339) {
+		t.Fatalf("last_canceled_at = %q", state.Summary.LastCanceledAt)
+	}
+}
+
+func TestStateSnapshotDoesNotDoubleCountTerminalTransitions(t *testing.T) {
+	reg := NewRegistry(transfer.NewRegistry(0), 0, 0)
+	base := time.Now().Add(-time.Minute)
+	job := &Job{ID: "job-1", Type: "test", Status: StatusQueued, CreatedAt: base, UpdatedAt: base}
+
+	reg.mu.Lock()
+	reg.jobs[job.ID] = job
+	reg.setJobStatusLocked(job, StatusClaimed, base.Add(5*time.Second))
+	reg.setJobStatusLocked(job, StatusRunning, base.Add(10*time.Second))
+	reg.setJobStatusLocked(job, StatusCompleted, base.Add(20*time.Second))
+	reg.setJobStatusLocked(job, StatusCompleted, base.Add(25*time.Second))
+	reg.mu.Unlock()
+
+	state := reg.StateSnapshot()
+	if state.Summary.CompletedJobs != 1 {
+		t.Fatalf("completed_jobs = %d, want 1", state.Summary.CompletedJobs)
+	}
+	if state.Summary.FailedJobs != 0 || state.Summary.CanceledJobs != 0 {
+		t.Fatalf("unexpected terminal counts: %+v", state.Summary)
+	}
+	if state.Summary.AvgQueueWaitMS != 5000 {
+		t.Fatalf("avg_queue_wait_ms = %d, want 5000", state.Summary.AvgQueueWaitMS)
+	}
+	if state.Summary.AvgServiceMS != 15000 {
+		t.Fatalf("avg_service_ms = %d, want 15000", state.Summary.AvgServiceMS)
+	}
+}
+
+func TestStateSnapshotTracksOldestQueueAndInflightAge(t *testing.T) {
+	reg := NewRegistry(transfer.NewRegistry(0), 0, 0)
+	now := time.Now()
+
+	reg.mu.Lock()
+	reg.jobs["job-queued"] = &Job{
+		ID:        "job-queued",
+		Type:      "test",
+		Status:    StatusQueued,
+		CreatedAt: now.Add(-2 * time.Minute),
+		UpdatedAt: now.Add(-2 * time.Minute),
+	}
+	reg.jobs["job-running"] = &Job{
+		ID:        "job-running",
+		Type:      "test",
+		Status:    StatusRunning,
+		CreatedAt: now.Add(-3 * time.Minute),
+		ClaimedAt: now.Add(-90 * time.Second),
+		UpdatedAt: now.Add(-30 * time.Second),
+	}
+	reg.queue = []string{"job-queued"}
+	reg.mu.Unlock()
+
+	state := reg.StateSnapshot()
+	if state.Summary.OldestQueuedSeconds < 119 || state.Summary.OldestQueuedSeconds > 121 {
+		t.Fatalf("oldest_queued_seconds = %d, want about 120", state.Summary.OldestQueuedSeconds)
+	}
+	if state.Summary.OldestInflightSeconds < 89 || state.Summary.OldestInflightSeconds > 91 {
+		t.Fatalf("oldest_inflight_seconds = %d, want about 90", state.Summary.OldestInflightSeconds)
+	}
+}
+
 func expectEventType(t *testing.T, ch chan Event, typ string) Event {
 	t.Helper()
 	select {

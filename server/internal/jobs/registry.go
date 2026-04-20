@@ -43,6 +43,7 @@ type Registry struct {
 	clientTTL     time.Duration
 	clientTimers  map[string]*time.Timer
 	workers       map[string]*WorkerActivity
+	stats         jobStats
 }
 
 type Job struct {
@@ -59,6 +60,7 @@ type Job struct {
 	Payloads           map[string]*TransferInfo
 	Results            map[string]*TransferInfo
 	CreatedAt          time.Time
+	ClaimedAt          time.Time
 	UpdatedAt          time.Time
 }
 
@@ -77,6 +79,22 @@ type WorkerActivity struct {
 	LastJobID     string
 	Types         []string
 	StreamCount   int
+}
+
+type jobStats struct {
+	CompletedJobs uint64
+	FailedJobs    uint64
+	CanceledJobs  uint64
+
+	QueueWaitTotal   time.Duration
+	QueueWaitSamples uint64
+	ServiceTotal     time.Duration
+	ServiceSamples   uint64
+	EndToEndTotal    time.Duration
+	EndToEndSamples  uint64
+	LastCompletedAt  time.Time
+	LastFailedAt     time.Time
+	LastCanceledAt   time.Time
 }
 
 type TransferInfo struct {
@@ -151,15 +169,26 @@ type WorkerActivityView struct {
 }
 
 type JobsSummary struct {
-	TotalJobs         int `json:"total_jobs"`
-	QueuedJobs        int `json:"queued_jobs"`
-	ClaimedJobs       int `json:"claimed_jobs"`
-	RunningJobs       int `json:"running_jobs"`
-	AwaitingTransfers int `json:"awaiting_transfers"`
-	TerminalJobs      int `json:"terminal_jobs"`
-	ActiveWorkers     int `json:"active_workers"`
-	RecentWorkers     int `json:"recent_workers"`
-	StreamingWorkers  int `json:"streaming_workers"`
+	TotalJobs             int    `json:"total_jobs"`
+	QueuedJobs            int    `json:"queued_jobs"`
+	ClaimedJobs           int    `json:"claimed_jobs"`
+	RunningJobs           int    `json:"running_jobs"`
+	AwaitingTransfers     int    `json:"awaiting_transfers"`
+	TerminalJobs          int    `json:"terminal_jobs"`
+	ActiveWorkers         int    `json:"active_workers"`
+	RecentWorkers         int    `json:"recent_workers"`
+	StreamingWorkers      int    `json:"streaming_workers"`
+	CompletedJobs         uint64 `json:"completed_jobs"`
+	FailedJobs            uint64 `json:"failed_jobs"`
+	CanceledJobs          uint64 `json:"canceled_jobs"`
+	OldestQueuedSeconds   int64  `json:"oldest_queued_seconds"`
+	OldestInflightSeconds int64  `json:"oldest_inflight_seconds"`
+	AvgQueueWaitMS        int64  `json:"avg_queue_wait_ms"`
+	AvgServiceMS          int64  `json:"avg_service_ms"`
+	AvgEndToEndMS         int64  `json:"avg_end_to_end_ms"`
+	LastCompletedAt       string `json:"last_completed_at,omitempty"`
+	LastFailedAt          string `json:"last_failed_at,omitempty"`
+	LastCanceledAt        string `json:"last_canceled_at,omitempty"`
 }
 
 type StateView struct {
@@ -324,6 +353,7 @@ func isTerminalStatus(status string) bool {
 func (r *Registry) HandleCancelJob(w http.ResponseWriter, req *http.Request) {
 	jobID := chi.URLParam(req, "job_id")
 	var view JobView
+	var status string
 	r.mu.Lock()
 	job := r.jobs[jobID]
 	if job == nil {
@@ -331,16 +361,21 @@ func (r *Registry) HandleCancelJob(w http.ResponseWriter, req *http.Request) {
 		writeJSON(w, http.StatusNotFound, map[string]any{"error": "not_found"})
 		return
 	}
-	if job.Status == StatusQueued {
-		r.removeFromQueue(jobID)
+	if isTerminalStatus(job.Status) {
+		status = job.Status
+		view = r.viewLocked(job)
+	} else {
+		if job.Status == StatusQueued {
+			r.removeFromQueue(jobID)
+		}
+		r.setJobStatusLocked(job, StatusCanceled, time.Now())
+		status = job.Status
+		view = r.viewLocked(job)
 	}
-	job.Status = StatusCanceled
-	job.UpdatedAt = time.Now()
-	view = r.viewLocked(job)
 	r.mu.Unlock()
 	r.clearClientTimer(jobID)
 	r.publish(jobID, Event{Type: "status", Data: view})
-	writeJSON(w, http.StatusOK, map[string]any{"status": "canceled"})
+	writeJSON(w, http.StatusOK, map[string]any{"status": status})
 }
 
 func (r *Registry) HandleClaimJob(w http.ResponseWriter, req *http.Request) {
@@ -466,8 +501,7 @@ func (r *Registry) HandlePayloadRequest(w http.ResponseWriter, req *http.Request
 		job.Payloads = make(map[string]*TransferInfo)
 	}
 	job.Payloads[key] = info
-	job.Status = StatusAwaitingPayload
-	job.UpdatedAt = time.Now()
+	r.setJobStatusLocked(job, StatusAwaitingPayload, time.Now())
 	view = r.viewLocked(job)
 	r.mu.Unlock()
 
@@ -527,8 +561,7 @@ func (r *Registry) HandleResultRequest(w http.ResponseWriter, req *http.Request)
 		job.Results = make(map[string]*TransferInfo)
 	}
 	job.Results[key] = info
-	job.Status = StatusAwaitingResult
-	job.UpdatedAt = time.Now()
+	r.setJobStatusLocked(job, StatusAwaitingResult, time.Now())
 	view = r.viewLocked(job)
 	r.mu.Unlock()
 
@@ -578,14 +611,13 @@ func (r *Registry) HandleStatusUpdate(w http.ResponseWriter, req *http.Request) 
 		writeJSON(w, http.StatusConflict, map[string]any{"error": "invalid_state"})
 		return
 	}
-	job.Status = state
+	r.setJobStatusLocked(job, state, time.Now())
 	if body.Progress != nil {
 		job.Progress = body.Progress
 	}
 	if body.Error != nil {
 		job.Error = body.Error
 	}
-	job.UpdatedAt = time.Now()
 	view = r.viewLocked(job)
 	r.mu.Unlock()
 
@@ -611,10 +643,9 @@ func (r *Registry) claimNext(types []string, workerID, workerGroup string) *Job 
 			continue
 		}
 		r.queue = append(r.queue[:i], r.queue[i+1:]...)
-		job.Status = StatusClaimed
+		r.setJobStatusLocked(job, StatusClaimed, time.Now())
 		job.ClaimedWorkerID = workerID
 		job.ClaimedWorkerGroup = workerGroup
-		job.UpdatedAt = time.Now()
 		r.publishLocked(job.ID, Event{Type: "status", Data: r.viewLocked(job)})
 		return job
 	}
@@ -747,9 +778,8 @@ func (r *Registry) expireJobIfIdle(jobID string) {
 	if job.Status == StatusQueued {
 		r.removeFromQueue(jobID)
 	}
-	job.Status = StatusCanceled
+	r.setJobStatusLocked(job, StatusCanceled, time.Now())
 	job.Error = &JobError{Code: "client_inactive", Message: "client inactive"}
-	job.UpdatedAt = time.Now()
 	view := r.viewLocked(job)
 	r.mu.Unlock()
 
@@ -827,6 +857,87 @@ func (r *Registry) claimResponse(job *Job) map[string]any {
 	}
 }
 
+func (r *Registry) setJobStatusLocked(job *Job, status string, now time.Time) {
+	if job == nil {
+		return
+	}
+	prev := job.Status
+	if status == StatusClaimed && job.ClaimedAt.IsZero() {
+		job.ClaimedAt = now
+	}
+	if !isTerminalStatus(prev) && isTerminalStatus(status) {
+		r.recordTerminalLocked(job, status, now)
+	}
+	job.Status = status
+	job.UpdatedAt = now
+}
+
+func (r *Registry) recordTerminalLocked(job *Job, status string, now time.Time) {
+	if job == nil {
+		return
+	}
+	switch status {
+	case StatusCompleted:
+		r.stats.CompletedJobs++
+		r.stats.LastCompletedAt = now
+	case StatusFailed:
+		r.stats.FailedJobs++
+		r.stats.LastFailedAt = now
+	case StatusCanceled:
+		r.stats.CanceledJobs++
+		r.stats.LastCanceledAt = now
+	default:
+		return
+	}
+	if !job.CreatedAt.IsZero() && !now.Before(job.CreatedAt) {
+		r.stats.EndToEndTotal += now.Sub(job.CreatedAt)
+		r.stats.EndToEndSamples++
+	}
+	if !job.ClaimedAt.IsZero() && !now.Before(job.ClaimedAt) {
+		r.stats.QueueWaitTotal += job.ClaimedAt.Sub(job.CreatedAt)
+		r.stats.QueueWaitSamples++
+		r.stats.ServiceTotal += now.Sub(job.ClaimedAt)
+		r.stats.ServiceSamples++
+	} else if status == StatusCanceled && !job.CreatedAt.IsZero() && !now.Before(job.CreatedAt) {
+		r.stats.QueueWaitTotal += now.Sub(job.CreatedAt)
+		r.stats.QueueWaitSamples++
+	}
+}
+
+func formatOptionalTime(ts time.Time) string {
+	if ts.IsZero() {
+		return ""
+	}
+	return ts.UTC().Format(time.RFC3339)
+}
+
+func averageDurationMS(total time.Duration, count uint64) int64 {
+	if count == 0 {
+		return 0
+	}
+	return total.Milliseconds() / int64(count)
+}
+
+func inflightStart(job *Job) time.Time {
+	if job == nil {
+		return time.Time{}
+	}
+	if !job.ClaimedAt.IsZero() {
+		return job.ClaimedAt
+	}
+	if !job.UpdatedAt.IsZero() {
+		return job.UpdatedAt
+	}
+	return job.CreatedAt
+}
+
+func ageSeconds(now, ts time.Time) int64 {
+	if ts.IsZero() || now.Before(ts) {
+		return 0
+	}
+	return int64(now.Sub(ts) / time.Second)
+}
+
 func (r *Registry) StateSnapshot() StateView {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -838,6 +949,15 @@ func (r *Registry) StateSnapshot() StateView {
 		Workers: make([]WorkerActivityView, 0, len(r.workers)),
 		Jobs:    make([]JobView, 0, minInt(len(r.jobs), maxStateJobs)),
 	}
+	state.Summary.CompletedJobs = r.stats.CompletedJobs
+	state.Summary.FailedJobs = r.stats.FailedJobs
+	state.Summary.CanceledJobs = r.stats.CanceledJobs
+	state.Summary.AvgQueueWaitMS = averageDurationMS(r.stats.QueueWaitTotal, r.stats.QueueWaitSamples)
+	state.Summary.AvgServiceMS = averageDurationMS(r.stats.ServiceTotal, r.stats.ServiceSamples)
+	state.Summary.AvgEndToEndMS = averageDurationMS(r.stats.EndToEndTotal, r.stats.EndToEndSamples)
+	state.Summary.LastCompletedAt = formatOptionalTime(r.stats.LastCompletedAt)
+	state.Summary.LastFailedAt = formatOptionalTime(r.stats.LastFailedAt)
+	state.Summary.LastCanceledAt = formatOptionalTime(r.stats.LastCanceledAt)
 	workerKeys := make([]string, 0, len(r.workers))
 	for key := range r.workers {
 		workerKeys = append(workerKeys, key)
@@ -889,12 +1009,24 @@ func (r *Registry) StateSnapshot() StateView {
 		switch job.Status {
 		case StatusQueued:
 			state.Summary.QueuedJobs++
+			if age := ageSeconds(now, job.CreatedAt); age > state.Summary.OldestQueuedSeconds {
+				state.Summary.OldestQueuedSeconds = age
+			}
 		case StatusClaimed:
 			state.Summary.ClaimedJobs++
+			if age := ageSeconds(now, inflightStart(job)); age > state.Summary.OldestInflightSeconds {
+				state.Summary.OldestInflightSeconds = age
+			}
 		case StatusRunning:
 			state.Summary.RunningJobs++
+			if age := ageSeconds(now, inflightStart(job)); age > state.Summary.OldestInflightSeconds {
+				state.Summary.OldestInflightSeconds = age
+			}
 		case StatusAwaitingPayload, StatusAwaitingResult:
 			state.Summary.AwaitingTransfers++
+			if age := ageSeconds(now, inflightStart(job)); age > state.Summary.OldestInflightSeconds {
+				state.Summary.OldestInflightSeconds = age
+			}
 		case StatusCompleted, StatusFailed, StatusCanceled:
 			state.Summary.TerminalJobs++
 		}
@@ -965,6 +1097,23 @@ func (r *Registry) StateHTML() string {
       if (d < 3600) return Math.floor(d/60) + 'm ago';
       return Math.floor(d/3600) + 'h ago';
     }
+    function secs(v){
+      v = Number(v || 0);
+      if (!isFinite(v) || v <= 0) return '0s';
+      if (v < 60) return Math.round(v) + 's';
+      if (v < 3600) return Math.floor(v/60) + 'm';
+      return Math.floor(v/3600) + 'h';
+    }
+    function dur(ms){
+      ms = Number(ms || 0);
+      if (!isFinite(ms) || ms <= 0) return '0ms';
+      if (ms < 1000) return Math.round(ms) + 'ms';
+      var s = ms / 1000;
+      if (s < 60) return s.toFixed(s < 10 ? 1 : 0) + 's';
+      var m = s / 60;
+      if (m < 60) return m.toFixed(m < 10 ? 1 : 0) + 'm';
+      return (m / 60).toFixed(1) + 'h';
+    }
     function statusTone(s){
       s = String(s || '').toLowerCase();
       if (s === 'running' || s === 'claimed') return 'live';
@@ -980,11 +1129,14 @@ func (r *Registry) StateHTML() string {
       if (summaryHost) {
         summaryHost.innerHTML = [
           ['Active Workers', summary.active_workers || 0, 'Seen in the last minute'],
-          ['Streaming', summary.streaming_workers || 0, 'Open worker SSE streams'],
-          ['Queued', summary.queued_jobs || 0, 'Waiting for a compatible worker'],
+          ['Queued Users', summary.queued_jobs || 0, 'Clients waiting for a worker claim'],
+          ['Oldest Queue', secs(summary.oldest_queued_seconds), 'Age of the oldest queued job'],
           ['Running', summary.running_jobs || 0, 'Currently processing'],
           ['Awaiting Transfer', summary.awaiting_transfers || 0, 'Payload or result handoff'],
-          ['Terminal', summary.terminal_jobs || 0, 'Completed, failed, or canceled']
+          ['Completed', summary.completed_jobs || 0, 'Successful jobs since boot'],
+          ['Failed', summary.failed_jobs || 0, 'Failed jobs since boot'],
+          ['Avg Queue Wait', dur(summary.avg_queue_wait_ms), 'Average claim delay since boot'],
+          ['Avg End-to-End', dur(summary.avg_end_to_end_ms), 'Average created-to-terminal time']
         ].map(function(card){
           return '<article class="jobs-card"><div class="jobs-k">'+card[0]+'</div><div class="jobs-v">'+card[1]+'</div><div class="jobs-sub">'+card[2]+'</div></article>';
         }).join('');
@@ -1010,7 +1162,7 @@ func (r *Registry) StateHTML() string {
       var jobsHost = container.querySelector('.jobs-jobs');
       if (jobsHost) {
         if (!jobs.length) {
-          jobsHost.innerHTML = '<div class="jobs-empty">No jobs recorded.</div>';
+          jobsHost.innerHTML = '<div class="jobs-empty">No jobs recorded yet.</div>';
         } else {
           jobsHost.innerHTML = '<table class="jobs-table"><thead><tr><th>Status</th><th>Type</th><th>Affinity</th><th>Claimed By</th><th>Updated</th></tr></thead><tbody>' +
             jobs.map(function(j){

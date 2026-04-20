@@ -544,8 +544,10 @@ The Windows service runs `nfrx-llm` with the `--reconnect` flag and shuts down i
   - per-worker totals (processed, inflight, failures, avg duration)
   - per-model availability (how many workers support each model)
   - MCP relay clients and active sessions
+  - jobs backlog, active claimers, oldest queued job age, and recent job states
+  - since-boot jobs aggregates such as completed/failed/canceled counts and average queue wait/end-to-end time
   - versions/build info for server & workers
-- **Web state page** (`/state`): lightweight dashboard powered by the state stream
+- **Web state page** (`/state`): lightweight dashboard powered by the state stream, including top-level jobs backlog and worker activity when the jobs API is in use
 - **Logs**:
   - `Info` — lifecycle details like connections, disconnections, draining, and job dispatch/completion.
   - `Warn` — expected failures such as missing models or no available workers.
