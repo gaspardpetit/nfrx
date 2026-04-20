@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM golang:1.24 AS build
+FROM --platform=$BUILDPLATFORM golang:1.26.2 AS build
     WORKDIR /src
     # Copy module manifests first to maximize build cache use
     COPY go.mod go.sum ./
