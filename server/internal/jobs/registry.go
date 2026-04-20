@@ -80,11 +80,12 @@ type WorkerActivity struct {
 }
 
 type TransferInfo struct {
-	ChannelID string `json:"channel_id"`
-	Method    string `json:"method"`
-	URL       string `json:"url"`
-	ExpiresAt string `json:"expires_at"`
-	Key       string `json:"key,omitempty"`
+	ChannelID  string         `json:"channel_id"`
+	Method     string         `json:"method"`
+	URL        string         `json:"url"`
+	ExpiresAt  string         `json:"expires_at"`
+	Key        string         `json:"key,omitempty"`
+	Properties map[string]any `json:"properties,omitempty"`
 }
 
 type Event struct {
@@ -114,7 +115,8 @@ type StatusUpdateRequest struct {
 }
 
 type TransferRequest struct {
-	Key *string `json:"key,omitempty"`
+	Key        *string        `json:"key,omitempty"`
+	Properties map[string]any `json:"properties,omitempty"`
 }
 
 type JobView struct {
@@ -398,6 +400,11 @@ func (r *Registry) HandleClaimStream(w http.ResponseWriter, req *http.Request) {
 
 	ctx := req.Context()
 	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
 		if job := r.claimNext(types, workerID, workerGroup); job != nil {
 			r.recordWorkerSeen(workerID, workerGroup, "stream", types, job.ID)
 			r.writeEvent(w, Event{Type: "job", Data: r.claimResponse(job)})
@@ -447,11 +454,12 @@ func (r *Registry) HandlePayloadRequest(w http.ResponseWriter, req *http.Request
 	writerURL := "/api/transfer/" + channelID
 
 	info := &TransferInfo{
-		ChannelID: channelID,
-		Method:    http.MethodPost,
-		URL:       writerURL,
-		ExpiresAt: expires.UTC().Format(time.RFC3339),
-		Key:       key,
+		ChannelID:  channelID,
+		Method:     http.MethodPost,
+		URL:        writerURL,
+		ExpiresAt:  expires.UTC().Format(time.RFC3339),
+		Key:        key,
+		Properties: copyMap(body.Properties),
 	}
 	r.mu.Lock()
 	if job.Payloads == nil {
@@ -465,12 +473,16 @@ func (r *Registry) HandlePayloadRequest(w http.ResponseWriter, req *http.Request
 
 	r.publish(jobID, Event{Type: "payload", Data: info})
 	r.publish(jobID, Event{Type: "status", Data: view})
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"key":        key,
 		"channel_id": channelID,
 		"reader_url": readerURL,
 		"expires_at": expires.UTC().Format(time.RFC3339),
-	})
+	}
+	if props := copyMap(body.Properties); props != nil {
+		resp["properties"] = props
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func (r *Registry) HandleResultRequest(w http.ResponseWriter, req *http.Request) {
@@ -503,11 +515,12 @@ func (r *Registry) HandleResultRequest(w http.ResponseWriter, req *http.Request)
 	writerURL := "/api/transfer/" + channelID
 
 	info := &TransferInfo{
-		ChannelID: channelID,
-		Method:    http.MethodGet,
-		URL:       readerURL,
-		ExpiresAt: expires.UTC().Format(time.RFC3339),
-		Key:       key,
+		ChannelID:  channelID,
+		Method:     http.MethodGet,
+		URL:        readerURL,
+		ExpiresAt:  expires.UTC().Format(time.RFC3339),
+		Key:        key,
+		Properties: copyMap(body.Properties),
 	}
 	r.mu.Lock()
 	if job.Results == nil {
@@ -521,12 +534,16 @@ func (r *Registry) HandleResultRequest(w http.ResponseWriter, req *http.Request)
 
 	r.publish(jobID, Event{Type: "result", Data: info})
 	r.publish(jobID, Event{Type: "status", Data: view})
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"key":        key,
 		"channel_id": channelID,
 		"writer_url": writerURL,
 		"expires_at": expires.UTC().Format(time.RFC3339),
-	})
+	}
+	if props := copyMap(body.Properties); props != nil {
+		resp["properties"] = props
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func (r *Registry) HandleStatusUpdate(w http.ResponseWriter, req *http.Request) {
@@ -1199,6 +1216,7 @@ func copyTransfer(info *TransferInfo) *TransferInfo {
 		return nil
 	}
 	cp := *info
+	cp.Properties = copyMap(info.Properties)
 	return &cp
 }
 

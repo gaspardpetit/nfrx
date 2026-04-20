@@ -29,13 +29,19 @@ class Program
             payloadProvider: async (key, payload) =>
             {
                 _ = key;
-                _ = payload;
+                if (payload.TryGetValue("properties", out var properties))
+                {
+                    Console.WriteLine("payload properties: " + properties);
+                }
                 return (Encoding.UTF8.GetBytes("hello world"), "application/octet-stream");
             },
             resultConsumer: async (key, data, payload) =>
             {
                 _ = key;
-                _ = payload;
+                if (payload.TryGetValue("properties", out var properties))
+                {
+                    Console.WriteLine("result properties: " + properties);
+                }
                 Console.WriteLine("result: " + Encoding.UTF8.GetString(data));
                 await Task.CompletedTask;
             }

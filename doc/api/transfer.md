@@ -2,6 +2,8 @@
 
 This document describes the transfer API for streaming payloads/results over one-time channels.
 
+The direct transfer API carries only opaque bytes. Jobs-side transfer `properties` are attached through `/api/jobs/{job_id}/payload` and `/api/jobs/{job_id}/result`, not through `/api/transfer` itself.
+
 ## Python client usage (minimal)
 
 To use the Python transfer client in your own project, copy this example file into your codebase:

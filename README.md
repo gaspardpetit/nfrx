@@ -313,7 +313,9 @@ curl -N "http://localhost:8080/api/jobs/stream?types=asr.transcribe&worker_id=wo
 2) Request payload channel (worker reads, client writes):
 
 ```
-curl -s -X POST http://localhost:8080/api/jobs/<job_id>/payload
+curl -s -X POST http://localhost:8080/api/jobs/<job_id>/payload \
+  -H "Content-Type: application/json" \
+  -d '{"properties":{"protocol":"demo-v1","options":{"mode":"header-body","note":"opaque to nfrx"}}}'
 ```
 
 3) Update status/progress:
@@ -327,7 +329,9 @@ curl -X POST http://localhost:8080/api/jobs/<job_id>/status \
 4) Request result channel (worker writes, client reads):
 
 ```
-curl -s -X POST http://localhost:8080/api/jobs/<job_id>/result
+curl -s -X POST http://localhost:8080/api/jobs/<job_id>/result \
+  -H "Content-Type: application/json" \
+  -d '{"properties":{"protocol":"demo-v1","options":{"mode":"header-body","note":"opaque to nfrx"}}}'
 ```
 
 5) Mark completed or failed:

@@ -156,11 +156,11 @@ data: {"id":"...","status":"queued",...}
 
 
 event: payload
-data: {"key":"payload","channel_id":"...","method":"POST","url":"/api/transfer/...","expires_at":"..."}
+data: {"key":"payload","channel_id":"...","method":"POST","url":"/api/transfer/...","expires_at":"...","properties":{"protocol":"demo-v1"}}
 
 
 event: result
-data: {"key":"result","channel_id":"...","method":"GET","url":"/api/transfer/...","expires_at":"..."}
+data: {"key":"result","channel_id":"...","method":"GET","url":"/api/transfer/...","expires_at":"...","properties":{"protocol":"demo-v1"}}
 
 
 event: status
@@ -320,7 +320,16 @@ X-User-Roles: <client_role>
 Request body (optional):
 
 ```json
-{ "key": "payload" }
+{
+  "key": "payload",
+  "properties": {
+    "protocol": "demo-v1",
+    "options": {
+      "mode": "header-body",
+      "note": "opaque to nfrx"
+    }
+  }
+}
 ```
 
 Response:
@@ -330,11 +339,19 @@ Response:
   "key": "payload",
   "channel_id": "<uuid>",
   "reader_url": "/api/transfer/<uuid>",
-  "expires_at": "2026-01-31T01:00:00Z"
+  "expires_at": "2026-01-31T01:00:00Z",
+  "properties": {
+    "protocol": "demo-v1",
+    "options": {
+      "mode": "header-body",
+      "note": "opaque to nfrx"
+    }
+  }
 }
 ```
 
 - `key` is optional; if omitted the server defaults to `"payload"`. Explicit empty is allowed.
+- `properties` is optional opaque worker-client metadata; nfrx stores and relays it without interpretation.
 - Worker should **GET** `reader_url` to receive payload.
 - Client receives a `payload` event with a POST URL to send bytes.
 
@@ -415,7 +432,16 @@ X-User-Roles: <client_role>
 Request body (optional):
 
 ```json
-{ "key": "result" }
+{
+  "key": "result",
+  "properties": {
+    "protocol": "demo-v1",
+    "options": {
+      "mode": "header-body",
+      "note": "opaque to nfrx"
+    }
+  }
+}
 ```
 
 Response:
@@ -425,11 +451,19 @@ Response:
   "key": "result",
   "channel_id": "<uuid>",
   "writer_url": "/api/transfer/<uuid>",
-  "expires_at": "2026-01-31T01:00:00Z"
+  "expires_at": "2026-01-31T01:00:00Z",
+  "properties": {
+    "protocol": "demo-v1",
+    "options": {
+      "mode": "header-body",
+      "note": "opaque to nfrx"
+    }
+  }
 }
 ```
 
 - `key` is optional; if omitted the server defaults to `"result"`. Explicit empty is allowed.
+- `properties` is optional opaque worker-client metadata; nfrx stores and relays it without interpretation.
 - Worker should **POST** bytes to `writer_url`.
 - Client receives a `result` event with a GET URL to read bytes.
 
@@ -476,7 +510,10 @@ Transfer channels are created by `/payload` and `/result` (optional `key`) or di
 - **Time‑limited**: channels expire if the other side does not connect in time.
 - **Streaming**: payloads are streamed; no server persistence.
 - **Methods**: client uses the URL and method in the `payload`/`result` event (`POST` for payload, `GET` for result).
+- **Properties**: jobs-side `/payload` and `/result` requests may attach opaque `properties`, which are relayed via job events and views but are not part of direct `/api/transfer` channels.
 ## Notes
+
+- Direct `/api/transfer` channels do not carry jobs-side `properties`; those are available only through `/payload`, `/result`, and job events/views.
 
 - Transfer channels are one‑time, time‑limited, and in‑memory only.
 - Jobs are in‑memory; a server restart clears the queue.
