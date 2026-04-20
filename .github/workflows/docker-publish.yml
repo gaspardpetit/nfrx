@@ -36,6 +36,9 @@ jobs:
           - name: docling-client
             suffix: "-docling"
             dockerfile: deploy/Dockerfile.docling
+          - name: asr-client
+            suffix: "-asr"
+            dockerfile: deploy/Dockerfile.asr
 
     steps:
       - name: Checkout repository
