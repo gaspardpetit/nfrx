@@ -1,4 +1,30 @@
-nfrx (0.9.2-1ubuntu1) UNRELEASED; urgency=medium
+nfrx (0.9.3-1ubuntu1) UNRELEASED; urgency=medium
+
+  * Release: v0.9.3 —
+    https://github.com/gaspardpetit/nfrx/releases/tag/v0.9.3
+  * ## What's Changed
+  * * Feat/request failures as warnings by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/260
+  * * Add worker affinity support by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/261
+  * * Feat/transfer api supports properties by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/262
+  * * Bump github.com/buger/jsonparser from 1.1.1 to 1.1.2 in the
+    go_modules group across 1 directory by @dependabot[bot] in
+    https://github.com/gaspardpetit/nfrx/pull/263
+  * * Improvements to job monitoring by @gaspardpetit in
+    https://github.com/gaspardpetit/nfrx/pull/264
+  *
+  * ## New Contributors
+  * * @dependabot[bot] made their first contribution in
+    https://github.com/gaspardpetit/nfrx/pull/263
+  *
+  * **Full Changelog**:
+    https://github.com/gaspardpetit/nfrx/compare/v0.9.2...v0.9.3
+
+ -- CI <ci@example.invalid>  Mon, 20 Apr 2026 04:27:41 +0000
+
+nfrx (0.9.3-1) unstable; urgency=medium
 
   * Release: v0.9.2 —
     https://github.com/gaspardpetit/nfrx/releases/tag/v0.9.2
@@ -9,8 +35,9 @@ nfrx (0.9.2-1ubuntu1) UNRELEASED; urgency=medium
   *
   * **Full Changelog**:
     https://github.com/gaspardpetit/nfrx/compare/v0.9.1...v0.9.2
+  *
 
- -- CI <ci@example.invalid>  Tue, 10 Mar 2026 04:07:44 +0000
+ -- CI <ci@example.invalid>  Mon, 20 Apr 2026 04:27:41 +0000
 
 nfrx (0.9.2-1) unstable; urgency=medium
 
