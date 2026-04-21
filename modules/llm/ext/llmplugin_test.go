@@ -37,4 +37,10 @@ func TestRegisterStateHTMLIncludesHostTelemetryFields(t *testing.T) {
 			t.Fatalf("missing %q in html", want)
 		}
 	}
+	if !strings.Contains(html, "hostParts=[hostName, w.host_os, w.host_platform, w.host_platform_version, completionAgentVersion].filter(Boolean)") {
+		t.Fatalf("missing host line backend version composition")
+	}
+	if strings.Contains(html, "worker-backend") {
+		t.Fatalf("unexpected separate backend line in html")
+	}
 }
