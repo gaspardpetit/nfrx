@@ -1,4 +1,18 @@
-nfrx (0.9.5-1ubuntu1) UNRELEASED; urgency=medium
+nfrx (0.9.6-1ubuntu1) UNRELEASED; urgency=medium
+
+  * Release: v0.9.6 —
+    https://github.com/gaspardpetit/nfrx/releases/tag/v0.9.6
+  * ## What's Changed
+  * * Allow host info to change without restarting client by
+    @gaspardpetit in https://github.com/gaspardpetit/nfrx/pull/267
+  *
+  *
+  * **Full Changelog**:
+    https://github.com/gaspardpetit/nfrx/compare/v0.9.5...v0.9.6
+
+ -- CI <ci@example.invalid>  Tue, 21 Apr 2026 23:46:32 +0000
+
+nfrx (0.9.6-1) unstable; urgency=medium
 
   * Release: v0.9.5 —
     https://github.com/gaspardpetit/nfrx/releases/tag/v0.9.5
@@ -9,8 +23,9 @@ nfrx (0.9.5-1ubuntu1) UNRELEASED; urgency=medium
   *
   * **Full Changelog**:
     https://github.com/gaspardpetit/nfrx/compare/v0.9.4...v0.9.5
+  *
 
- -- CI <ci@example.invalid>  Tue, 21 Apr 2026 17:16:00 +0000
+ -- CI <ci@example.invalid>  Tue, 21 Apr 2026 23:46:32 +0000
 
 nfrx (0.9.5-1) unstable; urgency=medium
 
