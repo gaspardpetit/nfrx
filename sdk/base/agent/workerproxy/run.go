@@ -27,6 +27,7 @@ func Run(ctx context.Context, cfg Config) error {
 	SetWorkerInfo(cfg.ClientID, cfg.ClientName, 0)
 	SetState("not_ready")
 	SetConnectedToServer(false)
+	SetAgentConfig(currentAgentConfig(cfg))
 	// Start with backend unknown; probe will update
 	SetConnectedToBackend(false)
 
@@ -159,6 +160,7 @@ func probeBackend(ctx context.Context, cfg Config, ch chan<- ctrl.StatusUpdateMe
 			return errIfNil(err, nil)
 		}
 		// Ready
+		agentConfigChanged := MergeAgentConfig(res.AgentConfig)
 		prevConnected := GetState().ConnectedToBackend
 		prevModels := append([]string(nil), GetState().Labels...)
 		prevMaxC := GetState().MaxConcurrency
@@ -196,9 +198,12 @@ func probeBackend(ctx context.Context, cfg Config, ch chan<- ctrl.StatusUpdateMe
 		if !changed && prevMaxC != maxc {
 			changed = true
 		}
+		if !changed && agentConfigChanged {
+			changed = true
+		}
 		if changed {
 			logx.Log.Info().Int("models", len(GetState().Labels)).Msg("backend ready")
-			msg := ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: GetState().MaxConcurrency, Models: GetState().Labels, Status: "idle"}
+			msg := ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: GetState().MaxConcurrency, Models: GetState().Labels, Status: "idle", AgentConfig: res.AgentConfig}
 			sendStatusUpdate(ch, msg)
 		}
 		return nil
@@ -258,10 +263,7 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg Conf
 	SetLastError("")
 
 	// Populate AgentConfig for extensible values
-	agentCfg := map[string]string{}
-	for k, v := range cfg.AgentConfig {
-		agentCfg[k] = v
-	}
+	agentCfg := currentAgentConfig(cfg)
 	regMsg := ctrl.RegisterMessage{Type: "register", WorkerID: cfg.ClientID, WorkerName: cfg.ClientName, Models: GetState().Labels, MaxConcurrency: GetState().MaxConcurrency, AgentConfig: agentCfg}
 	vi := GetVersionInfo()
 	regMsg.Version = vi.Version
@@ -303,7 +305,7 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg Conf
 				if su.AgentConfig == nil {
 					su.AgentConfig = map[string]string{}
 				}
-				for k, v := range cfg.AgentConfig {
+				for k, v := range currentAgentConfig(cfg) {
 					if _, ok := su.AgentConfig[k]; !ok {
 						su.AgentConfig[k] = v
 					}
@@ -435,3 +437,22 @@ func sendStatusUpdate(ch chan<- ctrl.StatusUpdateMessage, msg ctrl.StatusUpdateM
 	}
 }
 func sendMsg(ctx context.Context, ch chan<- []byte, msg []byte) { agent.Send(ctx, ch, msg) }
+
+func currentAgentConfig(cfg Config) map[string]string {
+	merged := map[string]string{}
+	for k, v := range cfg.AgentConfig {
+		merged[k] = v
+	}
+	for k, v := range GetAgentConfig() {
+		merged[k] = v
+	}
+	if cfg.AgentConfigFunc != nil {
+		for k, v := range cfg.AgentConfigFunc() {
+			merged[k] = v
+		}
+	}
+	if len(merged) == 0 {
+		return nil
+	}
+	return merged
+}

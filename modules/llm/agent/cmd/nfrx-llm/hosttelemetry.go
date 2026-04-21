@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/host"
@@ -19,13 +20,18 @@ func buildHostTelemetry() (map[string]string, func() (wp.HeartbeatSample, error)
 	if _, err := cpu.Percent(0, false); err != nil {
 		return nil, nil, fmt.Errorf("prime cpu counters: %w", err)
 	}
+	osName := strings.TrimSpace(info.Platform)
+	if osName == "" {
+		osName = strings.TrimSpace(info.OS)
+	}
+	osVersion := strings.TrimSpace(info.PlatformVersion)
+	if osVersion == "" {
+		osVersion = strings.TrimSpace(info.KernelVersion)
+	}
 	agentConfig := map[string]string{
-		"host_os":               info.OS,
-		"host_platform":         info.Platform,
-		"host_platform_family":  info.PlatformFamily,
-		"host_platform_version": info.PlatformVersion,
-		"host_kernel_version":   info.KernelVersion,
-		"host_hostname":         info.Hostname,
+		"hostname":   strings.TrimSpace(info.Hostname),
+		"os_name":    osName,
+		"os_version": osVersion,
 	}
 	sampler := func() (wp.HeartbeatSample, error) {
 		sample := wp.HeartbeatSample{}

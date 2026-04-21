@@ -9,17 +9,18 @@ import (
 )
 
 type State struct {
-	State              string    `json:"state"`
-	ConnectedToServer  bool      `json:"connected_to_server"`
-	ConnectedToBackend bool      `json:"connected_to_backend"`
-	CurrentJobs        int       `json:"current_jobs"`
-	MaxConcurrency     int       `json:"max_concurrency"`
-	LastError          string    `json:"last_error"`
-	LastHeartbeat      time.Time `json:"last_heartbeat"`
-	WorkerID           string    `json:"worker_id"`
-	WorkerName         string    `json:"worker_name"`
-	Version            string    `json:"version"`
-	Labels             []string  `json:"labels,omitempty"`
+	State              string            `json:"state"`
+	ConnectedToServer  bool              `json:"connected_to_server"`
+	ConnectedToBackend bool              `json:"connected_to_backend"`
+	CurrentJobs        int               `json:"current_jobs"`
+	MaxConcurrency     int               `json:"max_concurrency"`
+	LastError          string            `json:"last_error"`
+	LastHeartbeat      time.Time         `json:"last_heartbeat"`
+	WorkerID           string            `json:"worker_id"`
+	WorkerName         string            `json:"worker_name"`
+	Version            string            `json:"version"`
+	AgentConfig        map[string]string `json:"agent_config,omitempty"`
+	Labels             []string          `json:"labels,omitempty"`
 }
 
 type VersionInfo struct{ Version, BuildSHA, BuildDate string }
@@ -40,6 +41,38 @@ func SetBuildInfo(v, sha, date string) {
 	stateMu.Unlock()
 }
 func GetVersionInfo() VersionInfo { return buildInfo }
+func SetAgentConfig(cfg map[string]string) {
+	stateMu.Lock()
+	defer stateMu.Unlock()
+	if len(cfg) == 0 {
+		stateData.AgentConfig = nil
+		return
+	}
+	stateData.AgentConfig = cloneAgentConfig(cfg)
+}
+func MergeAgentConfig(cfg map[string]string) bool {
+	if len(cfg) == 0 {
+		return false
+	}
+	stateMu.Lock()
+	defer stateMu.Unlock()
+	if stateData.AgentConfig == nil {
+		stateData.AgentConfig = map[string]string{}
+	}
+	changed := false
+	for k, v := range cfg {
+		if cur, ok := stateData.AgentConfig[k]; !ok || cur != v {
+			stateData.AgentConfig[k] = v
+			changed = true
+		}
+	}
+	return changed
+}
+func GetAgentConfig() map[string]string {
+	stateMu.RLock()
+	defer stateMu.RUnlock()
+	return cloneAgentConfig(stateData.AgentConfig)
+}
 func SetWorkerInfo(id, name string, maxConc int) {
 	stateMu.Lock()
 	stateData.WorkerID = id
@@ -124,4 +157,15 @@ func triggerDrainCheck() {
 	if fn != nil {
 		fn()
 	}
+}
+
+func cloneAgentConfig(src map[string]string) map[string]string {
+	if len(src) == 0 {
+		return nil
+	}
+	dst := make(map[string]string, len(src))
+	for k, v := range src {
+		dst[k] = v
+	}
+	return dst
 }

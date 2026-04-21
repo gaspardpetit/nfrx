@@ -10,6 +10,11 @@ import (
 
 const backendVersionProbeTimeout = 2 * time.Second
 
+type backendInfo struct {
+	Family  string
+	Version string
+}
+
 type propsResponse struct {
 	BuildInfo string `json:"build_info"`
 }
@@ -18,10 +23,10 @@ type apiVersionResponse struct {
 	Version string `json:"version"`
 }
 
-func discoverCompletionAgentVersion(ctx context.Context, baseURL, apiKey string) string {
+func discoverBackendInfo(ctx context.Context, baseURL, apiKey string) backendInfo {
 	root := strings.TrimRight(parentBase(normalizeBase(baseURL)), "/")
 	if root == "" {
-		return ""
+		return backendInfo{}
 	}
 	client := &http.Client{}
 	if buildInfo := func() string {
@@ -29,16 +34,58 @@ func discoverCompletionAgentVersion(ctx context.Context, baseURL, apiKey string)
 		defer cancel()
 		return fetchBackendBuildInfo(probeCtx, client, root+"/props", apiKey)
 	}(); buildInfo != "" {
-		return "llama.cpp " + buildInfo
+		return backendInfo{Family: "llama.cpp", Version: buildInfo}
 	}
 	if version := func() string {
 		probeCtx, cancel := probeContext(ctx)
 		defer cancel()
 		return fetchBackendAPIVersion(probeCtx, client, root+"/api/version", apiKey)
 	}(); version != "" {
-		return "ollama " + version
+		return backendInfo{Family: "ollama", Version: version}
 	}
-	return ""
+	return backendInfo{}
+}
+
+func backendInfoFromOverride(version string) backendInfo {
+	version = strings.TrimSpace(version)
+	if version == "" {
+		return backendInfo{}
+	}
+	return backendInfo{
+		Family:  inferBackendFamily(version),
+		Version: version,
+	}
+}
+
+func inferBackendFamily(version string) string {
+	version = strings.ToLower(strings.TrimSpace(version))
+	switch {
+	case strings.HasPrefix(version, "llama.cpp"):
+		return "llama.cpp"
+	case strings.HasPrefix(version, "ollama"):
+		return "ollama"
+	default:
+		return "unknown"
+	}
+}
+
+func backendAgentConfig(info backendInfo) map[string]string {
+	if strings.TrimSpace(info.Version) == "" {
+		return nil
+	}
+	cfg := map[string]string{
+		"backend_version": strings.TrimSpace(info.Version),
+	}
+	family := strings.TrimSpace(info.Family)
+	if family == "" {
+		family = "unknown"
+	}
+	cfg["backend_family"] = family
+	return cfg
+}
+
+func shouldDiscoverBackendInfo(agentConfig map[string]string) bool {
+	return strings.TrimSpace(agentConfig["backend_version"]) == ""
 }
 
 func probeContext(parent context.Context) (context.Context, context.CancelFunc) {
