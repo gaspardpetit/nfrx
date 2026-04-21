@@ -1,4 +1,18 @@
-nfrx (0.9.4-1ubuntu1) UNRELEASED; urgency=medium
+nfrx (0.9.5-1ubuntu1) UNRELEASED; urgency=medium
+
+  * Release: v0.9.5 —
+    https://github.com/gaspardpetit/nfrx/releases/tag/v0.9.5
+  * ## What's Changed
+  * * Auto detect llama-cpp server and ollama backend version by
+    @gaspardpetit in https://github.com/gaspardpetit/nfrx/pull/266
+  *
+  *
+  * **Full Changelog**:
+    https://github.com/gaspardpetit/nfrx/compare/v0.9.4...v0.9.5
+
+ -- CI <ci@example.invalid>  Tue, 21 Apr 2026 17:16:00 +0000
+
+nfrx (0.9.5-1) unstable; urgency=medium
 
   * Release: v0.9.4 —
     https://github.com/gaspardpetit/nfrx/releases/tag/v0.9.4
@@ -17,8 +31,9 @@ nfrx (0.9.4-1ubuntu1) UNRELEASED; urgency=medium
   *
   * **Full Changelog**:
     https://github.com/gaspardpetit/nfrx/compare/v0.9.3...v0.9.4
+  *
 
- -- CI <ci@example.invalid>  Mon, 20 Apr 2026 06:43:44 +0000
+ -- CI <ci@example.invalid>  Tue, 21 Apr 2026 17:15:59 +0000
 
 nfrx (0.9.4-1) unstable; urgency=medium
 
