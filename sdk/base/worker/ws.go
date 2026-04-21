@@ -183,6 +183,9 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
 					}
 					wk.mu.Unlock()
 					metrics.UpdateWorker(wk.ID, m.MaxConcurrency, prefBatch, m.Models)
+					if m.AgentConfig != nil {
+						metrics.SetWorkerHostInfo(wk.ID, m.AgentConfig)
+					}
 					if m.Status != "" {
 						metrics.SetWorkerStatus(wk.ID, WorkerStatus(m.Status))
 					}

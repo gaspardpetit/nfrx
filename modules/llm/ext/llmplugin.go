@@ -140,15 +140,17 @@ func (p *Plugin) RegisterState(reg spi.StateRegistry) {
         var avg=(w.avg_processing_ms||0);
         var avgText=(avg && avg.toFixed)? avg.toFixed(0) : avg;
         var processed=(w.processed_total||0);
-        var version=(w.version || '');
-        var hostSummary=[w.host_os, w.host_platform, w.host_platform_version].filter(Boolean).join(' / ');
-        var hostName=(w.host_hostname || '');
-        var completionAgentVersion=(w.completion_agent_version || '');
+        var hostInfo=(w.host_info || {});
         var cpu=(typeof w.host_cpu_percent === 'number') ? w.host_cpu_percent.toFixed(1) : '';
         var ram=(typeof w.host_ram_used_percent === 'number') ? w.host_ram_used_percent.toFixed(1) : '';
         var inputTokens=(w.input_tokens_total||0);
         var outputTokens=(w.output_tokens_total||0);
-        var hostParts=[hostName, w.host_os, w.host_platform, w.host_platform_version, completionAgentVersion].filter(Boolean);
+        var versionParts=['client: '+(hostInfo.worker_version || 'unknown')];
+        if (hostInfo.backend_version) {
+          versionParts.push((hostInfo.backend_family || 'backend')+': '+hostInfo.backend_version);
+        }
+        var versionText=versionParts.join(' / ');
+        var hostParts=[hostInfo.hostname, hostInfo.os_name, hostInfo.os_version].filter(Boolean);
         var hostText=hostParts.length ? hostParts.join(' / ') : 'unknown';
         var workerID=(w.id || '');
         var workerBaseURL=new URL('/api/llm/id/'+encodeURIComponent(workerID)+'/v1', window.location.origin).toString();
@@ -176,7 +178,7 @@ func (p *Plugin) RegisterState(reg spi.StateRegistry) {
               '<div class="name"><span class="emoji">🦙</span><span class="status-dot" style="background:'+status+'"></span><span class="name-text">'+name+'</span>'+statusBadge+'</div>'+
             '</div>'+
             '<div class="worker-meta">'+
-              '<div class="worker-version">'+(version || 'unknown')+'</div>'+
+              '<div class="worker-version">'+versionText+'</div>'+
               '<div class="worker-hostline">'+hostText+'</div>'+
             '</div>'+
           '</div>'+

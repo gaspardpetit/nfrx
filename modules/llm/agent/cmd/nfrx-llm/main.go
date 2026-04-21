@@ -145,12 +145,8 @@ func main() {
 	if cfg.EmbeddingBatchSize > 0 {
 		agentCfg["embedding_batch_size"] = strconv.Itoa(cfg.EmbeddingBatchSize)
 	}
-	completionAgentVersion := strings.TrimSpace(cfg.CompletionAgentVersion)
-	if completionAgentVersion == "" {
-		completionAgentVersion = discoverCompletionAgentVersion(ctx, normalizedBase, cfg.CompletionAPIKey)
-	}
-	if completionAgentVersion != "" {
-		agentCfg["completion_agent_version"] = completionAgentVersion
+	for k, v := range backendAgentConfig(backendInfoFromOverride(cfg.CompletionAgentVersion)) {
+		agentCfg[k] = v
 	}
 	gcfg := wp.Config{
 		ServerURL:      cfg.ServerURL,
@@ -180,8 +176,27 @@ func main() {
 		}
 		gcfg.HeartbeatSampleFunc = heartbeatSampler
 	}
+	gcfg.ProbeFunc = wrapProbeWithBackendInfo(gcfg.ProbeFunc, normalizedBase, cfg.CompletionAPIKey)
 	if err := wp.Run(ctx, gcfg); err != nil {
 		logx.Log.Fatal().Err(err).Msg("worker exited")
+	}
+}
+
+func wrapProbeWithBackendInfo(probe wp.ProbeFunc, baseURL, apiKey string) wp.ProbeFunc {
+	if probe == nil {
+		return nil
+	}
+	return func(ctx context.Context) (wp.ProbeResult, error) {
+		res, err := probe(ctx)
+		if err != nil || !res.Ready {
+			return res, err
+		}
+		if shouldDiscoverBackendInfo(wp.GetAgentConfig()) {
+			if cfg := backendAgentConfig(discoverBackendInfo(ctx, baseURL, apiKey)); len(cfg) > 0 {
+				res.AgentConfig = cfg
+			}
+		}
+		return res, nil
 	}
 }
 

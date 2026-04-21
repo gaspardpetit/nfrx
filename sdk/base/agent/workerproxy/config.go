@@ -34,6 +34,8 @@ type Config struct {
 	ClientName     string
 	// Optional extra config sent to the server via AgentConfig (e.g., embedding_batch_size)
 	AgentConfig map[string]string
+	// Optional dynamic config accessor merged into registration and status updates.
+	AgentConfigFunc func() map[string]string
 	// Optional heartbeat telemetry sampler.
 	HeartbeatSampleFunc func() (HeartbeatSample, error)
 
@@ -56,6 +58,7 @@ type ProbeResult struct {
 	Ready          bool
 	Models         []string
 	MaxConcurrency int
+	AgentConfig    map[string]string
 }
 
 // ProbeFunc queries the upstream backend for readiness and metadata.

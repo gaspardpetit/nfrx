@@ -32,15 +32,15 @@ func TestRegisterStateHTMLIncludesHostTelemetryFields(t *testing.T) {
 		t.Fatalf("missing llm state html")
 	}
 	html := elem.HTML()
-	for _, want := range []string{"host_cpu_percent", "host_ram_used_percent", "host_hostname", "completion_agent_version", "input_tokens_total", "output_tokens_total", "Tokens In", "Tokens Out", "worker-version", "worker-hostline"} {
+	for _, want := range []string{"host_cpu_percent", "host_ram_used_percent", "host_info", "backend_family", "backend_version", "input_tokens_total", "output_tokens_total", "Tokens In", "Tokens Out", "worker-hostline", "worker-version", "client: "} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("missing %q in html", want)
 		}
 	}
-	if !strings.Contains(html, "hostParts=[hostName, w.host_os, w.host_platform, w.host_platform_version, completionAgentVersion].filter(Boolean)") {
-		t.Fatalf("missing host line backend version composition")
+	if !strings.Contains(html, "versionParts=['client: '+(hostInfo.worker_version || 'unknown')]") {
+		t.Fatalf("missing version line composition")
 	}
-	if strings.Contains(html, "worker-backend") {
-		t.Fatalf("unexpected separate backend line in html")
+	if !strings.Contains(html, "hostParts=[hostInfo.hostname, hostInfo.os_name, hostInfo.os_version].filter(Boolean)") {
+		t.Fatalf("missing host line composition")
 	}
 }
