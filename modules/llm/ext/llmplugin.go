@@ -148,8 +148,8 @@ func (p *Plugin) RegisterState(reg spi.StateRegistry) {
         var ram=(typeof w.host_ram_used_percent === 'number') ? w.host_ram_used_percent.toFixed(1) : '';
         var inputTokens=(w.input_tokens_total||0);
         var outputTokens=(w.output_tokens_total||0);
-        var hostText=((hostName && hostSummary) ? (hostName+' / '+hostSummary) : (hostName || hostSummary || 'unknown'));
-        var backendHTML=completionAgentVersion ? '<div class="worker-backend">'+completionAgentVersion+'</div>' : '';
+        var hostParts=[hostName, w.host_os, w.host_platform, w.host_platform_version, completionAgentVersion].filter(Boolean);
+        var hostText=hostParts.length ? hostParts.join(' / ') : 'unknown';
         var workerID=(w.id || '');
         var workerBaseURL=new URL('/api/llm/id/'+encodeURIComponent(workerID)+'/v1', window.location.origin).toString();
         var workerModelsURL=workerBaseURL+'/models';
@@ -178,7 +178,6 @@ func (p *Plugin) RegisterState(reg spi.StateRegistry) {
             '<div class="worker-meta">'+
               '<div class="worker-version">'+(version || 'unknown')+'</div>'+
               '<div class="worker-hostline">'+hostText+'</div>'+
-              backendHTML+
             '</div>'+
           '</div>'+
           '<div class="worker-metrics">'+

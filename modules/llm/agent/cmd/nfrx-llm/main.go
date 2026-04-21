@@ -145,8 +145,12 @@ func main() {
 	if cfg.EmbeddingBatchSize > 0 {
 		agentCfg["embedding_batch_size"] = strconv.Itoa(cfg.EmbeddingBatchSize)
 	}
-	if cfg.CompletionAgentVersion != "" {
-		agentCfg["completion_agent_version"] = cfg.CompletionAgentVersion
+	completionAgentVersion := strings.TrimSpace(cfg.CompletionAgentVersion)
+	if completionAgentVersion == "" {
+		completionAgentVersion = discoverCompletionAgentVersion(ctx, normalizedBase, cfg.CompletionAPIKey)
+	}
+	if completionAgentVersion != "" {
+		agentCfg["completion_agent_version"] = completionAgentVersion
 	}
 	gcfg := wp.Config{
 		ServerURL:      cfg.ServerURL,
