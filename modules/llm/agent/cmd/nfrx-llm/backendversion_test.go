@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestDiscoverCompletionAgentVersionPrefersPropsBuildInfo(t *testing.T) {
@@ -31,6 +32,27 @@ func TestDiscoverCompletionAgentVersionFallsBackToAPIVersion(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/props":
+			http.NotFound(w, r)
+		case "/api/version":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"version":"0.18.3"}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer ts.Close()
+
+	got := discoverCompletionAgentVersion(context.Background(), ts.URL+"/v1", "")
+	if got != "ollama 0.18.3" {
+		t.Fatalf("unexpected version %q", got)
+	}
+}
+
+func TestDiscoverCompletionAgentVersionFallbackGetsFreshTimeout(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/props":
+			time.Sleep(backendVersionProbeTimeout + 200*time.Millisecond)
 			http.NotFound(w, r)
 		case "/api/version":
 			w.Header().Set("Content-Type", "application/json")

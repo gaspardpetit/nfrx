@@ -23,16 +23,26 @@ func discoverCompletionAgentVersion(ctx context.Context, baseURL, apiKey string)
 	if root == "" {
 		return ""
 	}
-	probeCtx, cancel := context.WithTimeout(ctx, backendVersionProbeTimeout)
-	defer cancel()
 	client := &http.Client{}
-	if buildInfo := fetchBackendBuildInfo(probeCtx, client, root+"/props", apiKey); buildInfo != "" {
+	if buildInfo := func() string {
+		probeCtx, cancel := probeContext(ctx)
+		defer cancel()
+		return fetchBackendBuildInfo(probeCtx, client, root+"/props", apiKey)
+	}(); buildInfo != "" {
 		return "llama.cpp " + buildInfo
 	}
-	if version := fetchBackendAPIVersion(probeCtx, client, root+"/api/version", apiKey); version != "" {
+	if version := func() string {
+		probeCtx, cancel := probeContext(ctx)
+		defer cancel()
+		return fetchBackendAPIVersion(probeCtx, client, root+"/api/version", apiKey)
+	}(); version != "" {
 		return "ollama " + version
 	}
 	return ""
+}
+
+func probeContext(parent context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(parent, backendVersionProbeTimeout)
 }
 
 func fetchBackendBuildInfo(ctx context.Context, client *http.Client, url, apiKey string) string {
