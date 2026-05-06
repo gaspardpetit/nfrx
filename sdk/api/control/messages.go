@@ -18,6 +18,22 @@ type RegisterMessage struct {
 	AgentConfig map[string]string `json:"agent_config,omitempty"`
 }
 
+type RegisterAckMessage struct {
+	Type           string   `json:"type"`
+	WorkerID       string   `json:"worker_id"`
+	WorkerName     string   `json:"worker_name,omitempty"`
+	Models         []string `json:"models,omitempty"`
+	MaxConcurrency int      `json:"max_concurrency,omitempty"`
+	Status         string   `json:"status,omitempty"`
+}
+
+type SessionReplacedMessage struct {
+	Type       string `json:"type"`
+	WorkerID   string `json:"worker_id"`
+	WorkerName string `json:"worker_name,omitempty"`
+	Reason     string `json:"reason,omitempty"`
+}
+
 type StatusUpdateMessage struct {
 	Type           string   `json:"type"`
 	MaxConcurrency int      `json:"max_concurrency"`

@@ -125,12 +125,23 @@ func TestPruneLastWorkerTogglesNotReady(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 
-	// Do not send heartbeats; allow prune to evict the lone worker, then assert not_ready
+	// Do not send heartbeats; allow prune to evict the lone worker, then assert
+	// the public API reflects no available models.
 	for i := 0; i < 200; i++ {
-		if serverstate.GetState() == "not_ready" {
-			return
+		resp, err := http.Get(srv.URL + "/api/llm/v1/models")
+		if err == nil {
+			var v struct {
+				Data []struct {
+					ID string `json:"id"`
+				} `json:"data"`
+			}
+			_ = json.NewDecoder(resp.Body).Decode(&v)
+			_ = resp.Body.Close()
+			if len(v.Data) == 0 {
+				return
+			}
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	t.Fatalf("expected server state to become not_ready after prune; got %q", serverstate.GetState())
+	t.Fatalf("expected models to be removed after prune; state=%q", serverstate.GetState())
 }

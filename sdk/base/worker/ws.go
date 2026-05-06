@@ -84,12 +84,18 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
 				}
 			}
 		}
-		wk := &Worker{ID: rm.WorkerID, Name: name, Labels: map[string]bool{}, MaxConcurrency: rm.MaxConcurrency, PreferredBatchSize: prefBatch, InFlight: 0, LastHeartbeat: time.Now(), Send: make(chan interface{}, 32), Jobs: make(map[string]chan interface{})}
+		wk := &Worker{ID: rm.WorkerID, Name: name, Labels: map[string]bool{}, MaxConcurrency: rm.MaxConcurrency, PreferredBatchSize: prefBatch, InFlight: 0, LastHeartbeat: time.Now(), Conn: c, Send: make(chan interface{}, 32), Jobs: make(map[string]chan interface{})}
 		for _, m := range rm.Models {
 			wk.Labels[m] = true
 		}
-		// Add worker and update server readiness if this is the first one
-		reg.Add(wk)
+		// Add worker and update server readiness if this is the first one.
+		// When a duplicate worker ID reconnects, replace the old session and
+		// close its channels so the stale socket handler exits promptly.
+		replaced := reg.Add(wk)
+		if replaced != nil && replaced != wk {
+			logx.Log.Warn().Str("worker_id", wk.ID).Str("worker_name", wk.Name).Msg("replaced existing worker session")
+			replaceWorker(replaced)
+		}
 		if state != nil && reg.WorkerCount() == 1 {
 			// First worker became available: mark server as ready
 			state.SetStatus("ready")
@@ -103,16 +109,26 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
 		metrics.SetWorkerStatus(wk.ID, status)
 		logx.Log.Info().Str("worker_id", wk.ID).Str("worker_name", wk.Name).Int("label_count", len(wk.Labels)).Msg("registered")
 		defer func() {
-			reg.Remove(wk.ID)
-			metrics.RemoveWorker(wk.ID)
+			removed := reg.RemoveIfSame(wk.ID, wk)
+			if removed {
+				metrics.RemoveWorker(wk.ID)
+			}
 			// If no workers remain and we're not draining, mark server not_ready
 			if state != nil && !state.IsDraining() && reg.WorkerCount() == 0 {
 				state.SetStatus("not_ready")
 			}
 		}()
+		ack := ctrl.RegisterAckMessage{Type: "register_ack", WorkerID: wk.ID, WorkerName: wk.Name, Models: rm.Models, MaxConcurrency: rm.MaxConcurrency, Status: string(status)}
+		if b, err := json.Marshal(ack); err == nil {
+			if err := c.Write(ctx, websocket.MessageText, b); err != nil {
+				logx.Log.Error().Err(err).Str("worker_id", wk.ID).Str("worker_name", wk.Name).Msg("ws write register ack")
+				return
+			}
+		}
 
+		sendCh := wk.SendChan()
 		go func() {
-			for msg := range wk.Send {
+			for msg := range sendCh {
 				b, err := json.Marshal(msg)
 				if err != nil {
 					continue

@@ -1,10 +1,14 @@
 package worker
 
 import (
+	"context"
+	"encoding/json"
 	"sync"
 	"time"
 
+	"github.com/coder/websocket"
 	"github.com/gaspardpetit/nfrx/core/logx"
+	ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
 )
 
 const (
@@ -20,13 +24,21 @@ type Worker struct {
 	PreferredBatchSize int
 	InFlight           int
 	LastHeartbeat      time.Time
+	Conn               *websocket.Conn
 	Send               chan interface{}
 	Jobs               map[string]chan interface{}
 	mu                 sync.Mutex
+	closed             bool
 }
 
 // NameValue safely returns the worker's name.
 func (w *Worker) NameValue() string { w.mu.Lock(); defer w.mu.Unlock(); return w.Name }
+
+func (w *Worker) SendChan() chan interface{} {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.Send
+}
 
 // LabelKeys returns a copy of the worker's label set as a slice.
 func (w *Worker) LabelKeys() []string {
@@ -47,35 +59,62 @@ func (w *Worker) HasLabel(label string) bool {
 }
 
 type Registry struct {
-	mu      sync.RWMutex
-	workers map[string]*Worker
+	mu            sync.RWMutex
+	workers       map[string]*Worker
+	onBecameEmpty func()
 }
 
 func NewRegistry() *Registry { return &Registry{workers: make(map[string]*Worker)} }
 
-func (r *Registry) Add(w *Worker) {
+func (r *Registry) SetOnBecameEmpty(fn func()) {
 	r.mu.Lock()
-	r.workers[w.ID] = w
+	r.onBecameEmpty = fn
 	r.mu.Unlock()
 }
 
+func (r *Registry) Add(w *Worker) (replaced *Worker) {
+	r.mu.Lock()
+	replaced = r.workers[w.ID]
+	r.workers[w.ID] = w
+	r.mu.Unlock()
+	return replaced
+}
+
 func (r *Registry) Remove(id string) {
+	becameEmpty := false
 	r.mu.Lock()
 	if w, ok := r.workers[id]; ok {
 		delete(r.workers, id)
-		w.mu.Lock()
-		for id, ch := range w.Jobs {
-			if ch != nil {
-				close(ch)
-			}
-			delete(w.Jobs, id)
+		becameEmpty = len(r.workers) == 0
+		fn := r.onBecameEmpty
+		r.mu.Unlock()
+		closeWorker(w)
+		if becameEmpty && fn != nil {
+			fn()
 		}
-		w.mu.Unlock()
-		if w.Send != nil {
-			close(w.Send)
-		}
+		return
 	}
 	r.mu.Unlock()
+}
+
+func (r *Registry) RemoveIfSame(id string, want *Worker) bool {
+	becameEmpty := false
+	var fn func()
+	r.mu.Lock()
+	w, ok := r.workers[id]
+	if !ok || w != want {
+		r.mu.Unlock()
+		return false
+	}
+	delete(r.workers, id)
+	becameEmpty = len(r.workers) == 0
+	fn = r.onBecameEmpty
+	r.mu.Unlock()
+	closeWorker(want)
+	if becameEmpty && fn != nil {
+		fn()
+	}
+	return true
 }
 
 func (r *Registry) WorkerCount() int { r.mu.RLock(); defer r.mu.RUnlock(); return len(r.workers) }
@@ -143,24 +182,77 @@ func (r *Registry) Snapshot() []*Worker {
 	return res
 }
 
-func (r *Registry) PruneExpired(maxAge time.Duration) {
+func (r *Registry) PruneExpired(maxAge time.Duration) int {
+	becameEmpty := false
+	var fn func()
 	r.mu.Lock()
+	var expired []*Worker
 	for id, w := range r.workers {
 		if time.Since(w.LastHeartbeat) > maxAge {
 			delete(r.workers, id)
-			w.mu.Lock()
-			for jobID, ch := range w.Jobs {
-				if ch != nil {
-					close(ch)
-				}
-				delete(w.Jobs, jobID)
-			}
-			w.mu.Unlock()
-			close(w.Send)
+			expired = append(expired, w)
 			logx.Log.Info().Str("worker_id", id).Str("reason", "heartbeat_expired").Msg("evicted")
 		}
 	}
+	becameEmpty = len(expired) > 0 && len(r.workers) == 0
+	fn = r.onBecameEmpty
 	r.mu.Unlock()
+	for _, w := range expired {
+		closeWorker(w)
+	}
+	if becameEmpty && fn != nil {
+		fn()
+	}
+	return len(expired)
+}
+
+func closeWorker(w *Worker) {
+	closeWorkerWithReason(w, false)
+}
+
+func replaceWorker(w *Worker) {
+	closeWorkerWithReason(w, true)
+}
+
+func closeWorkerWithReason(w *Worker, replaced bool) {
+	if w == nil {
+		return
+	}
+	w.mu.Lock()
+	if w.closed {
+		w.mu.Unlock()
+		return
+	}
+	w.closed = true
+	conn := w.Conn
+	w.Conn = nil
+	send := w.Send
+	w.Send = nil
+	jobs := w.Jobs
+	w.Jobs = make(map[string]chan interface{})
+	w.mu.Unlock()
+	if conn != nil {
+		if replaced {
+			replacedMsg := ctrl.SessionReplacedMessage{Type: "session_replaced", WorkerID: w.ID, WorkerName: w.Name, Reason: "duplicate_worker_id"}
+			if b, err := json.Marshal(replacedMsg); err == nil {
+				ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+				_ = conn.Write(ctx, websocket.MessageText, b)
+				cancel()
+			}
+			_ = conn.Close(websocket.StatusPolicyViolation, "replaced by another session with same worker id")
+		} else {
+			_ = conn.Close(websocket.StatusNormalClosure, "closing")
+		}
+	}
+	for id, ch := range jobs {
+		if ch != nil {
+			close(ch)
+		}
+		delete(jobs, id)
+	}
+	if send != nil {
+		close(send)
+	}
 }
 
 func (w *Worker) AddJob(id string, ch chan interface{}) { w.mu.Lock(); w.Jobs[id] = ch; w.mu.Unlock() }
