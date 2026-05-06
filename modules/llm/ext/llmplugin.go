@@ -222,6 +222,13 @@ func New(
 	authMW spi.Middleware,
 ) *Plugin {
 	reg := baseworker.NewRegistry()
+	if state != nil {
+		reg.SetOnBecameEmpty(func() {
+			if !state.IsDraining() {
+				state.SetStatus("not_ready")
+			}
+		})
+	}
 	mx := baseworker.NewMetricsRegistry(version, sha, date, func() string { return "" })
 	// Use LLM-specific scorer (exact model match, then alias fallback).
 	// Read min_score from plugin options (default 0.01) to allow alias matches by default.
@@ -239,12 +246,9 @@ func New(
 		}
 		ticker := time.NewTicker(tick)
 		for range ticker.C {
-			// Prune expired workers and update readiness if pool becomes empty
-			evicted := reg.PruneExpired(expire)
-			if evicted > 0 && state != nil && !state.IsDraining() && reg.WorkerCount() == 0 {
-				// No active workers remain and we're not draining: mark server not_ready
-				state.SetStatus("not_ready")
-			}
+			// Prune expired workers; readiness transitions to not_ready are handled
+			// immediately via the shared registry empty-pool callback.
+			reg.PruneExpired(expire)
 		}
 	}()
 	id := Descriptor().ID

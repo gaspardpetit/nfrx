@@ -53,11 +53,18 @@ func (w *Worker) HasLabel(label string) bool {
 }
 
 type Registry struct {
-	mu      sync.RWMutex
-	workers map[string]*Worker
+	mu            sync.RWMutex
+	workers       map[string]*Worker
+	onBecameEmpty func()
 }
 
 func NewRegistry() *Registry { return &Registry{workers: make(map[string]*Worker)} }
+
+func (r *Registry) SetOnBecameEmpty(fn func()) {
+	r.mu.Lock()
+	r.onBecameEmpty = fn
+	r.mu.Unlock()
+}
 
 func (r *Registry) Add(w *Worker) (replaced *Worker) {
 	r.mu.Lock()
@@ -68,17 +75,25 @@ func (r *Registry) Add(w *Worker) (replaced *Worker) {
 }
 
 func (r *Registry) Remove(id string) {
+	becameEmpty := false
 	r.mu.Lock()
 	if w, ok := r.workers[id]; ok {
 		delete(r.workers, id)
+		becameEmpty = len(r.workers) == 0
+		fn := r.onBecameEmpty
 		r.mu.Unlock()
 		closeWorker(w)
+		if becameEmpty && fn != nil {
+			fn()
+		}
 		return
 	}
 	r.mu.Unlock()
 }
 
 func (r *Registry) RemoveIfSame(id string, want *Worker) bool {
+	becameEmpty := false
+	var fn func()
 	r.mu.Lock()
 	w, ok := r.workers[id]
 	if !ok || w != want {
@@ -86,8 +101,13 @@ func (r *Registry) RemoveIfSame(id string, want *Worker) bool {
 		return false
 	}
 	delete(r.workers, id)
+	becameEmpty = len(r.workers) == 0
+	fn = r.onBecameEmpty
 	r.mu.Unlock()
 	closeWorker(want)
+	if becameEmpty && fn != nil {
+		fn()
+	}
 	return true
 }
 
@@ -157,6 +177,8 @@ func (r *Registry) Snapshot() []*Worker {
 }
 
 func (r *Registry) PruneExpired(maxAge time.Duration) int {
+	becameEmpty := false
+	var fn func()
 	r.mu.Lock()
 	var expired []*Worker
 	for id, w := range r.workers {
@@ -166,9 +188,14 @@ func (r *Registry) PruneExpired(maxAge time.Duration) int {
 			logx.Log.Info().Str("worker_id", id).Str("reason", "heartbeat_expired").Msg("evicted")
 		}
 	}
+	becameEmpty = len(expired) > 0 && len(r.workers) == 0
+	fn = r.onBecameEmpty
 	r.mu.Unlock()
 	for _, w := range expired {
 		closeWorker(w)
+	}
+	if becameEmpty && fn != nil {
+		fn()
 	}
 	return len(expired)
 }

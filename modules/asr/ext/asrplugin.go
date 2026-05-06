@@ -135,6 +135,13 @@ var _ spi.Plugin = (*Plugin)(nil)
 
 func New(state spi.ServerState, version, sha, date string, srvOpts spi.Options, authMW spi.Middleware) *Plugin {
 	reg := baseworker.NewRegistry()
+	if state != nil {
+		reg.SetOnBecameEmpty(func() {
+			if !state.IsDraining() {
+				state.SetStatus("not_ready")
+			}
+		})
+	}
 	mx := baseworker.NewMetricsRegistry(version, sha, date, func() string { return "" })
 	minScore := opt.Float(srvOpts.PluginOptions, Descriptor().ID, "min_score", 0.01)
 	sch := baseworker.NewScoreSchedulerWithMinScore(reg, NewASRScorer(), minScore)
@@ -149,10 +156,9 @@ func New(state spi.ServerState, version, sha, date string, srvOpts spi.Options, 
 		}
 		ticker := time.NewTicker(tick)
 		for range ticker.C {
-			evicted := reg.PruneExpired(expire)
-			if evicted > 0 && state != nil && !state.IsDraining() && reg.WorkerCount() == 0 {
-				state.SetStatus("not_ready")
-			}
+			// Readiness transitions to not_ready are handled immediately via the
+			// shared registry empty-pool callback.
+			reg.PruneExpired(expire)
 		}
 	}()
 	id := Descriptor().ID

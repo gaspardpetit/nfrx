@@ -381,3 +381,24 @@ func TestCloseWorkerIsIdempotent(t *testing.T) {
 		t.Fatalf("expected worker to remain marked closed")
 	}
 }
+
+func TestRegistryOnBecameEmptyFiresOnPrune(t *testing.T) {
+	reg := NewRegistry()
+	fired := make(chan struct{}, 1)
+	reg.SetOnBecameEmpty(func() {
+		select {
+		case fired <- struct{}{}:
+		default:
+		}
+	})
+	w := &Worker{ID: "w1", Name: "w1", LastHeartbeat: time.Now().Add(-time.Hour), Send: make(chan interface{}), Jobs: map[string]chan interface{}{}}
+	reg.Add(w)
+	if got := reg.PruneExpired(time.Second); got != 1 {
+		t.Fatalf("expected one worker pruned, got %d", got)
+	}
+	select {
+	case <-fired:
+	case <-time.After(time.Second):
+		t.Fatalf("expected onBecameEmpty callback to fire")
+	}
+}
