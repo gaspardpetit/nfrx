@@ -156,7 +156,7 @@ func (r *Registry) Snapshot() []*Worker {
 	return res
 }
 
-func (r *Registry) PruneExpired(maxAge time.Duration) {
+func (r *Registry) PruneExpired(maxAge time.Duration) int {
 	r.mu.Lock()
 	var expired []*Worker
 	for id, w := range r.workers {
@@ -170,6 +170,7 @@ func (r *Registry) PruneExpired(maxAge time.Duration) {
 	for _, w := range expired {
 		closeWorker(w)
 	}
+	return len(expired)
 }
 
 func closeWorker(w *Worker) {

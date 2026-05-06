@@ -108,13 +108,6 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
 		}
 		metrics.SetWorkerStatus(wk.ID, status)
 		logx.Log.Info().Str("worker_id", wk.ID).Str("worker_name", wk.Name).Int("label_count", len(wk.Labels)).Msg("registered")
-		ack := ctrl.RegisterAckMessage{Type: "register_ack", WorkerID: wk.ID, WorkerName: wk.Name, Models: rm.Models, MaxConcurrency: rm.MaxConcurrency, Status: string(status)}
-		if b, err := json.Marshal(ack); err == nil {
-			if err := c.Write(ctx, websocket.MessageText, b); err != nil {
-				logx.Log.Error().Err(err).Str("worker_id", wk.ID).Str("worker_name", wk.Name).Msg("ws write register ack")
-				return
-			}
-		}
 		defer func() {
 			removed := reg.RemoveIfSame(wk.ID, wk)
 			if removed {
@@ -125,6 +118,13 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
 				state.SetStatus("not_ready")
 			}
 		}()
+		ack := ctrl.RegisterAckMessage{Type: "register_ack", WorkerID: wk.ID, WorkerName: wk.Name, Models: rm.Models, MaxConcurrency: rm.MaxConcurrency, Status: string(status)}
+		if b, err := json.Marshal(ack); err == nil {
+			if err := c.Write(ctx, websocket.MessageText, b); err != nil {
+				logx.Log.Error().Err(err).Str("worker_id", wk.ID).Str("worker_name", wk.Name).Msg("ws write register ack")
+				return
+			}
+		}
 
 		go func() {
 			for msg := range wk.Send {

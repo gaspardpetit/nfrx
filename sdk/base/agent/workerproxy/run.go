@@ -286,24 +286,32 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg Conf
 		logx.Log.Info().Str("server", cfg.ServerURL).Str("worker_id", workerID).Str("worker_name", workerName).Str("status", status).Msg("registered with server")
 	}
 	var firstData []byte
+	legacyAckFallback := false
 	ackCtx, cancelAck := context.WithTimeout(connCtx, 15*time.Second)
 	defer cancelAck()
 	_, ackData, err := ws.Read(ackCtx)
 	if err != nil {
-		cancelConn()
-		SetLastError(err.Error())
-		SetState("error")
-		return false, err
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(ackCtx.Err(), context.DeadlineExceeded) {
+			legacyAckFallback = true
+			markRegistered(cfg.ClientID, cfg.ClientName, "legacy")
+		} else {
+			cancelConn()
+			SetLastError(err.Error())
+			SetState("error")
+			return false, err
+		}
 	}
-	var ack ctrl.RegisterAckMessage
-	if err := json.Unmarshal(ackData, &ack); err != nil {
-		firstData = ackData
-		markRegistered(cfg.ClientID, cfg.ClientName, "legacy")
-	} else if ack.Type == "register_ack" {
-		markRegistered(ack.WorkerID, ack.WorkerName, ack.Status)
-	} else {
-		firstData = ackData
-		markRegistered(cfg.ClientID, cfg.ClientName, "legacy")
+	if !legacyAckFallback {
+		var ack ctrl.RegisterAckMessage
+		if err := json.Unmarshal(ackData, &ack); err != nil {
+			firstData = ackData
+			markRegistered(cfg.ClientID, cfg.ClientName, "legacy")
+		} else if ack.Type == "register_ack" {
+			markRegistered(ack.WorkerID, ack.WorkerName, ack.Status)
+		} else {
+			firstData = ackData
+			markRegistered(cfg.ClientID, cfg.ClientName, "legacy")
+		}
 	}
 
 	sendCh := make(chan []byte, 16)

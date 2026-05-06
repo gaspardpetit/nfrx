@@ -149,8 +149,8 @@ func New(state spi.ServerState, version, sha, date string, srvOpts spi.Options, 
 		}
 		ticker := time.NewTicker(tick)
 		for range ticker.C {
-			reg.PruneExpired(expire)
-			if state != nil && !state.IsDraining() && reg.WorkerCount() == 0 {
+			evicted := reg.PruneExpired(expire)
+			if evicted > 0 && state != nil && !state.IsDraining() && reg.WorkerCount() == 0 {
 				state.SetStatus("not_ready")
 			}
 		}

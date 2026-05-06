@@ -3,9 +3,8 @@ package workerproxy
 import (
 	"context"
 	"encoding/json"
+	"net"
 	"net/http"
-	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -13,13 +12,35 @@ import (
 	ctrl "github.com/gaspardpetit/nfrx/sdk/api/control"
 )
 
-func TestConnectAndServeAcceptsLegacyServerWithoutRegisterAck(t *testing.T) {
-	statusSeen := make(chan ctrl.StatusUpdateMessage, 1)
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func startWSServer(t *testing.T, handler func(*websocket.Conn)) (string, func()) {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		conn, err := websocket.Accept(w, r, nil)
 		if err != nil {
 			t.Fatalf("accept: %v", err)
 		}
+		handler(conn)
+	})
+	srv := &http.Server{Handler: mux}
+	go func() { _ = srv.Serve(ln) }()
+	url := "ws://" + ln.Addr().String()
+	cleanup := func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		_ = srv.Shutdown(ctx)
+		_ = ln.Close()
+	}
+	return url, cleanup
+}
+
+func TestConnectAndServeAcceptsLegacyServerWithoutRegisterAck(t *testing.T) {
+	statusSeen := make(chan ctrl.StatusUpdateMessage, 1)
+	url, cleanup := startWSServer(t, func(conn *websocket.Conn) {
 		defer func() { _ = conn.Close(websocket.StatusNormalClosure, "") }()
 		ctx := context.Background()
 		_, msg, err := conn.Read(ctx)
@@ -46,8 +67,8 @@ func TestConnectAndServeAcceptsLegacyServerWithoutRegisterAck(t *testing.T) {
 		if err := json.Unmarshal(next, &seen); err == nil && seen.Type == "status_update" {
 			statusSeen <- seen
 		}
-	}))
-	defer srv.Close()
+	})
+	defer cleanup()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -56,7 +77,7 @@ func TestConnectAndServeAcceptsLegacyServerWithoutRegisterAck(t *testing.T) {
 	SetWorkerInfo("legacy-worker", "Legacy", 1)
 	SetLabels([]string{"m"})
 
-	cfg := Config{ServerURL: strings.Replace(srv.URL, "http", "ws", 1), ClientID: "legacy-worker", ClientName: "Legacy"}
+	cfg := Config{ServerURL: url, ClientID: "legacy-worker", ClientName: "Legacy"}
 	statusUpdates := make(chan ctrl.StatusUpdateMessage, 1)
 	statusUpdates <- ctrl.StatusUpdateMessage{Type: "status_update", MaxConcurrency: 1, Status: "idle"}
 

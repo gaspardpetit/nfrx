@@ -240,8 +240,8 @@ func New(
 		ticker := time.NewTicker(tick)
 		for range ticker.C {
 			// Prune expired workers and update readiness if pool becomes empty
-			reg.PruneExpired(expire)
-			if state != nil && !state.IsDraining() && reg.WorkerCount() == 0 {
+			evicted := reg.PruneExpired(expire)
+			if evicted > 0 && state != nil && !state.IsDraining() && reg.WorkerCount() == 0 {
 				// No active workers remain and we're not draining: mark server not_ready
 				state.SetStatus("not_ready")
 			}
