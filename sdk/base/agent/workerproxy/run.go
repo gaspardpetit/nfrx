@@ -257,9 +257,9 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg Conf
 	// Disable default 32KiB read limit to allow large control messages
 	ws.SetReadLimit(-1)
 	defer func() { _ = ws.Close(websocket.StatusInternalError, "closing") }()
-	logx.Log.Info().Str("server", cfg.ServerURL).Msg("connected to server")
-	SetConnectedToServer(true)
-	SetState("connected_idle")
+	logx.Log.Info().Str("server", cfg.ServerURL).Msg("websocket connected; awaiting register ack")
+	SetConnectedToServer(false)
+	SetState("registering")
 	SetLastError("")
 
 	// Populate AgentConfig for extensible values
@@ -275,6 +275,35 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg Conf
 		SetLastError(err.Error())
 		SetState("error")
 		return false, err
+	}
+	markRegistered := func(workerID, workerName, status string) {
+		SetConnectedToServer(true)
+		if GetState().CurrentJobs > 0 {
+			SetState("connected_busy")
+		} else {
+			SetState("connected_idle")
+		}
+		logx.Log.Info().Str("server", cfg.ServerURL).Str("worker_id", workerID).Str("worker_name", workerName).Str("status", status).Msg("registered with server")
+	}
+	var firstData []byte
+	ackCtx, cancelAck := context.WithTimeout(connCtx, 15*time.Second)
+	defer cancelAck()
+	_, ackData, err := ws.Read(ackCtx)
+	if err != nil {
+		cancelConn()
+		SetLastError(err.Error())
+		SetState("error")
+		return false, err
+	}
+	var ack ctrl.RegisterAckMessage
+	if err := json.Unmarshal(ackData, &ack); err != nil {
+		firstData = ackData
+		markRegistered(cfg.ClientID, cfg.ClientName, "legacy")
+	} else if ack.Type == "register_ack" {
+		markRegistered(ack.WorkerID, ack.WorkerName, ack.Status)
+	} else {
+		firstData = ackData
+		markRegistered(cfg.ClientID, cfg.ClientName, "legacy")
 	}
 
 	sendCh := make(chan []byte, 16)
@@ -367,25 +396,31 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg Conf
 	var jobMu sync.Mutex
 
 	for {
-		_, data, err := ws.Read(connCtx)
-		if err != nil {
-			SetConnectedToServer(false)
-			var ce websocket.CloseError
-			if errors.As(err, &ce) {
-				lvl := logx.Log.Error()
-				if ce.Code == websocket.StatusNormalClosure || ce.Code == websocket.StatusGoingAway {
-					lvl = logx.Log.Warn()
+		var data []byte
+		if firstData != nil {
+			data = firstData
+			firstData = nil
+		} else {
+			_, data, err = ws.Read(connCtx)
+			if err != nil {
+				SetConnectedToServer(false)
+				var ce websocket.CloseError
+				if errors.As(err, &ce) {
+					lvl := logx.Log.Error()
+					if ce.Code == websocket.StatusNormalClosure || ce.Code == websocket.StatusGoingAway {
+						lvl = logx.Log.Warn()
+					}
+					lvl.Int("code", int(ce.Code)).Str("reason", ce.Reason).Msg("server connection closed")
+				} else {
+					logx.Log.Error().Err(err).Msg("server read error")
 				}
-				lvl.Int("code", int(ce.Code)).Str("reason", ce.Reason).Msg("server connection closed")
-			} else {
-				logx.Log.Error().Err(err).Msg("server read error")
+				if IsDraining() {
+					return true, nil
+				}
+				SetLastError(err.Error())
+				SetState("error")
+				return true, err
 			}
-			if IsDraining() {
-				return true, nil
-			}
-			SetLastError(err.Error())
-			SetState("error")
-			return true, err
 		}
 		var env struct {
 			Type string `json:"type"`
@@ -420,6 +455,17 @@ func connectAndServe(ctx context.Context, cancelAll context.CancelFunc, cfg Conf
 					delete(reqCancels, hc.RequestID)
 				}
 				jobMu.Unlock()
+			} else {
+				logx.Log.Warn().Err(err).Str("type", env.Type).Str("body", summarizeBody(data, 512)).Msg("server message decode failed")
+			}
+		case "session_replaced":
+			var replaced ctrl.SessionReplacedMessage
+			if err := json.Unmarshal(data, &replaced); err == nil {
+				logx.Log.Warn().Str("worker_id", replaced.WorkerID).Str("worker_name", replaced.WorkerName).Str("reason", replaced.Reason).Msg("worker session replaced by another connection")
+				SetLastError("session replaced by another connection")
+				SetConnectedToServer(false)
+				SetState("error")
+				return true, fmt.Errorf("worker session replaced: %s", replaced.Reason)
 			} else {
 				logx.Log.Warn().Err(err).Str("type", env.Type).Str("body", summarizeBody(data, 512)).Msg("server message decode failed")
 			}
