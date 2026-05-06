@@ -34,6 +34,12 @@ type Worker struct {
 // NameValue safely returns the worker's name.
 func (w *Worker) NameValue() string { w.mu.Lock(); defer w.mu.Unlock(); return w.Name }
 
+func (w *Worker) SendChan() chan interface{} {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.Send
+}
+
 // LabelKeys returns a copy of the worker's label set as a slice.
 func (w *Worker) LabelKeys() []string {
 	w.mu.Lock()

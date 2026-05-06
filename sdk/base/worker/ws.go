@@ -126,7 +126,7 @@ func WSHandler(reg *Registry, metrics *MetricsRegistry, clientKey string, state 
 			}
 		}
 
-		sendCh := wk.Send
+		sendCh := wk.SendChan()
 		go func() {
 			for msg := range sendCh {
 				b, err := json.Marshal(msg)
